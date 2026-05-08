@@ -1,0 +1,15 @@
+[neil]
+  name = "Neil"
+  age = 28
+  pronouns = "he/him"
+  telegram_chat_id = "845849177"
+  matrix_user_id = "@neil:guion.io"
+  admin = true
+
+[sven]
+  name = "Sven"
+  age = 27
+  pronouns = "he/him"
+  telegram_chat_id = "6867369237"
+  matrix_user_id = "@sven:guion.io"
+  admin = false

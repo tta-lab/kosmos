@@ -65,12 +65,6 @@
     # extraTmuxConfig = builtins.readFile ./tmux.conf;
   };
 
-  programs.helix = {
-    enable = true;
-    # TODO: Neil to drop config.toml into ~/.config/helix/
-    # settings = builtins.fromTOML (builtins.readFile ./helix-config.toml);
-  };
-
   virtualisation.podman = {
     enable = true;
     dockerCompat = true;
