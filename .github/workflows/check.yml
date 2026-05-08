@@ -1,0 +1,18 @@
+name: NixOS Config Check
+
+on:
+  push:
+    branches: [main, master, worker/**]
+  pull_request:
+
+jobs:
+  syntax-check:
+    runs-on: ubuntu-latest
+    container:
+      image: docker://nixos/nix:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check configuration.nix syntax
+        run: nix-instantiate --parse configuration.nix
+      - name: Check disko-config.nix syntax
+        run: nix-instantiate --parse disko-config.nix
