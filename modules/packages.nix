@@ -27,8 +27,6 @@
     podman
     # Monitor
     btop
-    bottom
-    htop
     # Proxy
     mihomo
     # Misc

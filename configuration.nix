@@ -9,6 +9,5 @@
     ./modules/users.nix
     ./modules/packages.nix
     ./modules/firewall.nix
-    ./modules/configs.nix
   ];
 }

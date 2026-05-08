@@ -4,9 +4,9 @@ NixOS configuration for an Intel NUC (12th Gen i5-1240P) — headless dev/ops ma
 
 ## Structure
 
-- `configuration.nix` — initial NixOS config (Phase 1 bootstrap)
+- `configuration.nix` — NixOS config entry point (imports modules)
 - `disko-config.nix` — declarative NVMe partition layout
-- `flake.nix` — flake-based config (Phase 2)
+- `flake.nix` — flake-based config with inputs
 - `modules/` — modular configs extracted from monolithic config
 - `install-guide.md` — step-by-step install instructions
 

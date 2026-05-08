@@ -26,7 +26,7 @@ render = true
 # Use system clipboard by default
 [keys.normal]
 y = ["yank_main_selection_to_clipboard"]
-Y = ':sh printf %%s "%{buffer_name}" | pbcopy'
+Y = ':sh printf %%s "%{buffer_name}" | wl-copy'
 # d = ["delete_selection"]
 # p = ["paste_clipboard_after"]
 # P = ["paste_clipboard_before"]

@@ -44,7 +44,17 @@ ip addr
 
 If no DHCP, the proxy config won't work yet — but that's fine, we're offline for install.
 
-## 4. Partition with disko
+## 4. Copy Config Files
+
+From your Mac:
+
+```bash
+scp disko-config.nix configuration.nix nixos@<nuc-ip>:
+```
+
+Or if no network yet, recreate the files manually.
+
+## 5. Partition with disko
 
 ```bash
 # Copy the disko config from the repo
@@ -55,18 +65,17 @@ disko --mode disko disko-config.nix
 
 > **Note:** Replace `disko-config.nix` device path if your NVMe is not `/dev/nvme0n1`.
 
-## 5. Generate Hardware Config
+## 6. Generate Hardware Config
 
 ```bash
 nixos-generate-config --root /mnt
 ```
 
-## 6. Copy Configuration
+## 7. Copy Configuration
 
 ```bash
 # Copy our configs
-cp configuration.nix /mnt/etc/nixos/
-cp disko-config.nix /mnt/etc/nixos/
+cp -r configuration.nix disko-config.nix modules/ /mnt/etc/nixos/
 
 # Merge any hardware-specific lines from the generated config
 # (especially filesystem UUIDs, kernel modules)
@@ -77,7 +86,7 @@ Edit `/mnt/etc/nixos/configuration.nix` to:
 - Replace `<mac-ip>` with the actual LAN IP of your Mac running clash verge
 - Add your SSH public key(s) to `users.users.neil.openssh.authorizedKeys.keys`
 
-## 7. Install
+## 8. Install
 
 ```bash
 nixos-install --root /mnt
@@ -86,7 +95,7 @@ nixos-install --root /mnt
 # User 'neil' has initial password 'changeme' — change on first login
 ```
 
-## 8. Reboot
+## 9. Reboot
 
 ```bash
 reboot
@@ -94,7 +103,7 @@ reboot
 
 Remove the USB drive when prompted.
 
-## 9. Connect via SSH
+## 10. Connect via SSH
 
 From your Mac:
 
@@ -109,7 +118,7 @@ ssh neil@<nuc-ip>
 passwd
 ```
 
-## 10. Verify Proxy
+## 11. Verify Proxy
 
 ```bash
 # Test internet through proxy
@@ -120,7 +129,7 @@ curl -v https://google.com
 sudo nixos-rebuild switch
 ```
 
-## 11. Next Steps
+## 12. Next Steps
 
 Once the NUC is online and SSH-accessible, proceed to Phase 2 — flake migration:
 
@@ -131,7 +140,7 @@ git clone <repo-url> .
 nixos-rebuild switch --flake .#kosmos
 ```
 
-## 12. Flake Rebuild (Phase 2)
+## 13. Flake Rebuild (Phase 2)
 
 After pushing the flake setup to your repo:
 
