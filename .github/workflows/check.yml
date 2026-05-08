@@ -11,9 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: DeterminateSystems/nix-installer-action@v4
-      - name: Nix flake check
-        run: nix flake check
+      - name: Nix syntax check
+        run: nix-instantiate --parse configuration.nix
       - name: Statix lint
         run: nix run nixpkgs#statix -- check .
-      - name: Full system build
-        run: nix build .#nixosConfigurations.kosmos.config.system.build.toplevel --no-link

@@ -62,7 +62,7 @@
     tmux = {
       enable = true;
       terminal = "tmux-256color";
-      extraTmuxConfig = builtins.readFile ../tmux/.tmux.conf;
+      extraConfig = builtins.readFile ../tmux/.tmux.conf;
     };
   };
 
