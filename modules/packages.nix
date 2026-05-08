@@ -39,7 +39,6 @@
     # Nix tooling
     nh
     comma
-    nix-index-database
     nix-direnv
     statix
     nixd
