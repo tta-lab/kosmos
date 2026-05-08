@@ -44,25 +44,27 @@
     nixd
   ];
 
-  programs.fish = {
-    enable = true;
-    shellAliases = {
-      vi = "hx";
+  programs = {
+    fish = {
+      enable = true;
+      shellAliases = {
+        vi = "hx";
+      };
     };
-  };
 
-  programs.mosh.enable = true;
+    mosh.enable = true;
 
-  programs.direnv = {
-    enable = true;
-    nix-direnv.enable = true;
-  };
+    direnv = {
+      enable = true;
+      nix-direnv.enable = true;
+    };
 
-  programs.tmux = {
-    enable = true;
-    terminal = "screen-256color";
-    # TODO: Neil to drop .tmux.conf into ~ or use extraTmuxConfig
-    # extraTmuxConfig = builtins.readFile ./tmux.conf;
+    tmux = {
+      enable = true;
+      terminal = "screen-256color";
+      # TODO: Neil to drop .tmux.conf into ~ or use extraTmuxConfig
+      # extraTmuxConfig = builtins.readFile ./tmux.conf;
+    };
   };
 
   virtualisation.podman = {
