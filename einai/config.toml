@@ -1,0 +1,8 @@
+default_runtime = "lenos"
+
+# Where to find agent .md files
+agents_paths = ["/Users/neil/Code/guion-opensource/einai/agents"]
+
+# Reference repos for --repo flag
+references_path = "~/Code/2026-references"
+

@@ -61,9 +61,8 @@
 
     tmux = {
       enable = true;
-      terminal = "screen-256color";
-      # TODO: Neil to drop .tmux.conf into ~ or use extraTmuxConfig
-      # extraTmuxConfig = builtins.readFile ./tmux.conf;
+      terminal = "tmux-256color";
+      extraTmuxConfig = builtins.readFile ../tmux/.tmux.conf;
     };
   };
 
