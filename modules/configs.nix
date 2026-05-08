@@ -11,5 +11,7 @@
     "ttal/sandbox.toml".source = ../ttal/sandbox.toml;
     "einai/config.toml".source = ../einai/config.toml;
     "temenos/config.toml".source = ../temenos/config.toml;
+    "helix/config.toml".source = ../helix/config.toml;
+    "helix/languages.toml".source = ../helix/languages.toml;
   };
 }

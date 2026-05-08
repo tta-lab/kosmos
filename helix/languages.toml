@@ -1,0 +1,7 @@
+[[language]]
+name = "toml"
+language-servers = ["tombi"]
+
+[[language]]
+name = "jinja"
+file-types = ["jinja", "jinja2", "j2", "minijinja"]
