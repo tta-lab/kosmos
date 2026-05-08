@@ -130,3 +130,46 @@ sudo -i
 git clone <repo-url> .
 nixos-rebuild switch --flake .#kosmos
 ```
+
+## 12. Flake Rebuild (Phase 2)
+
+After pushing the flake setup to your repo:
+
+```bash
+# On the NUC
+cd /etc/nixos
+sudo -i
+
+# Clone or pull the latest config
+# (if fresh: clone the repo)
+git clone <repo-url> /etc/nixos
+
+# Rebuild using nh (installed via packages)
+nh os switch . -H kosmos
+
+# Or using nixos-rebuild directly
+nixos-rebuild switch --flake .#kosmos
+```
+
+### Verification
+
+```bash
+# Check services
+systemctl status sshd
+systemctl status systemd-networkd
+
+# Test internet
+curl https://google.com
+
+# Check shell
+fish --version
+
+# Check tools
+hx --version
+tmux --version
+podman --version
+mihomo --version
+
+# Run a container
+podman run hello-world
+```

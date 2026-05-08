@@ -6,13 +6,15 @@ on:
   pull_request:
 
 jobs:
-  syntax-check:
+  flake-check:
     runs-on: ubuntu-latest
     container:
       image: docker://nixos/nix:latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check configuration.nix syntax
-        run: nix-instantiate --parse configuration.nix
-      - name: Check disko-config.nix syntax
-        run: nix-instantiate --parse disko-config.nix
+      - name: Nix flake check
+        run: nix flake check
+      - name: Statix lint
+        run: statix check .
+      - name: Full system build
+        run: nix build .#nixosConfigurations.kosmos.config.system.build.toplevel --no-link

@@ -1,49 +1,13 @@
+{ ... }:
 
-  # Packages
-  environment.systemPackages = with pkgs; [
-    # Editor
-    helix
-    # Shell
-    fish
-    bash
-    # Dev tools
-    git
-    tmux
-    ripgrep
-    fd
-    bat
-    jq
-    fzf
-    direnv
-    httpie
-    wget
-    curl
-    # Languages
-    bun
-    go
-    python3
-    # Containers
-    podman
-    # Monitor
-    btop
-    bottom
-    htop
-    # Proxy
-    mihomo
-    # Misc
-    tree
-    gnugrep
-    gnused
-    gawk
+{
+  imports = [
+    ./disko-config.nix
+    ./modules/system.nix
+    ./modules/networking.nix
+    ./modules/proxy.nix
+    ./modules/users.nix
+    ./modules/packages.nix
+    ./modules/firewall.nix
   ];
-
-  virtualisation.podman = {
-    enable = true;
-    dockerCompat = true;
-    dockerSocket.enable = true;
-  };
-
-  programs.fish.shellAliases = {
-    vi = "hx";
-  };
 }
