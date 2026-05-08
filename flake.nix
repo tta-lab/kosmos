@@ -20,7 +20,7 @@
       modules = [
         disko.nixosModules.disko
         agenix.nixosModules.default
-        nix-index-database.nixosModules.nix-index-database
+        nix-index-database.nixosModules.default
         ./configuration.nix
       ];
     };
