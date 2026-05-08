@@ -8,10 +8,10 @@ on:
 jobs:
   flake-check:
     runs-on: ubuntu-latest
-    container:
-      image: docker://nixos/nix:latest
     steps:
       - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v4
+      - uses: DeterminateSystems/magic-nix-cache-action@v2
       - name: Nix flake check
         run: nix flake check
       - name: Statix lint
