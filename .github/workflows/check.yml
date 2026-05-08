@@ -14,6 +14,6 @@ jobs:
       - name: Nix flake check
         run: nix flake check
       - name: Statix lint
-        run: statix check .
+        run: nix run nixpkgs#statix -- check .
       - name: Full system build
         run: nix build .#nixosConfigurations.kosmos.config.system.build.toplevel --no-link
