@@ -11,7 +11,7 @@ NixOS configuration for a headless dev/ops environment. It supports both the Int
 - `modules/nixos/` — bare-metal boot, network, SSH, proxy, firewall, and containers
 - `modules/wsl/` — WSL-specific settings
 - `modules/users/` — shared user definitions
-- `ttal/`, `einai/`, `temenos/` — non-secret runtime config deployed to `~/.config`
+- `ttal/`, `einai/`, `temenos/` — non-secret runtime config deployed by Home Manager
 - `scripts/sync-projects` — clones or fetches repos listed in `ttal/projects.toml`
 - `packages/tta-lab/` — pinned release packages for tta-lab tools that are not in nixpkgs
 - `configuration.nix` — compatibility entry point for the `kosmos` host

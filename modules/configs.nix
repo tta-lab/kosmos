@@ -1,29 +1,100 @@
-_:
+{ config, ... }:
+
+let
+  stateVersion = config.system.stateVersion;
+in
 
 {
-  systemd.tmpfiles.rules = [
-    "d /home/neil/code 0755 neil users - -"
-    "d /home/neil/code/projects 0755 neil users - -"
-    "d /home/neil/code/references 0755 neil users - -"
+  home-manager = {
+    useGlobalPkgs = true;
+    useUserPackages = true;
 
-    "d /home/neil/.config 0700 neil users - -"
-    "d /home/neil/.config/ttal 0755 neil users - -"
-    "d /home/neil/.config/einai 0755 neil users - -"
-    "d /home/neil/.config/temenos 0755 neil users - -"
-    "d /home/neil/.config/helix 0755 neil users - -"
-    "d /home/neil/.config/git 0755 neil users - -"
+    users.neil = { lib, ... }: {
+      home = {
+        username = "neil";
+        homeDirectory = "/home/neil";
+        stateVersion = stateVersion;
 
-    "L+ /home/neil/.config/ttal/config.toml - - - - ${../ttal/config.toml}"
-    "L+ /home/neil/.config/ttal/humans.toml - - - - ${../ttal/humans.toml}"
-    "L+ /home/neil/.config/ttal/pipelines.toml - - - - ${../ttal/pipelines.toml}"
-    "L+ /home/neil/.config/ttal/projects.toml - - - - ${../ttal/projects.toml}"
-    "L+ /home/neil/.config/ttal/prompts.toml - - - - ${../ttal/prompts.toml}"
-    "L+ /home/neil/.config/ttal/roles.toml - - - - ${../ttal/roles.toml}"
-    "L+ /home/neil/.config/ttal/sandbox.toml - - - - ${../ttal/sandbox.toml}"
-    "L+ /home/neil/.config/einai/config.toml - - - - ${../einai/config.toml}"
-    "L+ /home/neil/.config/temenos/config.toml - - - - ${../temenos/config.toml}"
-    "L+ /home/neil/.config/helix/config.toml - - - - ${../helix/config.toml}"
-    "L+ /home/neil/.config/helix/languages.toml - - - - ${../helix/languages.toml}"
-    "L+ /home/neil/.config/git/config - - - - ${../git/config}"
-  ];
+        activation.createCodeDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+          $DRY_RUN_CMD mkdir -p \
+            "$HOME/code/projects" \
+            "$HOME/code/references"
+        '';
+      };
+
+      xdg = {
+        enable = true;
+        configFile = {
+          "ttal/config.toml".source = ../ttal/config.toml;
+          "ttal/humans.toml".source = ../ttal/humans.toml;
+          "ttal/pipelines.toml".source = ../ttal/pipelines.toml;
+          "ttal/projects.toml".source = ../ttal/projects.toml;
+          "ttal/prompts.toml".source = ../ttal/prompts.toml;
+          "ttal/roles.toml".source = ../ttal/roles.toml;
+          "ttal/sandbox.toml".source = ../ttal/sandbox.toml;
+          "einai/config.toml".source = ../einai/config.toml;
+          "temenos/config.toml".source = ../temenos/config.toml;
+          "helix/config.toml".source = ../helix/config.toml;
+          "helix/languages.toml".source = ../helix/languages.toml;
+        };
+      };
+
+      programs = {
+        home-manager.enable = true;
+
+        fish = {
+          enable = true;
+          shellInit = ''
+            fish_add_path -g /home/neil/go/bin
+          '';
+          functions = {
+            t = ''
+              set -l dir (command ttal jump $argv)
+              or return 1
+              test -n "$dir"
+              or return 1
+              cd -- "$dir"
+            '';
+            vi = "command hx $argv";
+            ls = "command eza $argv";
+            lt = "command eza --tree $argv";
+            tree = "command eza --icons --classify --tree $argv";
+            lg = "command lazygit $argv";
+            catp = "command bat -P $argv";
+            cat = "command bat $argv";
+            yz = "command yazi $argv";
+            b = "command bat $argv";
+            k = "command kubectl $argv";
+            grep = "command rg $argv";
+            fn = "command flicknote $argv";
+          };
+        };
+
+        git = {
+          enable = true;
+          userName = "neil";
+          userEmail = "bn0010100@gmail.com";
+          delta = {
+            enable = true;
+            options = {
+              navigate = true;
+              syntax-theme = "zenburn";
+              dark = true;
+            };
+          };
+          lfs.enable = true;
+          extraConfig = {
+            core.pager = "delta";
+            diff.colorMoved = "default";
+            init.defaultBranch = "main";
+            interactive.diffFilter = "delta --color-only";
+            merge.conflictstyle = "diff3";
+            pull.rebase = true;
+            fetch.prune = true;
+            tea.login = "forgejo";
+          };
+        };
+      };
+    };
+  };
 }

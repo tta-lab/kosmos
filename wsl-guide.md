@@ -39,7 +39,7 @@ wsl.wslConf.interop.appendWindowsPath = false;
 
 ## TTAL Runtime
 
-The flake deploys non-secret config to `~/.config/ttal`, `~/.config/einai`, and `~/.config/temenos`. Real `chat_id`, `.env`, license, kubeconfig, and tunnel tokens are intentionally left out for the later secret-management PR.
+Home Manager deploys non-secret config to `~/.config/ttal`, `~/.config/einai`, and `~/.config/temenos`. Real `chat_id`, `.env`, license, kubeconfig, and tunnel tokens are intentionally left out for the later secret-management PR.
 
 Install or update the fast-moving Go CLIs with:
 

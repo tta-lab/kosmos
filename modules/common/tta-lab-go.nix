@@ -40,10 +40,6 @@ in
     ];
   };
 
-  programs.fish.shellInit = ''
-    fish_add_path -g ${goBin}
-  '';
-
   users.users.neil.linger = true;
 
   systemd.user.services = {
