@@ -56,7 +56,7 @@ systemctl --user status temenos einai ttal
 
 The Go binaries live in `~/go/bin`, which is added to Fish and to the user services' `PATH`. The services are enabled for the user manager, but skip cleanly until the matching binary exists.
 
-Proxy setup is dynamic. `kosmos-wsl-proxy-env` reads the Windows host IP from `/etc/resolv.conf`, checks port `7897`, and emits `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY`. Fish and the TTAL user services load it automatically. Override the defaults with `KOSMOS_WSL_PROXY_HOST` or `KOSMOS_WSL_PROXY_PORT` if the proxy moves.
+Proxy setup is dynamic. `kosmos-wsl-proxy-env` reads the Windows host IP from the default route, checks port `7897`, and emits `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY`. Fish and the TTAL user services load it automatically. Override the defaults with `KOSMOS_WSL_PROXY_HOST` or `KOSMOS_WSL_PROXY_PORT` if the proxy moves.
 
 Project checkouts use two roots:
 

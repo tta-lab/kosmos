@@ -7,6 +7,7 @@ let
       bash
       coreutils
       gawk
+      iproute2
     ];
     text = ''
       set -eu
@@ -14,6 +15,10 @@ let
       mode="''${1:-sh}"
       port="''${KOSMOS_WSL_PROXY_PORT:-7897}"
       host="''${KOSMOS_WSL_PROXY_HOST:-}"
+
+      if [ -z "$host" ]; then
+        host="$(ip route show default 2>/dev/null | awk '/^default[[:space:]]+/ { print $3; exit }')"
+      fi
 
       if [ -z "$host" ] && [ -r /etc/resolv.conf ]; then
         host="$(awk '/^nameserver[[:space:]]+/ && $2 !~ /^(127\.|::1$)/ { print $2; exit }' /etc/resolv.conf)"
