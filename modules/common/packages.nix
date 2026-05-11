@@ -38,6 +38,7 @@ in
     yq
     fzf
     direnv
+    yazi
 
     # Network and HTTP
     httpie
