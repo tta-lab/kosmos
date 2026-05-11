@@ -1,5 +1,9 @@
 { pkgs, ... }:
 
+let
+  ttaLab = pkgs.callPackage ../../packages/tta-lab {};
+in
+
 {
   environment.systemPackages = with pkgs; [
     # Shells and editors
@@ -42,6 +46,8 @@
     age
     sops
     just
+    ttaLab.flicknote
+    ttaLab.taskwarrior
 
     # Languages
     bun

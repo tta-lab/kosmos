@@ -31,6 +31,25 @@ wsl.interop.includePath = false;
 wsl.wslConf.interop.appendWindowsPath = false;
 ```
 
+## TTAL Runtime
+
+The flake deploys non-secret config to `~/.config/ttal`, `~/.config/einai`, and `~/.config/temenos`. Real `chat_id`, `.env`, license, kubeconfig, and tunnel tokens are intentionally left out for the later secret-management PR.
+
+Install or update the fast-moving Go CLIs with:
+
+```bash
+tta-lab-go-install
+```
+
+Then start the daemons:
+
+```bash
+systemctl --user start temenos einai ttal
+systemctl --user status temenos einai ttal
+```
+
+The Go binaries live in `~/go/bin`, which is added to Fish and to the user services' `PATH`. The services are enabled for the user manager, but skip cleanly until the matching binary exists.
+
 ## Rathole Tunnel
 
 The Rathole client scaffold lives in `modules/common/tunnel-rathole-client.nix`. It is imported by the WSL host but disabled until the VPS endpoint and token are ready.

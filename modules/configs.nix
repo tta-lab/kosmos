@@ -1,17 +1,22 @@
-{ config, pkgs, ... }:
+_:
 
 {
-  environment.etc = {
-    "ttal/config.toml".source = ../ttal/config.toml;
-    "ttal/humans.toml".source = ../ttal/humans.toml;
-    "ttal/pipelines.toml".source = ../ttal/pipelines.toml;
-    "ttal/projects.toml".source = ../ttal/projects.toml;
-    "ttal/prompts.toml".source = ../ttal/prompts.toml;
-    "ttal/roles.toml".source = ../ttal/roles.toml;
-    "ttal/sandbox.toml".source = ../ttal/sandbox.toml;
-    "einai/config.toml".source = ../einai/config.toml;
-    "temenos/config.toml".source = ../temenos/config.toml;
-    "helix/config.toml".source = ../helix/config.toml;
-    "helix/languages.toml".source = ../helix/languages.toml;
-  };
+  systemd.tmpfiles.rules = [
+    "d /home/neil/.config/ttal 0755 neil users - -"
+    "d /home/neil/.config/einai 0755 neil users - -"
+    "d /home/neil/.config/temenos 0755 neil users - -"
+    "d /home/neil/.config/helix 0755 neil users - -"
+
+    "L+ /home/neil/.config/ttal/config.toml - - - - ${../ttal/config.toml}"
+    "L+ /home/neil/.config/ttal/humans.toml - - - - ${../ttal/humans.toml}"
+    "L+ /home/neil/.config/ttal/pipelines.toml - - - - ${../ttal/pipelines.toml}"
+    "L+ /home/neil/.config/ttal/projects.toml - - - - ${../ttal/projects.toml}"
+    "L+ /home/neil/.config/ttal/prompts.toml - - - - ${../ttal/prompts.toml}"
+    "L+ /home/neil/.config/ttal/roles.toml - - - - ${../ttal/roles.toml}"
+    "L+ /home/neil/.config/ttal/sandbox.toml - - - - ${../ttal/sandbox.toml}"
+    "L+ /home/neil/.config/einai/config.toml - - - - ${../einai/config.toml}"
+    "L+ /home/neil/.config/temenos/config.toml - - - - ${../temenos/config.toml}"
+    "L+ /home/neil/.config/helix/config.toml - - - - ${../helix/config.toml}"
+    "L+ /home/neil/.config/helix/languages.toml - - - - ${../helix/languages.toml}"
+  ];
 }
