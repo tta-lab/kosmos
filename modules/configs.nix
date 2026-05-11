@@ -14,7 +14,7 @@ in
       home = {
         username = "neil";
         homeDirectory = "/home/neil";
-        stateVersion = stateVersion;
+        inherit stateVersion;
 
         activation.createCodeDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
           $DRY_RUN_CMD mkdir -p \
