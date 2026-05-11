@@ -12,7 +12,7 @@
 
     installPhase = ''
       runHook preInstall
-      install -Dm755 flicknote-cli-x86_64-unknown-linux-musl/flicknote $out/bin/flicknote
+      install -Dm755 flicknote $out/bin/flicknote
       runHook postInstall
     '';
   };
