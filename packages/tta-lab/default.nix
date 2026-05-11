@@ -12,6 +12,7 @@
 
     installPhase = ''
       runHook preInstall
+      # Nix cd's into the single source root after unpacking.
       install -Dm755 flicknote $out/bin/flicknote
       runHook postInstall
     '';
@@ -25,6 +26,7 @@
       url = "https://github.com/GuionAI/taskwarrior/releases/download/v3.4.2-guion.15/task-3.4.2-guion.15-x86_64-linux.tar.gz";
       hash = "sha256-ZAjDETPpx80E8ay/UCFFE/34Wy1bToZWhva0+Ck/i9g=";
     };
+    # The archive has multiple top-level entries; keep unpacking at the archive root.
     sourceRoot = ".";
 
     installPhase = ''

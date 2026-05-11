@@ -11,14 +11,16 @@
     agenix.inputs.nixpkgs.follows = "nixpkgs";
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
+    forgecode.url = "github:tailcallhq/forgecode";
   };
 
-  outputs = { nixpkgs, nixos-wsl, disko, agenix, nix-index-database, ... }: let
+  outputs = { nixpkgs, nixos-wsl, disko, agenix, nix-index-database, forgecode, ... }: let
     system = "x86_64-linux";
     pkgs = import nixpkgs { inherit system; };
   in {
     nixosConfigurations.kosmos = nixpkgs.lib.nixosSystem {
       inherit system;
+      specialArgs = { inherit forgecode; };
       modules = [
         disko.nixosModules.disko
         agenix.nixosModules.default
@@ -29,6 +31,7 @@
 
     nixosConfigurations.wsl = nixpkgs.lib.nixosSystem {
       inherit system;
+      specialArgs = { inherit forgecode; };
       modules = [
         nixos-wsl.nixosModules.default
         agenix.nixosModules.default
