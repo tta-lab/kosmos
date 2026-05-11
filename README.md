@@ -66,7 +66,7 @@ After applying the WSL host, clone or fetch the active project set from `ttal/pr
 kosmos-sync-projects
 ```
 
-Use `remote = "git@host:org/repo.git"` in `ttal/projects.toml` when a repo is not on GitHub. Entries without `remote` default to `git@github.com:<org>/<repo>.git`.
+Use `remote = "https://host/org/repo.git"` in `ttal/projects.toml` when a repo is not on GitHub. Entries without `remote` default to `https://github.com/<org>/<repo>.git`.
 
 ## License
 

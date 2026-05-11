@@ -37,7 +37,7 @@ def repo_info(path, collections):
 
 
 def default_remote(org, repo):
-    return f"git@github.com:{org}/{repo}.git"
+    return f"https://github.com/{org}/{repo}.git"
 
 
 def project_entries(projects):

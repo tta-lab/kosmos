@@ -9,7 +9,7 @@
 [cnsupa]
   name = "CloudNative Supabase"
   path = "/home/neil/code/projects/neil/cloudnative-supabase"
-  remote = "git@git.guion.io:neil/cloudnative-supabase.git"
+  remote = "https://git.guion.io/neil/cloudnative-supabase.git"
 
 [csgo]
   name = "Codex Server Go"
@@ -18,7 +18,7 @@
 [devops]
   name = "Guion DevOps"
   path = "/home/neil/code/projects/GuionAI/guion-devops"
-  remote = "git@git.guion.io:GuionAI/guion-devops.git"
+  remote = "https://git.guion.io/GuionAI/guion-devops.git"
 
 [diary]
   name = "Diary CLI"
@@ -35,7 +35,7 @@
 [fai]
   name = "FlickNote AI Config"
   path = "/home/neil/code/projects/GuionAI/flicknote-ai-config"
-  remote = "git@git.guion.io:GuionAI/flicknote-ai-config.git"
+  remote = "https://git.guion.io/GuionAI/flicknote-ai-config.git"
 
 [fan]
   name = "Fantasy"
@@ -44,7 +44,7 @@
 [fb]
   name = "FlickNote Backend"
   path = "/home/neil/code/projects/GuionAI/flick-backend"
-  remote = "git@git.guion.io:GuionAI/flick-backend.git"
+  remote = "https://git.guion.io/GuionAI/flick-backend.git"
 
 ["fb.ai"]
   k8s_app = "ai-processor"
@@ -71,7 +71,7 @@
 [fd]
   name = "FlickNote Deploy(legacy flux, new service will use self contained tanka)"
   path = "/home/neil/code/projects/neil/flick-deploy"
-  remote = "git@git.guion.io:neil/flick-deploy.git"
+  remote = "https://git.guion.io/neil/flick-deploy.git"
 
 [fn-cli]
   github_token_env = "GUION_GITHUB_TOKEN"
@@ -86,12 +86,12 @@
 [forgejo]
   name = "Forgejo"
   path = "/home/neil/code/references/forgejo/forgejo"
-  remote = "git@codeberg.org:forgejo/forgejo.git"
+  remote = "https://codeberg.org/forgejo/forgejo.git"
 
 [fse]
   name = "flicknote-services"
   path = "/home/neil/code/projects/GuionAI/flicknote-services"
-  remote = "git@git.guion.io:GuionAI/flicknote-services.git"
+  remote = "https://git.guion.io/GuionAI/flicknote-services.git"
 
 ["fse.agent"]
   k8s_app = "flicknote-agent-server"
@@ -124,7 +124,7 @@
 [gi]
   name = "Guion Infrastructure"
   path = "/home/neil/code/projects/GuionAI/guion-infra"
-  remote = "git@git.guion.io:GuionAI/guion-infra.git"
+  remote = "https://git.guion.io/GuionAI/guion-infra.git"
 
 [hbt]
   name = "Homebrew Tap"
@@ -142,7 +142,7 @@
   github_token_env = "GUION_GITHUB_TOKEN"
   name = "Logos"
   path = "/home/neil/code/projects/GuionAI/logos"
-  remote = "git@git.guion.io:GuionAI/logos.git"
+  remote = "https://git.guion.io/GuionAI/logos.git"
 
 [lw]
   name = "Lenos Website"
@@ -151,7 +151,7 @@
 [metadata]
   name = "Guion Metadata Worker"
   path = "/home/neil/code/projects/GuionAI/metadata-worker"
-  remote = "git@git.guion.io:GuionAI/metadata-worker.git"
+  remote = "https://git.guion.io/GuionAI/metadata-worker.git"
 
 [orga]
   name = "Organon"
@@ -184,7 +184,7 @@
 [sustech]
   name = "SUSTech Mar Slides"
   path = "/home/neil/code/projects/neil/sustech-mar-slides"
-  remote = "git@git.guion.io:neil/sustech-mar-slides.git"
+  remote = "https://git.guion.io/neil/sustech-mar-slides.git"
 
 [tch]
   github_token_env = "GUION_GITHUB_TOKEN"
@@ -204,7 +204,7 @@
 [tl]
   name = "TTAL License"
   path = "/home/neil/code/projects/neil/ttal-license"
-  remote = "git@git.guion.io:neil/ttal-license.git"
+  remote = "https://git.guion.io/neil/ttal-license.git"
 
 [ttal]
   name = "TTAL"
@@ -222,7 +222,7 @@
 [voice-cli]
   name = "Voice CLI"
   path = "/home/neil/code/projects/taskclaw/voice-cli"
-  remote = "git@git.guion.io:taskclaw/voice-cli.git"
+  remote = "https://git.guion.io/taskclaw/voice-cli.git"
 
 [archived]
   [archived.clawd]
@@ -231,4 +231,4 @@
   [archived.forgejo-pr-filters]
     name = "Forgejo PR Review Filters"
     path = "/home/neil/code/references/forgejo/forgejo"
-    remote = "git@codeberg.org:forgejo/forgejo.git"
+    remote = "https://codeberg.org/forgejo/forgejo.git"
