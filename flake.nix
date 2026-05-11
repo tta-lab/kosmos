@@ -13,16 +13,14 @@
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
     home-manager.url = "github:nix-community/home-manager/release-25.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
-    forgecode.url = "github:tailcallhq/forgecode";
   };
 
-  outputs = { nixpkgs, nixos-wsl, disko, agenix, nix-index-database, home-manager, forgecode, ... }: let
+  outputs = { nixpkgs, nixos-wsl, disko, agenix, nix-index-database, home-manager, ... }: let
     system = "x86_64-linux";
     pkgs = import nixpkgs { inherit system; };
   in {
     nixosConfigurations.kosmos = nixpkgs.lib.nixosSystem {
       inherit system;
-      specialArgs = { inherit forgecode; };
       modules = [
         disko.nixosModules.disko
         agenix.nixosModules.default
@@ -33,7 +31,6 @@
 
     nixosConfigurations.wsl = nixpkgs.lib.nixosSystem {
       inherit system;
-      specialArgs = { inherit forgecode; };
       modules = [
         nixos-wsl.nixosModules.default
         agenix.nixosModules.default

@@ -1,4 +1,4 @@
-{ forgecode, pkgs, ... }:
+{ pkgs, ... }:
 
 let
   ttaLab = pkgs.callPackage ../../packages/tta-lab {};
@@ -59,7 +59,6 @@ in
     just
     syncProjects
     codex
-    forgecode.packages.${pkgs.stdenv.hostPlatform.system}.default
     ttaLab.flicknote
     ttaLab.taskwarrior
 
