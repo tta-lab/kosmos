@@ -51,6 +51,9 @@ def project_entries(projects):
 
 
 def sync_project(alias, entry, path, args, collections, seen):
+    if args.alias and alias not in args.alias:
+        return 0
+
     info = repo_info(path, collections)
     if info is None:
         return 0
@@ -131,6 +134,11 @@ def main():
         "--org",
         action="append",
         help="Only sync repos whose path org matches this value. Can be repeated.",
+    )
+    parser.add_argument(
+        "--alias",
+        action="append",
+        help="Only sync this project alias from projects.toml. Can be repeated.",
     )
     args = parser.parse_args()
 

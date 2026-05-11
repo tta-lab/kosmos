@@ -2,18 +2,10 @@
   name = "Agora"
   path = "/home/neil/code/projects/tta-lab/agora"
 
-[bo]
-  name = "Boule"
-  path = "/home/neil/code/projects/tta-lab/boule"
-
 [cnsupa]
   name = "CloudNative Supabase"
   path = "/home/neil/code/projects/neil/cloudnative-supabase"
   remote = "https://git.guion.io/neil/cloudnative-supabase.git"
-
-[csgo]
-  name = "Codex Server Go"
-  path = "/home/neil/code/projects/tta-lab/codex-server-go"
 
 [devops]
   name = "Guion DevOps"
@@ -177,10 +169,6 @@
   name = "pgwire supabase proxy for multi-tenant cli access"
   path = "/home/neil/code/projects/GuionAI/pgwire-supabase-proxy"
 
-[pu]
-  name = "Pueue job queue"
-  path = "/home/neil/code/projects/tta-lab/pueue"
-
 [sustech]
   name = "SUSTech Mar Slides"
   path = "/home/neil/code/projects/neil/sustech-mar-slides"
@@ -225,9 +213,12 @@
   remote = "https://git.guion.io/taskclaw/voice-cli.git"
 
 [archived]
-  [archived.clawd]
-    name = "Clawd"
-    path = "/home/neil/clawd"
+  [archived.boule]
+    name = "Boule"
+    path = "/home/neil/code/projects/tta-lab/boule"
+  [archived.codex-server-go]
+    name = "Codex Server Go"
+    path = "/home/neil/code/projects/tta-lab/codex-server-go"
   [archived.forgejo-pr-filters]
     name = "Forgejo PR Review Filters"
     path = "/home/neil/code/references/forgejo/forgejo"

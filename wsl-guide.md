@@ -75,7 +75,7 @@ kosmos-sync-projects
 
 Existing repos are fetched with `git fetch --prune`; the command does not merge or change the working tree. Use `kosmos-sync-projects --collection references` for research-only repos.
 
-Use `kosmos-sync-tta-lab-projects` when you only need the first-party tta-lab checkouts for runtime binaries.
+Use `kosmos-sync-tta-lab-projects` when you only need the runtime repos required by `tta-lab-go-install`.
 
 ## Rathole Tunnel
 

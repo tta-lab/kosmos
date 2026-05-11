@@ -74,7 +74,7 @@ kosmos-sync-projects
 
 Use `remote = "https://host/org/repo.git"` in `ttal/projects.toml` when a repo is not on GitHub. Entries without `remote` default to `https://github.com/<org>/<repo>.git`.
 
-To sync only first-party tta-lab repos:
+To sync only the runtime repos needed by `tta-lab-go-install`:
 
 ```bash
 kosmos-sync-tta-lab-projects

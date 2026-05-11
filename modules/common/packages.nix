@@ -19,7 +19,14 @@ let
       pkgs.python3
     ];
     text = ''
-      exec ${syncProjects}/bin/kosmos-sync-projects --org tta-lab "$@"
+      exec ${syncProjects}/bin/kosmos-sync-projects \
+        --alias diary \
+        --alias ei \
+        --alias len \
+        --alias orga \
+        --alias temenos \
+        --alias ttal \
+        "$@"
     '';
   };
 in
