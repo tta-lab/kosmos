@@ -11,6 +11,7 @@ _:
     "d /home/neil/.config/einai 0755 neil users - -"
     "d /home/neil/.config/temenos 0755 neil users - -"
     "d /home/neil/.config/helix 0755 neil users - -"
+    "d /home/neil/.config/git 0755 neil users - -"
 
     "L+ /home/neil/.config/ttal/config.toml - - - - ${../ttal/config.toml}"
     "L+ /home/neil/.config/ttal/humans.toml - - - - ${../ttal/humans.toml}"
@@ -23,5 +24,6 @@ _:
     "L+ /home/neil/.config/temenos/config.toml - - - - ${../temenos/config.toml}"
     "L+ /home/neil/.config/helix/config.toml - - - - ${../helix/config.toml}"
     "L+ /home/neil/.config/helix/languages.toml - - - - ${../helix/languages.toml}"
+    "L+ /home/neil/.config/git/config - - - - ${../git/config}"
   ];
 }
