@@ -86,7 +86,6 @@ in
           extraConfig = {
             diff.colorMoved = "default";
             init.defaultBranch = "main";
-            interactive.diffFilter = "delta --color-only";
             merge.conflictstyle = "diff3";
             pull.rebase = true;
             fetch.prune = true;
