@@ -3,12 +3,24 @@
 let
   goBin = "/home/neil/go/bin";
   servicePath = "${goBin}:/run/current-system/sw/bin";
+  proxyPrelude = ''
+    if command -v kosmos-wsl-proxy-env >/dev/null 2>&1; then
+      eval "$(kosmos-wsl-proxy-env sh)"
+    fi
+  '';
+  withProxy = name: command: pkgs.writeShellScript name ''
+    set -eu
+    export PATH=/run/current-system/sw/bin:${servicePath}:$PATH
+    ${proxyPrelude}
+    exec ${command}
+  '';
   installScript = pkgs.writeShellScript "tta-lab-go-install" ''
     set -eu
 
     export GOPATH=/home/neil/go
     export GOBIN=/home/neil/go/bin
     export PATH=${pkgs.go}/bin:${pkgs.git}/bin:${pkgs.openssh}/bin:/run/current-system/sw/bin:$PATH
+    ${proxyPrelude}
 
     mkdir -p "$GOBIN"
 
@@ -65,7 +77,7 @@ in
         openssh
       ];
       serviceConfig = {
-        ExecStart = "${goBin}/temenos daemon";
+        ExecStart = withProxy "temenos-with-proxy" "${goBin}/temenos daemon";
         Restart = "on-failure";
         Environment = [
           "HOME=/home/neil"
@@ -89,7 +101,7 @@ in
         tmux
       ];
       serviceConfig = {
-        ExecStart = "${goBin}/ei daemon run";
+        ExecStart = withProxy "einai-with-proxy" "${goBin}/ei daemon run";
         Restart = "on-failure";
         Environment = [
           "HOME=/home/neil"
@@ -116,7 +128,7 @@ in
         tmux
       ];
       serviceConfig = {
-        ExecStart = "${goBin}/ttal daemon run";
+        ExecStart = withProxy "ttal-with-proxy" "${goBin}/ttal daemon run";
         Restart = "on-failure";
         Environment = [
           "HOME=/home/neil"

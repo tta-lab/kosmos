@@ -47,6 +47,9 @@ in
           enable = true;
           shellInit = ''
             fish_add_path -g /home/neil/go/bin
+            if command -q kosmos-wsl-proxy-env
+              kosmos-wsl-proxy-env fish | source
+            end
           '';
           functions = {
             t = ''
