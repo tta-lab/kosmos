@@ -24,15 +24,15 @@ let
 
     mkdir -p "$GOBIN"
 
-    go install github.com/tta-lab/ttal-cli@latest
-    go install github.com/tta-lab/temenos/cmd/temenos@latest
-    go install github.com/tta-lab/diary/cmd/diary@latest
-    go install github.com/tta-lab/organon/cmd/alert@latest
-    go install github.com/tta-lab/organon/cmd/skill@latest
-    go install github.com/tta-lab/organon/cmd/src@latest
-    go install github.com/tta-lab/organon/cmd/web@latest
-    go install github.com/tta-lab/einai@latest
-    go install github.com/tta-lab/lenos@latest
+    go install github.com/tta-lab/ttal-cli@main
+    go install github.com/tta-lab/temenos/cmd/temenos@main
+    go install github.com/tta-lab/diary/cmd/diary@main
+    go install github.com/tta-lab/organon/cmd/alert@main
+    go install github.com/tta-lab/organon/cmd/skill@main
+    go install github.com/tta-lab/organon/cmd/src@main
+    go install github.com/tta-lab/organon/cmd/web@main
+    go install github.com/tta-lab/einai@main
+    go install github.com/tta-lab/lenos@main
 
     [ -x "$GOBIN/ttal-cli" ] && ln -sf "$GOBIN/ttal-cli" "$GOBIN/ttal"
     [ -x "$GOBIN/einai" ] && ln -sf "$GOBIN/einai" "$GOBIN/ei"
@@ -60,7 +60,6 @@ in
       serviceConfig = {
         Type = "oneshot";
         ExecStart = installScript;
-        RemainAfterExit = true;
       };
     };
 
