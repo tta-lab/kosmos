@@ -1,7 +1,7 @@
 { config, ... }:
 
 let
-  stateVersion = config.system.stateVersion;
+  inherit (config.system) stateVersion;
 in
 
 {
