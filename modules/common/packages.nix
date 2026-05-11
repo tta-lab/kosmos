@@ -12,6 +12,16 @@ let
       exec ${pkgs.python3}/bin/python3 ${../../scripts/sync-projects} "$@"
     '';
   };
+  syncTtaLabProjects = pkgs.writeShellApplication {
+    name = "kosmos-sync-tta-lab-projects";
+    runtimeInputs = [
+      pkgs.git
+      pkgs.python3
+    ];
+    text = ''
+      exec ${syncProjects}/bin/kosmos-sync-projects --org tta-lab "$@"
+    '';
+  };
 in
 
 {
@@ -58,6 +68,7 @@ in
     sops
     just
     syncProjects
+    syncTtaLabProjects
     codex
     ttaLab.flicknote
     ttaLab.taskwarrior

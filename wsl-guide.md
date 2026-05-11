@@ -47,6 +47,8 @@ Install or update the fast-moving Go CLIs with:
 tta-lab-go-install
 ```
 
+The installer first runs `kosmos-sync-tta-lab-projects`, then installs the binaries from local checkouts in `~/code/projects/tta-lab`. This avoids `go install module@version` problems with local `replace` directives.
+
 Then start the daemons:
 
 ```bash
@@ -70,6 +72,8 @@ kosmos-sync-projects
 ```
 
 Existing repos are fetched with `git fetch --prune`; the command does not merge or change the working tree. Use `kosmos-sync-projects --collection references` for research-only repos.
+
+Use `kosmos-sync-tta-lab-projects` when you only need the first-party tta-lab checkouts for runtime binaries.
 
 ## Rathole Tunnel
 

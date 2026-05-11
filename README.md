@@ -45,13 +45,13 @@ The initial tunnel maps remote traffic to local SSH on `127.0.0.1:22`. Add anoth
 
 ## TTAL Runtime
 
-The WSL host installs pinned release builds for `flicknote` and the GuionAI fork of `taskwarrior`. Frequently updated Go CLIs stay outside Nix for now and install into `~/go/bin`:
+The WSL host installs pinned release builds for `flicknote` and the GuionAI fork of `taskwarrior`. Frequently updated Go CLIs stay outside Nix for now and install from local checkouts into `~/go/bin`:
 
 ```bash
 tta-lab-go-install
 ```
 
-This starts the `tta-lab-go-install.service` oneshot user unit, which runs the `go install` set for `ttal`, `temenos`, `diary`, `organon`, `einai`, and `lenos`.
+This starts the `tta-lab-go-install.service` oneshot user unit. It first runs `kosmos-sync-tta-lab-projects`, then installs `ttal`, `temenos`, `diary`, `organon`, `einai`, and `lenos` from `~/code/projects/tta-lab`.
 
 The user services `temenos.service`, `einai.service`, and `ttal.service` are defined in `modules/common/tta-lab-go.nix`. They only start after their binary exists in `~/go/bin`.
 
@@ -69,6 +69,12 @@ kosmos-sync-projects
 ```
 
 Use `remote = "https://host/org/repo.git"` in `ttal/projects.toml` when a repo is not on GitHub. Entries without `remote` default to `https://github.com/<org>/<repo>.git`.
+
+To sync only first-party tta-lab repos:
+
+```bash
+kosmos-sync-tta-lab-projects
+```
 
 ## License
 

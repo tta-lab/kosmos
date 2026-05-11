@@ -2,6 +2,7 @@
 
 let
   goBin = "/home/neil/go/bin";
+  projectsRoot = "/home/neil/code/projects/tta-lab";
   servicePath = "${goBin}:/run/current-system/sw/bin";
   proxyPrelude = ''
     if command -v kosmos-wsl-proxy-env >/dev/null 2>&1; then
@@ -24,15 +25,29 @@ let
 
     mkdir -p "$GOBIN"
 
-    go install github.com/tta-lab/ttal-cli@main
-    go install github.com/tta-lab/temenos/cmd/temenos@main
-    go install github.com/tta-lab/diary/cmd/diary@main
-    go install github.com/tta-lab/organon/cmd/alert@main
-    go install github.com/tta-lab/organon/cmd/skill@main
-    go install github.com/tta-lab/organon/cmd/src@main
-    go install github.com/tta-lab/organon/cmd/web@main
-    go install github.com/tta-lab/einai@main
-    go install github.com/tta-lab/lenos@main
+    kosmos-sync-tta-lab-projects
+
+    install_from() {
+      repo="$1"
+      shift
+      dir="${projectsRoot}/$repo"
+      if [ ! -f "$dir/go.mod" ]; then
+        echo "missing Go module: $dir" >&2
+        exit 1
+      fi
+
+      (
+        cd "$dir"
+        go install "$@"
+      )
+    }
+
+    install_from ttal-cli .
+    install_from temenos ./cmd/temenos
+    install_from diary ./cmd/diary
+    install_from organon ./cmd/alert ./cmd/skill ./cmd/src ./cmd/web
+    install_from einai .
+    install_from lenos .
 
     [ -x "$GOBIN/ttal-cli" ] && ln -sf "$GOBIN/ttal-cli" "$GOBIN/ttal"
     [ -x "$GOBIN/einai" ] && ln -sf "$GOBIN/einai" "$GOBIN/ei"

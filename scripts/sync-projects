@@ -58,6 +58,8 @@ def sync_project(alias, entry, path, args, collections, seen):
     collection, org, repo, repo_path = info
     if args.collection != "all" and collection != args.collection:
         return 0
+    if args.org and org not in args.org:
+        return 0
 
     # Entries such as fb.ai point into a repo. The root entry handles the clone.
     if path != repo_path:
@@ -124,6 +126,11 @@ def main():
         "--no-fetch",
         action="store_true",
         help="Do not fetch existing repos.",
+    )
+    parser.add_argument(
+        "--org",
+        action="append",
+        help="Only sync repos whose path org matches this value. Can be repeated.",
     )
     args = parser.parse_args()
 
