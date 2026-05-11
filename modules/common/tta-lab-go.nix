@@ -3,7 +3,15 @@
 let
   goBin = "/home/neil/go/bin";
   projectsRoot = "/home/neil/code/projects/tta-lab";
-  servicePath = "${goBin}:/run/current-system/sw/bin";
+  servicePath = "${goBin}:${pkgs.lib.makeBinPath [
+    pkgs.bash
+    pkgs.bubblewrap
+    pkgs.coreutils
+    pkgs.git
+    pkgs.go
+    pkgs.openssh
+    pkgs.tmux
+  ]}:/run/current-system/sw/bin";
   proxyPrelude = ''
     if command -v kosmos-wsl-proxy-env >/dev/null 2>&1; then
       eval "$(kosmos-wsl-proxy-env sh)"
@@ -20,7 +28,7 @@ let
 
     export GOPATH=/home/neil/go
     export GOBIN=/home/neil/go/bin
-    export PATH=${pkgs.go}/bin:${pkgs.git}/bin:${pkgs.openssh}/bin:/run/current-system/sw/bin:$PATH
+    export PATH=${servicePath}:$PATH
     ${proxyPrelude}
 
     mkdir -p "$GOBIN"
@@ -85,28 +93,22 @@ in
 
   users.users.neil.linger = true;
 
-  systemd.user.services = {
+  home-manager.users.neil.systemd.user.services = {
     tta-lab-go-install = {
-      description = "Install tta-lab Go CLIs into ~/go/bin";
-      serviceConfig = {
+      Unit.Description = "Install tta-lab Go CLIs into ~/go/bin";
+      Service = {
         Type = "oneshot";
         ExecStart = installScript;
       };
     };
 
     temenos = {
-      description = "Temenos sandbox daemon";
-      wantedBy = [ "default.target" ];
-      unitConfig.ConditionPathExists = "${goBin}/temenos";
-      path = with pkgs; [
-        bash
-        bubblewrap
-        coreutils
-        git
-        go
-        openssh
-      ];
-      serviceConfig = {
+      Unit = {
+        Description = "Temenos sandbox daemon";
+        ConditionPathExists = "${goBin}/temenos";
+      };
+      Install.WantedBy = [ "default.target" ];
+      Service = {
         ExecStart = withProxy "temenos-with-proxy" "${goBin}/temenos daemon";
         Restart = "on-failure";
         Environment = [
@@ -118,19 +120,13 @@ in
     };
 
     einai = {
-      description = "Einai agent runtime daemon";
-      wantedBy = [ "default.target" ];
-      after = [ "temenos.service" ];
-      unitConfig.ConditionPathExists = "${goBin}/ei";
-      path = with pkgs; [
-        bash
-        coreutils
-        git
-        go
-        openssh
-        tmux
-      ];
-      serviceConfig = {
+      Unit = {
+        Description = "Einai agent runtime daemon";
+        After = [ "temenos.service" ];
+        ConditionPathExists = "${goBin}/ei";
+      };
+      Install.WantedBy = [ "default.target" ];
+      Service = {
         ExecStart = withProxy "einai-with-proxy" "${goBin}/ei daemon run";
         Restart = "on-failure";
         Environment = [
@@ -142,22 +138,16 @@ in
     };
 
     ttal = {
-      description = "TTAL coordination daemon";
-      wantedBy = [ "default.target" ];
-      after = [
-        "einai.service"
-        "temenos.service"
-      ];
-      unitConfig.ConditionPathExists = "${goBin}/ttal";
-      path = with pkgs; [
-        bash
-        coreutils
-        git
-        go
-        openssh
-        tmux
-      ];
-      serviceConfig = {
+      Unit = {
+        Description = "TTAL coordination daemon";
+        After = [
+          "einai.service"
+          "temenos.service"
+        ];
+        ConditionPathExists = "${goBin}/ttal";
+      };
+      Install.WantedBy = [ "default.target" ];
+      Service = {
         ExecStart = withProxy "ttal-with-proxy" "${goBin}/ttal daemon run";
         Restart = "on-failure";
         Environment = [

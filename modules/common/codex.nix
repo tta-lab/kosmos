@@ -24,9 +24,9 @@ in
     '')
   ];
 
-  systemd.user.services.openai-codex-install = {
-    description = "Install OpenAI Codex CLI with npm";
-    serviceConfig = {
+  home-manager.users.neil.systemd.user.services.openai-codex-install = {
+    Unit.Description = "Install OpenAI Codex CLI with npm";
+    Service = {
       Type = "oneshot";
       ExecStart = installScript;
     };

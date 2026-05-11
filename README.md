@@ -67,7 +67,7 @@ tta-lab-go-install
 
 This starts the `tta-lab-go-install.service` oneshot user unit. It first runs `kosmos-sync-tta-lab-projects`, then installs `ttal`, `temenos`, `diary`, `organon`, `einai`, and `lenos` from `~/code/projects/tta-lab`.
 
-The user services `temenos.service`, `einai.service`, and `ttal.service` are defined in `modules/common/tta-lab-go.nix`. They only start after their binary exists in `~/go/bin`.
+The Home Manager user services `temenos.service`, `einai.service`, and `ttal.service` are defined in `modules/common/tta-lab-go.nix`. They only start after their binary exists in `~/go/bin`.
 
 On WSL, `kosmos-wsl-proxy-env` derives the Windows host IP from the default route and exports proxy variables when Clash/Mihomo is reachable on port `7897`. Fish and the TTAL user services load it automatically.
 
