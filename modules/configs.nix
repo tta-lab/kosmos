@@ -40,6 +40,10 @@ in
         };
       };
 
+      home.sessionVariables = {
+        NPM_CONFIG_PREFIX = "/home/neil/.local/share/npm-global";
+      };
+
       programs = {
         home-manager.enable = true;
 
@@ -47,6 +51,7 @@ in
           enable = true;
           shellInit = ''
             fish_add_path -g /home/neil/go/bin
+            fish_add_path -g /home/neil/.local/share/npm-global/bin
             if command -q kosmos-wsl-proxy-env
               kosmos-wsl-proxy-env fish | source
             end

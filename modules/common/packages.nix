@@ -76,7 +76,6 @@ in
     just
     syncProjects
     syncTtaLabProjects
-    codex
     ttaLab.flicknote
     ttaLab.taskwarrior
 

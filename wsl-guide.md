@@ -43,6 +43,12 @@ Home Manager deploys non-secret config to `~/.config/ttal`, `~/.config/einai`, a
 
 The `mihomo` CLI is installed for local proxy experiments. Do not enable the NixOS service until `~/.config/mihomo/config.yaml` is handled through secrets; start with normal HTTP/SOCKS ports before trying TUN mode in WSL.
 
+Codex CLI is installed outside Nixpkgs so it can track OpenAI's fast npm releases:
+
+```bash
+openai-codex-install
+```
+
 Install or update the fast-moving Go CLIs with:
 
 ```bash

@@ -92,4 +92,14 @@ in
     systemPackages = [ proxyEnv ];
     variables.KOSMOS_WSL_PROXY_PORT = "7897";
   };
+
+  programs.nix-ld = {
+    enable = true;
+    libraries = with pkgs; [
+      openssl
+      sqlite
+      stdenv.cc.cc
+      zlib
+    ];
+  };
 }

@@ -47,6 +47,16 @@ The initial tunnel maps remote traffic to local SSH on `127.0.0.1:22`. Add anoth
 
 The shared package set includes the `mihomo` CLI. The NixOS `services.mihomo` module is not enabled yet because the config file is secret-bearing and WSL should first use plain HTTP/SOCKS proxy mode, not TUN.
 
+## Codex CLI
+
+WSL installs OpenAI Codex CLI with npm instead of Nixpkgs because Codex releases often and Nixpkgs can lag. Apply the host, then run:
+
+```bash
+openai-codex-install
+```
+
+This installs `@openai/codex@latest` into `~/.local/share/npm-global/bin`, which Fish adds to `PATH`.
+
 ## TTAL Runtime
 
 The WSL host installs pinned release builds for `flicknote` and the GuionAI fork of `taskwarrior`. Frequently updated Go CLIs stay outside Nix for now and install from local checkouts into `~/go/bin`:
