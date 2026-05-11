@@ -84,7 +84,6 @@ in
           };
           lfs.enable = true;
           extraConfig = {
-            core.pager = "delta";
             diff.colorMoved = "default";
             init.defaultBranch = "main";
             interactive.diffFilter = "delta --color-only";
