@@ -13,5 +13,7 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@v4
       - name: Nix syntax check
         run: nix-instantiate --parse configuration.nix
+      - name: Flake evaluation check
+        run: nix flake check --no-write-lock-file
       - name: Statix lint
         run: nix run nixpkgs#statix -- check .
