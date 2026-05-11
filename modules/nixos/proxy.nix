@@ -1,4 +1,4 @@
-{ ... }:
+_:
 
 {
   # Phase 1: LAN proxy via Mac's clash verge.
