@@ -6,6 +6,7 @@ _:
     "d /home/neil/code/projects 0755 neil users - -"
     "d /home/neil/code/references 0755 neil users - -"
 
+    "d /home/neil/.config 0700 neil users - -"
     "d /home/neil/.config/ttal 0755 neil users - -"
     "d /home/neil/.config/einai 0755 neil users - -"
     "d /home/neil/.config/temenos 0755 neil users - -"
