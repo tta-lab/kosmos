@@ -79,7 +79,7 @@ in
           enableFishIntegration = true;
           settings = {
             add_newline = false;
-            format = "$directory$git_branch$git_status$character";
+            format = "$directory$git_branch$git_status\n$character";
             character = {
               success_symbol = "[>](bold green)";
               error_symbol = "[>](bold red)";
