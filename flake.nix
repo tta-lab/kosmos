@@ -11,9 +11,11 @@
     agenix.inputs.nixpkgs.follows = "nixpkgs";
     nix-index-database.url = "github:nix-community/nix-index-database";
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
+    home-manager.url = "github:nix-community/home-manager/release-25.05";
+    home-manager.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { nixpkgs, nixos-wsl, disko, agenix, nix-index-database, ... }: let
+  outputs = { nixpkgs, nixos-wsl, disko, agenix, nix-index-database, home-manager, ... }: let
     system = "x86_64-linux";
     pkgs = import nixpkgs { inherit system; };
   in {
@@ -33,6 +35,7 @@
         nixos-wsl.nixosModules.default
         agenix.nixosModules.default
         nix-index-database.nixosModules.default
+        home-manager.nixosModules.home-manager
         ./hosts/wsl
       ];
     };

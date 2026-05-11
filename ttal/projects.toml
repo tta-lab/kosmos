@@ -1,0 +1,225 @@
+[agora]
+  name = "Agora"
+  path = "/home/neil/code/projects/tta-lab/agora"
+
+[cnsupa]
+  name = "CloudNative Supabase"
+  path = "/home/neil/code/projects/neil/cloudnative-supabase"
+  remote = "https://git.guion.io/neil/cloudnative-supabase.git"
+
+[devops]
+  name = "Guion DevOps"
+  path = "/home/neil/code/projects/GuionAI/guion-devops"
+  remote = "https://git.guion.io/GuionAI/guion-devops.git"
+
+[diary]
+  name = "Diary CLI"
+  path = "/home/neil/code/projects/tta-lab/diary"
+
+[ei]
+  name = "Einai"
+  path = "/home/neil/code/projects/tta-lab/einai"
+
+[es]
+  name = "Ethos"
+  path = "/home/neil/code/projects/tta-lab/ethos"
+
+[fai]
+  name = "FlickNote AI Config"
+  path = "/home/neil/code/projects/GuionAI/flicknote-ai-config"
+  remote = "https://git.guion.io/GuionAI/flicknote-ai-config.git"
+
+[fan]
+  name = "Fantasy"
+  path = "/home/neil/code/projects/tta-lab/fantasy"
+
+[fb]
+  name = "FlickNote Backend"
+  path = "/home/neil/code/projects/GuionAI/flick-backend"
+  remote = "https://git.guion.io/GuionAI/flick-backend.git"
+
+["fb.ai"]
+  k8s_app = "ai-processor"
+  k8s_namespace = "apps-dev"
+  name = "Ai Workflow Processor"
+  path = "/home/neil/code/projects/GuionAI/flick-backend/services/ai-processor"
+
+["fb.bg"]
+  k8s_app = "browser-gateway"
+  k8s_namespace = "apps-dev"
+  name = "Browser gateway for scrape"
+  path = "/home/neil/code/projects/GuionAI/flick-backend/services/browser-gateway"
+
+["fb.tk"]
+  name = "FlickNote Tanka"
+  path = "/home/neil/code/projects/GuionAI/flick-backend/tanka"
+
+["fb.yt"]
+  k8s_app = "youtube"
+  k8s_namespace = "apps-share"
+  name = "FlickNote Youtube Scraper"
+  path = "/home/neil/code/projects/GuionAI/flick-backend/containers/youtube"
+
+[fd]
+  name = "FlickNote Deploy(legacy flux, new service will use self contained tanka)"
+  path = "/home/neil/code/projects/neil/flick-deploy"
+  remote = "https://git.guion.io/neil/flick-deploy.git"
+
+[fn-cli]
+  github_token_env = "GUION_GITHUB_TOKEN"
+  name = "FlickNote CLI"
+  path = "/home/neil/code/projects/GuionAI/flicknote-cli"
+
+[fn-ios]
+  github_token_env = "GUION_GITHUB_TOKEN"
+  name = "FlickNote iOS"
+  path = "/home/neil/code/projects/GuionAI/FlickNote"
+
+[forgejo]
+  name = "Forgejo"
+  path = "/home/neil/code/references/forgejo/forgejo"
+  remote = "https://codeberg.org/forgejo/forgejo.git"
+
+[fse]
+  name = "flicknote-services"
+  path = "/home/neil/code/projects/GuionAI/flicknote-services"
+  remote = "https://git.guion.io/GuionAI/flicknote-services.git"
+
+["fse.agent"]
+  k8s_app = "flicknote-agent-server"
+  k8s_namespace = "apps-dev"
+  name = "FSE agent server"
+  path = "/home/neil/code/projects/GuionAI/flicknote-services/services/fn-agent"
+
+["fse.ap"]
+  k8s_app = "attachment-processor"
+  k8s_namespace = "apps-dev"
+  name = "FSE Attachment Processor"
+  path = "/home/neil/code/projects/GuionAI/flicknote-services/services/attachment-processor"
+
+["fse.gw"]
+  k8s_app = "gateway"
+  k8s_namespace = "apps-dev"
+  name = "FSE Gateway"
+  path = "/home/neil/code/projects/GuionAI/flicknote-services/services/gateway"
+
+["fse.sub"]
+  k8s_app = "subscription-service"
+  k8s_namespace = "apps-dev"
+  name = "FSE Subscription Service"
+  path = "/home/neil/code/projects/GuionAI/flicknote-services/services/subscription-service"
+
+[ft]
+  name = "FlickNote Terraform"
+  path = "/home/neil/code/projects/GuionAI/flick-terraform"
+
+[gi]
+  name = "Guion Infrastructure"
+  path = "/home/neil/code/projects/GuionAI/guion-infra"
+  remote = "https://git.guion.io/GuionAI/guion-infra.git"
+
+[hbt]
+  name = "Homebrew Tap"
+  path = "/home/neil/code/projects/tta-lab/homebrew-ttal"
+
+[ko]
+  name = "kosmos"
+  path = "/home/neil/code/projects/tta-lab/kosmos"
+
+[len]
+  name = "Lenos agent cli"
+  path = "/home/neil/code/projects/tta-lab/lenos"
+
+[logos]
+  github_token_env = "GUION_GITHUB_TOKEN"
+  name = "Logos"
+  path = "/home/neil/code/projects/GuionAI/logos"
+  remote = "https://git.guion.io/GuionAI/logos.git"
+
+[lw]
+  name = "Lenos Website"
+  path = "/home/neil/code/projects/tta-lab/lenos-website"
+
+[metadata]
+  name = "Guion Metadata Worker"
+  path = "/home/neil/code/projects/GuionAI/metadata-worker"
+  remote = "https://git.guion.io/GuionAI/metadata-worker.git"
+
+[orga]
+  name = "Organon"
+  path = "/home/neil/code/projects/tta-lab/organon"
+
+[pn]
+  github_token_env = "GUION_GITHUB_TOKEN"
+  name = "PowerSync Native (Rust SDK fork)"
+  path = "/home/neil/code/projects/GuionAI/powersync-native"
+
+[poi]
+  name = "Poiesis"
+  path = "/home/neil/code/projects/tta-lab/poiesis"
+
+[pp]
+  name = "Proto Plugins"
+  path = "/home/neil/code/projects/tta-lab/proto-plugins"
+
+[psp]
+  github_token_env = "GUION_GITHUB_TOKEN"
+  k8s_app = "pgwire-supabase-proxy"
+  k8s_namespace = "supa-dev"
+  name = "pgwire supabase proxy for multi-tenant cli access"
+  path = "/home/neil/code/projects/GuionAI/pgwire-supabase-proxy"
+
+[sustech]
+  name = "SUSTech Mar Slides"
+  path = "/home/neil/code/projects/neil/sustech-mar-slides"
+  remote = "https://git.guion.io/neil/sustech-mar-slides.git"
+
+[tch]
+  github_token_env = "GUION_GITHUB_TOKEN"
+  name = "TaskChampion (tw-repos)"
+  path = "/home/neil/code/references/GothenburgBitFactory/taskchampion"
+
+[teme]
+  k8s_app = "temenos"
+  k8s_namespace = "apps-dev"
+  name = "Temenos"
+  path = "/home/neil/code/projects/tta-lab/temenos"
+
+[temenos]
+  name = "Temenos"
+  path = "/home/neil/code/projects/tta-lab/temenos"
+
+[tl]
+  name = "TTAL License"
+  path = "/home/neil/code/projects/neil/ttal-license"
+  remote = "https://git.guion.io/neil/ttal-license.git"
+
+[ttal]
+  name = "TTAL"
+  path = "/home/neil/code/projects/tta-lab/ttal-cli"
+
+[ttal-cli]
+  name = "TTAL CLI(the same with TTAL)"
+  path = "/home/neil/code/projects/tta-lab/ttal-cli"
+
+[tw]
+  github_token_env = "GUION_GITHUB_TOKEN"
+  name = "Taskwarrior"
+  path = "/home/neil/code/projects/GuionAI/taskwarrior"
+
+[voice-cli]
+  name = "Voice CLI"
+  path = "/home/neil/code/projects/taskclaw/voice-cli"
+  remote = "https://git.guion.io/taskclaw/voice-cli.git"
+
+[archived]
+  [archived.boule]
+    name = "Boule"
+    path = "/home/neil/code/projects/tta-lab/boule"
+  [archived.codex-server-go]
+    name = "Codex Server Go"
+    path = "/home/neil/code/projects/tta-lab/codex-server-go"
+  [archived.forgejo-pr-filters]
+    name = "Forgejo PR Review Filters"
+    path = "/home/neil/code/references/forgejo/forgejo"
+    remote = "https://codeberg.org/forgejo/forgejo.git"

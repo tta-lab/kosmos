@@ -4,9 +4,6 @@
   programs = {
     fish = {
       enable = true;
-      shellAliases = {
-        vi = "hx";
-      };
     };
 
     mosh.enable = true;

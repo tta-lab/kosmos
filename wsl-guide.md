@@ -21,7 +21,13 @@ wsl -d NixOS
 Inside NixOS-WSL:
 
 ```bash
-sudo nixos-rebuild switch --flake .#wsl
+mkdir -p ~/code/projects/tta-lab
+cd ~/code/projects/tta-lab
+git clone https://github.com/tta-lab/kosmos.git
+cd kosmos
+git fetch origin feat/tta-lab-wsl-runtime
+git switch --track origin/feat/tta-lab-wsl-runtime
+sudo nixos-rebuild switch --flake .#wsl --extra-experimental-features "nix-command flakes"
 ```
 
 The WSL host uses `wsl.defaultUser = "neil"` and keeps Windows PATH out of the shell environment:
@@ -30,6 +36,54 @@ The WSL host uses `wsl.defaultUser = "neil"` and keeps Windows PATH out of the s
 wsl.interop.includePath = false;
 wsl.wslConf.interop.appendWindowsPath = false;
 ```
+
+## TTAL Runtime
+
+Home Manager deploys non-secret config to `~/.config/ttal`, `~/.config/einai`, and `~/.config/temenos`. Real `chat_id`, `.env`, license, kubeconfig, and tunnel tokens are intentionally left out for the later secret-management PR.
+
+The `mihomo` CLI is installed for local proxy experiments. Do not enable the NixOS service until `~/.config/mihomo/config.yaml` is handled through secrets; start with normal HTTP/SOCKS ports before trying TUN mode in WSL.
+
+Codex CLI is installed outside Nixpkgs so it can track OpenAI's fast npm releases:
+
+```bash
+openai-codex-install
+```
+
+Install or update the fast-moving Go CLIs with:
+
+```bash
+tta-lab-go-install
+```
+
+The installer first runs `kosmos-sync-tta-lab-projects`, then installs the binaries from local checkouts in `~/code/projects/tta-lab`. This avoids `go install module@version` problems with local `replace` directives.
+
+Then start the daemons:
+
+```bash
+systemctl --user start temenos einai ttal
+systemctl --user status temenos einai ttal
+```
+
+The Go binaries live in `~/go/bin`, which is added to Fish and to the user services' `PATH`. The services are enabled for the user manager, but skip cleanly until the matching binary exists.
+
+The user services are managed by Home Manager. NixOS only enables `linger` for `neil` so the user manager can keep running without an active login shell.
+
+Proxy setup is dynamic. `kosmos-wsl-proxy-env` reads the Windows host IP from the default route, checks port `7897`, and emits `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY`. Fish and the TTAL user services load it automatically. Override the defaults with `KOSMOS_WSL_PROXY_HOST` or `KOSMOS_WSL_PROXY_PORT` if the proxy moves.
+
+Project checkouts use two roots:
+
+- `~/code/projects/<org>/<repo>` for repos we maintain or run from
+- `~/code/references/<org>/<repo>` for external research clones
+
+Clone or fetch the active project set from `ttal/projects.toml`:
+
+```bash
+kosmos-sync-projects
+```
+
+Existing repos are fetched with `git fetch --prune`; the command does not merge or change the working tree. Use `kosmos-sync-projects --collection references` for research-only repos.
+
+Use `kosmos-sync-tta-lab-projects` when you only need the runtime repos required by `tta-lab-go-install`.
 
 ## Rathole Tunnel
 
