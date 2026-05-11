@@ -43,6 +43,10 @@ Both hosts import `modules/common/tunnel-rathole-client.nix`, but the service is
 
 The initial tunnel maps remote traffic to local SSH on `127.0.0.1:22`. Add another service for Matrix/Tuwunel when needed.
 
+## Proxy Tools
+
+The shared package set includes the `mihomo` CLI. The NixOS `services.mihomo` module is not enabled yet because the config file is secret-bearing and WSL should first use plain HTTP/SOCKS proxy mode, not TUN.
+
 ## TTAL Runtime
 
 The WSL host installs pinned release builds for `flicknote` and the GuionAI fork of `taskwarrior`. Frequently updated Go CLIs stay outside Nix for now and install from local checkouts into `~/go/bin`:

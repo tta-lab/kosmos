@@ -41,6 +41,8 @@ wsl.wslConf.interop.appendWindowsPath = false;
 
 Home Manager deploys non-secret config to `~/.config/ttal`, `~/.config/einai`, and `~/.config/temenos`. Real `chat_id`, `.env`, license, kubeconfig, and tunnel tokens are intentionally left out for the later secret-management PR.
 
+The `mihomo` CLI is installed for local proxy experiments. Do not enable the NixOS service until `~/.config/mihomo/config.yaml` is handled through secrets; start with normal HTTP/SOCKS ports before trying TUN mode in WSL.
+
 Install or update the fast-moving Go CLIs with:
 
 ```bash

@@ -87,6 +87,7 @@ in
     ncdu
 
     # Tunnels and ingress
+    mihomo
     rathole
     cloudflared
     caddy
