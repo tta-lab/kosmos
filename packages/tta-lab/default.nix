@@ -25,6 +25,7 @@
       url = "https://github.com/GuionAI/taskwarrior/releases/download/v3.4.2-guion.15/task-3.4.2-guion.15-x86_64-linux.tar.gz";
       hash = "sha256-ZAjDETPpx80E8ay/UCFFE/34Wy1bToZWhva0+Ck/i9g=";
     };
+    sourceRoot = ".";
 
     installPhase = ''
       runHook preInstall
