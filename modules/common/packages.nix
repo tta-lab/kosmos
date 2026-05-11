@@ -2,6 +2,16 @@
 
 let
   ttaLab = pkgs.callPackage ../../packages/tta-lab {};
+  syncProjects = pkgs.writeShellApplication {
+    name = "kosmos-sync-projects";
+    runtimeInputs = [
+      pkgs.git
+      pkgs.python3
+    ];
+    text = ''
+      exec ${pkgs.python3}/bin/python3 ${../../scripts/sync-projects} "$@"
+    '';
+  };
 in
 
 {
@@ -46,6 +56,7 @@ in
     age
     sops
     just
+    syncProjects
     ttaLab.flicknote
     ttaLab.taskwarrior
 

@@ -5,15 +5,15 @@ shell = "fish"
   inline_projects = ["plan", "fix", "orientation"]
 
 [sync]
-  worker_agent_paths = ["/home/neil/Code/guion-opensource/ttal-cli/agents"]
-  global_prompt_path = "/home/neil/Code/guion-opensource/ttal-cli/templates/ttal/CLAUDE.user.md"
+  worker_agent_paths = ["/home/neil/code/projects/tta-lab/ttal-cli/agents"]
+  global_prompt_path = "/home/neil/code/projects/tta-lab/ttal-cli/templates/ttal/CLAUDE.user.md"
   rules_paths = []
   skills_paths = [
-    "~/Code/guion-opensource/ttal-cli/skills",
-    "~/Code/guion-opensource/organon/skills",
-    "~/Code/guion-opensource/einai/skills",
-    "~/Code/guion-opensource/diary-cli/skills",
-    "~/Code/guion/flicknote-cli/skills"
+    "~/code/projects/tta-lab/ttal-cli/skills",
+    "~/code/projects/tta-lab/organon/skills",
+    "~/code/projects/tta-lab/einai/skills",
+    "~/code/projects/tta-lab/diary/skills",
+    "~/code/projects/GuionAI/flicknote-cli/skills"
   ]
 
 [voice]
@@ -22,7 +22,7 @@ shell = "fish"
 
 [teams.default]
   chat_id = ""  # Get from @userinfobot on Telegram
-  team_path = "/home/neil/Code/guion-opensource/ttal-cli/templates/ttal"
+  team_path = "/home/neil/code/projects/tta-lab/ttal-cli/templates/ttal"
   data_dir = "~/.ttal"
   taskrc = "~/.taskrc"
   voice_language = "en"

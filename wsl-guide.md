@@ -21,7 +21,13 @@ wsl -d NixOS
 Inside NixOS-WSL:
 
 ```bash
-sudo nixos-rebuild switch --flake .#wsl
+mkdir -p ~/code/projects/tta-lab
+cd ~/code/projects/tta-lab
+git clone https://github.com/tta-lab/kosmos.git
+cd kosmos
+git fetch origin feat/tta-lab-wsl-runtime
+git switch --track origin/feat/tta-lab-wsl-runtime
+sudo nixos-rebuild switch --flake .#wsl --extra-experimental-features "nix-command flakes"
 ```
 
 The WSL host uses `wsl.defaultUser = "neil"` and keeps Windows PATH out of the shell environment:
@@ -49,6 +55,19 @@ systemctl --user status temenos einai ttal
 ```
 
 The Go binaries live in `~/go/bin`, which is added to Fish and to the user services' `PATH`. The services are enabled for the user manager, but skip cleanly until the matching binary exists.
+
+Project checkouts use two roots:
+
+- `~/code/projects/<org>/<repo>` for repos we maintain or run from
+- `~/code/references/<org>/<repo>` for external research clones
+
+Clone or fetch the active project set from `ttal/projects.toml`:
+
+```bash
+kosmos-sync-projects
+```
+
+Existing repos are fetched with `git fetch --prune`; the command does not merge or change the working tree. Use `kosmos-sync-projects --collection references` for research-only repos.
 
 ## Rathole Tunnel
 

@@ -41,5 +41,5 @@ allow_read = [
   "~/.taskrc.ttal",                      # taskwarrior config
   "~/.cargo/config.toml",                # Rust user-level Cargo config (registries, build overrides) — read-only by design
   "~/.rustup",                           # Rust toolchain
-  "~/Code/2026-references/",
+  "~/code/references/",
 ]

@@ -12,6 +12,7 @@ NixOS configuration for a headless dev/ops environment. It supports both the Int
 - `modules/wsl/` — WSL-specific settings
 - `modules/users/` — shared user definitions
 - `ttal/`, `einai/`, `temenos/` — non-secret runtime config deployed to `~/.config`
+- `scripts/sync-projects` — clones or fetches repos listed in `ttal/projects.toml`
 - `packages/tta-lab/` — pinned release packages for tta-lab tools that are not in nixpkgs
 - `configuration.nix` — compatibility entry point for the `kosmos` host
 - `disko-config.nix` — declarative NVMe partition layout for bare-metal install
@@ -53,6 +54,19 @@ tta-lab-go-install
 This starts the `tta-lab-go-install.service` oneshot user unit, which runs the `go install` set for `ttal`, `temenos`, `diary`, `organon`, `einai`, and `lenos`.
 
 The user services `temenos.service`, `einai.service`, and `ttal.service` are defined in `modules/common/tta-lab-go.nix`. They only start after their binary exists in `~/go/bin`.
+
+Code lives under two roots:
+
+- `~/code/projects/<org>/<repo>` for repos we maintain or run from
+- `~/code/references/<org>/<repo>` for external research clones
+
+After applying the WSL host, clone or fetch the active project set from `ttal/projects.toml`:
+
+```bash
+kosmos-sync-projects
+```
+
+Use `remote = "git@host:org/repo.git"` in `ttal/projects.toml` when a repo is not on GitHub. Entries without `remote` default to `git@github.com:<org>/<repo>.git`.
 
 ## License
 

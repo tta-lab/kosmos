@@ -2,6 +2,10 @@ _:
 
 {
   systemd.tmpfiles.rules = [
+    "d /home/neil/code 0755 neil users - -"
+    "d /home/neil/code/projects 0755 neil users - -"
+    "d /home/neil/code/references 0755 neil users - -"
+
     "d /home/neil/.config/ttal 0755 neil users - -"
     "d /home/neil/.config/einai 0755 neil users - -"
     "d /home/neil/.config/temenos 0755 neil users - -"
