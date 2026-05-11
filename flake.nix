@@ -1,8 +1,10 @@
 {
-  description = "Kosmos — NixOS configuration for Intel NUC";
+  description = "Kosmos — NixOS configurations for NUC and WSL";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixos-wsl.url = "github:nix-community/NixOS-WSL/main";
+    nixos-wsl.inputs.nixpkgs.follows = "nixpkgs";
     disko.url = "github:nix-community/disko";
     disko.inputs.nixpkgs.follows = "nixpkgs";
     agenix.url = "github:ryantm/agenix";
@@ -11,7 +13,7 @@
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { nixpkgs, disko, agenix, nix-index-database, ... }: let
+  outputs = { nixpkgs, nixos-wsl, disko, agenix, nix-index-database, ... }: let
     system = "x86_64-linux";
     pkgs = import nixpkgs { inherit system; };
   in {
@@ -21,7 +23,17 @@
         disko.nixosModules.disko
         agenix.nixosModules.default
         nix-index-database.nixosModules.default
-        ./configuration.nix
+        ./hosts/kosmos
+      ];
+    };
+
+    nixosConfigurations.wsl = nixpkgs.lib.nixosSystem {
+      inherit system;
+      modules = [
+        nixos-wsl.nixosModules.default
+        agenix.nixosModules.default
+        nix-index-database.nixosModules.default
+        ./hosts/wsl
       ];
     };
 

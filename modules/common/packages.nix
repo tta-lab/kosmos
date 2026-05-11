@@ -1,0 +1,90 @@
+{ pkgs, ... }:
+
+{
+  environment.systemPackages = with pkgs; [
+    # Shells and editors
+    helix
+    fish
+    bash
+
+    # Core tools
+    openssh
+    git
+    git-filter-repo
+    git-lfs
+    git-sizer
+    delta
+    tmux
+
+    # Search and data handling
+    ripgrep
+    fd
+    bat
+    jq
+    yq
+    fzf
+    direnv
+
+    # Network and HTTP
+    httpie
+    wget
+    curl
+    dnsutils
+    mtr
+    nmap
+    tcpdump
+    socat
+    lsof
+    traceroute
+    whois
+
+    # Secrets and task helpers
+    age
+    sops
+    just
+
+    # Languages
+    bun
+    go
+    python3
+
+    # System inspection
+    btop
+    eza
+    duf
+    dust
+    gdu
+    ncdu
+
+    # Tunnels and ingress
+    rathole
+    cloudflared
+    caddy
+
+    # Cloud and Kubernetes
+    gh
+    hcloud
+    kubectl
+    kubectx
+    kubelogin
+    kubernetes-helm
+    helm-ls
+    k9s
+    lazygit
+
+    # GNU and Nix tooling
+    tree
+    gnugrep
+    gnused
+    gawk
+    nh
+    nix-output-monitor
+    nvd
+    deadnix
+    alejandra
+    comma
+    nix-direnv
+    statix
+    nixd
+  ];
+}
