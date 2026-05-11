@@ -42,14 +42,30 @@ let
       )
     }
 
-    install_from ttal-cli .
+    build_from() {
+      repo="$1"
+      binary="$2"
+      package="$3"
+      dir="${projectsRoot}/$repo"
+      if [ ! -f "$dir/go.mod" ]; then
+        echo "missing Go module: $dir" >&2
+        exit 1
+      fi
+
+      (
+        cd "$dir"
+        go build -o "$GOBIN/$binary" "$package"
+      )
+    }
+
+    build_from ttal-cli ttal .
+    rm -f "$GOBIN/ttal-cli"
     install_from temenos ./cmd/temenos
     install_from diary ./cmd/diary
     install_from organon ./cmd/alert ./cmd/skill ./cmd/src ./cmd/web
     install_from einai .
     install_from lenos .
 
-    [ -x "$GOBIN/ttal-cli" ] && ln -sf "$GOBIN/ttal-cli" "$GOBIN/ttal"
     [ -x "$GOBIN/einai" ] && ln -sf "$GOBIN/einai" "$GOBIN/ei"
   '';
 in
