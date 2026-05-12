@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Podman + k3d Dev Cluster Setup</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f7f7f4;
+        --fg: #202124;
+        --muted: #5f6368;
+        --panel: #ffffff;
+        --border: #d8d9d2;
+        --accent: #146c5b;
+        --code-bg: #1f2328;
+        --code-fg: #f0f3f6;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #151719;
+          --fg: #e7e9ea;
+          --muted: #a8afb6;
+          --panel: #1d2024;
+          --border: #333941;
+          --accent: #62c2a8;
+          --code-bg: #0f1115;
+          --code-fg: #eef2f7;
+        }
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font: 16px/1.55 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      main {
+        width: min(920px, calc(100% - 32px));
+        margin: 48px auto;
+      }
+
+      h1,
+      h2 {
+        line-height: 1.2;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: clamp(2rem, 5vw, 3.25rem);
+      }
+
+      h2 {
+        margin: 40px 0 12px;
+        font-size: 1.35rem;
+      }
+
+      p {
+        margin: 0 0 16px;
+      }
+
+      .summary {
+        color: var(--muted);
+        font-size: 1.05rem;
+        max-width: 760px;
+      }
+
+      .note {
+        border: 1px solid var(--border);
+        border-left: 4px solid var(--accent);
+        background: var(--panel);
+        padding: 14px 16px;
+        margin: 20px 0;
+      }
+
+      code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+        font-size: 0.95em;
+      }
+
+      pre {
+        margin: 12px 0 22px;
+        padding: 16px;
+        overflow-x: auto;
+        border-radius: 8px;
+        background: var(--code-bg);
+        color: var(--code-fg);
+      }
+
+      pre code {
+        color: inherit;
+      }
+
+      ol,
+      ul {
+        padding-left: 24px;
+      }
+
+      li {
+        margin: 8px 0;
+      }
+
+      a {
+        color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Podman + k3d Dev Cluster</h1>
+      <p class="summary">
+        Create the first local Kubernetes cluster named <code>dev</code> on NixOS-WSL.
+        The cluster uses k3d backed by Podman's Docker-compatible socket and keeps
+        local-path storage under the home directory for development Postgres data.
+      </p>
+
+      <section>
+        <h2>Prerequisites</h2>
+        <ul>
+          <li>Switch the WSL host with the Kosmos flake.</li>
+          <li>Restart the WSL session after switching so the <code>podman</code> group membership applies.</li>
+          <li>Run these commands inside the NixOS-WSL shell, not Windows PowerShell.</li>
+        </ul>
+        <pre><code>sudo nixos-rebuild switch --flake .#wsl
+exit
+</code></pre>
+        <p>Start a new WSL shell, then verify the tools and socket:</p>
+        <pre><code>id
+podman info
+docker info
+k3d version
+kubectl version --client
+tk --version
+</code></pre>
+        <div class="note">
+          If <code>docker info</code> cannot connect, check the Podman socket:
+          <code>systemctl status podman.socket</code>. k3d uses the Docker API and should see
+          Podman through <code>/var/run/docker.sock</code>.
+        </div>
+      </section>
+
+      <section>
+        <h2>Create The Cluster</h2>
+        <p>
+          The API port matches <code>flick-backend/tanka/environments/local/spec.json</code>,
+          which points Tanka at <code>https://127.0.0.1:26443</code>.
+        </p>
+        <pre><code>mkdir -p "$HOME/.local/share/flick-backend/k3s-storage"
+
+k3d cluster create dev \
+  --api-port 127.0.0.1:26443 \
+  --volume "$HOME/.local/share/flick-backend/k3s-storage:/var/lib/rancher/k3s/storage@server:0"
+</code></pre>
+      </section>
+
+      <section>
+        <h2>Verify Kubernetes</h2>
+        <pre><code>kubectl config use-context k3d-dev
+kubectl get nodes
+kubectl get storageclass
+</code></pre>
+        <p>
+          k3s should provide the <code>local-path</code> storage class. PVC-backed
+          development Postgres data will persist through cluster restarts and is stored
+          below <code>~/.local/share/flick-backend/k3s-storage</code>.
+        </p>
+      </section>
+
+      <section>
+        <h2>Deploy Flick Backend Local</h2>
+        <pre><code>cd /home/neil/code/projects/GuionAI/flick-backend/tanka
+tk diff environments/local
+tk apply environments/local
+</code></pre>
+        <p>Check the local Postgres workload and migration job:</p>
+        <pre><code>kubectl get pods
+kubectl get pvc
+kubectl logs job/db-init-db-init --tail=100
+</code></pre>
+      </section>
+
+      <section>
+        <h2>Daily Commands</h2>
+        <pre><code>k3d cluster list
+k3d cluster stop dev
+k3d cluster start dev
+kubectl get pods
+</code></pre>
+        <p>
+          Avoid <code>k3d cluster delete dev</code> unless you intentionally want to
+          recreate the cluster. The host storage directory is separate, but deleting
+          the cluster also removes Kubernetes objects such as PVCs.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

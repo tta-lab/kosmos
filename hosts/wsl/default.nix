@@ -1,6 +1,4 @@
-_:
-
-{
+_: {
   imports = [
     ../../modules/common/nix.nix
     ../../modules/common/system.nix

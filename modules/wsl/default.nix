@@ -1,6 +1,4 @@
-{ pkgs, ... }:
-
-let
+{pkgs, ...}: let
   proxyEnv = pkgs.writeShellApplication {
     name = "kosmos-wsl-proxy-env";
     runtimeInputs = with pkgs; [
@@ -73,8 +71,7 @@ let
       esac
     '';
   };
-in
-{
+in {
   wsl = {
     enable = true;
     defaultUser = "neil";
@@ -89,8 +86,17 @@ in
   };
 
   environment = {
-    systemPackages = [ proxyEnv ];
+    systemPackages = with pkgs; [
+      k3d
+      proxyEnv
+    ];
     variables.KOSMOS_WSL_PROXY_PORT = "7897";
+  };
+
+  virtualisation.podman = {
+    enable = true;
+    dockerCompat = true;
+    dockerSocket.enable = true;
   };
 
   programs.nix-ld = {

@@ -1,6 +1,4 @@
-{ pkgs, ... }:
-
-let
+{pkgs, ...}: let
   npmPrefix = "/home/neil/.local/share/npm-global";
   installScript = pkgs.writeShellScript "openai-codex-install" ''
     set -eu
@@ -15,8 +13,7 @@ let
     mkdir -p "${npmPrefix}"
     npm install -g @openai/codex@latest
   '';
-in
-{
+in {
   environment.systemPackages = [
     pkgs.nodejs
     (pkgs.writeShellScriptBin "openai-codex-install" ''

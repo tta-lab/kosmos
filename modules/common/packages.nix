@@ -1,6 +1,4 @@
-{ pkgs, ... }:
-
-let
+{pkgs, ...}: let
   ttaLab = pkgs.callPackage ../../packages/tta-lab {};
   syncProjects = pkgs.writeShellApplication {
     name = "kosmos-sync-projects";
@@ -29,9 +27,7 @@ let
         "$@"
     '';
   };
-in
-
-{
+in {
   environment.systemPackages = with pkgs; [
     # Shells and editors
     helix
@@ -46,6 +42,7 @@ in
     git-sizer
     delta
     tmux
+    gnumake
 
     # Search and data handling
     ripgrep
@@ -53,6 +50,7 @@ in
     bat
     jq
     yq
+    sqlite
     fzf
     direnv
     yazi
@@ -102,6 +100,8 @@ in
     gh
     hcloud
     kubectl
+    tanka
+    jsonnet-bundler
     kubectx
     kubelogin
     kubernetes-helm

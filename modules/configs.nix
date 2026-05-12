@@ -1,22 +1,23 @@
-{ config, ... }:
-
-let
-  inherit (config.system) stateVersion;
-in
-
 {
+  config,
+  pkgs,
+  ...
+}: let
+  inherit (config.system) stateVersion;
+  ttaLab = pkgs.callPackage ../packages/tta-lab {};
+in {
   home-manager = {
     useGlobalPkgs = true;
     useUserPackages = true;
     backupFileExtension = "hm-backup";
 
-    users.neil = { lib, ... }: {
+    users.neil = {lib, ...}: {
       home = {
         username = "neil";
         homeDirectory = "/home/neil";
         inherit stateVersion;
 
-        activation.createCodeDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+        activation.createCodeDirs = lib.hm.dag.entryAfter ["writeBoundary"] ''
           $DRY_RUN_CMD mkdir -p \
             "$HOME/code/projects" \
             "$HOME/code/references"
@@ -42,6 +43,19 @@ in
 
       home.sessionVariables = {
         NPM_CONFIG_PREFIX = "/home/neil/.local/share/npm-global";
+      };
+
+      systemd.user.services.flicknote-sync = {
+        Unit.Description = "FlickNote sync daemon";
+        Install.WantedBy = ["default.target"];
+        Service = {
+          ExecStart = "${ttaLab.flicknote}/bin/flicknote-sync";
+          Restart = "on-failure";
+          RestartSec = 5;
+          Environment = [
+            "RUST_LOG=flicknote_sync=info,powersync=debug"
+          ];
+        };
       };
 
       programs = {

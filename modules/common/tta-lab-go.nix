@@ -1,6 +1,4 @@
-{ pkgs, ... }:
-
-let
+{pkgs, ...}: let
   goBin = "/home/neil/go/bin";
   projectsRoot = "/home/neil/code/projects/tta-lab";
   servicePath = "${goBin}:${pkgs.lib.makeBinPath [
@@ -17,12 +15,13 @@ let
       eval "$(kosmos-wsl-proxy-env sh)"
     fi
   '';
-  withProxy = name: command: pkgs.writeShellScript name ''
-    set -eu
-    export PATH=/run/current-system/sw/bin:${servicePath}:$PATH
-    ${proxyPrelude}
-    exec ${command}
-  '';
+  withProxy = name: command:
+    pkgs.writeShellScript name ''
+      set -eu
+      export PATH=/run/current-system/sw/bin:${servicePath}:$PATH
+      ${proxyPrelude}
+      exec ${command}
+    '';
   installScript = pkgs.writeShellScript "tta-lab-go-install" ''
     set -eu
 
@@ -76,8 +75,7 @@ let
 
     [ -x "$GOBIN/einai" ] && ln -sf "$GOBIN/einai" "$GOBIN/ei"
   '';
-in
-{
+in {
   environment = {
     variables = {
       GOPATH = "/home/neil/go";
@@ -107,7 +105,7 @@ in
         Description = "Temenos sandbox daemon";
         ConditionPathExists = "${goBin}/temenos";
       };
-      Install.WantedBy = [ "default.target" ];
+      Install.WantedBy = ["default.target"];
       Service = {
         ExecStart = withProxy "temenos-with-proxy" "${goBin}/temenos daemon";
         Restart = "on-failure";
@@ -122,10 +120,10 @@ in
     einai = {
       Unit = {
         Description = "Einai agent runtime daemon";
-        After = [ "temenos.service" ];
+        After = ["temenos.service"];
         ConditionPathExists = "${goBin}/ei";
       };
-      Install.WantedBy = [ "default.target" ];
+      Install.WantedBy = ["default.target"];
       Service = {
         ExecStart = withProxy "einai-with-proxy" "${goBin}/ei daemon run";
         Restart = "on-failure";
@@ -146,7 +144,7 @@ in
         ];
         ConditionPathExists = "${goBin}/ttal";
       };
-      Install.WantedBy = [ "default.target" ];
+      Install.WantedBy = ["default.target"];
       Service = {
         ExecStart = withProxy "ttal-with-proxy" "${goBin}/ttal daemon run";
         Restart = "on-failure";
