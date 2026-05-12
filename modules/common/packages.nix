@@ -1,5 +1,13 @@
-{pkgs, ...}: let
-  ttaLab = pkgs.callPackage ../../packages/tta-lab {};
+{
+  config,
+  pkgs,
+  pkgsUnstable,
+  ...
+}: let
+  ttalBinDir = pkgs.lib.attrByPath ["environment" "variables" "GOBIN"] null config;
+  ttaLab = pkgs.callPackage ../../packages/tta-lab {
+    inherit ttalBinDir;
+  };
   syncProjects = pkgs.writeShellApplication {
     name = "kosmos-sync-projects";
     runtimeInputs = [
@@ -27,28 +35,13 @@
         "$@"
     '';
   };
-  ttalTmuxProjectPicker = pkgs.writeShellApplication {
-    name = "ttal-tmux-project-picker";
-    runtimeInputs = [
-      pkgs.bash
-      pkgs.coreutils
-      pkgs.fzf
-      pkgs.gawk
-      pkgs.gnused
-      pkgs.jq
-      pkgs.tmux
-    ];
-    text = ''
-      export PATH=/home/neil/go/bin:$PATH
-      exec ${pkgs.bash}/bin/bash ${../../scripts/ttal-tmux-project-picker} "$@"
-    '';
-  };
 in {
   environment.systemPackages = with pkgs; [
     # Shells and editors
     helix
     fish
     bash
+    bubblewrap
 
     # Core tools
     openssh
@@ -66,6 +59,7 @@ in {
     bat
     jq
     yq
+    pkgsUnstable.defuddle
     sqlite
     fzf
     direnv
@@ -90,7 +84,7 @@ in {
     just
     syncProjects
     syncTtaLabProjects
-    ttalTmuxProjectPicker
+    ttaLab.ttalTmuxProjectPicker
     ttaLab.flicknote
     ttaLab.taskwarrior
 
@@ -98,6 +92,7 @@ in {
     bun
     go
     python3
+    llvmPackages.libclang
 
     # System inspection
     btop
@@ -140,5 +135,7 @@ in {
     nix-direnv
     statix
     nixd
+    lefthook
+    shellcheck
   ];
 }

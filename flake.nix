@@ -3,6 +3,7 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     nixos-wsl.url = "github:nix-community/NixOS-WSL/main";
     nixos-wsl.inputs.nixpkgs.follows = "nixpkgs";
     disko.url = "github:nix-community/disko";
@@ -17,6 +18,7 @@
 
   outputs = {
     nixpkgs,
+    nixpkgs-unstable,
     nixos-wsl,
     disko,
     agenix,
@@ -26,9 +28,29 @@
   }: let
     system = "x86_64-linux";
     pkgs = import nixpkgs {inherit system;};
+    pkgsUnstable = import nixpkgs-unstable {inherit system;};
   in {
+    checks.${system}.shell-tests =
+      pkgs.runCommand "kosmos-shell-tests" {
+        nativeBuildInputs = with pkgs; [
+          bash
+          coreutils
+          gawk
+          gnused
+          jq
+          shellcheck
+        ];
+      } ''
+        shellcheck ${./scripts/ttal-tmux-project-picker} ${./tests/ttal-tmux-project-picker-test}
+        KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
+        touch $out
+      '';
+
     nixosConfigurations.kosmos = nixpkgs.lib.nixosSystem {
       inherit system;
+      specialArgs = {
+        inherit pkgsUnstable;
+      };
       modules = [
         disko.nixosModules.disko
         agenix.nixosModules.default
@@ -39,6 +61,9 @@
 
     nixosConfigurations.wsl = nixpkgs.lib.nixosSystem {
       inherit system;
+      specialArgs = {
+        inherit pkgsUnstable;
+      };
       modules = [
         nixos-wsl.nixosModules.default
         agenix.nixosModules.default
@@ -55,6 +80,8 @@
         nix
         statix
         nixd
+        lefthook
+        shellcheck
       ];
     };
   };

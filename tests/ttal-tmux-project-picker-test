@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repo_root="${KOSMOS_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 script="$repo_root/scripts/ttal-tmux-project-picker"
+tmux_config="$repo_root/tmux/.tmux.conf"
+ttal_package="$repo_root/packages/tta-lab/default.nix"
+k3d_doc="$repo_root/docs/k3d-dev-cluster.html"
 
 projects_json='[
   {"alias":"ko","name":"kosmos","path":"/home/neil/code/projects/tta-lab/kosmos"},
@@ -12,7 +15,7 @@ projects_json='[
 output="$(
   TTAL_TMUX_PROJECTS_JSON="$projects_json" \
   TTAL_TMUX_SESSION_ID=1234abcd \
-  "$script" --dry-run --alias fb.ai
+  bash "$script" --dry-run --alias fb.ai
 )"
 
 expected='tmux new-session -ds fb-ai-1234abcd -c /home/neil/code/projects/GuionAI/flick-backend/services/ai-processor
@@ -23,7 +26,48 @@ if [[ "$output" != "$expected" ]]; then
   exit 1
 fi
 
-if TTAL_TMUX_PROJECTS_JSON="$projects_json" "$script" --dry-run --alias missing >/tmp/ttal-picker-test.out 2>/tmp/ttal-picker-test.err; then
+output="$(
+  TTAL_TMUX_PROJECTS_JSON="$projects_json" \
+  TTAL_TMUX_EXISTING_SESSIONS=$'fb-ai-deadbeef\t/home/neil/code/projects/GuionAI/flick-backend/services/ai-processor' \
+  bash "$script" --dry-run --alias fb.ai
+)"
+
+expected='tmux switch-client -t fb-ai-deadbeef'
+
+if [[ "$output" != "$expected" ]]; then
+  printf 'matching project path should reuse existing session\nexpected:\n%s\nactual:\n%s\n' "$expected" "$output" >&2
+  exit 1
+fi
+
+output="$(
+  TTAL_TMUX_PROJECTS_JSON="$projects_json" \
+  TTAL_TMUX_EXISTING_SESSIONS=$'fb-ai-zzzzzzzz\t/home/neil/code/projects/GuionAI/flick-backend/services/ai-processor\nfb-ai-aaaaaaaa\t/home/neil/code/projects/GuionAI/flick-backend/services/ai-processor' \
+  bash "$script" --dry-run --alias fb.ai
+)"
+
+expected='tmux switch-client -t fb-ai-aaaaaaaa'
+
+if [[ "$output" != "$expected" ]]; then
+  printf 'multiple matching project sessions should use stable session-name order\nexpected:\n%s\nactual:\n%s\n' "$expected" "$output" >&2
+  exit 1
+fi
+
+output="$(
+  TTAL_TMUX_PROJECTS_JSON="$projects_json" \
+  TTAL_TMUX_EXISTING_SESSIONS=$'fb-ai-deadbeef\t/home/neil/code/projects/GuionAI/flick-backend' \
+  TTAL_TMUX_SESSION_ID=1234abcd \
+  bash "$script" --dry-run --alias fb.ai
+)"
+
+expected='tmux new-session -ds fb-ai-1234abcd -c /home/neil/code/projects/GuionAI/flick-backend/services/ai-processor
+tmux switch-client -t fb-ai-1234abcd'
+
+if [[ "$output" != "$expected" ]]; then
+  printf 'same alias with different project path should create a new session\nexpected:\n%s\nactual:\n%s\n' "$expected" "$output" >&2
+  exit 1
+fi
+
+if TTAL_TMUX_PROJECTS_JSON="$projects_json" bash "$script" --dry-run --alias missing >/tmp/ttal-picker-test.out 2>/tmp/ttal-picker-test.err; then
   printf 'missing alias should fail\n' >&2
   exit 1
 fi
@@ -31,5 +75,30 @@ fi
 if ! grep -q 'unknown project alias: missing' /tmp/ttal-picker-test.err; then
   printf 'missing alias error was not clear\n' >&2
   cat /tmp/ttal-picker-test.err >&2
+  exit 1
+fi
+
+if ! grep -Fq 'bind r source-file /etc/tmux.conf \; display "Config reloaded"' "$tmux_config"; then
+  printf 'tmux reload binding should source /etc/tmux.conf\n' >&2
+  exit 1
+fi
+
+if grep -Fq '/run/current-system/sw/bin/ttal-tmux-project-picker' "$tmux_config"; then
+  printf 'tmux project picker should not hard-code /run/current-system\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq 'bind P display-popup -E "@ttalTmuxProjectPicker@"' "$tmux_config"; then
+  printf 'tmux project picker should use the Nix-substituted picker path\n' >&2
+  exit 1
+fi
+
+if grep -Fq '/home/neil/go/bin' "$ttal_package"; then
+  printf 'ttal tmux picker package should not hard-code /home/neil/go/bin\n' >&2
+  exit 1
+fi
+
+if grep -Fq 'kubectl logs job/db-init-db-init' "$k3d_doc"; then
+  printf 'k3d guide should not mention the stale db-init job log command\n' >&2
   exit 1
 fi

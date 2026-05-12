@@ -118,6 +118,12 @@
   path = "/home/neil/code/projects/GuionAI/guion-infra"
   remote = "https://git.guion.io/GuionAI/guion-infra.git"
 
+[ghbt]
+  github_token_env = "GUION_GITHUB_TOKEN"
+  name = "GuionAI Homebrew Tap"
+  path = "/home/neil/code/projects/GuionAI/homebrew-tap"
+  remote = "https://github.com/GuionAI/homebrew-tap.git"
+
 [hbt]
   name = "Homebrew Tap"
   path = "/home/neil/code/projects/tta-lab/homebrew-ttal"

@@ -1,6 +1,16 @@
 {
+  bash,
+  coreutils,
   fetchurl,
+  fzf,
+  gawk,
+  gnused,
+  jq,
+  lib,
   stdenvNoCC,
+  tmux,
+  ttalBinDir ? null,
+  writeShellApplication,
 }: {
   flicknote = stdenvNoCC.mkDerivation {
     pname = "flicknote";
@@ -43,6 +53,25 @@
       install -Dm644 completions/_task $out/share/zsh/site-functions/_task
       install -Dm644 completions/task.fish $out/share/fish/vendor_completions.d/task.fish
       runHook postInstall
+    '';
+  };
+
+  ttalTmuxProjectPicker = writeShellApplication {
+    name = "ttal-tmux-project-picker";
+    runtimeInputs = [
+      bash
+      coreutils
+      fzf
+      gawk
+      gnused
+      jq
+      tmux
+    ];
+    text = ''
+      ${lib.optionalString (ttalBinDir != null) ''
+        export PATH=${lib.escapeShellArg ttalBinDir}:$PATH
+      ''}
+      exec ${bash}/bin/bash ${../../scripts/ttal-tmux-project-picker} "$@"
     '';
   };
 }

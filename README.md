@@ -18,6 +18,7 @@ NixOS configuration for a headless dev/ops environment. It supports both the Int
 - `disko-config.nix` — declarative NVMe partition layout for bare-metal install
 - `install-guide.md` — step-by-step install instructions
 - `wsl-guide.md` — NixOS-WSL setup notes
+- `docs/k3d-dev-cluster.html` — Podman + k3d local cluster setup for WSL
 
 ## Quick Start
 

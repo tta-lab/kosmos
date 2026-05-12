@@ -22,6 +22,12 @@ in {
             "$HOME/code/projects" \
             "$HOME/code/references"
         '';
+
+        file.".taskrc".text = ''
+          data.location=/home/neil/.task
+          powersync.db_path=/home/neil/.local/share/flicknote/flicknote.db
+          news.version=3.4.2
+        '';
       };
 
       xdg = {
@@ -34,6 +40,7 @@ in {
           "ttal/prompts.toml".source = ../ttal/prompts.toml;
           "ttal/roles.toml".source = ../ttal/roles.toml;
           "ttal/sandbox.toml".source = ../ttal/sandbox.toml;
+          "lenos/config.json".source = ../lenos/config.json;
           "einai/config.toml".source = ../einai/config.toml;
           "temenos/config.toml".source = ../temenos/config.toml;
           "helix/config.toml".source = ../helix/config.toml;
@@ -43,6 +50,8 @@ in {
 
       home.sessionVariables = {
         NPM_CONFIG_PREFIX = "/home/neil/.local/share/npm-global";
+        EDITOR = "hx";
+        VISUAL = "hx";
       };
 
       systemd.user.services.flicknote-sync = {
@@ -66,6 +75,10 @@ in {
           shellInit = ''
             fish_add_path -g /home/neil/go/bin
             fish_add_path -g /home/neil/.local/share/npm-global/bin
+            # Match interactive tmux with daemon-managed sessions under XDG_RUNTIME_DIR.
+            if set -q XDG_RUNTIME_DIR
+              set -gx TMUX_TMPDIR $XDG_RUNTIME_DIR
+            end
             if command -q kosmos-wsl-proxy-env
               kosmos-wsl-proxy-env fish | source
             end
