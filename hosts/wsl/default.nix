@@ -10,6 +10,7 @@ _: {
     ../../modules/common/tunnel-rathole-client.nix
     ../../modules/users/neil.nix
     ../../modules/wsl
+    ../../modules/wsl/frpc-ssh.nix
     ../../modules/wsl/secrets.nix
     ../../modules/configs.nix
   ];

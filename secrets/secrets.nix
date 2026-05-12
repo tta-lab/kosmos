@@ -8,4 +8,5 @@ in {
   "kube-config.age".publicKeys = users ++ systems;
   "ttal-kubeconfig.age".publicKeys = users ++ systems;
   "sops-age-keys.age".publicKeys = users ++ systems;
+  "frpc-token.age".publicKeys = users ++ systems;
 }

@@ -2,8 +2,10 @@ _: {
   services.openssh = {
     enable = true;
     settings = {
+      KbdInteractiveAuthentication = false;
       PasswordAuthentication = false;
-      PermitRootLogin = "prohibit-password";
+      PermitRootLogin = "no";
+      PubkeyAuthentication = true;
     };
   };
 }
