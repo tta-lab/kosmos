@@ -70,10 +70,11 @@ For agenix on `kosmos-wsl`, use `/etc/ssh/ssh_host_ed25519_key` as the private d
 Expected WSL secret targets:
 
 - `~/.config/ttal/.env`
-- `~/.local/share/lenos/config.json`
 - `~/.kube/config`
 
 `lenos/config.json` in this repo is non-secret and belongs at `~/.config/lenos/config.json`. `einai/config.toml` is not a secret.
+
+The secret Lenos config at `~/.local/share/lenos/config.json` is not managed by agenix yet.
 
 Agents must not read, decrypt, print, grep, diff, migrate, or inspect plaintext secrets. If a task requires touching or reading a plaintext secret, stop and tell Neil the exact command he needs to run.
 
