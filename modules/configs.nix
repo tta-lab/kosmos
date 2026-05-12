@@ -20,7 +20,11 @@ in {
         activation.createCodeDirs = lib.hm.dag.entryAfter ["writeBoundary"] ''
           $DRY_RUN_CMD mkdir -p \
             "$HOME/code/projects" \
-            "$HOME/code/references"
+            "$HOME/code/references" \
+            "$HOME/.config/ttal" \
+            "$HOME/.config/sops/age" \
+            "$HOME/.ttal" \
+            "$HOME/.kube"
         '';
 
         file.".taskrc".text = ''
