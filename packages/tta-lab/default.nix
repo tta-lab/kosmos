@@ -6,8 +6,10 @@
   gawk,
   gnused,
   jq,
+  lib,
   stdenvNoCC,
   tmux,
+  ttalBinDir ? null,
   writeShellApplication,
 }: {
   flicknote = stdenvNoCC.mkDerivation {
@@ -66,7 +68,9 @@
       tmux
     ];
     text = ''
-      export PATH=/home/neil/go/bin:$PATH
+      ${lib.optionalString (ttalBinDir != null) ''
+        export PATH=${lib.escapeShellArg ttalBinDir}:$PATH
+      ''}
       exec ${bash}/bin/bash ${../../scripts/ttal-tmux-project-picker} "$@"
     '';
   };

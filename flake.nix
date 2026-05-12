@@ -27,18 +27,19 @@
     system = "x86_64-linux";
     pkgs = import nixpkgs {inherit system;};
   in {
-    checks.${system}.shell-tests = pkgs.runCommand "kosmos-shell-tests" {
-      nativeBuildInputs = with pkgs; [
-        bash
-        coreutils
-        gawk
-        gnused
-        jq
-      ];
-    } ''
-      KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
-      touch $out
-    '';
+    checks.${system}.shell-tests =
+      pkgs.runCommand "kosmos-shell-tests" {
+        nativeBuildInputs = with pkgs; [
+          bash
+          coreutils
+          gawk
+          gnused
+          jq
+        ];
+      } ''
+        KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
+        touch $out
+      '';
 
     nixosConfigurations.kosmos = nixpkgs.lib.nixosSystem {
       inherit system;

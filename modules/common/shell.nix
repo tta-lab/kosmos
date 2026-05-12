@@ -1,5 +1,12 @@
-{pkgs, ...}: let
-  ttaLab = pkgs.callPackage ../../packages/tta-lab {};
+{
+  config,
+  pkgs,
+  ...
+}: let
+  ttalBinDir = pkgs.lib.attrByPath ["environment" "variables" "GOBIN"] null config;
+  ttaLab = pkgs.callPackage ../../packages/tta-lab {
+    inherit ttalBinDir;
+  };
 in {
   programs = {
     fish = {
@@ -16,7 +23,8 @@ in {
     tmux = {
       enable = true;
       terminal = "tmux-256color";
-      extraConfig = builtins.replaceStrings
+      extraConfig =
+        builtins.replaceStrings
         ["@ttalTmuxProjectPicker@"]
         ["${ttaLab.ttalTmuxProjectPicker}/bin/ttal-tmux-project-picker"]
         (builtins.readFile ../../tmux/.tmux.conf);

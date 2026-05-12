@@ -4,6 +4,8 @@ set -euo pipefail
 repo_root="${KOSMOS_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 script="$repo_root/scripts/ttal-tmux-project-picker"
 tmux_config="$repo_root/tmux/.tmux.conf"
+ttal_package="$repo_root/packages/tta-lab/default.nix"
+k3d_doc="$repo_root/docs/k3d-dev-cluster.html"
 
 projects_json='[
   {"alias":"ko","name":"kosmos","path":"/home/neil/code/projects/tta-lab/kosmos"},
@@ -47,5 +49,15 @@ fi
 
 if ! grep -Fq 'bind P display-popup -E "@ttalTmuxProjectPicker@"' "$tmux_config"; then
   printf 'tmux project picker should use the Nix-substituted picker path\n' >&2
+  exit 1
+fi
+
+if grep -Fq '/home/neil/go/bin' "$ttal_package"; then
+  printf 'ttal tmux picker package should not hard-code /home/neil/go/bin\n' >&2
+  exit 1
+fi
+
+if grep -Fq 'kubectl logs job/db-init-db-init' "$k3d_doc"; then
+  printf 'k3d guide should not mention the stale db-init job log command\n' >&2
   exit 1
 fi

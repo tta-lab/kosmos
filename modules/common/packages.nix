@@ -1,5 +1,12 @@
-{pkgs, ...}: let
-  ttaLab = pkgs.callPackage ../../packages/tta-lab {};
+{
+  config,
+  pkgs,
+  ...
+}: let
+  ttalBinDir = pkgs.lib.attrByPath ["environment" "variables" "GOBIN"] null config;
+  ttaLab = pkgs.callPackage ../../packages/tta-lab {
+    inherit ttalBinDir;
+  };
   syncProjects = pkgs.writeShellApplication {
     name = "kosmos-sync-projects";
     runtimeInputs = [
@@ -82,6 +89,7 @@ in {
     bun
     go
     python3
+    llvmPackages.libclang
 
     # System inspection
     btop
