@@ -74,8 +74,8 @@ Proxy setup is dynamic. `kosmos-wsl-proxy-env` reads the Windows host IP from th
 
 WSL has two idle timers:
 
+- `instanceIdleTimeout` stops the distro instance after it has no active console sessions.
 - `vmIdleTimeout` stops the shared WSL2 VM after all distro instances are idle.
-- `instanceIdleTimeout` stops the distro instance after it has no active console sessions on newer Store WSL builds.
 
 Set them from Windows, not from NixOS. Open PowerShell and edit the user-level WSL config:
 
@@ -107,15 +107,18 @@ wsl --version
 wsl --list --running
 ```
 
-If `instanceIdleTimeout` is ignored, update Store WSL first:
+Microsoft introduced `general.instanceIdleTimeout` in the WSL 2.5.4 release to
+control distribution termination timeouts. If `instanceIdleTimeout` is ignored,
+update Store WSL first:
 
 ```powershell
 wsl --update
 wsl --shutdown
 ```
 
-`vmIdleTimeout` is documented in Microsoft's `.wslconfig` reference. If
-`instanceIdleTimeout` is not accepted by the installed WSL build, keep
+`vmIdleTimeout` is documented in Microsoft's `.wslconfig` reference. The
+`instanceIdleTimeout` setting is documented in WSL release notes rather than the
+main `.wslconfig` reference. If the installed WSL build does not accept it, keep
 `vmIdleTimeout=-1` and use the fallback below.
 
 Fallback for old or broken WSL versions: create a Windows scheduled task at logon that runs a long-lived command such as:
@@ -125,6 +128,11 @@ wsl.exe -d NixOS --exec sleep infinity
 ```
 
 That keeps a real WSL process alive even after SSH sessions disconnect. It is a workaround; prefer the `.wslconfig` timers when the installed WSL version supports them.
+
+References:
+
+- https://learn.microsoft.com/windows/wsl/wsl-config
+- https://github.com/microsoft/WSL/releases/tag/2.5.4
 
 Project checkouts use two roots:
 
