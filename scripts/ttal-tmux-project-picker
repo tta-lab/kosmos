@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat >&2 <<'EOF'
+usage: ttal-tmux-project-picker [--alias <alias>] [--dry-run]
+EOF
+}
+
+dry_run=0
+requested_alias=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --alias)
+      if [[ $# -lt 2 ]]; then
+        usage
+        exit 2
+      fi
+      requested_alias="$2"
+      shift 2
+      ;;
+    --dry-run)
+      dry_run=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage
+      exit 2
+      ;;
+  esac
+done
+
+project_json="${TTAL_TMUX_PROJECTS_JSON:-}"
+if [[ -z "$project_json" ]]; then
+  project_json="$(ttal project list --json)"
+fi
+
+rows="$(
+  jq -r '.[] | select(.alias and .path) | [.alias, (.name // ""), .path] | @tsv' <<<"$project_json"
+)"
+
+if [[ -z "$rows" ]]; then
+  echo "no ttal projects found" >&2
+  exit 1
+fi
+
+selected=""
+if [[ -n "$requested_alias" ]]; then
+  selected="$(
+    awk -F '\t' -v alias="$requested_alias" '$1 == alias { print; found = 1; exit } END { if (!found) exit 1 }' <<<"$rows"
+  )" || {
+    echo "unknown project alias: $requested_alias" >&2
+    exit 1
+  }
+else
+  selected="$(
+    fzf \
+      --prompt="ttal project> " \
+      --delimiter=$'\t' \
+      --with-nth=1,2 \
+      --height=80% \
+      --reverse \
+      <<<"$rows"
+  )" || exit 0
+fi
+
+IFS=$'\t' read -r alias _name path <<<"$selected"
+
+safe_alias="$(tr -cs '[:alnum:]_-' '-' <<<"$alias" | sed 's/^-//; s/-$//')"
+if [[ -z "$safe_alias" ]]; then
+  echo "project alias cannot form a tmux session name: $alias" >&2
+  exit 1
+fi
+
+session_id="${TTAL_TMUX_SESSION_ID:-}"
+if [[ -z "$session_id" ]]; then
+  session_id="$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
+fi
+
+session_name="${safe_alias}-${session_id}"
+
+if [[ "$dry_run" -eq 1 ]]; then
+  printf 'tmux new-session -ds %s -c %s\n' "$session_name" "$path"
+  printf 'tmux switch-client -t %s\n' "$session_name"
+  exit 0
+fi
+
+if [[ -n "${TMUX:-}" ]]; then
+  tmux new-session -ds "$session_name" -c "$path"
+  tmux switch-client -t "$session_name"
+  exit 0
+fi
+
+if tmux list-sessions >/dev/null 2>&1; then
+  tmux new-session -ds "$session_name" -c "$path"
+  exec tmux attach-session -t "$session_name"
+fi
+
+exec tmux new-session -s "$session_name" -c "$path"

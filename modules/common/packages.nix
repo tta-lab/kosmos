@@ -27,6 +27,22 @@
         "$@"
     '';
   };
+  ttalTmuxProjectPicker = pkgs.writeShellApplication {
+    name = "ttal-tmux-project-picker";
+    runtimeInputs = [
+      pkgs.bash
+      pkgs.coreutils
+      pkgs.fzf
+      pkgs.gawk
+      pkgs.gnused
+      pkgs.jq
+      pkgs.tmux
+    ];
+    text = ''
+      export PATH=/home/neil/go/bin:$PATH
+      exec ${pkgs.bash}/bin/bash ${../../scripts/ttal-tmux-project-picker} "$@"
+    '';
+  };
 in {
   environment.systemPackages = with pkgs; [
     # Shells and editors
@@ -74,6 +90,7 @@ in {
     just
     syncProjects
     syncTtaLabProjects
+    ttalTmuxProjectPicker
     ttaLab.flicknote
     ttaLab.taskwarrior
 
