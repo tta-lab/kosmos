@@ -24,11 +24,17 @@ in {
       type = lib.types.port;
       description = "Remote TCP port exposed on the frps server for SSH.";
     };
+
+    useEncryption = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Enable frpc transport encryption for the SSH proxy.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
-    age.secrets.frpc-token = {
-      file = ../../secrets/frpc-token.age;
+    age.secrets.frpc-env = {
+      file = ../../secrets/frpc-env.age;
       owner = "frp";
       group = "frp";
       mode = "0400";
@@ -46,12 +52,10 @@ in {
       package = pkgsUnstable.frp;
       settings = {
         inherit (cfg) serverAddr serverPort;
+        user = "{{ .Envs.FRPC_USER }}";
         auth = {
           method = "token";
-          tokenSource = {
-            type = "file";
-            file.path = config.age.secrets.frpc-token.path;
-          };
+          token = "{{ .Envs.FRPC_TOKEN }}";
         };
         proxies = [
           {
@@ -60,6 +64,7 @@ in {
             localIP = "127.0.0.1";
             localPort = 22;
             inherit (cfg) remotePort;
+            transport.useEncryption = cfg.useEncryption;
           }
         ];
       };
@@ -69,6 +74,7 @@ in {
       DynamicUser = lib.mkForce false;
       User = "frp";
       Group = "frp";
+      EnvironmentFile = config.age.secrets.frpc-env.path;
     };
   };
 }

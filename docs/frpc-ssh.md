@@ -16,13 +16,20 @@ Before enabling it, choose:
 - `serverAddr`: frps server hostname or IP address
 - `serverPort`: frps bind port, usually `7000`
 - `remotePort`: public TCP port on the frps server for SSH
-- `secrets/frpc-token.age`: frps token encrypted with agenix
+- `secrets/frpc-env.age`: frps user and token as a systemd environment file
 
-Create the token secret yourself:
+Create the user and token secret yourself:
 
 ```bash
 cd /home/neil/code/projects/tta-lab/kosmos/secrets
-agenix -e frpc-token.age -i ~/.ssh/agenix_ed25519
+agenix -e frpc-env.age -i ~/.ssh/agenix_ed25519
+```
+
+`frpc-env.age` must be a systemd environment file:
+
+```text
+FRPC_USER=actual-user
+FRPC_TOKEN=actual-token
 ```
 
 ## Enable
@@ -32,14 +39,14 @@ Add host-specific values to `hosts/wsl/default.nix`:
 ```nix
 kosmos.wsl.frpcSsh = {
   enable = true;
-  serverAddr = "frps.example.com";
-  serverPort = 7000;
-  remotePort = 2222;
+  serverAddr = "cn-qz-plc-1.ofalias.net";
+  serverPort = 8120;
+  remotePort = 55492;
 };
 ```
 
-The frpc config uses file-based token auth, so the token is not written into the
-Nix store.
+The OpenFrp user and token are passed with `EnvironmentFile` and expanded by
+frpc at runtime, so neither value is written into the Nix store.
 
 ## SSH Login
 
