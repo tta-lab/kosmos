@@ -50,6 +50,8 @@ Name new modules by purpose, for example `modules/nixos/backup.nix` or `modules/
 
 Keep the boundary clear: NixOS modules own system packages, daemon services, WSL settings, SSH, networking, tunnels, and hardware. Home Manager owns `~/.config/*`, fish functions, Git settings, prompt config, and other user-session behavior. Do not use `systemd.tmpfiles` for normal user dotfiles unless Home Manager cannot express the file.
 
+When adding user-owned config paths, prefer Home Manager. Use Home Manager for parent directories under `$HOME`, non-secret dotfiles, shell/editor/git config, and user services. Use agenix only for the encrypted secret payload and decrypted file target; let Home Manager create user-owned parent directories where practical.
+
 ## Testing Guidelines
 
 There is no unit test suite. Validate by parsing, linting, flake checks, and building the NixOS toplevel. Run at least:
