@@ -50,6 +50,8 @@ in {
 
       home.sessionVariables = {
         NPM_CONFIG_PREFIX = "/home/neil/.local/share/npm-global";
+        EDITOR = "hx";
+        VISUAL = "hx";
       };
 
       systemd.user.services.flicknote-sync = {
@@ -73,6 +75,10 @@ in {
           shellInit = ''
             fish_add_path -g /home/neil/go/bin
             fish_add_path -g /home/neil/.local/share/npm-global/bin
+            # Match interactive tmux with daemon-managed sessions under XDG_RUNTIME_DIR.
+            if set -q XDG_RUNTIME_DIR
+              set -gx TMUX_TMPDIR $XDG_RUNTIME_DIR
+            end
             if command -q kosmos-wsl-proxy-env
               kosmos-wsl-proxy-env fish | source
             end

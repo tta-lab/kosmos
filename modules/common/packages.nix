@@ -135,5 +135,6 @@ in {
     nix-direnv
     statix
     nixd
+    shellcheck
   ];
 }

@@ -130,6 +130,8 @@ in {
         Environment = [
           "HOME=/home/neil"
           "PATH=${servicePath}"
+          # Keep daemon-started tmux sessions on the user runtime socket, not /tmp.
+          "TMUX_TMPDIR=%t"
         ];
         WorkingDirectory = "/home/neil";
       };
@@ -151,6 +153,8 @@ in {
         Environment = [
           "HOME=/home/neil"
           "PATH=${servicePath}"
+          # Keep daemon-started tmux sessions on the user runtime socket, not /tmp.
+          "TMUX_TMPDIR=%t"
         ];
         WorkingDirectory = "/home/neil";
       };

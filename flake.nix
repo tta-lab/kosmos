@@ -38,8 +38,10 @@
           gawk
           gnused
           jq
+          shellcheck
         ];
       } ''
+        shellcheck ${./scripts/ttal-tmux-project-picker} ${./tests/ttal-tmux-project-picker-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
         touch $out
       '';
@@ -78,6 +80,7 @@
         nix
         statix
         nixd
+        shellcheck
       ];
     };
   };
