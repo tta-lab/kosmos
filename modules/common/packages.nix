@@ -91,6 +91,7 @@ in {
     # Languages
     bun
     go
+    golangci-lint
     python3
     llvmPackages.libclang
 
