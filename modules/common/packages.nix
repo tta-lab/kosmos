@@ -1,6 +1,7 @@
 {
   config,
   pkgs,
+  pkgsUnstable,
   ...
 }: let
   ttalBinDir = pkgs.lib.attrByPath ["environment" "variables" "GOBIN"] null config;
@@ -58,6 +59,7 @@ in {
     bat
     jq
     yq
+    pkgsUnstable.defuddle
     sqlite
     fzf
     direnv
