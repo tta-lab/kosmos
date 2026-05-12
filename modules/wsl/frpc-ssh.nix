@@ -17,7 +17,7 @@ in {
 
     binaryPath = lib.mkOption {
       type = lib.types.str;
-      default = "/home/neil/.local/bin/openfrp-frpc";
+      default = "/opt/openfrp/openfrp-frpc";
       description = "OpenFrp frpc binary path installed outside this repo.";
     };
   };
@@ -25,26 +25,39 @@ in {
   config = lib.mkIf cfg.enable {
     age.secrets.frpc-env = {
       file = ../../secrets/frpc-env.age;
-      owner = "neil";
-      group = "users";
+      owner = "openfrp";
+      group = "openfrp";
       mode = "0400";
     };
 
-    home-manager.users.neil.systemd.user.services.openfrp-frpc = {
-      Unit = {
-        Description = "OpenFrp frpc SSH tunnel";
-        After = ["network-online.target"];
-        ConditionPathIsExecutable = cfg.binaryPath;
-      };
-      Install.WantedBy = ["default.target"];
-      Service = {
+    users.groups.openfrp = {};
+    users.users.openfrp = {
+      isSystemUser = true;
+      group = "openfrp";
+    };
+
+    systemd.services.openfrp-frpc = {
+      description = "OpenFrp frpc SSH tunnel";
+      wants = ["network-online.target"];
+      after = ["network-online.target"];
+      wantedBy = ["multi-user.target"];
+      unitConfig.ConditionPathIsExecutable = cfg.binaryPath;
+      serviceConfig = {
         Type = "simple";
+        User = "openfrp";
+        Group = "openfrp";
+        StateDirectory = "openfrp-frpc";
+        StateDirectoryMode = "0700";
+        WorkingDirectory = "/var/lib/openfrp-frpc";
         EnvironmentFile = config.age.secrets.frpc-env.path;
         ExecStart = startOpenfrpFrpc;
         Restart = "on-failure";
         RestartSec = 15;
         NoNewPrivileges = true;
+        PrivateTmp = true;
         PrivateDevices = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
         ProtectClock = true;
         ProtectControlGroups = true;
         ProtectHostname = true;
@@ -60,6 +73,7 @@ in {
         MemoryDenyWriteExecute = true;
         RestrictRealtime = true;
         RestrictSUIDSGID = true;
+        CapabilityBoundingSet = "";
         SystemCallArchitectures = "native";
         SystemCallFilter = ["@system-service"];
       };

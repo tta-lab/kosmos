@@ -14,7 +14,7 @@ kosmos.wsl.frpcSsh.enable = false;
 The OpenFrp frpc binary is not committed to this repo. Install it on WSL at:
 
 ```bash
-/home/neil/.local/bin/openfrp-frpc
+/opt/openfrp/openfrp-frpc
 ```
 
 Expected version:
@@ -25,7 +25,7 @@ OF_0.68.0_37f78258_260326
 
 ## Required Secret
 
-The user service reads one agenix-managed systemd environment file:
+The system service reads one agenix-managed systemd environment file:
 
 - `secrets/frpc-env.age`: OpenFrp user token and proxy ID list
 
@@ -45,20 +45,24 @@ OPENFRP_PROXY_IDS=actual-proxy-id
 
 ## Enable
 
-Enable the Home Manager user service in `hosts/wsl/default.nix`:
+Enable the system service in `hosts/wsl/default.nix`:
 
 ```nix
 kosmos.wsl.frpcSsh.enable = true;
 ```
 
-The user service runs:
+The system service runs as the low-privilege `openfrp` user:
 
 ```bash
-openfrp-frpc -u "$OPENFRP_USER_TOKEN" -p "$OPENFRP_PROXY_IDS" -n
+/opt/openfrp/openfrp-frpc -u "$OPENFRP_USER_TOKEN" -p "$OPENFRP_PROXY_IDS" -n
 ```
 
 Both values are loaded from agenix at runtime, so neither value is written into
 the Nix store.
+
+The service has no root privileges and uses systemd sandboxing such as
+`NoNewPrivileges`, `PrivateTmp`, `ProtectSystem=strict`, and `ProtectHome=true`.
+Its only normal writable runtime path is `/var/lib/openfrp-frpc`.
 
 ## SSH Login
 
