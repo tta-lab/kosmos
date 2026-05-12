@@ -1,27 +1,23 @@
 {
   agenix,
-  lib,
   pkgs,
   ...
 }: let
   secretsDir = ../../secrets;
-  secretFile = name: secretsDir + "/${name}";
-  optionalSecret = name: fileName: path:
-    lib.optionalAttrs (builtins.pathExists (secretFile fileName)) {
-      ${name} = {
-        file = secretFile fileName;
-        owner = "neil";
-        group = "users";
-        mode = "0400";
-        inherit path;
-      };
-    };
+  userSecret = fileName: path: {
+    file = secretsDir + "/${fileName}";
+    owner = "neil";
+    group = "users";
+    mode = "0400";
+    inherit path;
+  };
 in {
   age = {
     identityPaths = ["/etc/ssh/ssh_host_ed25519_key"];
-    secrets =
-      optionalSecret "ttal-env" "ttal.env.age" "/home/neil/.config/ttal/.env"
-      // optionalSecret "kube-config" "kube-config.age" "/home/neil/.kube/config";
+    secrets = {
+      ttal-env = userSecret "ttal.env.age" "/home/neil/.config/ttal/.env";
+      kube-config = userSecret "kube-config.age" "/home/neil/.kube/config";
+    };
   };
 
   environment.systemPackages = [

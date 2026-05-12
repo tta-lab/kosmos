@@ -50,12 +50,50 @@ managed by agenix yet.
 
 ## Create Or Edit Secrets
 
-Edit with Neil's agenix key:
+From the secrets directory, edit with Neil's agenix key:
 
 ```bash
 cd /home/neil/code/projects/tta-lab/kosmos/secrets
 agenix -e ttal.env.age -i ~/.ssh/agenix_ed25519
 agenix -e kube-config.age -i ~/.ssh/agenix_ed25519
+```
+
+From the repo root, set `RULES` explicitly:
+
+```bash
+cd /home/neil/code/projects/tta-lab/kosmos
+RULES=secrets/secrets.nix agenix -e secrets/ttal.env.age -i ~/.ssh/agenix_ed25519
+RULES=secrets/secrets.nix agenix -e secrets/kube-config.age -i ~/.ssh/agenix_ed25519
+```
+
+Commit encrypted files after editing:
+
+```bash
+git add secrets/ttal.env.age secrets/kube-config.age
+git commit -m "chore(secrets): update encrypted secrets"
+```
+
+## Add The Local k3d Cluster
+
+Do not write directly to `/home/neil/.kube/config`; it is managed by agenix.
+Merge the k3d `dev` cluster into the encrypted kubeconfig:
+
+```bash
+tmp="$(mktemp -d)"
+chmod 700 "$tmp"
+trap 'rm -rf "$tmp"' EXIT
+
+cd /home/neil/code/projects/tta-lab/kosmos/secrets
+
+agenix -d kube-config.age -i ~/.ssh/agenix_ed25519 > "$tmp/current.yaml"
+chmod 600 "$tmp/current.yaml"
+
+k3d kubeconfig get dev > "$tmp/k3d.yaml"
+
+KUBECONFIG="$tmp/current.yaml:$tmp/k3d.yaml" \
+  kubectl config view --flatten > "$tmp/merged.yaml"
+
+agenix -e kube-config.age -i ~/.ssh/agenix_ed25519 < "$tmp/merged.yaml"
 ```
 
 After creating or editing encrypted files, apply the WSL config:
