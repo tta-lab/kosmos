@@ -1,7 +1,5 @@
-_:
-
-{
-  networking.firewall.allowedTCPPorts = [ 22 ];
+_: {
+  networking.firewall.allowedTCPPorts = [22];
   networking.firewall.allowedUDPPorts = [
     60000
     60001

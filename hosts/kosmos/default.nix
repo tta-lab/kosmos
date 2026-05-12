@@ -1,6 +1,4 @@
-_:
-
-{
+_: {
   imports = [
     ../../disko-config.nix
     ../../modules/common/nix.nix
@@ -15,6 +13,7 @@ _:
     ../../modules/nixos/proxy.nix
     ../../modules/nixos/firewall.nix
     ../../modules/nixos/containers.nix
+    ../../modules/nixos/k3s.nix
   ];
 
   system.stateVersion = "25.05";

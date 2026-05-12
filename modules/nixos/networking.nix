@@ -1,6 +1,4 @@
-_:
-
-{
+_: {
   networking.hostName = "kosmos";
 
   systemd.network.enable = true;

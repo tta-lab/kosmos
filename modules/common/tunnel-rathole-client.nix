@@ -1,6 +1,4 @@
-_:
-
-{
+_: {
   services.rathole = {
     enable = false;
     role = "client";

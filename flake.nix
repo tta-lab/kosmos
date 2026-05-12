@@ -15,9 +15,17 @@
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { nixpkgs, nixos-wsl, disko, agenix, nix-index-database, home-manager, ... }: let
+  outputs = {
+    nixpkgs,
+    nixos-wsl,
+    disko,
+    agenix,
+    nix-index-database,
+    home-manager,
+    ...
+  }: let
     system = "x86_64-linux";
-    pkgs = import nixpkgs { inherit system; };
+    pkgs = import nixpkgs {inherit system;};
   in {
     nixosConfigurations.kosmos = nixpkgs.lib.nixosSystem {
       inherit system;
