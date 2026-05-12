@@ -51,6 +51,12 @@ in {
     git-sizer
     delta
     tmux
+
+    # Terminfo for SSH clients using modern terminal emulators.
+    kitty.terminfo
+    wezterm.terminfo
+    ghostty.terminfo
+
     gnumake
 
     # Search and data handling

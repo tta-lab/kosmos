@@ -10,10 +10,22 @@ _: {
     ../../modules/common/tunnel-rathole-client.nix
     ../../modules/users/neil.nix
     ../../modules/wsl
+    ../../modules/wsl/frpc-ssh.nix
     ../../modules/wsl/secrets.nix
     ../../modules/configs.nix
   ];
 
   networking.hostName = "kosmos-wsl";
+  services.openssh.listenAddresses = [
+    {
+      addr = "127.0.0.1";
+      port = 22;
+    }
+    {
+      addr = "::1";
+      port = 22;
+    }
+  ];
+  kosmos.wsl.frpcSsh.enable = true;
   system.stateVersion = "25.05";
 }
