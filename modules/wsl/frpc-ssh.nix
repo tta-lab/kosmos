@@ -1,80 +1,68 @@
 {
   config,
   lib,
-  pkgsUnstable,
+  pkgs,
   ...
 }: let
   cfg = config.kosmos.wsl.frpcSsh;
+  startOpenfrpFrpc = pkgs.writeShellScript "openfrp-frpc-start" ''
+    set -eu
+    : "''${OPENFRP_USER_TOKEN:?missing OPENFRP_USER_TOKEN}"
+    : "''${OPENFRP_PROXY_IDS:?missing OPENFRP_PROXY_IDS}"
+    exec ${cfg.binaryPath} -u "$OPENFRP_USER_TOKEN" -p "$OPENFRP_PROXY_IDS" -n
+  '';
 in {
   options.kosmos.wsl.frpcSsh = {
     enable = lib.mkEnableOption "frpc SSH tunnel for kosmos-wsl";
 
-    serverAddr = lib.mkOption {
+    binaryPath = lib.mkOption {
       type = lib.types.str;
-      description = "frps server address.";
-    };
-
-    serverPort = lib.mkOption {
-      type = lib.types.port;
-      default = 7000;
-      description = "frps server bind port.";
-    };
-
-    remotePort = lib.mkOption {
-      type = lib.types.port;
-      description = "Remote TCP port exposed on the frps server for SSH.";
-    };
-
-    useEncryption = lib.mkOption {
-      type = lib.types.bool;
-      default = true;
-      description = "Enable frpc transport encryption for the SSH proxy.";
+      default = "/home/neil/.local/bin/openfrp-frpc";
+      description = "OpenFrp frpc binary path installed outside this repo.";
     };
   };
 
   config = lib.mkIf cfg.enable {
     age.secrets.frpc-env = {
       file = ../../secrets/frpc-env.age;
-      owner = "frp";
-      group = "frp";
+      owner = "neil";
+      group = "users";
       mode = "0400";
     };
 
-    users.groups.frp = {};
-    users.users.frp = {
-      isSystemUser = true;
-      group = "frp";
-    };
-
-    services.frp = {
-      enable = true;
-      role = "client";
-      package = pkgsUnstable.frp;
-      settings = {
-        inherit (cfg) serverAddr serverPort;
-        user = "{{ .Envs.FRPC_USER }}";
-        auth = {
-          method = "token";
-          token = "{{ .Envs.FRPC_TOKEN }}";
-        };
-        proxies = [
-          {
-            name = "kosmos-wsl-ssh";
-            type = "tcp";
-            localIP = "127.0.0.1";
-            localPort = 22;
-            inherit (cfg) remotePort;
-            transport.useEncryption = cfg.useEncryption;
-          }
-        ];
+    home-manager.users.neil.systemd.user.services.openfrp-frpc = {
+      Unit = {
+        Description = "OpenFrp frpc SSH tunnel";
+        After = ["network-online.target"];
+        ConditionPathIsExecutable = cfg.binaryPath;
       };
-    };
-
-    systemd.services.frp.serviceConfig = {
-      DynamicUser = lib.mkForce false;
-      User = "frp";
-      Group = "frp";
-      EnvironmentFile = config.age.secrets.frpc-env.path;
+      Install.WantedBy = ["default.target"];
+      Service = {
+        Type = "simple";
+        EnvironmentFile = config.age.secrets.frpc-env.path;
+        ExecStart = startOpenfrpFrpc;
+        Restart = "on-failure";
+        RestartSec = 15;
+        NoNewPrivileges = true;
+        PrivateDevices = true;
+        ProtectClock = true;
+        ProtectControlGroups = true;
+        ProtectHostname = true;
+        ProtectKernelLogs = true;
+        ProtectKernelModules = true;
+        ProtectKernelTunables = true;
+        RestrictAddressFamilies = [
+          "AF_INET"
+          "AF_INET6"
+          "AF_UNIX"
+        ];
+        LockPersonality = true;
+        MemoryDenyWriteExecute = true;
+        RestrictRealtime = true;
+        RestrictSUIDSGID = true;
+        SystemCallArchitectures = "native";
+        SystemCallFilter = ["@system-service"];
+      };
     };
   };
 }

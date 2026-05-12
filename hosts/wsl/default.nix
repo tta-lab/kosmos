@@ -16,11 +16,6 @@ _: {
   ];
 
   networking.hostName = "kosmos-wsl";
-  kosmos.wsl.frpcSsh = {
-    enable = true;
-    serverAddr = "cn-qz-plc-1.ofalias.net";
-    serverPort = 8120;
-    remotePort = 55492;
-  };
+  kosmos.wsl.frpcSsh.enable = true;
   system.stateVersion = "25.05";
 }
