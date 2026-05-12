@@ -23,6 +23,7 @@ in {
             "$HOME/code/references" \
             "$HOME/.config/ttal" \
             "$HOME/.config/sops/age" \
+            "$HOME/.ttal" \
             "$HOME/.kube"
         '';
 
