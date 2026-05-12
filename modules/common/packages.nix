@@ -89,8 +89,8 @@ in {
     ttaLab.taskwarrior
 
     # Languages
-    bun
-    go
+    pkgsUnstable.bun
+    pkgsUnstable.go
     pkgsUnstable.golangci-lint
     python3
     llvmPackages.libclang
@@ -113,14 +113,14 @@ in {
     gh
     hcloud
     kubectl
-    tanka
+    pkgsUnstable.tanka
     jsonnet-bundler
     kubectx
     kubelogin
     kubernetes-helm
     helm-ls
     k9s
-    lazygit
+    pkgsUnstable.lazygit
 
     # GNU and Nix tooling
     tree
@@ -136,7 +136,7 @@ in {
     nix-direnv
     statix
     nixd
-    lefthook
+    pkgsUnstable.lefthook
     shellcheck
   ];
 }
