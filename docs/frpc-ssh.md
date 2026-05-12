@@ -25,9 +25,9 @@ OF_0.68.0_37f78258_260326
 
 ## Required Secret
 
-The system service reads one agenix-managed systemd environment file:
+The system services read one agenix-managed systemd environment file:
 
-- `secrets/frpc-env.age`: OpenFrp user token and proxy ID list
+- `secrets/frpc-env.age`: OpenFrp user tokens and proxy ID lists
 
 Create the secret yourself:
 
@@ -39,8 +39,10 @@ agenix -e frpc-env.age -i ~/.ssh/agenix_ed25519
 `frpc-env.age` must be a systemd environment file:
 
 ```text
-OPENFRP_USER_TOKEN=actual-user-token
-OPENFRP_PROXY_IDS=actual-proxy-id
+OPENFRP_SLOW_USER_TOKEN=actual-slow-user-token
+OPENFRP_SLOW_PROXY_IDS=actual-slow-proxy-id
+OPENFRP_FAST_USER_TOKEN=actual-fast-user-token
+OPENFRP_FAST_PROXY_IDS=actual-fast-proxy-id
 ```
 
 ## Enable
@@ -51,18 +53,20 @@ Enable the system service in `hosts/wsl/default.nix`:
 kosmos.wsl.frpcSsh.enable = true;
 ```
 
-The system service runs as the low-privilege `openfrp` user:
+The module starts two system services as the low-privilege `openfrp` user:
 
 ```bash
-/opt/openfrp/openfrp-frpc -u "$OPENFRP_USER_TOKEN" -p "$OPENFRP_PROXY_IDS" -n
+/opt/openfrp/openfrp-frpc -u "$OPENFRP_SLOW_USER_TOKEN" -p "$OPENFRP_SLOW_PROXY_IDS" -n
+/opt/openfrp/openfrp-frpc -u "$OPENFRP_FAST_USER_TOKEN" -p "$OPENFRP_FAST_PROXY_IDS" -n
 ```
 
-Both values are loaded from agenix at runtime, so neither value is written into
-the Nix store.
+All four values are loaded from agenix at runtime, so no token or proxy ID is
+written into the Nix store.
 
 The service has no root privileges and uses systemd sandboxing such as
 `NoNewPrivileges`, `PrivateTmp`, `ProtectSystem=strict`, and `ProtectHome=true`.
-Its only normal writable runtime path is `/var/lib/openfrp-frpc`.
+Their only normal writable runtime paths are `/var/lib/openfrp-frpc-slow` and
+`/var/lib/openfrp-frpc-fast`.
 
 ## Risk Model
 
@@ -82,18 +86,26 @@ Current mitigations:
 - OpenSSH uses key-only login with password and keyboard-interactive auth off
 - root SSH login is disabled
 - sshd listens only on WSL loopback addresses
-- the frpc token and proxy IDs live in `frpc-env.age`, not plaintext Nix files
-- the service runs as the dedicated `openfrp` user, not `root` or `neil`
+- the frpc tokens and proxy IDs live in `frpc-env.age`, not plaintext Nix files
+- both services run as the dedicated `openfrp` user, not `root` or `neil`
 - the agenix output is owned by `openfrp` with mode `0400`
 - systemd blocks access to home directories with `ProtectHome=true`
 - systemd makes the system tree read-only with `ProtectSystem=strict`
-- the only normal writable path is `/var/lib/openfrp-frpc`
+- the only normal writable paths are under `/var/lib/openfrp-frpc-*`
 - the client is started with `-n` so it does not self-update
 - the binary is installed manually under `/opt/openfrp` and is not committed
 
 Keep the OpenFrp panel config narrow: expose only local SSH on
-`127.0.0.1:22`, use only the required proxy ID, and rotate the OpenFrp token if
-it is ever pasted into logs, tickets, chat, or shell history.
+`127.0.0.1:22`, use only the required proxy IDs, and rotate the OpenFrp tokens
+if they are ever pasted into logs, tickets, chat, or shell history.
+
+Panel-provided remote SSH endpoints are intentionally not stored in this repo.
+Use the `slow` and `fast` service names to compare providers or routes:
+
+```bash
+systemctl status openfrp-frpc-slow
+systemctl status openfrp-frpc-fast
+```
 
 ## SSH Login
 
