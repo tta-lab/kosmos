@@ -71,6 +71,7 @@ Expected WSL secret targets:
 
 - `~/.config/ttal/.env`
 - `~/.kube/config`
+- `~/.config/sops/age/keys.txt`
 
 `lenos/config.json` in this repo is non-secret and belongs at `~/.config/lenos/config.json`. `einai/config.toml` is not a secret.
 

@@ -34,11 +34,13 @@ Encrypted files live in `secrets/` and are safe to commit:
 
 - `secrets/ttal.env.age`
 - `secrets/kube-config.age`
+- `secrets/sops-age-keys.age`
 
 They decrypt to:
 
 - `/home/neil/.config/ttal/.env`
 - `/home/neil/.kube/config`
+- `/home/neil/.config/sops/age/keys.txt`
 
 `lenos/config.json` in this repo is non-secret and still maps to
 `/home/neil/.config/lenos/config.json`.
@@ -56,6 +58,7 @@ From the secrets directory, edit with Neil's agenix key:
 cd /home/neil/code/projects/tta-lab/kosmos/secrets
 agenix -e ttal.env.age -i ~/.ssh/agenix_ed25519
 agenix -e kube-config.age -i ~/.ssh/agenix_ed25519
+agenix -e sops-age-keys.age -i ~/.ssh/agenix_ed25519
 ```
 
 From the repo root, set `RULES` explicitly:
@@ -64,12 +67,13 @@ From the repo root, set `RULES` explicitly:
 cd /home/neil/code/projects/tta-lab/kosmos
 RULES=secrets/secrets.nix agenix -e secrets/ttal.env.age -i ~/.ssh/agenix_ed25519
 RULES=secrets/secrets.nix agenix -e secrets/kube-config.age -i ~/.ssh/agenix_ed25519
+RULES=secrets/secrets.nix agenix -e secrets/sops-age-keys.age -i ~/.ssh/agenix_ed25519
 ```
 
 Commit encrypted files after editing:
 
 ```bash
-git add secrets/ttal.env.age secrets/kube-config.age
+git add secrets/ttal.env.age secrets/kube-config.age secrets/sops-age-keys.age
 git commit -m "chore(secrets): update encrypted secrets"
 ```
 

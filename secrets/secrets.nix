@@ -6,4 +6,5 @@ let
 in {
   "ttal.env.age".publicKeys = users ++ systems;
   "kube-config.age".publicKeys = users ++ systems;
+  "sops-age-keys.age".publicKeys = users ++ systems;
 }

@@ -17,15 +17,11 @@ in {
     secrets = {
       ttal-env = userSecret "ttal.env.age" "/home/neil/.config/ttal/.env";
       kube-config = userSecret "kube-config.age" "/home/neil/.kube/config";
+      sops-age-keys = userSecret "sops-age-keys.age" "/home/neil/.config/sops/age/keys.txt";
     };
   };
 
   environment.systemPackages = [
     agenix.packages.${pkgs.system}.default
-  ];
-
-  systemd.tmpfiles.rules = [
-    "d /home/neil/.config/ttal 0700 neil users -"
-    "d /home/neil/.kube 0700 neil users -"
   ];
 }
