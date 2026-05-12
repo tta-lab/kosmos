@@ -39,10 +39,10 @@ agenix -e frpc-env.age -i ~/.ssh/agenix_ed25519
 `frpc-env.age` must be a systemd environment file:
 
 ```text
-OPENFRP_SLOW_USER_TOKEN=actual-slow-user-token
-OPENFRP_SLOW_PROXY_IDS=actual-slow-proxy-id
-OPENFRP_FAST_USER_TOKEN=actual-fast-user-token
-OPENFRP_FAST_PROXY_IDS=actual-fast-proxy-id
+OPENFRP_USER_TOKEN_SLOW=actual-slow-user-token
+OPENFRP_PROXY_IDS_SLOW=actual-slow-proxy-id
+OPENFRP_USER_TOKEN_FAST=actual-fast-user-token
+OPENFRP_PROXY_IDS_FAST=actual-fast-proxy-id
 ```
 
 ## Enable
@@ -56,8 +56,8 @@ kosmos.wsl.frpcSsh.enable = true;
 The module starts two system services as the low-privilege `openfrp` user:
 
 ```bash
-/opt/openfrp/openfrp-frpc -u "$OPENFRP_SLOW_USER_TOKEN" -p "$OPENFRP_SLOW_PROXY_IDS" -n
-/opt/openfrp/openfrp-frpc -u "$OPENFRP_FAST_USER_TOKEN" -p "$OPENFRP_FAST_PROXY_IDS" -n
+/opt/openfrp/openfrp-frpc -u "$OPENFRP_USER_TOKEN_SLOW" -p "$OPENFRP_PROXY_IDS_SLOW" -n
+/opt/openfrp/openfrp-frpc -u "$OPENFRP_USER_TOKEN_FAST" -p "$OPENFRP_PROXY_IDS_FAST" -n
 ```
 
 All four values are loaded from agenix at runtime, so no token or proxy ID is

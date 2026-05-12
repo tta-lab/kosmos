@@ -100,17 +100,17 @@ in {
       openfrp-frpc-slow = mkService {
         description = "OpenFrp frpc slow SSH tunnel";
         name = "slow";
-        proxyIdsVar = "OPENFRP_SLOW_PROXY_IDS";
+        proxyIdsVar = "OPENFRP_PROXY_IDS_SLOW";
         stateDirectory = "openfrp-frpc-slow";
-        userTokenVar = "OPENFRP_SLOW_USER_TOKEN";
+        userTokenVar = "OPENFRP_USER_TOKEN_SLOW";
       };
 
       openfrp-frpc-fast = mkService {
         description = "OpenFrp frpc fast SSH tunnel";
         name = "fast";
-        proxyIdsVar = "OPENFRP_FAST_PROXY_IDS";
+        proxyIdsVar = "OPENFRP_PROXY_IDS_FAST";
         stateDirectory = "openfrp-frpc-fast";
-        userTokenVar = "OPENFRP_FAST_USER_TOKEN";
+        userTokenVar = "OPENFRP_USER_TOKEN_FAST";
       };
     };
   };
