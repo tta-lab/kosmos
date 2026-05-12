@@ -81,6 +81,7 @@ Current mitigations:
 
 - OpenSSH uses key-only login with password and keyboard-interactive auth off
 - root SSH login is disabled
+- sshd listens only on WSL loopback addresses
 - the frpc token and proxy IDs live in `frpc-env.age`, not plaintext Nix files
 - the service runs as the dedicated `openfrp` user, not `root` or `neil`
 - the agenix output is owned by `openfrp` with mode `0400`
@@ -102,9 +103,9 @@ OpenSSH is configured for key-only login:
 - keyboard-interactive auth disabled
 - root login disabled
 - public key auth enabled
+- listen addresses restricted to `127.0.0.1:22` and `[::1]:22`
 
-Add Neil's SSH public login key in `modules/users/neil.nix` before relying on
-remote SSH access.
+Neil's SSH public login key is managed in `modules/users/neil.nix`.
 
 ## References
 
