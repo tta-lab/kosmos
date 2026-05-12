@@ -11,11 +11,6 @@
     "context_paths": [
       "/home/neil/.claude/CLAUDE.md"
     ],
-    "skills_paths": [
-      "~/.config/crush/skills",
-      "~/code/projects/tta-lab/ttal-cli/skills",
-      "~/code/projects/tta-lab/einai/skills"
-    ],
     "agent_paths": [
       "/home/neil/code/projects/tta-lab/einai/agents",
       "/home/neil/code/projects/tta-lab/ttal-cli/templates/ttal",
