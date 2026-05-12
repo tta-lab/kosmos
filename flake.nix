@@ -80,6 +80,7 @@
         nix
         statix
         nixd
+        lefthook
         shellcheck
       ];
     };

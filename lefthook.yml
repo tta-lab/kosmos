@@ -1,0 +1,19 @@
+pre-commit:
+  parallel: true
+  commands:
+    alejandra:
+      glob: "**/*.nix"
+      run: alejandra --check {staged_files}
+    shellcheck:
+      glob: "**/ttal-tmux-project-picker*"
+      run: shellcheck scripts/ttal-tmux-project-picker tests/ttal-tmux-project-picker-test
+    statix:
+      glob: "**/*.nix"
+      run: statix check .
+
+pre-push:
+  commands:
+    nix-parse:
+      run: nix-instantiate --parse configuration.nix >/dev/null
+    flake-check:
+      run: nix flake check

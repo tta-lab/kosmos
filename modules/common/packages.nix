@@ -135,6 +135,7 @@ in {
     nix-direnv
     statix
     nixd
+    lefthook
     shellcheck
   ];
 }
