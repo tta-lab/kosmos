@@ -34,6 +34,7 @@ in {
           "ttal/prompts.toml".source = ../ttal/prompts.toml;
           "ttal/roles.toml".source = ../ttal/roles.toml;
           "ttal/sandbox.toml".source = ../ttal/sandbox.toml;
+          "lenos/config.json".source = ../lenos/config.json;
           "einai/config.toml".source = ../einai/config.toml;
           "temenos/config.toml".source = ../temenos/config.toml;
           "helix/config.toml".source = ../helix/config.toml;
