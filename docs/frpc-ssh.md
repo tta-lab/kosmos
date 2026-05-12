@@ -77,6 +77,7 @@ The main risks are:
 
 - the relay provider can see connection metadata
 - a leaked OpenFrp token can expose the configured proxy
+- OpenFrp remote-config mode requires the token in frpc command-line arguments
 - the downloaded client binary is not built from source in this repo
 - a vulnerable SSH service becomes reachable from the internet
 - a compromised frpc process could try to read local user secrets
@@ -94,10 +95,19 @@ Current mitigations:
 - the only normal writable paths are under `/var/lib/openfrp-frpc-*`
 - the client is started with `-n` so it does not self-update
 - the binary is installed manually under `/opt/openfrp` and is not committed
+- any frpc exit is treated as service failure, because OpenFrp may exit `0`
+  after a remote startup failure
 
 Keep the OpenFrp panel config narrow: expose only local SSH on
 `127.0.0.1:22`, use only the required proxy IDs, and rotate the OpenFrp tokens
 if they are ever pasted into logs, tickets, chat, or shell history.
+
+Local process command lines can expose the OpenFrp user token while frpc is
+running. This is a limitation of OpenFrp remote-config mode, whose documented
+Linux startup command uses `-u <token> -p <proxy-id>`. Treat the WSL host and
+local admin users as trusted. To remove this exposure, switch from OpenFrp
+remote-config mode to provider-generated full frpc config files stored in
+agenix.
 
 Panel-provided remote SSH endpoints are intentionally not stored in this repo.
 Use the `slow` and `fast` service names to compare providers or routes:

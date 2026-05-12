@@ -19,7 +19,10 @@
       set -eu
       : "${userTokenCheck}"
       : "${proxyIdsCheck}"
-      exec ${cfg.binaryPath} -u "${userTokenValue}" -p "${proxyIdsValue}" -n
+      ${cfg.binaryPath} -u "${userTokenValue}" -p "${proxyIdsValue}" -n
+      status="$?"
+      echo "openfrp frpc ${name} exited with status $status" >&2
+      exit 1
     '';
   mkService = {
     description,
