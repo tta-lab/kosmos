@@ -22,6 +22,12 @@ in {
             "$HOME/code/projects" \
             "$HOME/code/references"
         '';
+
+        file.".taskrc".text = ''
+          data.location=/home/neil/.task
+          powersync.db_path=/home/neil/.local/share/flicknote/flicknote.db
+          news.version=3.4.2
+        '';
       };
 
       xdg = {
