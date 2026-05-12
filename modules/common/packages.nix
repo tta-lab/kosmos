@@ -40,6 +40,7 @@ in {
     helix
     fish
     bash
+    bubblewrap
 
     # Core tools
     openssh
