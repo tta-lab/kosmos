@@ -77,12 +77,65 @@ if [[ -z "$safe_alias" ]]; then
   exit 1
 fi
 
-session_id="${TTAL_TMUX_SESSION_ID:-}"
-if [[ -z "$session_id" ]]; then
-  session_id="$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
+list_sessions() {
+  if [[ -v TTAL_TMUX_EXISTING_SESSIONS ]]; then
+    printf '%s\n' "$TTAL_TMUX_EXISTING_SESSIONS"
+    return 0
+  fi
+
+  tmux list-sessions -F "#{session_name}"$'\t'"#{session_path}" 2>/dev/null || true
+}
+
+session_rows="$(list_sessions | LC_ALL=C sort)"
+
+existing_session="$(
+  awk -F '\t' -v path="$path" '$2 == path { print $1; exit }' <<<"$session_rows"
+)"
+
+if [[ -n "$existing_session" ]]; then
+  if [[ "$dry_run" -eq 1 ]]; then
+    printf 'tmux switch-client -t %s\n' "$existing_session"
+    exit 0
+  fi
+
+  if [[ -n "${TMUX:-}" ]]; then
+    tmux switch-client -t "$existing_session"
+    exit 0
+  fi
+
+  exec tmux attach-session -t "$existing_session"
 fi
 
-session_name="${safe_alias}-${session_id}"
+session_exists() {
+  local session_name="$1"
+  awk -F '\t' -v session_name="$session_name" '$1 == session_name { found = 1; exit } END { exit !found }' <<<"$session_rows"
+}
+
+make_session_name() {
+  local session_id="${TTAL_TMUX_SESSION_ID:-}"
+  local session_name
+
+  if [[ -n "$session_id" ]]; then
+    session_name="${safe_alias}-${session_id}"
+    if session_exists "$session_name"; then
+      echo "tmux session name already exists: $session_name" >&2
+      exit 1
+    fi
+    printf '%s\n' "$session_name"
+    return 0
+  fi
+
+  while true; do
+    session_id="$(od -An -N4 -tx1 /dev/urandom | tr -d ' \n')"
+    session_name="${safe_alias}-${session_id}"
+    if ! session_exists "$session_name"; then
+      printf '%s\n' "$session_name"
+      return 0
+    fi
+  done
+}
+
+session_name="$(make_session_name)"
 
 if [[ "$dry_run" -eq 1 ]]; then
   printf 'tmux new-session -ds %s -c %s\n' "$session_name" "$path"

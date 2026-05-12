@@ -26,6 +26,47 @@ if [[ "$output" != "$expected" ]]; then
   exit 1
 fi
 
+output="$(
+  TTAL_TMUX_PROJECTS_JSON="$projects_json" \
+  TTAL_TMUX_EXISTING_SESSIONS=$'fb-ai-deadbeef\t/home/neil/code/projects/GuionAI/flick-backend/services/ai-processor' \
+  bash "$script" --dry-run --alias fb.ai
+)"
+
+expected='tmux switch-client -t fb-ai-deadbeef'
+
+if [[ "$output" != "$expected" ]]; then
+  printf 'matching project path should reuse existing session\nexpected:\n%s\nactual:\n%s\n' "$expected" "$output" >&2
+  exit 1
+fi
+
+output="$(
+  TTAL_TMUX_PROJECTS_JSON="$projects_json" \
+  TTAL_TMUX_EXISTING_SESSIONS=$'fb-ai-zzzzzzzz\t/home/neil/code/projects/GuionAI/flick-backend/services/ai-processor\nfb-ai-aaaaaaaa\t/home/neil/code/projects/GuionAI/flick-backend/services/ai-processor' \
+  bash "$script" --dry-run --alias fb.ai
+)"
+
+expected='tmux switch-client -t fb-ai-aaaaaaaa'
+
+if [[ "$output" != "$expected" ]]; then
+  printf 'multiple matching project sessions should use stable session-name order\nexpected:\n%s\nactual:\n%s\n' "$expected" "$output" >&2
+  exit 1
+fi
+
+output="$(
+  TTAL_TMUX_PROJECTS_JSON="$projects_json" \
+  TTAL_TMUX_EXISTING_SESSIONS=$'fb-ai-deadbeef\t/home/neil/code/projects/GuionAI/flick-backend' \
+  TTAL_TMUX_SESSION_ID=1234abcd \
+  bash "$script" --dry-run --alias fb.ai
+)"
+
+expected='tmux new-session -ds fb-ai-1234abcd -c /home/neil/code/projects/GuionAI/flick-backend/services/ai-processor
+tmux switch-client -t fb-ai-1234abcd'
+
+if [[ "$output" != "$expected" ]]; then
+  printf 'same alias with different project path should create a new session\nexpected:\n%s\nactual:\n%s\n' "$expected" "$output" >&2
+  exit 1
+fi
+
 if TTAL_TMUX_PROJECTS_JSON="$projects_json" bash "$script" --dry-run --alias missing >/tmp/ttal-picker-test.out 2>/tmp/ttal-picker-test.err; then
   printf 'missing alias should fail\n' >&2
   exit 1
