@@ -149,12 +149,15 @@ tk --version
         <h2>Create The Cluster</h2>
         <p>
           The API port matches <code>flick-backend/tanka/environments/local/spec.json</code>,
-          which points Tanka at <code>https://127.0.0.1:26443</code>.
+          which points Tanka at <code>https://127.0.0.1:26443</code>. The extra port
+          mapping exposes the Postgres NodePort so host-side tools can keep using
+          <code>localhost:30432</code>.
         </p>
         <pre><code>mkdir -p "$HOME/.local/share/flick-backend/k3s-storage"
 
 k3d cluster create dev \
   --api-port 127.0.0.1:26443 \
+  -p "30432:30432@server:0" \
   --volume "$HOME/.local/share/flick-backend/k3s-storage:/var/lib/rancher/k3s/storage@server:0"
 </code></pre>
       </section>
@@ -164,6 +167,7 @@ k3d cluster create dev \
         <pre><code>kubectl config use-context k3d-dev
 kubectl get nodes
 kubectl get storageclass
+kubectl get svc postgres-dev-postgres-dev
 </code></pre>
         <p>
           k3s should provide the <code>local-path</code> storage class. PVC-backed
@@ -181,8 +185,13 @@ tk apply environments/local
         <p>Check the local Postgres workload and migration job:</p>
         <pre><code>kubectl get pods
 kubectl get pvc
+kubectl get svc postgres-dev-postgres-dev
 kubectl logs job/db-init-db-init --tail=100
 </code></pre>
+        <p>
+          From the WSL host, the development Postgres endpoint stays at
+          <code>localhost:30432</code>.
+        </p>
       </section>
 
       <section>

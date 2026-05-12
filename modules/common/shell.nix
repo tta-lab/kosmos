@@ -1,4 +1,6 @@
-{pkgs, ...}: {
+{pkgs, ...}: let
+  ttaLab = pkgs.callPackage ../../packages/tta-lab {};
+in {
   programs = {
     fish = {
       enable = true;
@@ -14,7 +16,10 @@
     tmux = {
       enable = true;
       terminal = "tmux-256color";
-      extraConfig = builtins.readFile ../../tmux/.tmux.conf;
+      extraConfig = builtins.replaceStrings
+        ["@ttalTmuxProjectPicker@"]
+        ["${ttaLab.ttalTmuxProjectPicker}/bin/ttal-tmux-project-picker"]
+        (builtins.readFile ../../tmux/.tmux.conf);
     };
   };
 

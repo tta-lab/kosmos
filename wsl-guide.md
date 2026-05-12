@@ -85,6 +85,8 @@ Existing repos are fetched with `git fetch --prune`; the command does not merge 
 
 Use `kosmos-sync-tta-lab-projects` when you only need the runtime repos required by `tta-lab-go-install`.
 
+For the Podman-backed `k3d` local cluster flow, including the `dev` cluster create command and the `localhost:30432` Postgres mapping, see [docs/k3d-dev-cluster.html](docs/k3d-dev-cluster.html).
+
 ## Rathole Tunnel
 
 The Rathole client scaffold lives in `modules/common/tunnel-rathole-client.nix`. It is imported by the WSL host but disabled until the VPS endpoint and token are ready.
