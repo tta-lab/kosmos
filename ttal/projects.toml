@@ -8,6 +8,7 @@
   remote = "https://git.guion.io/neil/cloudnative-supabase.git"
 
 [devops]
+  github_token_env = "GUION_GITHUB_TOKEN"
   name = "Guion DevOps"
   path = "/home/neil/code/projects/GuionAI/guion-devops"
   remote = "https://git.guion.io/GuionAI/guion-devops.git"
@@ -25,6 +26,7 @@
   path = "/home/neil/code/projects/tta-lab/ethos"
 
 [fai]
+  github_token_env = "GUION_GITHUB_TOKEN"
   name = "FlickNote AI Config"
   path = "/home/neil/code/projects/GuionAI/flicknote-ai-config"
   remote = "https://git.guion.io/GuionAI/flicknote-ai-config.git"
@@ -34,27 +36,32 @@
   path = "/home/neil/code/projects/tta-lab/fantasy"
 
 [fb]
+  github_token_env = "GUION_GITHUB_TOKEN"
   name = "FlickNote Backend"
   path = "/home/neil/code/projects/GuionAI/flick-backend"
   remote = "https://git.guion.io/GuionAI/flick-backend.git"
 
 ["fb.ai"]
+  github_token_env = "GUION_GITHUB_TOKEN"
   k8s_app = "ai-processor"
   k8s_namespace = "apps-dev"
   name = "Ai Workflow Processor"
   path = "/home/neil/code/projects/GuionAI/flick-backend/services/ai-processor"
 
 ["fb.bg"]
+  github_token_env = "GUION_GITHUB_TOKEN"
   k8s_app = "browser-gateway"
   k8s_namespace = "apps-dev"
   name = "Browser gateway for scrape"
   path = "/home/neil/code/projects/GuionAI/flick-backend/services/browser-gateway"
 
 ["fb.tk"]
+  github_token_env = "GUION_GITHUB_TOKEN"
   name = "FlickNote Tanka"
   path = "/home/neil/code/projects/GuionAI/flick-backend/tanka"
 
 ["fb.yt"]
+  github_token_env = "GUION_GITHUB_TOKEN"
   k8s_app = "youtube"
   k8s_namespace = "apps-share"
   name = "FlickNote Youtube Scraper"
@@ -81,44 +88,52 @@
   remote = "https://codeberg.org/forgejo/forgejo.git"
 
 [fse]
+  github_token_env = "GUION_GITHUB_TOKEN"
   name = "flicknote-services"
   path = "/home/neil/code/projects/GuionAI/flicknote-services"
   remote = "https://git.guion.io/GuionAI/flicknote-services.git"
 
 ["fse.agent"]
+  github_token_env = "GUION_GITHUB_TOKEN"
   k8s_app = "flicknote-agent-server"
   k8s_namespace = "apps-dev"
   name = "FSE agent server"
   path = "/home/neil/code/projects/GuionAI/flicknote-services/services/fn-agent"
 
 ["fse.ap"]
+  github_token_env = "GUION_GITHUB_TOKEN"
   k8s_app = "attachment-processor"
   k8s_namespace = "apps-dev"
   name = "FSE Attachment Processor"
   path = "/home/neil/code/projects/GuionAI/flicknote-services/services/attachment-processor"
 
 ["fse.gw"]
+  github_token_env = "GUION_GITHUB_TOKEN"
   k8s_app = "gateway"
   k8s_namespace = "apps-dev"
   name = "FSE Gateway"
   path = "/home/neil/code/projects/GuionAI/flicknote-services/services/gateway"
 
 ["fse.sub"]
+  github_token_env = "GUION_GITHUB_TOKEN"
   k8s_app = "subscription-service"
   k8s_namespace = "apps-dev"
   name = "FSE Subscription Service"
   path = "/home/neil/code/projects/GuionAI/flicknote-services/services/subscription-service"
 
 [ft]
+  github_token_env = "GUION_GITHUB_TOKEN"
   name = "FlickNote Terraform"
   path = "/home/neil/code/projects/GuionAI/flick-terraform"
 
 [gi]
+  github_token_env = "GUION_GITHUB_TOKEN"
   name = "Guion Infrastructure"
   path = "/home/neil/code/projects/GuionAI/guion-infra"
   remote = "https://git.guion.io/GuionAI/guion-infra.git"
 
 [ghbt]
+  github_token_env = "GUION_GITHUB_TOKEN"
   name = "GuionAI Homebrew Tap"
   path = "/home/neil/code/projects/GuionAI/homebrew-tap"
   remote = "https://github.com/GuionAI/homebrew-tap.git"
@@ -146,6 +161,7 @@
   path = "/home/neil/code/projects/tta-lab/lenos-website"
 
 [metadata]
+  github_token_env = "GUION_GITHUB_TOKEN"
   name = "Guion Metadata Worker"
   path = "/home/neil/code/projects/GuionAI/metadata-worker"
   remote = "https://git.guion.io/GuionAI/metadata-worker.git"
