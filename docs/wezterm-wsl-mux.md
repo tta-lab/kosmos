@@ -1,8 +1,9 @@
 # WezTerm WSL Mux
 
 This setup uses the WezTerm GUI on macOS and a WezTerm mux server inside
-`kosmos-wsl`. The connection is SSH-based, so it works through the same
-SSH/frp path used for normal remote access.
+`kosmos-wsl`. The connection is SSH-based, using the macOS SSH alias
+`frp-fast`, so it works through the same SSH/frp path used for normal remote
+access.
 
 There is no local WSL unix socket in this design. The WSL2 unix-socket caveat
 only matters for a Windows GUI trying to connect to a WSL socket through
@@ -67,13 +68,13 @@ multiplexing = "WezTerm"
 
 ## SSH/frp
 
-Prefer an SSH config alias. The Lua config uses the same alias for both WezTerm
-mux connection and project-list loading.
+Prefer the existing macOS SSH config alias. The Lua config uses `frp-fast` for
+both WezTerm mux connection and project-list loading.
 
 Example:
 
 ```sshconfig
-Host kosmos-wsl
+Host frp-fast
   HostName <frp-host>
   Port <frp-ssh-port>
   User neil
@@ -85,7 +86,7 @@ Host kosmos-wsl
 Check plain SSH first:
 
 ```bash
-ssh kosmos-wsl 'wezterm --version && ttal-wezterm-projects --choices'
+ssh frp-fast 'wezterm --version && ttal-wezterm-projects --choices'
 ```
 
 Then connect the WezTerm mux domain:
@@ -123,7 +124,7 @@ export KOSMOS_WEZTERM_REMOTE=<host-or-host-port>
 In the macOS template:
 
 - `Ctrl+Shift+P` opens the TTAL project picker.
-- The picker calls `ssh kosmos-wsl ttal-wezterm-projects --choices`.
+- The picker calls `ssh frp-fast ttal-wezterm-projects --choices`.
 - Picking a project runs `SwitchToWorkspace` in the `kosmos-wsl` domain.
 - The workspace name is derived from the TTAL alias.
 - The first pane starts in the TTAL project path on WSL.
@@ -134,7 +135,7 @@ In the macOS template:
 
 The macOS config and WSL config are coupled at these points:
 
-- SSH alias: default `kosmos-wsl`
+- SSH alias: default `frp-fast`
 - WezTerm domain name: default `kosmos-wsl`
 - Remote WezTerm path: `/run/current-system/sw/bin/wezterm`
 - Remote helper path: `ttal-wezterm-projects` must be in the SSH login `PATH`
@@ -145,11 +146,11 @@ and the TTAL helper. The macOS side owns the GUI config.
 If the picker fails but `wezterm connect kosmos-wsl` works, test:
 
 ```bash
-ssh kosmos-wsl 'command -v ttal-wezterm-projects && ttal-wezterm-projects --choices'
+ssh frp-fast 'command -v ttal-wezterm-projects && ttal-wezterm-projects --choices'
 ```
 
 If connection fails before any shell appears, test:
 
 ```bash
-ssh kosmos-wsl 'command -v wezterm && /run/current-system/sw/bin/wezterm --version'
+ssh frp-fast 'command -v wezterm && /run/current-system/sw/bin/wezterm --version'
 ```
