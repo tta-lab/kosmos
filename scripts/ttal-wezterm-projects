@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat >&2 <<'EOF'
+usage: ttal-wezterm-projects --choices
+EOF
+}
+
+mode=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --choices)
+      mode="choices"
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage
+      exit 2
+      ;;
+  esac
+done
+
+if [[ "$mode" != "choices" ]]; then
+  usage
+  exit 2
+fi
+
+project_json="${TTAL_WEZTERM_PROJECTS_JSON:-}"
+if [[ -z "$project_json" ]]; then
+  project_json="$(ttal project list --json)"
+fi
+
+jq '
+  def safe_workspace:
+    gsub("[^A-Za-z0-9_-]+"; "-")
+    | sub("^-+"; "")
+    | sub("-+$"; "");
+
+  [
+    .[]
+    | select(.alias and .path)
+    | . as $project
+    | ($project.alias | safe_workspace) as $workspace
+    | select($workspace != "")
+    | {
+        id: ($workspace + "\t" + $project.path),
+        label: (
+          $project.alias
+          + "  "
+          + ($project.name // "")
+          + "  "
+          + $project.path
+        )
+      }
+  ]
+' <<<"$project_json"
