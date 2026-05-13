@@ -95,6 +95,7 @@ in {
     ttaLab.taskwarrior
 
     # Languages
+    gcc
     pkgsUnstable.bun
     pkgsUnstable.go
     pkgsUnstable.golangci-lint

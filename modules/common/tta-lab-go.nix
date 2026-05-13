@@ -5,6 +5,7 @@
     pkgs.bash
     pkgs.bubblewrap
     pkgs.coreutils
+    pkgs.gcc
     pkgs.git
     pkgs.go
     pkgs.openssh
