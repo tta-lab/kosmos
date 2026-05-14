@@ -85,7 +85,7 @@ if ! grep -Fq '"ssh", ssh_host, "ttal-wezterm-projects", "--choices"' "$wezterm_
   exit 1
 fi
 
-if ! grep -Fq 'choices_cache_ttl_seconds = 30' "$wezterm_config"; then
+if ! grep -Fq 'choices_cache_ttl_seconds = 3600' "$wezterm_config"; then
   printf 'Mac WezTerm config should cache project choices briefly\n' >&2
   exit 1
 fi
@@ -165,7 +165,7 @@ if ! grep -Fq 'Projects whose paths do not exist on WSL are skipped' "$wezterm_d
   exit 1
 fi
 
-if ! grep -Fq 'The picker caches project choices for 30 seconds' "$wezterm_doc"; then
+if ! grep -Fq 'The picker caches project choices for one hour' "$wezterm_doc"; then
   printf 'WezTerm WSL mux doc should explain project picker caching\n' >&2
   exit 1
 fi

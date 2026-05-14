@@ -177,7 +177,7 @@ Projects whose paths do not exist on WSL are skipped. The helper runs on WSL,
 so it can check project paths before the macOS GUI tries to spawn a pane with
 that path as `cwd`.
 
-The picker caches project choices for 30 seconds on the macOS side. The first
+The picker caches project choices for one hour on the macOS side. The first
 open does one SSH round trip:
 
 ```bash

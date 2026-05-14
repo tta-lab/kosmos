@@ -6,7 +6,7 @@ local ssh_host = os.getenv("KOSMOS_WEZTERM_SSH_HOST") or "kosmos-wsl"
 local domain_name = os.getenv("KOSMOS_WEZTERM_DOMAIN") or "kosmos-wsl"
 local remote_address = os.getenv("KOSMOS_WEZTERM_REMOTE") or ssh_host
 local username = os.getenv("KOSMOS_WEZTERM_USER") or "neil"
-local choices_cache_ttl_seconds = 30
+local choices_cache_ttl_seconds = 3600
 local choices_cache = nil
 local choices_cache_time = 0
 
