@@ -18,6 +18,22 @@ Nix installs the remote pieces on `kosmos-wsl`:
 - `pkgsUnstable.wezterm.terminfo`
 - `ttal-wezterm-projects`
 
+The WSL server-side WezTerm config is:
+
+```text
+wezterm/wsl-mux-server.lua
+```
+
+Home Manager installs it to:
+
+```text
+~/.config/wezterm/wezterm.lua
+```
+
+This file is intentionally small. It only covers remote/server concerns, such
+as the default shell used by panes that run inside WSL. It does not define SSH
+domains, fonts, macOS window behavior, or picker key bindings.
+
 `ttal-wezterm-projects --choices` reads:
 
 ```bash
@@ -65,6 +81,9 @@ name = "kosmos-wsl"
 remote_wezterm_path = "/run/current-system/sw/bin/wezterm"
 multiplexing = "WezTerm"
 ```
+
+This file is the client-side config. It owns the GUI behavior and the SSH mux
+client settings. Keep it separate from the WSL server config.
 
 ## SSH/frp
 
@@ -131,6 +150,33 @@ In the macOS template:
 
 `Alt+9` opens WezTerm's workspace launcher.
 
+The picker does one SSH round trip each time it opens. That keeps the list fresh
+with `ttal project list --json`, and avoids syncing a project cache onto macOS.
+If it feels slow later, add a short-lived cache on the macOS side; do not move
+TTAL project parsing into the GUI config.
+
+## SSH Alias And Domain Name
+
+The SSH alias and WezTerm domain name are different names for different layers.
+
+`frp-fast` is the macOS SSH alias. It belongs to OpenSSH and describes how to
+reach WSL through frp. The project picker also uses it when it shells out to:
+
+```bash
+ssh frp-fast ttal-wezterm-projects --choices
+```
+
+`kosmos-wsl` is the WezTerm domain name. It belongs to WezTerm and names the
+remote mux domain inside the GUI. WezTerm uses that name for commands like:
+
+```bash
+wezterm connect kosmos-wsl
+wezterm cli spawn --domain-name kosmos-wsl
+```
+
+Keeping the domain name as `kosmos-wsl` makes WezTerm UI labels describe the
+remote environment, while `frp-fast` remains the transport alias.
+
 ## What Must Stay Aligned
 
 The macOS config and WSL config are coupled at these points:
@@ -140,8 +186,9 @@ The macOS config and WSL config are coupled at these points:
 - Remote WezTerm path: `/run/current-system/sw/bin/wezterm`
 - Remote helper path: `ttal-wezterm-projects` must be in the SSH login `PATH`
 
-They do not need identical Lua files. The WSL side only needs the WezTerm binary
-and the TTAL helper. The macOS side owns the GUI config.
+They do not need identical Lua files. The WSL side uses
+`wezterm/wsl-mux-server.lua` for server defaults. The macOS side uses
+`wezterm/macos-ssh-wsl-mux.lua` for GUI and SSH mux client behavior.
 
 If the picker fails but `wezterm connect kosmos-wsl` works, test:
 
