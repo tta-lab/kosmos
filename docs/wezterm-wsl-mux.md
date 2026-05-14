@@ -67,6 +67,11 @@ wezterm/macos-client.lua
 Use it as your macOS `~/.wezterm.lua` or import/copy the parts you need into
 your existing config.
 
+If you copy it into an existing config, do not append it after an existing
+`return config`. In Lua, `return` must be the last statement in the file. Keep
+one `local config = { ... }` table and one `return config` at the end, or use
+this file as the full macOS config.
+
 The template keeps local GUI concerns on macOS:
 
 - theme, font, padding, tab behavior
