@@ -36,23 +36,29 @@ if [[ -z "$project_json" ]]; then
   project_json="$(ttal project list --json)"
 fi
 
-jq '
-  [
-    .[]
-    | select(.alias and .path)
-    | . as $project
-    | ($project.alias | strings) as $workspace
-    | select(($workspace | length) > 0)
-    | select(($workspace | test("[\t\r\n]") | not))
-    | {
-        id: ($workspace + "\t" + $project.path),
-        label: (
-          $project.alias
-          + "  "
-          + ($project.name // "")
-          + "  "
-          + $project.path
-        )
-      }
-  ]
-' <<<"$project_json"
+choices_json="$(
+  jq -c '.[] | select(.alias and .path)' <<<"$project_json" | while IFS= read -r project; do
+    alias="$(jq -r '.alias' <<<"$project")"
+    name="$(jq -r '.name // ""' <<<"$project")"
+    path="$(jq -r '.path' <<<"$project")"
+
+    if [[ -z "$alias" || "$alias" == *$'\t'* || "$alias" == *$'\r'* || "$alias" == *$'\n'* ]]; then
+      continue
+    fi
+
+    if [[ ! -d "$path" ]]; then
+      continue
+    fi
+
+    jq -n \
+      --arg alias "$alias" \
+      --arg name "$name" \
+      --arg path "$path" \
+      '{
+        id: ($alias + "\t" + $path),
+        label: ($alias + "  " + $name + "  " + $path)
+      }'
+  done | jq -s .
+)"
+
+printf '%s\n' "$choices_json"

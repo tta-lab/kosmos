@@ -10,29 +10,43 @@ packages="$repo_root/modules/common/packages.nix"
 configs="$repo_root/modules/configs.nix"
 tta_lab_package="$repo_root/packages/tta-lab/default.nix"
 
-projects_json='[
-  {"alias":"ko","name":"kosmos","path":"/home/neil/code/projects/tta-lab/kosmos"},
-  {"alias":"fb.ai","name":"Ai Workflow Processor","path":"/home/neil/code/projects/GuionAI/flick-backend/services/ai-processor"}
-]'
+projects_json="$(
+  jq -n \
+    --arg repo_root "$repo_root" \
+    '[
+      {"alias":"ko","name":"kosmos","path":$repo_root},
+      {"alias":"fb.ai","name":"Ai Workflow Processor","path":$repo_root},
+      {"alias":"missing","name":"Missing Project","path":"/tmp/kosmos-ttal-wezterm-missing-project"}
+    ]'
+)"
 
 output="$(
   TTAL_WEZTERM_PROJECTS_JSON="$projects_json" \
   bash "$script" --choices
 )"
 
-expected='[
+expected="$(
+  cat <<EOF
+[
   {
-    "id": "ko\t/home/neil/code/projects/tta-lab/kosmos",
-    "label": "ko  kosmos  /home/neil/code/projects/tta-lab/kosmos"
+    "id": "ko\t$repo_root",
+    "label": "ko  kosmos  $repo_root"
   },
   {
-    "id": "fb.ai\t/home/neil/code/projects/GuionAI/flick-backend/services/ai-processor",
-    "label": "fb.ai  Ai Workflow Processor  /home/neil/code/projects/GuionAI/flick-backend/services/ai-processor"
+    "id": "fb.ai\t$repo_root",
+    "label": "fb.ai  Ai Workflow Processor  $repo_root"
   }
-]'
+]
+EOF
+)"
 
 if [[ "$output" != "$expected" ]]; then
   printf 'unexpected choices output\nexpected:\n%s\nactual:\n%s\n' "$expected" "$output" >&2
+  exit 1
+fi
+
+if grep -Fq 'missing' <<<"$output"; then
+  printf 'missing project paths should not appear in WezTerm picker choices\n' >&2
   exit 1
 fi
 
@@ -68,6 +82,11 @@ fi
 
 if ! grep -Fq '"ssh", ssh_host, "ttal-wezterm-projects", "--choices"' "$wezterm_config"; then
   printf 'Mac WezTerm config should load project choices through SSH\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq 'pcall(wezterm.json_parse, stdout)' "$wezterm_config"; then
+  printf 'Mac WezTerm config should guard JSON parsing with pcall\n' >&2
   exit 1
 fi
 
@@ -118,5 +137,10 @@ fi
 
 if ! grep -Fq 'Workspace names use exact TTAL aliases' "$wezterm_doc"; then
   printf 'WezTerm WSL mux doc should explain workspace alias naming\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq 'Projects whose paths do not exist on WSL are skipped' "$wezterm_doc"; then
+  printf 'WezTerm WSL mux doc should explain stale path filtering\n' >&2
   exit 1
 fi

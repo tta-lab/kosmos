@@ -41,9 +41,9 @@ local function load_project_choices()
 		return {}
 	end
 
-	local choices = wezterm.json_parse(stdout)
-	if type(choices) ~= "table" then
-		wezterm.log_error("ttal-wezterm-projects returned invalid JSON")
+	local ok_json, choices = pcall(wezterm.json_parse, stdout)
+	if not ok_json or type(choices) ~= "table" then
+		wezterm.log_error("ttal-wezterm-projects returned invalid JSON: " .. stdout)
 		return {}
 	end
 

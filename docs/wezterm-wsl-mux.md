@@ -157,6 +157,10 @@ or newline are ignored by the helper because they would break that hidden ID
 format. Normal aliases such as `ko`, `fb.ai`, `fb-api`, and `foo_bar` are used
 as-is.
 
+Projects whose paths do not exist on WSL are skipped. The helper runs on WSL,
+so it can check project paths before the macOS GUI tries to spawn a pane with
+that path as `cwd`.
+
 The picker does one SSH round trip each time it opens. That keeps the list fresh
 with `ttal project list --json`, and avoids syncing a project cache onto macOS.
 If it feels slow later, add a short-lived cache on the macOS side; do not move
