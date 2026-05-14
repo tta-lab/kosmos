@@ -3,8 +3,8 @@ set -euo pipefail
 
 repo_root="${KOSMOS_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 script="$repo_root/scripts/ttal-wezterm-projects"
-wezterm_config="$repo_root/wezterm/macos-ssh-wsl-mux.lua"
-wezterm_server_config="$repo_root/wezterm/wsl-mux-server.lua"
+wezterm_config="$repo_root/wezterm/macos-client.lua"
+wezterm_server_config="$repo_root/wezterm/wsl-server.lua"
 wezterm_doc="$repo_root/docs/wezterm-wsl-mux.md"
 packages="$repo_root/modules/common/packages.nix"
 configs="$repo_root/modules/configs.nix"
@@ -86,7 +86,7 @@ if ! grep -Fq 'or "frp-fast"' "$wezterm_config"; then
   exit 1
 fi
 
-if ! grep -Fq 'wezterm/macos-ssh-wsl-mux.lua' "$wezterm_doc"; then
+if ! grep -Fq 'wezterm/macos-client.lua' "$wezterm_doc"; then
   printf 'WezTerm WSL mux doc should point at the macOS client config template\n' >&2
   exit 1
 fi
@@ -96,12 +96,12 @@ if [[ ! -f "$wezterm_server_config" ]]; then
   exit 1
 fi
 
-if ! grep -Fq 'wezterm/wsl-mux-server.lua' "$wezterm_doc"; then
+if ! grep -Fq 'wezterm/wsl-server.lua' "$wezterm_doc"; then
   printf 'WezTerm WSL mux doc should point at the WSL server config\n' >&2
   exit 1
 fi
 
-if ! grep -Fq '"wezterm/wezterm.lua".source = ../wezterm/wsl-mux-server.lua;' "$configs"; then
+if ! grep -Fq '"wezterm/wezterm.lua".source = ../wezterm/wsl-server.lua;' "$configs"; then
   printf 'Home Manager should install the WSL server WezTerm config\n' >&2
   exit 1
 fi

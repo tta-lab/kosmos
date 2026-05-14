@@ -49,7 +49,7 @@ in {
           "temenos/config.toml".source = ../temenos/config.toml;
           "helix/config.toml".source = ../helix/config.toml;
           "helix/languages.toml".source = ../helix/languages.toml;
-          "wezterm/wezterm.lua".source = ../wezterm/wsl-mux-server.lua;
+          "wezterm/wezterm.lua".source = ../wezterm/wsl-server.lua;
         };
       };
 

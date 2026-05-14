@@ -21,7 +21,7 @@ Nix installs the remote pieces on `kosmos-wsl`:
 The WSL server-side WezTerm config is:
 
 ```text
-wezterm/wsl-mux-server.lua
+wezterm/wsl-server.lua
 ```
 
 Home Manager installs it to:
@@ -61,7 +61,7 @@ ttal-wezterm-projects --choices
 The macOS GUI config template is:
 
 ```text
-wezterm/macos-ssh-wsl-mux.lua
+wezterm/macos-client.lua
 ```
 
 Use it as your macOS `~/.wezterm.lua` or import/copy the parts you need into
@@ -194,8 +194,8 @@ The macOS config and WSL config are coupled at these points:
 - Remote helper path: `ttal-wezterm-projects` must be in the SSH login `PATH`
 
 They do not need identical Lua files. The WSL side uses
-`wezterm/wsl-mux-server.lua` for server defaults. The macOS side uses
-`wezterm/macos-ssh-wsl-mux.lua` for GUI and SSH mux client behavior.
+`wezterm/wsl-server.lua` for server defaults. The macOS side uses
+`wezterm/macos-client.lua` for GUI and SSH mux client behavior.
 
 If the picker fails but `wezterm connect kosmos-wsl` works, test:
 
