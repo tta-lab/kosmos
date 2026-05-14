@@ -2,7 +2,7 @@ local wezterm = require("wezterm")
 local mux = wezterm.mux
 local act = wezterm.action
 
-local ssh_host = os.getenv("KOSMOS_WEZTERM_SSH_HOST") or "frp-fast"
+local ssh_host = os.getenv("KOSMOS_WEZTERM_SSH_HOST") or "kosmos-wsl"
 local domain_name = os.getenv("KOSMOS_WEZTERM_DOMAIN") or "kosmos-wsl"
 local remote_address = os.getenv("KOSMOS_WEZTERM_REMOTE") or ssh_host
 local username = os.getenv("KOSMOS_WEZTERM_USER") or "neil"

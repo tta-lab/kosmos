@@ -95,13 +95,13 @@ if ! grep -Fq 'wezterm connect kosmos-wsl' "$wezterm_doc"; then
   exit 1
 fi
 
-if ! grep -Fq 'Host frp-fast' "$wezterm_doc"; then
+if ! grep -Fq 'Host kosmos-wsl' "$wezterm_doc"; then
   printf 'WezTerm WSL mux doc should show the SSH host shape\n' >&2
   exit 1
 fi
 
-if ! grep -Fq 'or "frp-fast"' "$wezterm_config"; then
-  printf 'Mac WezTerm config should default to the frp-fast SSH alias\n' >&2
+if ! grep -Fq 'or "kosmos-wsl"' "$wezterm_config"; then
+  printf 'Mac WezTerm config should default to the kosmos-wsl SSH alias\n' >&2
   exit 1
 fi
 
@@ -130,8 +130,13 @@ if ! grep -Fq 'The picker does one SSH round trip each time it opens' "$wezterm_
   exit 1
 fi
 
-if ! grep -Fq 'The SSH alias and WezTerm domain name are different names for different layers' "$wezterm_doc"; then
+if ! grep -Fq 'The SSH alias and WezTerm domain name default to the same string' "$wezterm_doc"; then
   printf 'WezTerm WSL mux doc should explain SSH alias versus domain name\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq 'wezterm-mux-server --daemonize' "$wezterm_doc"; then
+  printf 'WezTerm WSL mux doc should explain first-connect mux startup logs\n' >&2
   exit 1
 fi
 

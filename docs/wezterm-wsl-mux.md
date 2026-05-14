@@ -2,7 +2,7 @@
 
 This setup uses the WezTerm GUI on macOS and a WezTerm mux server inside
 `kosmos-wsl`. The connection is SSH-based, using the macOS SSH alias
-`frp-fast`, so it works through the same SSH/frp path used for normal remote
+`kosmos-wsl`, so it works through the same SSH/frp path used for normal remote
 access.
 
 There is no local WSL unix socket in this design. The WSL2 unix-socket caveat
@@ -92,13 +92,13 @@ client settings. Keep it separate from the WSL server config.
 
 ## SSH/frp
 
-Prefer the existing macOS SSH config alias. The Lua config uses `frp-fast` for
+Prefer the existing macOS SSH config alias. The Lua config uses `kosmos-wsl` for
 both WezTerm mux connection and project-list loading.
 
 Example:
 
 ```sshconfig
-Host frp-fast
+Host kosmos-wsl
   HostName <frp-host>
   Port <frp-ssh-port>
   User neil
@@ -110,7 +110,7 @@ Host frp-fast
 Check plain SSH first:
 
 ```bash
-ssh frp-fast 'wezterm --version && ttal-wezterm-projects --choices'
+ssh kosmos-wsl 'wezterm --version && ttal-wezterm-projects --choices'
 ```
 
 Then connect the WezTerm mux domain:
@@ -118,6 +118,16 @@ Then connect the WezTerm mux domain:
 ```bash
 wezterm connect kosmos-wsl
 ```
+
+On first connect, WezTerm may log that it cannot connect to a socket like:
+
+```text
+/run/user/1000/wezterm/sock
+```
+
+and then say it is running `wezterm-mux-server --daemonize`. That is the normal
+SSH-domain path when no mux server is already running. Treat it as a problem
+only if no window opens or the command exits with a later failure.
 
 You can also spawn into the domain from an existing WezTerm GUI:
 
@@ -148,7 +158,7 @@ export KOSMOS_WEZTERM_REMOTE=<host-or-host-port>
 In the macOS template:
 
 - `Ctrl+Shift+P` opens the TTAL project picker.
-- The picker calls `ssh frp-fast ttal-wezterm-projects --choices`.
+- The picker calls `ssh kosmos-wsl ttal-wezterm-projects --choices`.
 - Picking a project runs `SwitchToWorkspace` in the `kosmos-wsl` domain.
 - Workspace names use exact TTAL aliases.
 - The first pane starts in the TTAL project path on WSL.
@@ -173,13 +183,14 @@ TTAL project parsing into the GUI config.
 
 ## SSH Alias And Domain Name
 
-The SSH alias and WezTerm domain name are different names for different layers.
+The SSH alias and WezTerm domain name default to the same string,
+`kosmos-wsl`, but they still belong to different layers.
 
-`frp-fast` is the macOS SSH alias. It belongs to OpenSSH and describes how to
+`kosmos-wsl` is the macOS SSH alias. It belongs to OpenSSH and describes how to
 reach WSL through frp. The project picker also uses it when it shells out to:
 
 ```bash
-ssh frp-fast ttal-wezterm-projects --choices
+ssh kosmos-wsl ttal-wezterm-projects --choices
 ```
 
 `kosmos-wsl` is the WezTerm domain name. It belongs to WezTerm and names the
@@ -190,14 +201,15 @@ wezterm connect kosmos-wsl
 wezterm cli spawn --domain-name kosmos-wsl
 ```
 
-Keeping the domain name as `kosmos-wsl` makes WezTerm UI labels describe the
-remote environment, while `frp-fast` remains the transport alias.
+Using the same default keeps the config easy to read. If the SSH route changes
+again, `KOSMOS_WEZTERM_SSH_HOST` can change the OpenSSH alias without changing
+the WezTerm domain label.
 
 ## What Must Stay Aligned
 
 The macOS config and WSL config are coupled at these points:
 
-- SSH alias: default `frp-fast`
+- SSH alias: default `kosmos-wsl`
 - WezTerm domain name: default `kosmos-wsl`
 - Remote WezTerm path: `/run/current-system/sw/bin/wezterm`
 - Remote helper path: `ttal-wezterm-projects` must be in the SSH login `PATH`
@@ -209,11 +221,11 @@ They do not need identical Lua files. The WSL side uses
 If the picker fails but `wezterm connect kosmos-wsl` works, test:
 
 ```bash
-ssh frp-fast 'command -v ttal-wezterm-projects && ttal-wezterm-projects --choices'
+ssh kosmos-wsl 'command -v ttal-wezterm-projects && ttal-wezterm-projects --choices'
 ```
 
 If connection fails before any shell appears, test:
 
 ```bash
-ssh frp-fast 'command -v wezterm && /run/current-system/sw/bin/wezterm --version'
+ssh kosmos-wsl 'command -v wezterm && /run/current-system/sw/bin/wezterm --version'
 ```
