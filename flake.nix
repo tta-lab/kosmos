@@ -41,8 +41,15 @@
           shellcheck
         ];
       } ''
-        shellcheck ${./scripts/ttal-tmux-project-picker} ${./tests/ttal-tmux-project-picker-test}
+        shellcheck \
+          ${./scripts/ttal-tmux-project-picker} \
+          ${./scripts/ttal-wezterm-projects} \
+          ${./tests/ttal-tmux-project-picker-test} \
+          ${./tests/tmux-tmpdir-test} \
+          ${./tests/ttal-wezterm-projects-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
+        KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-tmpdir-test}
+        KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-wezterm-projects-test}
         touch $out
       '';
 

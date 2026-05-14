@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+configs="$repo_root/modules/configs.nix"
+tta_lab_go="$repo_root/modules/common/tta-lab-go.nix"
+
+if grep -Fq 'set -gx TMUX_TMPDIR' "$configs"; then
+  printf 'interactive fish shells should not force TMUX_TMPDIR\n' >&2
+  exit 1
+fi
+
+if grep -Fq '"TMUX_TMPDIR=%t"' "$tta_lab_go"; then
+  printf 'daemon-managed ttal tmux sessions should not share the bare user-runtime tmux socket\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq '"TMUX_TMPDIR=%t/ttal-tmux"' "$tta_lab_go"; then
+  printf 'daemon-managed ttal tmux sessions should use a ttal-specific tmux tmpdir\n' >&2
+  exit 1
+fi
+
+if ! grep -F 'ExecStartPre = ' "$tta_lab_go" | grep -Fq 'mkdir -p %t/ttal-tmux'; then
+  printf 'ttal-specific tmux tmpdir should be created before daemon startup\n' >&2
+  exit 1
+fi
+
+tmux_env_count="$(grep -Fc '"TMUX_TMPDIR=%t/ttal-tmux"' "$tta_lab_go")"
+if [[ "$tmux_env_count" -ne 1 ]]; then
+  printf 'only ttal should set TMUX_TMPDIR, found %s entries\n' "$tmux_env_count" >&2
+  exit 1
+fi
+
+mkdir_count="$(grep -F 'ExecStartPre = ' "$tta_lab_go" | grep -Fc 'mkdir -p %t/ttal-tmux')"
+if [[ "$mkdir_count" -ne 1 ]]; then
+  printf 'only ttal should create the ttal tmux tmpdir, found %s entries\n' "$mkdir_count" >&2
+  exit 1
+fi

@@ -191,10 +191,6 @@
   name = "Temenos"
   path = "/home/neil/code/projects/tta-lab/temenos"
 
-[temenos]
-  name = "Temenos"
-  path = "/home/neil/code/projects/tta-lab/temenos"
-
 [tl]
   name = "TTAL License"
   path = "/home/neil/code/projects/neil/ttal-license"
@@ -202,10 +198,6 @@
 
 [ttal]
   name = "TTAL"
-  path = "/home/neil/code/projects/tta-lab/ttal-cli"
-
-[ttal-cli]
-  name = "TTAL CLI(the same with TTAL)"
   path = "/home/neil/code/projects/tta-lab/ttal-cli"
 
 [tw]

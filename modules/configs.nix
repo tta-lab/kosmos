@@ -49,6 +49,7 @@ in {
           "temenos/config.toml".source = ../temenos/config.toml;
           "helix/config.toml".source = ../helix/config.toml;
           "helix/languages.toml".source = ../helix/languages.toml;
+          "wezterm/wezterm.lua".source = ../wezterm/wsl-server.lua;
         };
       };
 
@@ -79,10 +80,6 @@ in {
           shellInit = ''
             fish_add_path -g /home/neil/go/bin
             fish_add_path -g /home/neil/.local/share/npm-global/bin
-            # Match interactive tmux with daemon-managed sessions under XDG_RUNTIME_DIR.
-            if set -q XDG_RUNTIME_DIR
-              set -gx TMUX_TMPDIR $XDG_RUNTIME_DIR
-            end
             if command -q kosmos-wsl-proxy-env
               kosmos-wsl-proxy-env fish | source
             end
