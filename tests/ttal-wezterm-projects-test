@@ -85,6 +85,26 @@ if ! grep -Fq '"ssh", ssh_host, "ttal-wezterm-projects", "--choices"' "$wezterm_
   exit 1
 fi
 
+if ! grep -Fq 'choices_cache_ttl_seconds = 30' "$wezterm_config"; then
+  printf 'Mac WezTerm config should cache project choices briefly\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq 'choose_project(window, pane, true)' "$wezterm_config"; then
+  printf 'Mac WezTerm config should support forced project picker refresh\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq 'set_environment_variables = wsl_spawn_env' "$wezterm_config"; then
+  printf 'Mac WezTerm config should set WSL env on remote project spawns\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq 'HOME = "/home/neil"' "$wezterm_config"; then
+  printf 'Mac WezTerm config should prevent macOS HOME from leaking into WSL fish\n' >&2
+  exit 1
+fi
+
 if ! grep -Fq 'pcall(wezterm.json_parse, stdout)' "$wezterm_config"; then
   printf 'Mac WezTerm config should guard JSON parsing with pcall\n' >&2
   exit 1
@@ -125,11 +145,6 @@ if ! grep -Fq '"wezterm/wezterm.lua".source = ../wezterm/wsl-server.lua;' "$conf
   exit 1
 fi
 
-if ! grep -Fq 'The picker does one SSH round trip each time it opens' "$wezterm_doc"; then
-  printf 'WezTerm WSL mux doc should explain project-list round trips\n' >&2
-  exit 1
-fi
-
 if ! grep -Fq 'The SSH alias and WezTerm domain name default to the same string' "$wezterm_doc"; then
   printf 'WezTerm WSL mux doc should explain SSH alias versus domain name\n' >&2
   exit 1
@@ -147,5 +162,15 @@ fi
 
 if ! grep -Fq 'Projects whose paths do not exist on WSL are skipped' "$wezterm_doc"; then
   printf 'WezTerm WSL mux doc should explain stale path filtering\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq 'The picker caches project choices for 30 seconds' "$wezterm_doc"; then
+  printf 'WezTerm WSL mux doc should explain project picker caching\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq 'The client config sets WSL HOME and XDG paths' "$wezterm_doc"; then
+  printf 'WezTerm WSL mux doc should explain WSL spawn environment\n' >&2
   exit 1
 fi

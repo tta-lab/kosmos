@@ -158,6 +158,7 @@ export KOSMOS_WEZTERM_REMOTE=<host-or-host-port>
 In the macOS template:
 
 - `Ctrl+Shift+P` opens the TTAL project picker.
+- `Ctrl+Shift+Alt+P` opens the TTAL project picker with a forced refresh.
 - The picker calls `ssh kosmos-wsl ttal-wezterm-projects --choices`.
 - Picking a project runs `SwitchToWorkspace` in the `kosmos-wsl` domain.
 - Workspace names use exact TTAL aliases.
@@ -176,10 +177,18 @@ Projects whose paths do not exist on WSL are skipped. The helper runs on WSL,
 so it can check project paths before the macOS GUI tries to spawn a pane with
 that path as `cwd`.
 
-The picker does one SSH round trip each time it opens. That keeps the list fresh
-with `ttal project list --json`, and avoids syncing a project cache onto macOS.
-If it feels slow later, add a short-lived cache on the macOS side; do not move
-TTAL project parsing into the GUI config.
+The picker caches project choices for 30 seconds on the macOS side. The first
+open does one SSH round trip:
+
+```bash
+ssh kosmos-wsl ttal-wezterm-projects --choices
+```
+
+Then repeated opens use the cache until it expires. Use `Ctrl+Shift+Alt+P` to
+force a refresh.
+
+The client config sets WSL HOME and XDG paths when spawning a project pane, so
+remote fish sees `/home/neil` rather than the macOS `$HOME`.
 
 ## SSH Alias And Domain Name
 

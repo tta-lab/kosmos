@@ -6,6 +6,18 @@ local ssh_host = os.getenv("KOSMOS_WEZTERM_SSH_HOST") or "kosmos-wsl"
 local domain_name = os.getenv("KOSMOS_WEZTERM_DOMAIN") or "kosmos-wsl"
 local remote_address = os.getenv("KOSMOS_WEZTERM_REMOTE") or ssh_host
 local username = os.getenv("KOSMOS_WEZTERM_USER") or "neil"
+local choices_cache_ttl_seconds = 30
+local choices_cache = nil
+local choices_cache_time = 0
+
+local wsl_spawn_env = {
+	HOME = "/home/neil",
+	USER = "neil",
+	LOGNAME = "neil",
+	XDG_CONFIG_HOME = "/home/neil/.config",
+	XDG_DATA_HOME = "/home/neil/.local/share",
+	XDG_CACHE_HOME = "/home/neil/.cache",
+}
 
 local starlight = {
 	foreground = "#ffffff",
@@ -34,24 +46,31 @@ local function split_once(value, sep)
 	return string.sub(value, 1, index - 1), string.sub(value, index + string.len(sep))
 end
 
-local function load_project_choices()
+local function load_project_choices(force_refresh)
+	local now = os.time()
+	if not force_refresh and choices_cache and now - choices_cache_time < choices_cache_ttl_seconds then
+		return choices_cache
+	end
+
 	local ok, stdout, stderr = wezterm.run_child_process({ "ssh", ssh_host, "ttal-wezterm-projects", "--choices" })
 	if not ok then
 		wezterm.log_error("failed to load TTAL WezTerm projects: " .. stderr)
-		return {}
+		return choices_cache or {}
 	end
 
 	local ok_json, choices = pcall(wezterm.json_parse, stdout)
 	if not ok_json or type(choices) ~= "table" then
 		wezterm.log_error("ttal-wezterm-projects returned invalid JSON: " .. stdout)
-		return {}
+		return choices_cache or {}
 	end
 
+	choices_cache = choices
+	choices_cache_time = now
 	return choices
 end
 
-local function choose_project(window, pane)
-	local choices = load_project_choices()
+local function choose_project(window, pane, force_refresh)
+	local choices = load_project_choices(force_refresh)
 	if #choices == 0 then
 		window:toast_notification("WezTerm", "No TTAL projects found through " .. ssh_host, nil, 4000)
 		return
@@ -81,6 +100,7 @@ local function choose_project(window, pane)
 							label = workspace,
 							cwd = path,
 							domain = { DomainName = domain_name },
+							set_environment_variables = wsl_spawn_env,
 						},
 					}),
 					inner_pane
@@ -149,7 +169,16 @@ local config = {
 		{
 			key = "P",
 			mods = "SHIFT|CTRL",
-			action = wezterm.action_callback(choose_project),
+			action = wezterm.action_callback(function(window, pane)
+				choose_project(window, pane, false)
+			end),
+		},
+		{
+			key = "P",
+			mods = "SHIFT|CTRL|ALT",
+			action = wezterm.action_callback(function(window, pane)
+				choose_project(window, pane, true)
+			end),
 		},
 		{
 			key = "9",
