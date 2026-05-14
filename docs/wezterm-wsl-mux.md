@@ -145,10 +145,17 @@ In the macOS template:
 - `Ctrl+Shift+P` opens the TTAL project picker.
 - The picker calls `ssh frp-fast ttal-wezterm-projects --choices`.
 - Picking a project runs `SwitchToWorkspace` in the `kosmos-wsl` domain.
-- The workspace name is derived from the TTAL alias.
+- Workspace names use exact TTAL aliases.
 - The first pane starts in the TTAL project path on WSL.
 
 `Alt+9` opens WezTerm's workspace launcher.
+
+The picker stores the selected alias and path in a hidden ID separated by a tab
+character. The tab is not displayed in the picker. It is only how the Lua
+callback receives both values after selection. TTAL aliases that contain a tab
+or newline are ignored by the helper because they would break that hidden ID
+format. Normal aliases such as `ko`, `fb.ai`, `fb-api`, and `foo_bar` are used
+as-is.
 
 The picker does one SSH round trip each time it opens. That keeps the list fresh
 with `ttal project list --json`, and avoids syncing a project cache onto macOS.

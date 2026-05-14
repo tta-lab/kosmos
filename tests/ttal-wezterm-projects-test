@@ -26,7 +26,7 @@ expected='[
     "label": "ko  kosmos  /home/neil/code/projects/tta-lab/kosmos"
   },
   {
-    "id": "fb-ai\t/home/neil/code/projects/GuionAI/flick-backend/services/ai-processor",
+    "id": "fb.ai\t/home/neil/code/projects/GuionAI/flick-backend/services/ai-processor",
     "label": "fb.ai  Ai Workflow Processor  /home/neil/code/projects/GuionAI/flick-backend/services/ai-processor"
   }
 ]'
@@ -113,5 +113,10 @@ fi
 
 if ! grep -Fq 'The SSH alias and WezTerm domain name are different names for different layers' "$wezterm_doc"; then
   printf 'WezTerm WSL mux doc should explain SSH alias versus domain name\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq 'Workspace names use exact TTAL aliases' "$wezterm_doc"; then
+  printf 'WezTerm WSL mux doc should explain workspace alias naming\n' >&2
   exit 1
 fi

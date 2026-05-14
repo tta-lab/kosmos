@@ -37,17 +37,13 @@ if [[ -z "$project_json" ]]; then
 fi
 
 jq '
-  def safe_workspace:
-    gsub("[^A-Za-z0-9_-]+"; "-")
-    | sub("^-+"; "")
-    | sub("-+$"; "");
-
   [
     .[]
     | select(.alias and .path)
     | . as $project
-    | ($project.alias | safe_workspace) as $workspace
-    | select($workspace != "")
+    | ($project.alias | strings) as $workspace
+    | select(($workspace | length) > 0)
+    | select(($workspace | test("[\t\r\n]") | not))
     | {
         id: ($workspace + "\t" + $project.path),
         label: (
