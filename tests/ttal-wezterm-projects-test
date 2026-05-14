@@ -105,6 +105,21 @@ if ! grep -Fq 'HOME = "/home/neil"' "$wezterm_config"; then
   exit 1
 fi
 
+if ! grep -Fq 'TMPDIR = "/tmp"' "$wezterm_config"; then
+  printf 'Mac WezTerm config should prevent macOS TMPDIR from leaking into WSL fish\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq 'set_environment_variables = {' "$wezterm_server_config"; then
+  printf 'WSL server WezTerm config should set WSL-local environment defaults\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq 'TMPDIR = "/tmp"' "$wezterm_server_config"; then
+  printf 'WSL server WezTerm config should set a Linux temp directory for new panes\n' >&2
+  exit 1
+fi
+
 if ! grep -Fq 'pcall(wezterm.json_parse, stdout)' "$wezterm_config"; then
   printf 'Mac WezTerm config should guard JSON parsing with pcall\n' >&2
   exit 1
@@ -170,7 +185,7 @@ if ! grep -Fq 'The picker caches project choices for one hour' "$wezterm_doc"; t
   exit 1
 fi
 
-if ! grep -Fq 'The client config sets WSL HOME and XDG paths' "$wezterm_doc"; then
+if ! grep -Fq 'The client config sets WSL HOME, XDG, and temp paths' "$wezterm_doc"; then
   printf 'WezTerm WSL mux doc should explain WSL spawn environment\n' >&2
   exit 1
 fi

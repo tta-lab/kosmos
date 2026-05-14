@@ -31,8 +31,9 @@ Home Manager installs it to:
 ```
 
 This file is intentionally small. It only covers remote/server concerns, such
-as the default shell used by panes that run inside WSL. It does not define SSH
-domains, fonts, macOS window behavior, or picker key bindings.
+as the default shell and WSL-local environment used by panes that run inside
+WSL. It does not define SSH domains, fonts, macOS window behavior, or picker
+key bindings.
 
 `ttal-wezterm-projects --choices` reads:
 
@@ -187,8 +188,14 @@ ssh kosmos-wsl ttal-wezterm-projects --choices
 Then repeated opens use the cache until it expires. Use `Ctrl+Shift+Alt+P` to
 force a refresh.
 
-The client config sets WSL HOME and XDG paths when spawning a project pane, so
-remote fish sees `/home/neil` rather than the macOS `$HOME`.
+The client config sets WSL HOME, XDG, and temp paths when spawning a project
+pane, so remote fish sees `/home/neil` and `/tmp` rather than macOS paths such
+as `/Users/neil` or `/var/folders/...`.
+
+The WSL server config sets the same environment for normal remote panes. This
+matters for new tabs/panes opened after connecting to the mux domain; fish
+process substitution uses `$TMPDIR`, and a leaked macOS temp path can make
+`mktemp` fail inside WSL.
 
 ## SSH Alias And Domain Name
 

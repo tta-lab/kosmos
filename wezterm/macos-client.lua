@@ -17,6 +17,9 @@ local wsl_spawn_env = {
 	XDG_CONFIG_HOME = "/home/neil/.config",
 	XDG_DATA_HOME = "/home/neil/.local/share",
 	XDG_CACHE_HOME = "/home/neil/.cache",
+	TMPDIR = "/tmp",
+	TMP = "/tmp",
+	TEMP = "/tmp",
 }
 
 local starlight = {
