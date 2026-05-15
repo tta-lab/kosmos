@@ -147,14 +147,11 @@ in {
       };
       Install.WantedBy = ["default.target"];
       Service = {
-        ExecStartPre = "${pkgs.coreutils}/bin/mkdir -p %t/ttal-tmux";
         ExecStart = withProxy "ttal-with-proxy" "${goBin}/ttal daemon run";
         Restart = "on-failure";
         Environment = [
           "HOME=/home/neil"
           "PATH=${servicePath}"
-          # Keep daemon-started tmux sessions separate from user-created sessions.
-          "TMUX_TMPDIR=%t/ttal-tmux"
         ];
         WorkingDirectory = "/home/neil";
       };
