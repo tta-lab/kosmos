@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+temenos_config="$repo_root/temenos/config.toml"
+
+if ! grep -Fq '"/etc/static/ssl/certs"' "$temenos_config"; then
+  printf 'temenos sandbox should allow-read /etc/static/ssl/certs for the NixOS CA bundle symlink target\n' >&2
+  exit 1
+fi
