@@ -6,7 +6,15 @@ allow_env = [
   "TMUX_*",
   "KUBECONFIG",
   "EXA_API_KEY",
-  "BRAVE_API_KEY"
+  "BRAVE_API_KEY",
+  "HTTP_PROXY",
+  "HTTPS_PROXY",
+  "ALL_PROXY",
+  "NO_PROXY",
+  "http_proxy",
+  "https_proxy",
+  "all_proxy",
+  "no_proxy"
 ]
 
 allow_write = [
