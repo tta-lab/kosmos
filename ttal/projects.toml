@@ -155,6 +155,10 @@
   name = "Organon"
   path = "/home/neil/code/projects/tta-lab/organon"
 
+[ot]
+  name = "ONNX Transcriber"
+  path = "/home/neil/code/projects/tta-lab/onnx-transcriber"
+
 [pn]
   github_token_env = "GUION_GITHUB_TOKEN"
   name = "PowerSync Native (Rust SDK fork)"
