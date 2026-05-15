@@ -79,8 +79,12 @@
 in {
   environment = {
     variables = {
+      GOROOT = "${pkgs.go}/share/go";
       GOPATH = "/home/neil/go";
       GOBIN = goBin;
+      GOMODCACHE = "/home/neil/go/pkg/mod";
+      GOCACHE = "/home/neil/.cache/go-build";
+      GOTELEMETRY = "off";
     };
 
     systemPackages = [
