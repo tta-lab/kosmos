@@ -70,7 +70,7 @@
     rm -f "$GOBIN/ttal-cli"
     install_from temenos ./cmd/temenos
     install_from diary ./cmd/diary
-    install_from organon ./cmd/alert ./cmd/skill ./cmd/src ./cmd/web
+    install_from organon ./cmd/skill ./cmd/src ./cmd/web
     install_from einai .
     install_from lenos .
 
@@ -147,14 +147,11 @@ in {
       };
       Install.WantedBy = ["default.target"];
       Service = {
-        ExecStartPre = "${pkgs.coreutils}/bin/mkdir -p %t/ttal-tmux";
         ExecStart = withProxy "ttal-with-proxy" "${goBin}/ttal daemon run";
         Restart = "on-failure";
         Environment = [
           "HOME=/home/neil"
           "PATH=${servicePath}"
-          # Keep daemon-started tmux sessions separate from user-created sessions.
-          "TMUX_TMPDIR=%t/ttal-tmux"
         ];
         WorkingDirectory = "/home/neil";
       };
