@@ -69,7 +69,8 @@ allow_read = [
   "~/.taskrc.ttal",                      # taskwarrior config
   "~/.cargo/config.toml",                # Rust user-level Cargo config (registries, build overrides) — read-only by design
   "~/.rustup",                           # Rust toolchain
-  "~/code/references",
+  "~/code/projects",                     # local project repos, read-only baseline for cross-repo context
+  "~/code/references",                   # external reference repos, read-only baseline for research
   "/etc/static/ssl/certs",               # NixOS CA bundle target for /etc/ssl/certs symlinks
   "/Library/Developer/CommandLineTools", # macOS: xcrun shim resolves make/clang from here
 ]

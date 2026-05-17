@@ -8,3 +8,13 @@ if ! grep -Fq '"/etc/static/ssl/certs"' "$temenos_config"; then
   printf 'temenos sandbox should allow-read /etc/static/ssl/certs for the NixOS CA bundle symlink target\n' >&2
   exit 1
 fi
+
+if ! grep -Fq '"~/code/projects"' "$temenos_config"; then
+  printf 'temenos sandbox should allow-read ~/code/projects for cross-repo context\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq '"~/code/references"' "$temenos_config"; then
+  printf 'temenos sandbox should allow-read ~/code/references for reference repos\n' >&2
+  exit 1
+fi
