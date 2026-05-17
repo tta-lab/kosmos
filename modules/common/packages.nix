@@ -72,7 +72,11 @@ in {
     direnv
     yazi
 
+    # Media
+    ffmpeg
+
     # Network and HTTP
+    aria2
     httpie
     wget
     curl
