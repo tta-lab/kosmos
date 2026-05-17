@@ -1,5 +1,8 @@
 {pkgs, ...}: let
-  goBin = "/home/neil/go/bin";
+  goPath = "/home/neil/go";
+  goBin = "${goPath}/bin";
+  goModCache = "${goPath}/pkg/mod";
+  goCache = "/home/neil/.cache/go-build";
   projectsRoot = "/home/neil/code/projects/tta-lab";
   servicePath = "${goBin}:${pkgs.lib.makeBinPath [
     pkgs.bash
@@ -16,6 +19,20 @@
       eval "$(kosmos-wsl-proxy-env sh)"
     fi
   '';
+  goEnv = [
+    "GOROOT=${pkgs.go}/share/go"
+    "GOPATH=${goPath}"
+    "GOBIN=${goBin}"
+    "GOMODCACHE=${goModCache}"
+    "GOCACHE=${goCache}"
+    "GOTELEMETRY=off"
+  ];
+  serviceEnv =
+    goEnv
+    ++ [
+      "HOME=/home/neil"
+      "PATH=${servicePath}"
+    ];
   withProxy = name: command:
     pkgs.writeShellScript name ''
       set -eu
@@ -26,8 +43,12 @@
   installScript = pkgs.writeShellScript "tta-lab-go-install" ''
     set -eu
 
-    export GOPATH=/home/neil/go
-    export GOBIN=/home/neil/go/bin
+    export GOROOT=${pkgs.go}/share/go
+    export GOPATH=${goPath}
+    export GOBIN=${goBin}
+    export GOMODCACHE=${goModCache}
+    export GOCACHE=${goCache}
+    export GOTELEMETRY=off
     export PATH=${servicePath}:$PATH
     ${proxyPrelude}
 
@@ -79,8 +100,12 @@
 in {
   environment = {
     variables = {
-      GOPATH = "/home/neil/go";
+      GOROOT = "${pkgs.go}/share/go";
+      GOPATH = goPath;
       GOBIN = goBin;
+      GOMODCACHE = goModCache;
+      GOCACHE = goCache;
+      GOTELEMETRY = "off";
     };
 
     systemPackages = [
@@ -110,10 +135,7 @@ in {
       Service = {
         ExecStart = withProxy "temenos-with-proxy" "${goBin}/temenos daemon";
         Restart = "on-failure";
-        Environment = [
-          "HOME=/home/neil"
-          "PATH=${servicePath}"
-        ];
+        Environment = serviceEnv;
         WorkingDirectory = "/home/neil";
       };
     };
@@ -128,10 +150,7 @@ in {
       Service = {
         ExecStart = withProxy "einai-with-proxy" "${goBin}/ei daemon run";
         Restart = "on-failure";
-        Environment = [
-          "HOME=/home/neil"
-          "PATH=${servicePath}"
-        ];
+        Environment = serviceEnv;
         WorkingDirectory = "/home/neil";
       };
     };
@@ -149,10 +168,7 @@ in {
       Service = {
         ExecStart = withProxy "ttal-with-proxy" "${goBin}/ttal daemon run";
         Restart = "on-failure";
-        Environment = [
-          "HOME=/home/neil"
-          "PATH=${servicePath}"
-        ];
+        Environment = serviceEnv;
         WorkingDirectory = "/home/neil";
       };
     };
