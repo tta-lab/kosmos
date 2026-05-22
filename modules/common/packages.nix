@@ -8,7 +8,6 @@
   ttaLab = pkgs.callPackage ../../packages/tta-lab {
     inherit ttalBinDir;
   };
-  proto = pkgs.callPackage ../../packages/proto {};
   syncProjects = pkgs.writeShellApplication {
     name = "kosmos-sync-projects";
     runtimeInputs = [
@@ -102,7 +101,6 @@ in {
     pkgsUnstable.bun
     pkgsUnstable.go
     pkgsUnstable.golangci-lint
-    proto
     python3
     llvmPackages.libclang
 
