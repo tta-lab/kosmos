@@ -64,6 +64,7 @@ in {
     ripgrep
     fd
     bat
+    tokei
     jq
     yq
     pkgsUnstable.defuddle
