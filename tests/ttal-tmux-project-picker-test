@@ -108,13 +108,13 @@ if grep -Fq 'wl-copy' "$tmux_config"; then
   exit 1
 fi
 
-if ! grep -Fq 'bind-key -T copy-mode-vi y send-keys -X copy-selection-no-clear' "$tmux_config"; then
-  printf 'tmux vi copy mode y should copy and preserve the selection\n' >&2
+if ! grep -Fq 'bind-key -T copy-mode-vi y send-keys -X copy-selection' "$tmux_config"; then
+  printf 'tmux vi copy mode y should copy, clear selection, and stay in copy mode\n' >&2
   exit 1
 fi
 
-if grep -Fq 'copy-selection-and-cancel' "$tmux_config" || grep -Eq 'send-keys -X copy-selection$' "$tmux_config"; then
-  printf 'tmux copy mode should not exit copy mode or clear selection after copying\n' >&2
+if grep -Fq 'copy-selection-and-cancel' "$tmux_config" || grep -Fq 'copy-selection-no-clear' "$tmux_config"; then
+  printf 'tmux copy mode should clear selection without exiting copy mode after copying\n' >&2
   exit 1
 fi
 
