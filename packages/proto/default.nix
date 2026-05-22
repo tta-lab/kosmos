@@ -1,9 +1,10 @@
 {
   lib,
-  stdenvNoCC,
+  stdenv,
   fetchurl,
+  autoPatchelfHook,
 }:
-stdenvNoCC.mkDerivation (finalAttrs: {
+stdenv.mkDerivation (finalAttrs: {
   pname = "proto";
   version = "0.57.2";
 
@@ -13,6 +14,14 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   };
 
   sourceRoot = "proto_cli-x86_64-unknown-linux-gnu";
+
+  nativeBuildInputs = [
+    autoPatchelfHook
+  ];
+
+  buildInputs = [
+    stdenv.cc.cc.lib
+  ];
 
   installPhase = ''
     runHook preInstall
