@@ -103,6 +103,16 @@ if ! grep -Fq 'save-buffer "/tmp/tmux-buffer-#S.txt"' "$tmux_config"; then
   exit 1
 fi
 
+if grep -Fq 'wl-copy' "$tmux_config"; then
+  printf 'tmux copy mode should not depend on Wayland clipboard tools\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq 'bind-key -T copy-mode-vi y send-keys -X copy-selection-and-cancel' "$tmux_config"; then
+  printf 'tmux vi copy mode y should use tmux-native clipboard copy\n' >&2
+  exit 1
+fi
+
 if grep -Fq '/run/current-system/sw/bin/ttal-tmux-project-picker' "$tmux_config"; then
   printf 'tmux project picker should not hard-code /run/current-system\n' >&2
   exit 1
