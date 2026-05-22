@@ -88,8 +88,18 @@ if ! grep -Fq 'set -g set-clipboard on' "$tmux_config"; then
   exit 1
 fi
 
-if ! grep -Fq "set -as terminal-features ',*:clipboard'" "$tmux_config"; then
+if ! grep -Fq "set -g terminal-features[3] '*:clipboard'" "$tmux_config"; then
   printf 'tmux should advertise clipboard support for host terminals\n' >&2
+  exit 1
+fi
+
+if grep -Eq 'set -g[as]|set -as' "$tmux_config"; then
+  printf 'tmux config should not append options on reload\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq 'save-buffer "/tmp/tmux-buffer-#S.txt"' "$tmux_config"; then
+  printf 'tmux quick-edit buffer should be scoped to the session\n' >&2
   exit 1
 fi
 
