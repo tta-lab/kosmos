@@ -14,22 +14,16 @@
 }: {
   flicknote = stdenvNoCC.mkDerivation {
     pname = "flicknote";
-    version = "0.1.7";
+    version = "0.2.0";
 
     src = fetchurl {
-      url = "https://github.com/GuionAI/flicknote-cli/releases/download/v0.1.7/flicknote-cli-x86_64-unknown-linux-musl.tar.xz";
-      hash = "sha256-wg69pqnr5E+KUYWH0j7jtdfHWM/0XoYMSyZqZkXxrBU=";
-    };
-    syncSrc = fetchurl {
-      url = "https://github.com/GuionAI/flicknote-cli/releases/download/v0.1.7/flicknote-sync-x86_64-unknown-linux-musl.tar.xz";
-      hash = "sha256-F1TzXL/5CmJ0UvmjIOgrugzlM8pLeRqrBj5n84Mic1s=";
+      url = "https://github.com/GuionAI/flicknote-cli/releases/download/v0.2.0/flicknote-cli-x86_64-unknown-linux-musl.tar.xz";
+      hash = "sha256-VHVEY42LUf4hY/S+kmX8GGwrBAYL0XFrlauVkthvprw=";
     };
 
     installPhase = ''
       runHook preInstall
-      # Nix cd's into the single source root after unpacking.
       install -Dm755 flicknote $out/bin/flicknote
-      tar -xJf $syncSrc --strip-components=1
       install -Dm755 flicknote-sync $out/bin/flicknote-sync
       runHook postInstall
     '';
