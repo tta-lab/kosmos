@@ -99,10 +99,12 @@ in {
 
     # Languages
     gcc
+    rustup
     pkgsUnstable.bun
     pkgsUnstable.go
     pkgsUnstable.golangci-lint
     python3
+    llvmPackages.clang
     llvmPackages.libclang
 
     # System inspection
@@ -149,4 +151,9 @@ in {
     pkgsUnstable.lefthook
     shellcheck
   ];
+
+  environment.variables = {
+    LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+    BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${pkgs.llvmPackages.clang}/resource-root/include";
+  };
 }
