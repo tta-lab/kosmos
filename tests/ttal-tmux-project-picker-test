@@ -83,6 +83,16 @@ if ! grep -Fq 'bind r source-file /etc/tmux.conf \; display "Config reloaded"' "
   exit 1
 fi
 
+if ! grep -Fq 'set -g set-clipboard on' "$tmux_config"; then
+  printf 'tmux should accept OSC 52 clipboard writes from pane applications\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq "set -as terminal-features ',*:clipboard'" "$tmux_config"; then
+  printf 'tmux should advertise clipboard support for host terminals\n' >&2
+  exit 1
+fi
+
 if grep -Fq '/run/current-system/sw/bin/ttal-tmux-project-picker' "$tmux_config"; then
   printf 'tmux project picker should not hard-code /run/current-system\n' >&2
   exit 1
