@@ -58,6 +58,9 @@ in {
         EDITOR = "hx";
         VISUAL = "hx";
       };
+      home.sessionPath = [
+        "/home/neil/.proto/bin"
+      ];
 
       systemd.user.services.flicknote-sync = {
         Unit.Description = "FlickNote sync daemon";
@@ -80,6 +83,7 @@ in {
           shellInit = ''
             fish_add_path -g /home/neil/go/bin
             fish_add_path -g /home/neil/.local/share/npm-global/bin
+            fish_add_path -g /home/neil/.proto/bin
             if command -q kosmos-wsl-proxy-env
               kosmos-wsl-proxy-env fish | source
             end
