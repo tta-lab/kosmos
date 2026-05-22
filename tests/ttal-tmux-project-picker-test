@@ -83,6 +83,41 @@ if ! grep -Fq 'bind r source-file /etc/tmux.conf \; display "Config reloaded"' "
   exit 1
 fi
 
+if ! grep -Fq 'set -g set-clipboard on' "$tmux_config"; then
+  printf 'tmux should accept OSC 52 clipboard writes from pane applications\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq "set -g terminal-features[3] '*:clipboard'" "$tmux_config"; then
+  printf 'tmux should advertise clipboard support for host terminals\n' >&2
+  exit 1
+fi
+
+if grep -Eq 'set -g[as]|set -as' "$tmux_config"; then
+  printf 'tmux config should not append options on reload\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq 'save-buffer "/tmp/tmux-buffer-#S.txt"' "$tmux_config"; then
+  printf 'tmux quick-edit buffer should be scoped to the session\n' >&2
+  exit 1
+fi
+
+if grep -Fq 'wl-copy' "$tmux_config"; then
+  printf 'tmux copy mode should not depend on Wayland clipboard tools\n' >&2
+  exit 1
+fi
+
+if ! grep -Fq 'bind-key -T copy-mode-vi y send-keys -X copy-selection' "$tmux_config"; then
+  printf 'tmux vi copy mode y should copy, clear selection, and stay in copy mode\n' >&2
+  exit 1
+fi
+
+if grep -Fq 'copy-selection-and-cancel' "$tmux_config" || grep -Fq 'copy-selection-no-clear' "$tmux_config"; then
+  printf 'tmux copy mode should clear selection without exiting copy mode after copying\n' >&2
+  exit 1
+fi
+
 if grep -Fq '/run/current-system/sw/bin/ttal-tmux-project-picker' "$tmux_config"; then
   printf 'tmux project picker should not hard-code /run/current-system\n' >&2
   exit 1
