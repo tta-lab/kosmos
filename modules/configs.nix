@@ -84,6 +84,9 @@ in {
             fish_add_path -g /home/neil/go/bin
             fish_add_path -g /home/neil/.local/share/npm-global/bin
             fish_add_path -g /home/neil/.proto/bin
+            if command -q proto
+              proto activate fish | source
+            end
             if command -q kosmos-wsl-proxy-env
               kosmos-wsl-proxy-env fish | source
             end
