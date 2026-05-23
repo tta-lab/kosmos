@@ -186,8 +186,8 @@
 
 [tch]
   github_token_env = "GUION_GITHUB_TOKEN"
-  name = "TaskChampion (tw-repos)"
-  path = "/home/neil/code/references/GothenburgBitFactory/taskchampion"
+  name = "TaskChampion"
+  path = "/home/neil/code/projects/GuionAI/taskchampion"
 
 [teme]
   k8s_app = "temenos"
