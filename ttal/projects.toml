@@ -70,11 +70,6 @@
   name = "FlickNote CLI"
   path = "/home/neil/code/projects/GuionAI/flicknote-cli"
 
-[fn-ios]
-  github_token_env = "GUION_GITHUB_TOKEN"
-  name = "FlickNote iOS"
-  path = "/home/neil/code/projects/GuionAI/FlickNote"
-
 [forgejo]
   name = "Forgejo"
   path = "/home/neil/code/references/forgejo/forgejo"
