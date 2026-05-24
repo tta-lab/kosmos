@@ -3,9 +3,6 @@ set -euo pipefail
 
 repo_root="${KOSMOS_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 script="$repo_root/scripts/ttal-tmux-project-picker"
-tmux_config="$repo_root/tmux/.tmux.conf"
-ttal_package="$repo_root/packages/tta-lab/default.nix"
-k3d_doc="$repo_root/docs/k3d-dev-cluster.html"
 
 projects_json='[
   {"alias":"ko","name":"kosmos","path":"/home/neil/code/projects/tta-lab/kosmos"},
@@ -75,65 +72,5 @@ fi
 if ! grep -q 'unknown project alias: missing' /tmp/ttal-picker-test.err; then
   printf 'missing alias error was not clear\n' >&2
   cat /tmp/ttal-picker-test.err >&2
-  exit 1
-fi
-
-if ! grep -Fq 'bind r source-file /etc/tmux.conf \; display "Config reloaded"' "$tmux_config"; then
-  printf 'tmux reload binding should source /etc/tmux.conf\n' >&2
-  exit 1
-fi
-
-if ! grep -Fq 'set -g set-clipboard on' "$tmux_config"; then
-  printf 'tmux should accept OSC 52 clipboard writes from pane applications\n' >&2
-  exit 1
-fi
-
-if ! grep -Fq "set -g terminal-features[3] '*:clipboard'" "$tmux_config"; then
-  printf 'tmux should advertise clipboard support for host terminals\n' >&2
-  exit 1
-fi
-
-if grep -Eq 'set -g[as]|set -as' "$tmux_config"; then
-  printf 'tmux config should not append options on reload\n' >&2
-  exit 1
-fi
-
-if ! grep -Fq 'save-buffer "/tmp/tmux-buffer-#S.txt"' "$tmux_config"; then
-  printf 'tmux quick-edit buffer should be scoped to the session\n' >&2
-  exit 1
-fi
-
-if grep -Fq 'wl-copy' "$tmux_config"; then
-  printf 'tmux copy mode should not depend on Wayland clipboard tools\n' >&2
-  exit 1
-fi
-
-if ! grep -Fq 'bind-key -T copy-mode-vi y send-keys -X copy-selection' "$tmux_config"; then
-  printf 'tmux vi copy mode y should copy, clear selection, and stay in copy mode\n' >&2
-  exit 1
-fi
-
-if grep -Fq 'copy-selection-and-cancel' "$tmux_config" || grep -Fq 'copy-selection-no-clear' "$tmux_config"; then
-  printf 'tmux copy mode should clear selection without exiting copy mode after copying\n' >&2
-  exit 1
-fi
-
-if grep -Fq '/run/current-system/sw/bin/ttal-tmux-project-picker' "$tmux_config"; then
-  printf 'tmux project picker should not hard-code /run/current-system\n' >&2
-  exit 1
-fi
-
-if ! grep -Fq 'bind P display-popup -E "@ttalTmuxProjectPicker@"' "$tmux_config"; then
-  printf 'tmux project picker should use the Nix-substituted picker path\n' >&2
-  exit 1
-fi
-
-if grep -Fq '/home/neil/go/bin' "$ttal_package"; then
-  printf 'ttal tmux picker package should not hard-code /home/neil/go/bin\n' >&2
-  exit 1
-fi
-
-if grep -Fq 'kubectl logs job/db-init-db-init' "$k3d_doc"; then
-  printf 'k3d guide should not mention the stale db-init job log command\n' >&2
   exit 1
 fi

@@ -61,6 +61,8 @@ nix-instantiate --parse configuration.nix
 statix check .
 ```
 
+Prefer behavior tests for scripts and generated outputs. Avoid grep-only assertions over static config files; they are brittle and often duplicate the config instead of testing behavior. Add a config-file assertion only for a clear safety invariant, and keep it in a narrowly named test.
+
 Run the WSL host build before changes to packages, users, services, networking, WSL behavior, Home Manager config, or agenix wiring. Run the bare-metal host build only when the change affects shared modules or bare-metal modules.
 
 ## Security & Configuration Tips
