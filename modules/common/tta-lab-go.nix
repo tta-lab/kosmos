@@ -1,4 +1,4 @@
-{pkgs, ...}: let
+{pkgs, pkgsUnstable, ...}: let
   goPath = "/home/neil/go";
   goBin = "${goPath}/bin";
   goModCache = "${goPath}/pkg/mod";
@@ -10,7 +10,7 @@
     pkgs.coreutils
     pkgs.gcc
     pkgs.git
-    pkgs.go
+    pkgsUnstable.go
     pkgs.openssh
     pkgs.tmux
   ]}:/run/current-system/sw/bin";
@@ -20,7 +20,7 @@
     fi
   '';
   goEnv = [
-    "GOROOT=${pkgs.go}/share/go"
+    "GOROOT=${pkgsUnstable.go}/share/go"
     "GOPATH=${goPath}"
     "GOBIN=${goBin}"
     "GOMODCACHE=${goModCache}"
@@ -43,7 +43,7 @@
   installScript = pkgs.writeShellScript "tta-lab-go-install" ''
     set -eu
 
-    export GOROOT=${pkgs.go}/share/go
+    export GOROOT=${pkgsUnstable.go}/share/go
     export GOPATH=${goPath}
     export GOBIN=${goBin}
     export GOMODCACHE=${goModCache}
@@ -99,8 +99,8 @@
   '';
 in {
   environment = {
-    variables = {
-      GOROOT = "${pkgs.go}/share/go";
+    sessionVariables = {
+      GOROOT = "${pkgsUnstable.go}/share/go";
       GOPATH = goPath;
       GOBIN = goBin;
       GOMODCACHE = goModCache;
