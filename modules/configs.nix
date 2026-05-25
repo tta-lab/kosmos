@@ -104,6 +104,8 @@ in {
             k = "command kubectl $argv";
             grep = "command rg $argv";
             fn = "command flicknote $argv";
+            tp = "command ttal push $argv";
+            tl = "command ttal pull $argv";
           };
         };
 
