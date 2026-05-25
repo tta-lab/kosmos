@@ -211,7 +211,7 @@
   remote = "https://git.guion.io/taskclaw/voice-cli.git"
 
 [bo]
-  name = "Boule — ttal communication bridge (Telegram/Matrix, agent council)"
+  name = "Boule — ttal communication bridge"
   path = "/home/neil/code/projects/tta-lab/boule"
 
 [archived]
