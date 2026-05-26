@@ -102,8 +102,15 @@ in {
     pkgsUnstable.bun
     pkgsUnstable.go
     pkgsUnstable.golangci-lint
+    pkgsUnstable.gopls
+    pkgsUnstable.delve
     python3
     llvmPackages.libclang
+
+    # LSPs
+    pkgsUnstable.typescript-language-server
+    pkgsUnstable.vscode-langservers-extracted
+    pkgsUnstable.biome
 
     # System inspection
     btop

@@ -3,6 +3,7 @@ _: {
     ../../modules/common/nix.nix
     ../../modules/common/system.nix
     ../../modules/common/packages.nix
+    ../../modules/common/rust.nix
     ../../modules/common/codex.nix
     ../../modules/common/tta-lab-go.nix
     ../../modules/common/shell.nix
