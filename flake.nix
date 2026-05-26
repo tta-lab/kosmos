@@ -14,6 +14,8 @@
     nix-index-database.inputs.nixpkgs.follows = "nixpkgs";
     home-manager.url = "github:nix-community/home-manager/release-25.05";
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
+    fenix.url = "github:nix-community/fenix";
+    fenix.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs = {
@@ -24,6 +26,7 @@
     agenix,
     nix-index-database,
     home-manager,
+    fenix,
     ...
   }: let
     system = "x86_64-linux";
@@ -71,7 +74,7 @@
     nixosConfigurations.wsl = nixpkgs.lib.nixosSystem {
       inherit system;
       specialArgs = {
-        inherit agenix pkgsUnstable;
+        inherit agenix pkgsUnstable fenix;
       };
       modules = [
         nixos-wsl.nixosModules.default

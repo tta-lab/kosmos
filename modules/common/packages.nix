@@ -105,6 +105,13 @@ in {
     python3
     llvmPackages.libclang
 
+    # LSPs and dev tools
+    pkgsUnstable.gopls
+    pkgsUnstable.delve
+    pkgsUnstable.typescript-language-server
+    pkgsUnstable.vscode-langservers-extracted
+    pkgsUnstable.biome
+
     # System inspection
     btop
     eza

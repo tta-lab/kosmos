@@ -1,9 +1,11 @@
 name: NixOS Config Check
 
 on:
-  push:
-    branches: [main, master, worker/**]
   pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
 
 jobs:
   check:
