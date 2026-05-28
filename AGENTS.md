@@ -52,6 +52,20 @@ Keep the boundary clear: NixOS modules own system packages, daemon services, WSL
 
 When adding user-owned config paths, prefer Home Manager. Use Home Manager for parent directories under `$HOME`, non-secret dotfiles, shell/editor/git config, and user services. Use agenix only for the encrypted secret payload and decrypted file target; let Home Manager create user-owned parent directories where practical.
 
+## Config Management (Home Manager)
+
+Git-tracked config dirs (`ttal/`, `helix/`, `einai/`, `temenos/`) are the source of truth for user config managed by Home Manager. `modules/configs.nix` sources them into `~/.config/*` via the nix store, making runtime files read-only symlinks.
+
+**Never edit runtime files directly under `~/.config/`.** Always edit the repo source file and let Home Manager propagate the change.
+
+Workflows for updating config (e.g. `ttal/projects.toml`):
+
+1. **Add a project entry**: use `ttal project add` — this writes to the runtime file. Then *also* add the entry manually to `ttal/projects.toml` in this repo to keep the source of truth in sync.
+2. **Simplify a project entry**: edit only `ttal/projects.toml` in this repo; `ttal project modify` is not needed.
+3. **Deploy the change**: merge the PR and run `ttal sync` (or `nixos-rebuild switch --flake .#wsl` for immediate effect on WSL).
+
+Do not run `ttal project add` or `ttal project modify` and call it done — they only affect the runtime file, which is ephemeral. The repo source must always match.
+
 ## Testing Guidelines
 
 There is no unit test suite. Validate by parsing, linting, flake checks, and building the NixOS toplevel. Run at least:
