@@ -175,6 +175,11 @@
   name = "pgwire supabase proxy for multi-tenant cli access"
   path = "/home/neil/code/projects/GuionAI/pgwire-supabase-proxy"
 
+[sh]
+  name = "lensh - bash for lenos"
+  path = "/home/neil/code/projects/tta-lab/sh"
+  remote = "https://github.com/tta-lab/sh.git"
+
 [sustech]
   name = "SUSTech Mar Slides"
   path = "/home/neil/code/projects/neil/sustech-mar-slides"
