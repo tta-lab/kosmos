@@ -5,6 +5,7 @@
   ...
 }: let
   ttalBinDir = pkgs.lib.attrByPath ["environment" "variables" "GOBIN"] null config;
+  llvmMajorVersion = builtins.elemAt (builtins.splitVersion pkgs.llvmPackages.clang-unwrapped.version) 0;
   ttaLab = pkgs.callPackage ../../packages/tta-lab {
     inherit ttalBinDir;
   };
@@ -160,5 +161,6 @@ in {
 
   environment.sessionVariables = {
     LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+    BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${pkgs.llvmPackages.clang-unwrapped.lib}/lib/clang/${llvmMajorVersion}/include";
   };
 }
