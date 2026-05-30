@@ -108,6 +108,7 @@ in {
     # LSPs and dev tools
     pkgsUnstable.gopls
     pkgsUnstable.delve
+    pkgsUnstable.gofumpt
     pkgsUnstable.typescript-language-server
     pkgsUnstable.vscode-langservers-extracted
     pkgsUnstable.biome
