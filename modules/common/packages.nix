@@ -157,4 +157,8 @@ in {
     pkgsUnstable.lefthook
     shellcheck
   ];
+
+  environment.sessionVariables = {
+    LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+  };
 }
