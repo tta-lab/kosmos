@@ -223,6 +223,11 @@
   name = "Agon — lenos eval"
   path = "/home/neil/code/projects/tta-lab/agon"
 
+[fn-launch]
+  name = "FlickNote launch page"
+  path = "/home/neil/code/projects/GuionAI/flicknote-launch-page"
+  github_token_env = "GUION_GITHUB_TOKEN"
+
 [archived]
   [archived.codex-server-go]
     name = "Codex Server Go"
