@@ -219,6 +219,10 @@
   name = "Boule — ttal communication bridge"
   path = "/home/neil/code/projects/tta-lab/boule"
 
+[ag]
+  name = "Agon — lenos eval"
+  path = "/home/neil/code/projects/tta-lab/agon"
+
 [archived]
   [archived.codex-server-go]
     name = "Codex Server Go"
