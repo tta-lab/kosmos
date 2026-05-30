@@ -57,7 +57,6 @@ in {
         NPM_CONFIG_PREFIX = "/home/neil/.local/share/npm-global";
         EDITOR = "hx";
         VISUAL = "hx";
-        LIBCLANG_PATH = "${pkgs.lib.getLib pkgs.llvmPackages.libclang}/lib";
       };
 
       systemd.user.services.flicknote-sync = {
