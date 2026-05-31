@@ -114,6 +114,10 @@ in {
     pkgsUnstable.vscode-langservers-extracted
     pkgsUnstable.biome
 
+    # Recording
+    pkgsUnstable.asciinema
+    pkgsUnstable.asciinema-agg
+
     # System inspection
     btop
     eza
