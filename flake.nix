@@ -41,18 +41,21 @@
           gawk
           gnused
           jq
+          python3
           shellcheck
         ];
       } ''
         shellcheck \
           ${./scripts/ttal-tmux-project-picker} \
           ${./scripts/ttal-wezterm-projects} \
+          ${./tests/temenos-env-test} \
           ${./tests/ttal-tmux-project-picker-test} \
           ${./tests/temenos-ca-test} \
           ${./tests/tmux-tmpdir-test} \
           ${./tests/ttal-wezterm-projects-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
+        KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-env-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-tmpdir-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-wezterm-projects-test}
         touch $out
