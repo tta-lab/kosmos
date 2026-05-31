@@ -157,6 +157,7 @@ in {
     nixd
     pkgsUnstable.lefthook
     shellcheck
+    trufflehog
   ];
 
   environment.sessionVariables = {
