@@ -103,6 +103,7 @@ in {
     pkgsUnstable.bun
     pkgsUnstable.go
     pkgsUnstable.golangci-lint
+    pkgsUnstable.cargo-deny
     python3
     llvmPackages.libclang
 
