@@ -104,6 +104,7 @@ in {
     pkgsUnstable.go
     pkgsUnstable.golangci-lint
     pkgsUnstable.cargo-deny
+    pkgsUnstable.cargo-release
     python3
     llvmPackages.libclang
 
