@@ -27,11 +27,15 @@ in {
             "$HOME/.kube"
         '';
 
-        file.".taskrc".text = ''
-          data.location=/home/neil/.task
-          powersync.db_path=/home/neil/.local/share/flicknote/flicknote.db
-          news.version=3.4.2
-        '';
+        file = {
+          ".taskrc".text = ''
+            data.location=/home/neil/.task
+            powersync.db_path=/home/neil/.local/share/flicknote/flicknote.db
+            news.version=3.4.2
+          '';
+          ".claude/CLAUDE.md".source = ../CLAUDE.user.md;
+          ".codex/AGENTS.md".source = ../CLAUDE.user.md;
+        };
       };
 
       xdg = {
