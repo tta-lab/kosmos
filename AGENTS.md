@@ -105,3 +105,12 @@ For WSL, keep Windows PATH disabled unless a workflow proves it is needed. Prefe
 ## Commit & Pull Request Guidelines
 
 Use concise conventional subjects such as `feat(wsl): add NixOS-WSL host` or `fix(proxy): update noProxy list`. Commit `flake.lock` when flake inputs change. Use `ttal push` when available; if bootstrapping WSL before `ttal` exists, plain `git push` is acceptable. Pull requests should describe what changed, why it changed, and which validation commands passed. Include deploy notes for changes that require `nixos-rebuild switch --flake .#wsl`.
+## Temp Files in Config Contexts
+
+When config files (tmux, shell rc, systemd units, etc.) need unique temp files, use `mktemp` — don't rely on framework variable expansion (`#{}`, `$RANDOM`, PID, etc.) which often doesn't work in binding/command contexts:
+
+```
+f=$(mktemp --suffix=-tmux-buffer.txt)
+```
+
+`mktemp` guarantees uniqueness and avoids collisions across sessions, windows, and restarts without any expansion tricks.
