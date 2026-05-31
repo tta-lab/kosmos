@@ -94,8 +94,6 @@
         nixd
         lefthook
         shellcheck
-        cargo-deny
-        cargo-release
       ];
     };
   };
