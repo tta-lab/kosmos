@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+
+python3 - "$repo_root/temenos/config.toml" <<'PY'
+import sys
+import tomllib
+
+config_path = sys.argv[1]
+with open(config_path, "rb") as f:
+    config = tomllib.load(f)
+
+allow_env = set(config.get("allow_env", []))
+
+required = {
+    # Rust and Cargo build plumbing. Keep these explicit; do not allow CARGO_*.
+    "CARGO_BUILD_TARGET",
+    "CARGO_HOME",
+    "CARGO_TARGET_*",
+    "CARGO_TARGET_DIR",
+    "RUST_BACKTRACE",
+    "RUST_LOG",
+    "RUSTC",
+    "RUSTDOC",
+    "RUSTDOCFLAGS",
+    "RUSTFLAGS",
+    "RUSTUP_HOME",
+    "RUSTUP_TOOLCHAIN",
+    # bindgen/clang on NixOS.
+    "BINDGEN_EXTRA_CLANG_ARGS",
+    "LIBCLANG_PATH",
+    # Native dependency discovery beyond PKG_CONFIG_PATH.
+    "PKG_CONFIG_*",
+}
+
+forbidden = {
+    "CARGO_*",
+    "PATH",
+    "RUST_*",
+    "TERM",
+}
+
+missing = sorted(required - allow_env)
+if missing:
+    print("temenos sandbox allow_env is missing required build vars:", file=sys.stderr)
+    for key in missing:
+        print(f"  - {key}", file=sys.stderr)
+    sys.exit(1)
+
+present_forbidden = sorted(forbidden & allow_env)
+if present_forbidden:
+    print("temenos sandbox allow_env has overly broad or unsafe vars:", file=sys.stderr)
+    for key in present_forbidden:
+        print(f"  - {key}", file=sys.stderr)
+    sys.exit(1)
+PY
