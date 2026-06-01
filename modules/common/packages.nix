@@ -106,6 +106,9 @@ in {
     pkgsUnstable.go
     pkgsUnstable.golangci-lint
     python3
+    pkgsUnstable.uv
+    pkgsUnstable.ruff
+    pkgsUnstable.basedpyright
     llvmPackages.libclang
 
     # System inspection
