@@ -65,7 +65,7 @@ in {
     ripgrep
     fd
     bat
-    ast-grep
+    pkgsUnstable.ast-grep
     tokei
     jq
     yq
