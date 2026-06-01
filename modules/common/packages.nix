@@ -73,10 +73,10 @@ in {
     yazi
 
     # Media
-    ffmpeg
+    pkgsUnstable.ffmpeg
 
     # Network and HTTP
-    aria2
+    pkgsUnstable.aria2
     httpie
     wget
     curl
