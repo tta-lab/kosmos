@@ -50,13 +50,13 @@ if grep -Fq 'missing' <<<"$output"; then
   exit 1
 fi
 
-if ! grep -Fq 'pkgsUnstable.wezterm' "$packages"; then
-  printf 'WSL packages should include unstable wezterm for SSH mux domains\n' >&2
+if grep -Fq 'pkgsUnstable.wezterm' "$packages"; then
+  printf 'WSL packages should not include the wezterm binary\n' >&2
   exit 1
 fi
 
-if ! grep -Fq 'pkgsUnstable.wezterm.terminfo' "$packages"; then
-  printf 'WSL packages should include unstable wezterm terminfo\n' >&2
+if ! grep -Fq 'wezterm.terminfo' "$packages"; then
+  printf 'WSL packages should include wezterm terminfo\n' >&2
   exit 1
 fi
 
