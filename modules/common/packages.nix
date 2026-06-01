@@ -65,6 +65,7 @@ in {
     ripgrep
     fd
     bat
+    ast-grep
     tokei
     jq
     yq
