@@ -52,11 +52,10 @@ in {
     git-sizer
     delta
     tmux
-    pkgsUnstable.wezterm
 
     # Terminfo for SSH clients using modern terminal emulators.
     kitty.terminfo
-    pkgsUnstable.wezterm.terminfo
+    wezterm.terminfo
     ghostty.terminfo
 
     gnumake
