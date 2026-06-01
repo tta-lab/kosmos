@@ -134,6 +134,9 @@ in {
     cloudflared
     caddy
 
+    # LLM tools
+    pkgsUnstable.rtk
+
     # Cloud and Kubernetes
     gh
     hcloud
