@@ -74,7 +74,11 @@ in {
     direnv
     yazi
 
+    # Media
+    pkgsUnstable.ffmpeg
+
     # Network and HTTP
+    pkgsUnstable.aria2
     httpie
     wget
     curl
@@ -106,6 +110,9 @@ in {
     pkgsUnstable.cargo-deny
     pkgsUnstable.cargo-release
     python3
+    pkgsUnstable.uv
+    pkgsUnstable.ruff
+    pkgsUnstable.basedpyright
     llvmPackages.libclang
 
     # LSPs and dev tools
