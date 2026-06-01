@@ -52,11 +52,10 @@ in {
     git-sizer
     delta
     tmux
-    pkgsUnstable.wezterm
 
     # Terminfo for SSH clients using modern terminal emulators.
     kitty.terminfo
-    pkgsUnstable.wezterm.terminfo
+    wezterm.terminfo
     ghostty.terminfo
 
     gnumake
@@ -65,6 +64,7 @@ in {
     ripgrep
     fd
     bat
+    pkgsUnstable.ast-grep
     tokei
     jq
     yq
@@ -133,6 +133,9 @@ in {
     rathole
     cloudflared
     caddy
+
+    # LLM tools
+    pkgsUnstable.rtk
 
     # Cloud and Kubernetes
     gh
