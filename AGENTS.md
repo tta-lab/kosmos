@@ -116,4 +116,4 @@ f=$(mktemp --suffix=-tmux-buffer.txt)
 `mktemp` guarantees uniqueness and avoids collisions across sessions, windows, and restarts without any expansion tricks.
 ## CLAUDE.user.md Maintenance
 
-`CLAUDE.user.md` in the repo root is the SSOT for user-scope agent instructions. Home Manager sources it to both `.claude/CLAUDE.md` and `.codex/AGENTS.md` at runtime. When adding or changing user-scope preferences, edit `CLAUDE.user.md`. After merging, `ttal sync` propagates the change.
+`CLAUDE.user.md` in the repo root is the SSOT for user-scope agent instructions. Home Manager sources it to both `.claude/CLAUDE.md` and `.codex/AGENTS.md` at runtime. When adding or changing user-scope preferences, edit `CLAUDE.user.md`. After merging, the change is applied by manually running `sudo env NIX_CONFIG="$(cat ~/.config/nix/nix.conf)" nixos-rebuild switch --flake .#wsl`.
