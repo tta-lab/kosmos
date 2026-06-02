@@ -60,11 +60,12 @@ Git-tracked config dirs (`ttal/`, `helix/`, `einai/`, `temenos/`) are the source
 
 Workflows for updating config (e.g. `ttal/projects.toml`):
 
-1. **Add a project entry**: use `ttal project add` — this writes to the runtime file. Then *also* add the entry manually to `ttal/projects.toml` in this repo to keep the source of truth in sync.
-2. **Simplify a project entry**: edit only `ttal/projects.toml` in this repo; `ttal project modify` is not needed.
-3. **Deploy the change**: merge the PR and run `ttal sync` (or `nixos-rebuild switch --flake .#wsl` for immediate effect on WSL).
+1. **Add or change a project entry**: edit `ttal/projects.toml` in this repo.
+2. **Apply the change on WSL**: after merging, rebuild with `sudo env NIX_CONFIG="$(cat ~/.config/nix/nix.conf)" nixos-rebuild switch --flake .#wsl`.
 
-Do not run `ttal project add` or `ttal project modify` and call it done — they only affect the runtime file, which is ephemeral. The repo source must always match.
+Do not use `ttal project add` or `ttal project modify` for this repo. They write to the runtime file directly, bypass the Nix source of truth, and will be overwritten by the next NixOS/Home Manager switch.
+
+Do not use `ttal sync` as the deploy path for this repo. `ttal sync` is a pre-NixOS legacy copy-based sync command. This repo applies managed config through NixOS + Home Manager.
 
 ## Testing Guidelines
 
@@ -114,3 +115,6 @@ f=$(mktemp --suffix=-tmux-buffer.txt)
 ```
 
 `mktemp` guarantees uniqueness and avoids collisions across sessions, windows, and restarts without any expansion tricks.
+## CLAUDE.user.md Maintenance
+
+`CLAUDE.user.md` in the repo root is the SSOT for user-scope agent instructions. Home Manager sources it to both `.claude/CLAUDE.md` and `.codex/AGENTS.md` at runtime. When adding or changing user-scope preferences, edit `CLAUDE.user.md`. After merging, the change is applied by manually running `sudo env NIX_CONFIG="$(cat ~/.config/nix/nix.conf)" nixos-rebuild switch --flake .#wsl`.
