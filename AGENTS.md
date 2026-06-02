@@ -116,4 +116,4 @@ f=$(mktemp --suffix=-tmux-buffer.txt)
 `mktemp` guarantees uniqueness and avoids collisions across sessions, windows, and restarts without any expansion tricks.
 ## CLAUDE.user.md Maintenance
 
-This repo's `AGENTS.md` is the SSOT for user-scope agent instructions. When adding or changing user-scope preferences in `AGENTS.md`, also mirror the new content to `CLAUDE.user.md` in the repo root. After merging, `ttal sync` propagates both files to the runtime.
+`CLAUDE.user.md` in the repo root is the SSOT for user-scope agent instructions. Home Manager sources it to both `.claude/CLAUDE.md` and `.codex/AGENTS.md` at runtime. When adding or changing user-scope preferences, edit `CLAUDE.user.md`. After merging, `ttal sync` propagates the change.
