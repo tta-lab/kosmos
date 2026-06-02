@@ -114,13 +114,6 @@ f=$(mktemp --suffix=-tmux-buffer.txt)
 ```
 
 `mktemp` guarantees uniqueness and avoids collisions across sessions, windows, and restarts without any expansion tricks.
-## FlickNote Projects
+## CLAUDE.user.md Maintenance
 
-Agents must use only two FlickNote projects for storing notes:
-
-- **orientation** — plan-like notes: task plans, design decisions, implementation strategies, orientation context
-- **research** — research and knowledge notes: findings, reference material, discoveries, accumulated knowledge
-
-Create a new project only when explicitly asked by the user. If in doubt, use `orientation` for structured plans and `research` for collected information.
-
-When adding notes from repo work, keep the repo's `AGENTS.md` as the SSOT for user-scope instructions like this one; also mirror the same content to `CLAUDE.user.md` in the repo root. When `ttal sync` is run after merge, it will propagate both files to the runtime.
+This repo's `AGENTS.md` is the SSOT for user-scope agent instructions. When adding or changing user-scope preferences in `AGENTS.md`, also mirror the new content to `CLAUDE.user.md` in the repo root. After merging, `ttal sync` propagates both files to the runtime.
