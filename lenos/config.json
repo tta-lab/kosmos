@@ -5,6 +5,7 @@
   "options": {
     "disable_notifications": true,
     "disable_provider_auto_update": true,
+    "disable_metrics": true,
     "message_block_prefill": true,
     "tui": {
       "show_thinking": false
