@@ -82,6 +82,7 @@ allow_read = [
   "~/.taskrc",                           # taskwarrior config
   "~/.taskrc.guion",                     # taskwarrior config
   "~/.taskrc.ttal",                      # taskwarrior config
+  "~/.ttal/kubeconfig",                  # ttal Kubernetes config
   "~/.cargo/config.toml",                # Rust user-level Cargo config (registries, build overrides) — read-only by design
   "~/.rustup",                           # Rust toolchain
   "~/code/projects",                     # local project repos, read-only baseline for cross-repo context
