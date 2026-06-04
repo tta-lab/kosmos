@@ -87,6 +87,7 @@ in {
 
   environment = {
     systemPackages = with pkgs; [
+      docker-compose
       k3d
       proxyEnv
     ];
