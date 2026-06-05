@@ -1,7 +1,6 @@
 default_runtime = "lenos"
 
-# Where to find agent .md files
-agents_paths = ["/home/neil/code/projects/tta-lab/einai/agents"]
+model = "deepseek/deepseek-v4-flash"
 
 # Reference repos for --repo flag
 references_path = "~/code/references"
