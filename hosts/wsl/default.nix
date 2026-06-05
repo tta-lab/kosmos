@@ -13,6 +13,7 @@ _: {
     ../../modules/wsl
     ../../modules/wsl/frpc-ssh.nix
     ../../modules/wsl/secrets.nix
+    ../../modules/wsl/apt-cacher-ng.nix
     ../../modules/configs.nix
   ];
 
