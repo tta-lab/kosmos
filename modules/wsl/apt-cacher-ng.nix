@@ -9,6 +9,7 @@
       ExecStart =
         "${pkgs.apt-cacher-ng}/bin/apt-cacher-ng"
         + " ForeGround=1"
+        + " BindAddress=0.0.0.0"
         + " Port=3142"
         + " CacheDir=/var/cache/apt-cacher-ng"
         + " LogDir=/var/log/apt-cacher-ng";
