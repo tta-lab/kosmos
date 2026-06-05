@@ -9,4 +9,5 @@ in {
   "ttal-kubeconfig.age".publicKeys = users ++ systems;
   "sops-age-keys.age".publicKeys = users ++ systems;
   "frpc-env.age".publicKeys = users ++ systems;
+  "env.age".publicKeys = users ++ systems;
 }

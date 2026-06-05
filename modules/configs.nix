@@ -84,6 +84,9 @@ in {
           shellInit = ''
             fish_add_path -g /home/neil/go/bin
             fish_add_path -g /home/neil/.local/share/npm-global/bin
+            if test -r "$HOME/.config/env"
+              source "$HOME/.config/env"
+            end
             if command -q kosmos-wsl-proxy-env
               kosmos-wsl-proxy-env fish | source
             end
