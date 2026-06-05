@@ -5,6 +5,9 @@
     after = ["network-online.target"];
     wants = ["network-online.target"];
 
+    # BindAddress=0.0.0.0 is safe in WSL2 NAT mode — the VM sits
+    # behind a virtual switch with no direct LAN exposure. Only the
+    # Windows host and other WSL distros can reach this port.
     serviceConfig = {
       ExecStart =
         "${pkgs.apt-cacher-ng}/bin/apt-cacher-ng"
