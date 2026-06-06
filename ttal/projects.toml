@@ -4,8 +4,8 @@
 
 [cnsupa]
   name = "CloudNative Supabase"
-  path = "/home/neil/code/projects/neil/cloudnative-supabase"
-  remote = "https://git.guion.io/neil/cloudnative-supabase.git"
+  path = "/home/neil/code/projects/GuionAI/cloudnative-supabase"
+  remote = "https://github.com/GuionAI/cloudnative-supabase.git"
 
 [devops]
   name = "Guion DevOps"
