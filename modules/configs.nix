@@ -93,8 +93,8 @@ in {
             end
           '';
           functions = {
-            t = ''
-              set -l dir (command ttal jump $argv)
+            p = ''
+              set -l dir (command project jump $argv)
               or return 1
               test -n "$dir"
               or return 1

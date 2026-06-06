@@ -37,7 +37,7 @@ done
 
 project_json="${TTAL_TMUX_PROJECTS_JSON:-}"
 if [[ -z "$project_json" ]]; then
-  project_json="$(ttal project list --json)"
+  project_json="$(project list --json)"
 fi
 
 rows="$(
@@ -45,7 +45,7 @@ rows="$(
 )"
 
 if [[ -z "$rows" ]]; then
-  echo "no ttal projects found" >&2
+  echo "no projects found" >&2
   exit 1
 fi
 
@@ -60,7 +60,7 @@ if [[ -n "$requested_alias" ]]; then
 else
   selected="$(
     fzf \
-      --prompt="ttal project> " \
+      --prompt="project> " \
       --delimiter=$'\t' \
       --with-nth=1,2 \
       --height=80% \
