@@ -88,8 +88,10 @@ in {
             if test -r "$HOME/.config/env"
               source "$HOME/.config/env"
             end
-            if command -q kosmos-wsl-proxy-env
-              kosmos-wsl-proxy-env fish | source
+            if test "${toString config.kosmos.wsl.windowsProxy.enable}" = "true"
+              if command -q kosmos-wsl-proxy-env
+                kosmos-wsl-proxy-env fish | source
+              end
             end
           '';
           functions = {

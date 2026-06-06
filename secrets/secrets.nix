@@ -10,4 +10,5 @@ in {
   "sops-age-keys.age".publicKeys = users ++ systems;
   "frpc-env.age".publicKeys = users ++ systems;
   "env.age".publicKeys = users ++ systems;
+  "mihomo-config.age".publicKeys = systems;
 }

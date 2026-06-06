@@ -1,4 +1,10 @@
-{pkgs, pkgsUnstable, ...}: let
+{
+  config,
+  lib,
+  pkgs,
+  pkgsUnstable,
+  ...
+}: let
   goPath = "/home/neil/go";
   goBin = "${goPath}/bin";
   goModCache = "${goPath}/pkg/mod";
@@ -14,7 +20,8 @@
     pkgs.openssh
     pkgs.tmux
   ]}:/run/current-system/sw/bin";
-  proxyPrelude = ''
+  windowsProxyEnable = config.kosmos.wsl.windowsProxy.enable or false;
+  proxyPrelude = lib.optionalString windowsProxyEnable ''
     if command -v kosmos-wsl-proxy-env >/dev/null 2>&1; then
       eval "$(kosmos-wsl-proxy-env sh)"
     fi

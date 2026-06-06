@@ -91,7 +91,6 @@ in {
       k3d
       proxyEnv
     ];
-    variables.KOSMOS_WSL_PROXY_PORT = "7897";
   };
 
   virtualisation.podman = {

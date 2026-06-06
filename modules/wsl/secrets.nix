@@ -20,6 +20,13 @@ in {
       ttal-kubeconfig = userSecret "ttal-kubeconfig.age" "/home/neil/.ttal/kubeconfig";
       sops-age-keys = userSecret "sops-age-keys.age" "/home/neil/.config/sops/age/keys.txt";
       env = userSecret "env.age" "/home/neil/.config/env";
+      mihomo-config = {
+        file = secretsDir + "/mihomo-config.age";
+        owner = "root";
+        group = "root";
+        mode = "0400";
+        path = "/run/agenix/mihomo-config";
+      };
     };
   };
 
