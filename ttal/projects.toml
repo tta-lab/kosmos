@@ -66,7 +66,6 @@
   remote = "https://git.guion.io/neil/flick-deploy.git"
 
 [fn-cli]
-  github_token_env = "GUION_GITHUB_TOKEN"
   name = "FlickNote CLI"
   path = "/home/neil/code/projects/GuionAI/flicknote-cli"
 
@@ -105,7 +104,6 @@
   path = "/home/neil/code/projects/GuionAI/flicknote-services/services/subscription-service"
 
 [ft]
-  github_token_env = "GUION_GITHUB_TOKEN"
   name = "FlickNote Terraform"
   path = "/home/neil/code/projects/GuionAI/flick-terraform"
 
@@ -115,7 +113,6 @@
   remote = "https://git.guion.io/GuionAI/guion-infra.git"
 
 [ghbt]
-  github_token_env = "GUION_GITHUB_TOKEN"
   name = "GuionAI Homebrew Tap"
   path = "/home/neil/code/projects/GuionAI/homebrew-tap"
   remote = "https://github.com/GuionAI/homebrew-tap.git"
@@ -133,7 +130,6 @@
   path = "/home/neil/code/projects/tta-lab/lenos"
 
 [logos]
-  github_token_env = "GUION_GITHUB_TOKEN"
   name = "Logos"
   path = "/home/neil/code/projects/GuionAI/logos"
   remote = "https://git.guion.io/GuionAI/logos.git"
@@ -156,7 +152,6 @@
   path = "/home/neil/code/projects/tta-lab/onnx-transcriber"
 
 [pn]
-  github_token_env = "GUION_GITHUB_TOKEN"
   name = "PowerSync Native (Rust SDK fork)"
   path = "/home/neil/code/projects/GuionAI/powersync-native"
 
@@ -169,7 +164,6 @@
   path = "/home/neil/code/projects/tta-lab/proto-plugins"
 
 [psp]
-  github_token_env = "GUION_GITHUB_TOKEN"
   k8s_app = "pgwire-supabase-proxy"
   k8s_namespace = "supa-dev"
   name = "pgwire supabase proxy for multi-tenant cli access"
@@ -186,7 +180,6 @@
   remote = "https://git.guion.io/neil/sustech-mar-slides.git"
 
 [tch]
-  github_token_env = "GUION_GITHUB_TOKEN"
   name = "TaskChampion"
   path = "/home/neil/code/projects/GuionAI/taskchampion"
 
@@ -206,7 +199,6 @@
   path = "/home/neil/code/projects/tta-lab/ttal-cli"
 
 [tw]
-  github_token_env = "GUION_GITHUB_TOKEN"
   name = "Taskwarrior"
   path = "/home/neil/code/projects/GuionAI/taskwarrior"
 
@@ -226,7 +218,6 @@
 [fn-launch]
   name = "FlickNote launch page"
   path = "/home/neil/code/projects/GuionAI/flicknote-launch-page"
-  github_token_env = "GUION_GITHUB_TOKEN"
 
 [archived]
   [archived.codex-server-go]
