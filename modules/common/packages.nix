@@ -107,6 +107,7 @@ in {
     pkgsUnstable.bun
     pkgsUnstable.go
     pkgsUnstable.golangci-lint
+    pkgsUnstable.gotestsum
     pkgsUnstable.cargo-deny
     pkgsUnstable.cargo-release
     python3
