@@ -50,6 +50,21 @@
 - **Use `ttal pr` for PR operations** — creation, modification, viewing, and merging. Never use `gh`, `tea`, `curl`, or Forgejo MCP for PR work.
   - `echo "body" | ttal pr create "title"` / `echo "body" | ttal pr modify --title "new"` / `ttal pr view` / `ttal pr log` / `ttal go <uuid>`
 
+## Agenix Secrets (kosmos repo)
+
+A new agenix secret requires coordination across 3 files:
+
+1. **`secrets/secrets.nix`** — register the `.age` file with public keys (`users` for neil-owned secrets, `systems` for root-owned, or both):
+   ```nix
+   "mihomo-config.age".publicKeys = systems;
+   ```
+
+2. **`modules/wsl/secrets.nix`** — declare the secret: file path, owner, group, mode, decrypted target path. Root-owned secrets use `path = "/run/agenix/<name>"` not a user path.
+
+3. **Create the encrypted file**: from repo root, run `agenix -e secrets/<name>.age` and paste the plaintext. The file must be staged/committed for `nix flake check` to pass.
+
+The identity file for kosmos-wsl is `/etc/ssh/ssh_host_ed25519_key`.
+
 ## Tips
 
 **Merge ≠ Deploy:** Pushing to main or merging a PR does not deploy anything. For agent config changes (CLAUDE.user.md, skills, subagents), the deploy step is `ttal sync`. Always run `ttal sync` after merging to propagate changes to runtime.
