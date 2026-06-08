@@ -19,12 +19,12 @@ Neil edits secrets with:
 ~/.ssh/agenix_ed25519
 ```
 
-Only public keys are listed in `secrets/secrets.nix`.
+Only public keys are listed in `secrets.nix` at the repo root.
 
-If you change recipients, rekey from the secrets directory:
+If you change recipients, rekey from the repo root:
 
 ```bash
-cd /home/neil/code/projects/tta-lab/kosmos/secrets
+cd /home/neil/code/projects/tta-lab/kosmos
 agenix -r -i ~/.ssh/agenix_ed25519
 ```
 
