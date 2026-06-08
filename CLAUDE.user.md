@@ -54,9 +54,9 @@
 
 A new agenix secret requires coordination across 3 files:
 
-1. **`secrets/secrets.nix`** — register the `.age` file with public keys (`users` for neil-owned secrets, `systems` for root-owned, or both):
+1. **`secrets.nix`** (repo root) — register the `.age` file with public keys (`users` for neil-owned secrets, `systems` for root-owned, or both):
    ```nix
-   "mihomo-config.age".publicKeys = systems;
+   "secrets/mihomo-config.age".publicKeys = users ++ systems;
    ```
 
 2. **`modules/wsl/secrets.nix`** — declare the secret: file path, owner, group, mode, decrypted target path. Root-owned secrets use `path = "/run/agenix/<name>"` not a user path.

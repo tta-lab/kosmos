@@ -21,6 +21,7 @@
     pkgs.tmux
   ]}:/run/current-system/sw/bin";
   windowsProxyEnable = config.kosmos.wsl.windowsProxy.enable or false;
+  mihomoProxyUrl = config.kosmos.wsl.mihomoProxyUrl or "http://127.0.0.1:7890";
   proxyPrelude =
     if windowsProxyEnable
     then ''
@@ -29,9 +30,9 @@
       fi
     ''
     else ''
-      export HTTP_PROXY=http://127.0.0.1:7890
-      export HTTPS_PROXY=http://127.0.0.1:7890
-      export ALL_PROXY=http://127.0.0.1:7890
+      export HTTP_PROXY=${mihomoProxyUrl}
+      export HTTPS_PROXY=${mihomoProxyUrl}
+      export ALL_PROXY=${mihomoProxyUrl}
       export NO_PROXY=localhost,127.0.0.1,::1
     '';
   goEnv = [
