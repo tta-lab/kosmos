@@ -44,9 +44,9 @@ Both hosts import `modules/common/tunnel-rathole-client.nix`, but the service is
 
 The initial tunnel maps remote traffic to local SSH on `127.0.0.1:22`. Add another service for Matrix/Tuwunel when needed.
 
-## Proxy Tools
+## Proxy
 
-The shared package set includes the `mihomo` CLI. The NixOS `services.mihomo` module is not enabled yet because the config file is secret-bearing and WSL should first use plain HTTP/SOCKS proxy mode, not TUN.
+`services.mihomo` is enabled as a systemd service with a non-TUN mixed-port listener at `127.0.0.1:7890`. The config is managed via agenix (`secrets/mihomo-config.age`). The old Windows-host proxy (`kosmos-wsl-proxy-env` on port `7897`) is kept as an opt-in fallback — set `kosmos.wsl.windowsProxy.enable = true` to use it instead.
 
 ## Codex CLI
 
@@ -70,7 +70,7 @@ This starts the `tta-lab-go-install.service` oneshot user unit. It first runs `k
 
 The Home Manager user services `temenos.service`, `einai.service`, and `ttal.service` are defined in `modules/common/tta-lab-go.nix`. They only start after their binary exists in `~/go/bin`.
 
-On WSL, `kosmos-wsl-proxy-env` derives the Windows host IP from the default route and exports proxy variables when Clash/Mihomo is reachable on port `7897`. Fish and the TTAL user services load it automatically.
+Proxy is provided by the local `mihomo` systemd service at `127.0.0.1:7890`. Fish and TTAL services use `kosmos.wsl.mihomoProxyUrl`. The old Windows-host proxy (`kosmos-wsl-proxy-env` on `7897`) is an opt-in fallback via `kosmos.wsl.windowsProxy.enable = true`.
 
 Code lives under two roots:
 

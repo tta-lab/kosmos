@@ -32,8 +32,8 @@ The system services read one agenix-managed systemd environment file:
 Create the secret yourself:
 
 ```bash
-cd /home/neil/code/projects/tta-lab/kosmos/secrets
-agenix -e frpc-env.age -i ~/.ssh/agenix_ed25519
+cd /home/neil/code/projects/tta-lab/kosmos
+agenix -e secrets/frpc-env.age -i ~/.ssh/agenix_ed25519
 ```
 
 `frpc-env.age` must be a systemd environment file:

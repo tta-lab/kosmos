@@ -41,7 +41,7 @@ wsl.wslConf.interop.appendWindowsPath = false;
 
 Home Manager deploys non-secret config to `~/.config/ttal`, `~/.config/einai`, and `~/.config/temenos`. Real `chat_id`, `.env`, license, kubeconfig, and tunnel tokens are intentionally left out for the later secret-management PR.
 
-The `mihomo` CLI is installed for local proxy experiments. Do not enable the NixOS service until `~/.config/mihomo/config.yaml` is handled through secrets; start with normal HTTP/SOCKS ports before trying TUN mode in WSL.
+`services.mihomo` runs as a systemd service with a non-TUN mixed-port listener at `127.0.0.1:7890`. The config is managed via agenix (`secrets/mihomo-config.age`). Enable the Windows-host fallback with `kosmos.wsl.windowsProxy.enable = true` if needed.
 
 Codex CLI is installed outside Nixpkgs so it can track OpenAI's fast npm releases:
 
@@ -68,7 +68,7 @@ The Go binaries live in `~/go/bin`, which is added to Fish and to the user servi
 
 The user services are managed by Home Manager. NixOS only enables `linger` for `neil` so the user manager can keep running without an active login shell.
 
-Proxy setup is dynamic. `kosmos-wsl-proxy-env` reads the Windows host IP from the default route, checks port `7897`, and emits `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY`. Fish and the TTAL user services load it automatically. Override the defaults with `KOSMOS_WSL_PROXY_HOST` or `KOSMOS_WSL_PROXY_PORT` if the proxy moves.
+Proxy is provided by the local `mihomo` systemd service at `127.0.0.1:7890`. Fish and the TTAL user services load `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY` from `kosmos.wsl.mihomoProxyUrl`. To switch back to the Windows-host proxy, set `kosmos.wsl.windowsProxy.enable = true` before rebuilding.
 
 ## Keep WSL Running After SSH Disconnect
 

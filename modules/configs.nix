@@ -88,8 +88,15 @@ in {
             if test -r "$HOME/.config/env"
               source "$HOME/.config/env"
             end
-            if command -q kosmos-wsl-proxy-env
-              kosmos-wsl-proxy-env fish | source
+            if test "${toString config.kosmos.wsl.windowsProxy.enable}" = "true"
+              if command -q kosmos-wsl-proxy-env
+                kosmos-wsl-proxy-env fish | source
+              end
+            else
+              set -gx HTTP_PROXY ${config.kosmos.wsl.mihomoProxyUrl}
+              set -gx HTTPS_PROXY ${config.kosmos.wsl.mihomoProxyUrl}
+              set -gx ALL_PROXY ${config.kosmos.wsl.mihomoProxyUrl}
+              set -gx NO_PROXY localhost,127.0.0.1,::1
             end
           '';
           functions = {

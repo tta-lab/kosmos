@@ -1,4 +1,10 @@
-{pkgs, pkgsUnstable, ...}: let
+{
+  config,
+  lib,
+  pkgs,
+  pkgsUnstable,
+  ...
+}: let
   goPath = "/home/neil/go";
   goBin = "${goPath}/bin";
   goModCache = "${goPath}/pkg/mod";
@@ -14,11 +20,21 @@
     pkgs.openssh
     pkgs.tmux
   ]}:/run/current-system/sw/bin";
-  proxyPrelude = ''
-    if command -v kosmos-wsl-proxy-env >/dev/null 2>&1; then
-      eval "$(kosmos-wsl-proxy-env sh)"
-    fi
-  '';
+  windowsProxyEnable = config.kosmos.wsl.windowsProxy.enable or false;
+  mihomoProxyUrl = config.kosmos.wsl.mihomoProxyUrl or "http://127.0.0.1:7890";
+  proxyPrelude =
+    if windowsProxyEnable
+    then ''
+      if command -v kosmos-wsl-proxy-env >/dev/null 2>&1; then
+        eval "$(kosmos-wsl-proxy-env sh)"
+      fi
+    ''
+    else ''
+      export HTTP_PROXY=${mihomoProxyUrl}
+      export HTTPS_PROXY=${mihomoProxyUrl}
+      export ALL_PROXY=${mihomoProxyUrl}
+      export NO_PROXY=localhost,127.0.0.1,::1
+    '';
   goEnv = [
     "GOROOT=${pkgsUnstable.go}/share/go"
     "GOPATH=${goPath}"
