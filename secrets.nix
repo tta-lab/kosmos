@@ -4,11 +4,11 @@ let
   users = [neil];
   systems = [kosmosWsl];
 in {
-  "ttal.env.age".publicKeys = users ++ systems;
-  "kube-config.age".publicKeys = users ++ systems;
-  "ttal-kubeconfig.age".publicKeys = users ++ systems;
-  "sops-age-keys.age".publicKeys = users ++ systems;
-  "frpc-env.age".publicKeys = users ++ systems;
-  "env.age".publicKeys = users ++ systems;
-  "mihomo-config.age".publicKeys = users ++ systems;
+  "secrets/ttal.env.age".publicKeys = users ++ systems;
+  "secrets/kube-config.age".publicKeys = users ++ systems;
+  "secrets/ttal-kubeconfig.age".publicKeys = users ++ systems;
+  "secrets/sops-age-keys.age".publicKeys = users ++ systems;
+  "secrets/frpc-env.age".publicKeys = users ++ systems;
+  "secrets/env.age".publicKeys = users ++ systems;
+  "secrets/mihomo-config.age".publicKeys = users ++ systems;
 }

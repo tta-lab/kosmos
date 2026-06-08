@@ -21,11 +21,19 @@
     pkgs.tmux
   ]}:/run/current-system/sw/bin";
   windowsProxyEnable = config.kosmos.wsl.windowsProxy.enable or false;
-  proxyPrelude = lib.optionalString windowsProxyEnable ''
-    if command -v kosmos-wsl-proxy-env >/dev/null 2>&1; then
-      eval "$(kosmos-wsl-proxy-env sh)"
-    fi
-  '';
+  proxyPrelude =
+    if windowsProxyEnable
+    then ''
+      if command -v kosmos-wsl-proxy-env >/dev/null 2>&1; then
+        eval "$(kosmos-wsl-proxy-env sh)"
+      fi
+    ''
+    else ''
+      export HTTP_PROXY=http://127.0.0.1:7890
+      export HTTPS_PROXY=http://127.0.0.1:7890
+      export ALL_PROXY=http://127.0.0.1:7890
+      export NO_PROXY=localhost,127.0.0.1,::1
+    '';
   goEnv = [
     "GOROOT=${pkgsUnstable.go}/share/go"
     "GOPATH=${goPath}"

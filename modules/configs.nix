@@ -92,6 +92,11 @@ in {
               if command -q kosmos-wsl-proxy-env
                 kosmos-wsl-proxy-env fish | source
               end
+            else
+              set -gx HTTP_PROXY http://127.0.0.1:7890
+              set -gx HTTPS_PROXY http://127.0.0.1:7890
+              set -gx ALL_PROXY http://127.0.0.1:7890
+              set -gx NO_PROXY localhost,127.0.0.1,::1
             end
           '';
           functions = {
