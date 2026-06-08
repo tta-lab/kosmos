@@ -11,10 +11,7 @@ in {
     services.mihomo = {
       enable = true;
       configFile = config.age.secrets.mihomo-config.path;
-      tunMode = false;
+      tunMode = true;
     };
-
-    # Keep the proxyEnv helper available for manual bootstrap
-    environment.variables.KOSMOS_WSL_PROXY_PORT = lib.mkDefault "7897";
   };
 }
