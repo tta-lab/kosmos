@@ -123,6 +123,7 @@ in {
     pkgsUnstable.typescript-language-server
     pkgsUnstable.vscode-langservers-extracted
     pkgsUnstable.biome
+    pkgsUnstable.shfmt
 
     # Recording
     pkgsUnstable.asciinema
