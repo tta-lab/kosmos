@@ -1,120 +1,85 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
+## Quick Reference
 
-This repository defines NixOS configs for the `kosmos-wsl` NixOS-WSL host and a dormant `kosmos` bare-metal Intel NUC target.
+**Adding a system package:**
+`modules/common/packages.nix` → `environment.systemPackages`.
+Use `pkgsUnstable.<name>` for bleeding-edge, `pkgs.<name>` for stable.
 
-Current stage: focus on `kosmos-wsl`. There is no real bare-metal `kosmos` machine in use yet. Keep bare-metal modules buildable where practical, but do not design new work around bare-metal deployment unless the task says so.
+**Adding user config:**
+Edit source dir (`ttal/`, `helix/`, `einai/`, `temenos/`) → rebuild WSL.
 
-- `flake.nix` declares inputs, host outputs, and the dev shell.
-- `hosts/kosmos/` is the bare-metal Intel NUC entry point.
-- `hosts/wsl/` is the NixOS-WSL entry point.
-- `modules/common/` contains shared Nix, packages, SSH, system shell enablement, user services, and the disabled Rathole client scaffold.
-- `modules/nixos/` contains bare-metal boot, network, proxy, firewall, and container config.
-- `modules/wsl/` and `modules/users/` contain WSL options and shared users.
-- `modules/configs.nix` uses Home Manager for user files, fish functions, Git config, and prompt config.
-- `configuration.nix` is a compatibility entry for `hosts/kosmos`.
-- `disko-config.nix` defines the NUC NVMe layout. Treat changes as destructive until tested.
-- `helix/`, `ttal/`, `einai/`, and `temenos/` hold non-secret user/runtime config managed by Home Manager.
-- `.github/workflows/check.yml` runs syntax and lint checks in CI.
+**Adding a secret:**
+1) register in `secrets.nix`, 2) declare in `modules/wsl/secrets.nix`, 3) `agenix -e secrets/<name>.age`.
 
-## Build, Test, and Development Commands
+## Module Map
 
-Use Nix commands from the repo root.
+| What you're changing | File(s) |
+|---|---|
+| System packages | `modules/common/packages.nix` |
+| User dotfiles (fish, git, starship) | `modules/configs.nix` |
+| User config dirs (ttal, helix, einai, temenos) | Source dirs → wired in `modules/configs.nix` |
+| WSL-only services, options, secrets | `modules/wsl/` |
+| Shared config (Nix, SSH, rust, shell) | `modules/common/` |
+| Bare-metal (NUC) config | `modules/nixos/` |
+| User creation | `modules/users/neil.nix` |
+| Flake inputs | `flake.nix` |
 
-```bash
-nix develop
-```
+`hosts/wsl/default.nix` imports all WSL modules. `hosts/kosmos/` does the same for bare-metal.
+Do not import bare-metal modules from WSL. Keep `disko-config.nix` out of WSL imports.
 
-Enter the dev shell with Nix tooling.
+Focus is `kosmos-wsl`. Keep bare-metal modules buildable but don't design new work for them unless the task says so.
 
-```bash
-nix-instantiate --parse configuration.nix
-```
-
-Check Nix syntax without full evaluation.
+## Build & Verify
 
 ```bash
-statix check .
-nix flake check
-nix build .#nixosConfigurations.wsl.config.system.build.toplevel --no-link
+nix-instantiate --parse configuration.nix   # quick syntax check
+statix check .                               # lint
+nix --extra-experimental-features 'nix-command flakes' flake check  # full check
+nix build .#nixosConfigurations.wsl.config.system.build.toplevel --no-link  # WSL closure (expensive)
+nix develop                                  # enter dev shell
 ```
 
-Lint, validate the flake, and build the WSL host closure without a result symlink. Build `.#nixosConfigurations.kosmos.config.system.build.toplevel` only when touching shared or bare-metal code that needs that check.
+Run `nix-instantiate --parse` + `statix check .` + `nix flake check` before committing.
+Run the full WSL build before changes to packages, users, services, networking, or agenix.
+Build `.#nixosConfigurations.kosmos...` only when touching shared or bare-metal modules.
 
-## Coding Style & Naming Conventions
+## Editing Rules
 
-Write Nix in the existing style: two-space indentation, short attrsets, and one list item per line for long lists. Keep `configuration.nix` thin; add host behavior under `hosts/` or matching platform modules.
+- **Never edit `~/.config/*` directly** — edit the repo source and rebuild WSL.
+- **Never use `ttal project add/modify`** — edit `ttal/projects.toml` directly.
+- **Never use `ttal sync`** — legacy non-Nix deploy; this repo uses NixOS + Home Manager.
+- **Home Manager** owns `~/.config/*`, shell, editor, git config. **NixOS modules** own system packages, daemons, networking, hardware.
+- Do not use `systemd.tmpfiles` for user dotfiles unless Home Manager can't express the file.
+- Name new modules by purpose: `modules/common/editors.nix`, `modules/wsl/backup.nix`, etc.
+- Write Nix with two-space indent, one list item per line for long lists, keep `configuration.nix` thin.
 
-Name new modules by purpose, for example `modules/nixos/backup.nix` or `modules/common/editors.nix`. Do not import bare-metal modules from the WSL host.
+## Secrets (agenix)
 
-Keep the boundary clear: NixOS modules own system packages, daemon services, WSL settings, SSH, networking, tunnels, and hardware. Home Manager owns `~/.config/*`, fish functions, Git settings, prompt config, and other user-session behavior. Do not use `systemd.tmpfiles` for normal user dotfiles unless Home Manager cannot express the file.
+WSL decrypt key: `/etc/ssh/ssh_host_ed25519_key`.
 
-When adding user-owned config paths, prefer Home Manager. Use Home Manager for parent directories under `$HOME`, non-secret dotfiles, shell/editor/git config, and user services. Use agenix only for the encrypted secret payload and decrypted file target; let Home Manager create user-owned parent directories where practical.
-
-## Config Management (Home Manager)
-
-Git-tracked config dirs (`ttal/`, `helix/`, `einai/`, `temenos/`) are the source of truth for user config managed by Home Manager. `modules/configs.nix` sources them into `~/.config/*` via the nix store, making runtime files read-only symlinks.
-
-**Never edit runtime files directly under `~/.config/`.** Always edit the repo source file and let Home Manager propagate the change.
-
-Workflows for updating config (e.g. `ttal/projects.toml`):
-
-1. **Add or change a project entry**: edit `ttal/projects.toml` in this repo.
-2. **Apply the change on WSL**: after merging, rebuild with `sudo env NIX_CONFIG="$(cat ~/.config/nix/nix.conf)" nixos-rebuild switch --flake .#wsl`.
-
-Do not use `ttal project add` or `ttal project modify` for this repo. They write to the runtime file directly, bypass the Nix source of truth, and will be overwritten by the next NixOS/Home Manager switch.
-
-Do not use `ttal sync` as the deploy path for this repo. `ttal sync` is a pre-NixOS legacy copy-based sync command. This repo applies managed config through NixOS + Home Manager.
-
-## Testing Guidelines
-
-There is no unit test suite. Validate by parsing, linting, flake checks, and building the NixOS toplevel. Run at least:
-
-```bash
-nix-instantiate --parse configuration.nix
-statix check .
-```
-
-Prefer behavior tests for scripts and generated outputs. Avoid grep-only assertions over static config files; they are brittle and often duplicate the config instead of testing behavior. Add a config-file assertion only for a clear safety invariant, and keep it in a narrowly named test.
-
-Run the WSL host build before changes to packages, users, services, networking, WSL behavior, Home Manager config, or agenix wiring. Run the bare-metal host build only when the change affects shared modules or bare-metal modules.
-
-## Security & Configuration Tips
-
-Do not commit private keys, passwords, Rathole tokens, proxy secrets, GitHub/Forgejo tokens, kubeconfig, `.env`, or host-specific credentials. Keep public, non-secret config in this repo; manage WSL secrets with agenix.
-
-For agenix on `kosmos-wsl`, use `/etc/ssh/ssh_host_ed25519_key` as the private decrypt key. Never put private age or SSH keys in the repo, and never reference a private key through a Nix store path.
-
-Expected WSL secret targets:
-
+Expected secret targets:
 - `~/.config/ttal/.env`
 - `~/.kube/config`
 - `~/.ttal/kubeconfig`
 - `~/.config/sops/age/keys.txt`
 
-`lenos/config.json` in this repo is non-secret and belongs at `~/.config/lenos/config.json`. `einai/config.toml` is not a secret.
+Adding a secret: (1) register `.age` file in `secrets.nix` with public keys, (2) declare path/owner/mode/target in `modules/wsl/secrets.nix`, (3) run `agenix -e secrets/<name>.age` and paste plaintext. Commit the `.age` file.
 
-The secret Lenos config at `~/.local/share/lenos/config.json` is not managed by agenix yet.
+Agents must not read, decrypt, or inspect plaintext secrets. If a task needs one, tell Neil the exact command.
 
-Agents must not read, decrypt, print, grep, diff, migrate, or inspect plaintext secrets. If a task requires touching or reading a plaintext secret, stop and tell Neil the exact command he needs to run.
+## Commit & PR
 
-Keep `disko-config.nix` out of WSL imports; a wrong device path can wipe the wrong disk.
+- Branch + PR for everything. Never push to main.
+- Conventional commits: `feat(wsl):`, `fix(proxy):`, `chore:`, `refactor:`
+- Use `ttal push` (not `git push`). Use `ttal pr create` for PRs.
+- Commit `flake.lock` when flake inputs change.
 
-For WSL, keep Windows PATH disabled unless a workflow proves it is needed. Prefer HTTPS remotes in `ttal/projects.toml`; existing `ttal` credentials are token-based, not SSH-key based.
-
-## Commit & Pull Request Guidelines
-
-Use concise conventional subjects such as `feat(wsl): add NixOS-WSL host` or `fix(proxy): update noProxy list`. Commit `flake.lock` when flake inputs change. Use `ttal push` when available; if bootstrapping WSL before `ttal` exists, plain `git push` is acceptable. Pull requests should describe what changed, why it changed, and which validation commands passed. Include deploy notes for changes that require `nixos-rebuild switch --flake .#wsl`.
-## Temp Files in Config Contexts
-
-When config files (tmux, shell rc, systemd units, etc.) need unique temp files, use `mktemp` — don't rely on framework variable expansion (`#{}`, `$RANDOM`, PID, etc.) which often doesn't work in binding/command contexts:
-
-```
-f=$(mktemp --suffix=-tmux-buffer.txt)
+After merging config/package changes, deploy on WSL:
+```bash
+sudo env NIX_CONFIG="$(cat ~/.config/nix/nix.conf)" nixos-rebuild switch --flake .#wsl
 ```
 
-`mktemp` guarantees uniqueness and avoids collisions across sessions, windows, and restarts without any expansion tricks.
-## CLAUDE.user.md Maintenance
+## CLAUDE.user.md
 
-`CLAUDE.user.md` in the repo root is the SSOT for user-scope agent instructions. Home Manager sources it to both `.claude/CLAUDE.md` and `.codex/AGENTS.md` at runtime. When adding or changing user-scope preferences, edit `CLAUDE.user.md`. After merging, the change is applied by manually running `sudo env NIX_CONFIG="$(cat ~/.config/nix/nix.conf)" nixos-rebuild switch --flake .#wsl`.
+`CLAUDE.user.md` in the repo root is the SSOT for user-scope agent instructions. Home Manager sources it to both `.claude/CLAUDE.md` and `.codex/AGENTS.md`. Edit `CLAUDE.user.md` directly in this repo.
