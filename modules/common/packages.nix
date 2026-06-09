@@ -60,6 +60,12 @@ in {
 
     gnumake
 
+    # Archive tools
+    unzip
+    zip
+    p7zip
+    unar
+
     # Search and data handling
     ripgrep
     fd
