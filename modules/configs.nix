@@ -155,6 +155,7 @@ in {
           };
           lfs.enable = true;
           extraConfig = {
+            credential.interactive = false;
             diff.colorMoved = "default";
             init.defaultBranch = "main";
             merge.conflictstyle = "diff3";
