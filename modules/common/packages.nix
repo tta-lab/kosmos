@@ -82,6 +82,8 @@ in {
 
     # Media
     pkgsUnstable.ffmpeg
+    typst
+    noto-fonts-cjk-serif
 
     # Network and HTTP
     pkgsUnstable.aria2
