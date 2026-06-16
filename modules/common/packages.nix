@@ -83,7 +83,7 @@ in {
     # Media
     pkgsUnstable.ffmpeg
     typst
-    noto-fonts-cjk-serif
+    source-han-serif-simplified-chinese
 
     # Network and HTTP
     pkgsUnstable.aria2
