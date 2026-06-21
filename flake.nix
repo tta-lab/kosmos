@@ -290,7 +290,7 @@
     nixosConfigurations.kosmos = nixpkgs.lib.nixosSystem {
       inherit system;
       specialArgs = {
-        inherit hermes-agent pkgsUnstable;
+        inherit pkgsUnstable;
       };
       modules = [
         disko.nixosModules.disko
