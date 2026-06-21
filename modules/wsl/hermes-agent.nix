@@ -1,5 +1,4 @@
 {
-  config,
   hermes-agent,
   pkgs,
   ...
@@ -14,8 +13,5 @@ in {
     enable = true;
     package = hermesPackages.messaging;
     addToSystemPackages = true;
-    environmentFiles = [
-      config.age.secrets.hermes-env.path
-    ];
   };
 }
