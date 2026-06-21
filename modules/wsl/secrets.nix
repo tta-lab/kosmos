@@ -23,6 +23,13 @@ in {
         ttal-kubeconfig = userSecret "ttal-kubeconfig.age" "/home/neil/.ttal/kubeconfig";
         sops-age-keys = userSecret "sops-age-keys.age" "/home/neil/.config/sops/age/keys.txt";
         env = userSecret "env.age" "/home/neil/.config/env";
+        hermes-env = {
+          file = secretsDir + "/hermes-env.age";
+          owner = "hermes";
+          group = "hermes";
+          mode = "0400";
+          path = "/run/agenix/hermes-env";
+        };
         mihomo-config = {
           file = secretsDir + "/mihomo-config.age";
           owner = "root";
