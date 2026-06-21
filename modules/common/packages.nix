@@ -1,5 +1,6 @@
 {
   config,
+  hermes-agent,
   pkgs,
   pkgsUnstable,
   ...
@@ -36,6 +37,7 @@
         "$@"
     '';
   };
+  hermesAgent = hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.messaging;
 in {
   environment.systemPackages = with pkgs; [
     # Shells and editors
@@ -156,6 +158,7 @@ in {
     caddy
 
     # LLM tools
+    hermesAgent
     pkgsUnstable.rtk
 
     # Cloud and Kubernetes
