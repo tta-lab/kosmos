@@ -38,6 +38,7 @@
     '';
   };
   hermesAgent = hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.messaging;
+  hermesAgentTui = hermes-agent.packages.${pkgs.stdenv.hostPlatform.system}.tui;
 in {
   environment.systemPackages = with pkgs; [
     # Shells and editors
@@ -159,6 +160,7 @@ in {
 
     # LLM tools
     hermesAgent
+    hermesAgentTui
     pkgsUnstable.rtk
 
     # Cloud and Kubernetes
