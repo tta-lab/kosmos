@@ -14,11 +14,11 @@
 }: {
   flicknote = stdenvNoCC.mkDerivation {
     pname = "flicknote";
-    version = "0.2.7";
+    version = "0.2.8";
 
     src = fetchurl {
-      url = "https://github.com/GuionAI/flicknote-cli/releases/download/v0.2.7/flicknote-cli-x86_64-unknown-linux-musl.tar.xz";
-      hash = "sha256-sMiPY+WG44d3wjKf5e+ODlkQS5OFsHuslAK6kv0HzMs=";
+      url = "https://github.com/GuionAI/flicknote-cli/releases/download/v0.2.8/flicknote-cli-x86_64-unknown-linux-musl.tar.xz";
+      hash = "sha256-jyuHsWe72nwdWYAQwvcgnmpWZaY1jnNrXltdvXyf6AU=";
     };
 
     installPhase = ''
