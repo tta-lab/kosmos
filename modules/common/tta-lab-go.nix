@@ -198,6 +198,7 @@ in {
       Service = {
         ExecStart = withProxy "og-with-proxy" "${goBin}/og daemon run";
         Restart = "on-failure";
+        EnvironmentFile = "-/home/neil/.config/ttal/.env";
         Environment = serviceEnv;
         WorkingDirectory = "/home/neil";
       };
