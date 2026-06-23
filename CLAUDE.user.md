@@ -23,7 +23,7 @@
 **When in doubt, search first. Alert only after.** Search costs you; asking costs the owner's attention — pay your side first.
 - `flicknote find <keyword>` — prior notes, research, design docs
 - `ei ask "question" --async` — delegate lookup to a subagent (skill: ei-ask)
-- `skill get organon-web` → `web search "query"` / `web fetch <url>` — fresh external
+- `web search "query"` / `web fetch <url>` / `web docs <library>` / `web sgraph <query>` — fresh external, docs, and public code
 - `ttal send --to <owner> "blocked: <reason>"` — escalate when searches don't resolve it; routes to owner (worker session) or Telegram notification bot (manager session)
 - Don't assume.
 
@@ -44,11 +44,21 @@
 ## GitHub & Forgejo
 
 - **Always work on a branch and submit a PR** — create a branch for changes, push it, and open a PR. Never push directly to `main` or `master`.
-- **Never push directly to main or master** — all changes must go through a feature branch and PR. `ttal push` and `ttal push --force` are both blocked on protected branches.
-- **Use `ttal push` for git push** — always use `ttal push`, never `git push` directly. The sandbox has no git credentials; `ttal push` handles auth via the daemon.
-- **Prefer no amend, no force-push.** `ttal push --force` exists only as an escape hatch for rebase/amend workflows; it runs `--force-with-lease` internally and is blocked on main/master. Avoid using it unless you explicitly need to rewrite a remote branch you own.
-- **Use `ttal pr` for PR operations** — creation, modification, viewing, and merging. Never use `gh`, `tea`, `curl`, or Forgejo MCP for PR work.
-  - `echo "body" | ttal pr create "title"` / `echo "body" | ttal pr modify --title "new"` / `ttal pr view` / `ttal pr log` / `ttal go <uuid>`
+- **Never push directly to main or master** — all changes must go through a feature branch and PR. `og git push` and `og git push --force` are guarded on protected branches.
+- **Use `og git` for guarded git network operations** — `og git push`, `og git pull`, and `og git tag`; never use `git push` directly. Commands resolve the current repo from git metadata and handle forge auth through the daemon.
+- **Prefer no amend, no force-push.** `og git push --force` is force-with-lease and exists only for rebase/amend workflows. Avoid it unless you explicitly need to rewrite a remote branch you own.
+- **Use `og pr` for PR operations it supports** — create, view/list, find, get, modify, comment, checks/status, and failure logs. Never use `gh`, `tea`, `curl`, or Forgejo MCP for PR work.
+  - `echo "body" | og pr create "title"` / `og pr view --json` / `og pr find --state open` / `og pr checks` / `og pr failures --tail 100`
+- **`og pr` V1 does not merge** — if a merge is required, use the approved repo workflow/tool for merge rather than inventing a forge API call.
+
+## Orga CLI Tools
+
+- **Run help first in a new session or before using a new subcommand** — `og --help`, `og pr --help`, `web --help`, `project --help`, `src --help`, and then the specific `<command> <subcommand> --help`.
+- `og` — Organon forge operations: guarded git network commands, PR work, auth status, and daemon status. Merge is intentionally out of scope in V1.
+- On kosmos, `og daemon` is managed by Home Manager as a systemd user service. Use `systemctl --user status|start|restart og`; do not run `og daemon install` here.
+- `web` — unified web lookup: `search`, `fetch`, `docs`, and `sgraph`.
+- `project` — registered project lookup and navigation: `list`, `get`, `resolve`, `jump`, and `org`.
+- `src` — symbol-aware source reading and focused edits. Use it to inspect a file's structure or replace/read a function/type by symbol ID; use `rg` for repo-wide text search.
 
 ## Agenix Secrets (kosmos repo)
 

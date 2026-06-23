@@ -66,9 +66,9 @@ The WSL host installs pinned release builds for `flicknote` and the GuionAI fork
 tta-lab-go-install
 ```
 
-This starts the `tta-lab-go-install.service` oneshot user unit. It first runs `kosmos-sync-tta-lab-projects`, then installs `ttal`, `temenos`, `diary`, `organon`, `einai`, and `lenos` from `~/code/projects/tta-lab`.
+This starts the `tta-lab-go-install.service` oneshot user unit. It first runs `kosmos-sync-tta-lab-projects`, then installs `ttal`, `temenos`, `diary`, `organon` (`og`, `skill`, `src`, and `web`), `einai`, and `lenos` from `~/code/projects/tta-lab`.
 
-The Home Manager user services `temenos.service`, `einai.service`, and `ttal.service` are defined in `modules/common/tta-lab-go.nix`. They only start after their binary exists in `~/go/bin`.
+The Home Manager user services `temenos.service`, `einai.service`, `ttal.service`, and `og.service` are defined in `modules/common/tta-lab-go.nix`. They only start after their binary exists in `~/go/bin`.
 
 Proxy is provided by the local `mihomo` systemd service at `127.0.0.1:7890`. Fish and TTAL services use `kosmos.wsl.mihomoProxyUrl`. The old Windows-host proxy (`kosmos-wsl-proxy-env` on `7897`) is an opt-in fallback via `kosmos.wsl.windowsProxy.enable = true`.
 

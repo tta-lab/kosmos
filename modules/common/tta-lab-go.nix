@@ -107,7 +107,7 @@
     rm -f "$GOBIN/ttal-cli"
     install_from temenos ./cmd/temenos
     install_from diary ./cmd/diary
-    install_from organon ./cmd/skill ./cmd/src ./cmd/web
+    install_from organon ./cmd/og ./cmd/skill ./cmd/src ./cmd/web
     install_from einai .
     install_from lenos .
 
@@ -184,6 +184,21 @@ in {
       Service = {
         ExecStart = withProxy "ttal-with-proxy" "${goBin}/ttal daemon run";
         Restart = "on-failure";
+        Environment = serviceEnv;
+        WorkingDirectory = "/home/neil";
+      };
+    };
+
+    og = {
+      Unit = {
+        Description = "Organon forge operations daemon";
+        ConditionPathExists = "${goBin}/og";
+      };
+      Install.WantedBy = ["default.target"];
+      Service = {
+        ExecStart = withProxy "og-with-proxy" "${goBin}/og daemon run";
+        Restart = "on-failure";
+        EnvironmentFile = "-/home/neil/.config/ttal/.env";
         Environment = serviceEnv;
         WorkingDirectory = "/home/neil";
       };
