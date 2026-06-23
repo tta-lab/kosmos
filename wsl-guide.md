@@ -60,8 +60,8 @@ The installer first runs `kosmos-sync-tta-lab-projects`, then installs the binar
 Then start the daemons:
 
 ```bash
-systemctl --user start temenos einai ttal
-systemctl --user status temenos einai ttal
+systemctl --user start temenos einai ttal og
+systemctl --user status temenos einai ttal og
 ```
 
 The Go binaries live in `~/go/bin`, which is added to Fish and to the user services' `PATH`. The services are enabled for the user manager, but skip cleanly until the matching binary exists.
