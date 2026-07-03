@@ -82,3 +82,8 @@ not end-to-end encrypted, so messages are stored by the homeserver in readable
 form. This is intentional for the first friend/agent workspace because it keeps
 agent access and debugging simple. Do not use this deployment for private
 messages that need E2EE unless this setting is changed first.
+
+This setting can be changed later, but privacy is not retroactive. If
+`allow_encryption` is changed to `true`, new encrypted rooms can be created, but
+old messages from unencrypted rooms remain readable in the homeserver database.
+Use new encrypted rooms for conversations that need E2EE after the switch.
