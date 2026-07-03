@@ -77,6 +77,8 @@ The identity file for kosmos-wsl is `/etc/ssh/ssh_host_ed25519_key`.
 
 ## Tips
 
+**tmux clipboard on kosmos-wsl:** Use tmux clipboard/OSC 52 commands such as `copy-selection` or `copy-selection-and-cancel`; do not pipe copy bindings to platform clipboard tools like `pbcopy`, `clip.exe`, or `wl-copy`.
+
 **Merge ≠ Deploy:** Pushing to main or merging a PR does not deploy anything. For agent config changes (CLAUDE.user.md, skills, subagents), the deploy step is `ttal sync`. Always run `ttal sync` after merging to propagate changes to runtime.
 
 **Coding ≠ Ops:** Writing code and deploying it are separate concerns. Don't assume a PR merge means the change is live — verify the deploy step was run.

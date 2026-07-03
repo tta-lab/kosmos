@@ -47,6 +47,7 @@ Build `.#nixosConfigurations.kosmos...` only when touching shared or bare-metal 
 ## Editing Rules
 
 - **Never edit `~/.config/*` directly** — edit the repo source and rebuild WSL.
+- For tmux clipboard on kosmos-wsl, use tmux clipboard/OSC 52 commands such as `copy-selection` or `copy-selection-and-cancel`; do not pipe copy bindings to platform clipboard tools like `pbcopy`, `clip.exe`, or `wl-copy`.
 - **Never use `ttal project add/modify`** — edit `ttal/projects.toml` directly.
 - **Never use `ttal sync`** — legacy non-Nix deploy; this repo uses NixOS + Home Manager.
 - **Home Manager** owns `~/.config/*`, shell, editor, git config. **NixOS modules** own system packages, daemons, networking, hardware.
