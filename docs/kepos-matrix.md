@@ -13,8 +13,8 @@ Create the Cloudflare Tunnel and route:
 
 ```bash
 cloudflared tunnel login
-cloudflared tunnel create kepos
-cloudflared tunnel route dns kepos kepos.guion.io
+cloudflared tunnel create nuc-wsl
+cloudflared tunnel route dns nuc-wsl kepos.guion.io
 ```
 
 Encrypt the tunnel credentials JSON. Replace `<uuid>` with the tunnel UUID from
