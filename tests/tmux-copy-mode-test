@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+tmux_conf="$repo_root/tmux/.tmux.conf"
+
+if ! grep -Fq 'bind-key -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "pbcopy"' "$tmux_conf"; then
+  printf 'mouse selection should copy to clipboard and exit copy mode\n' >&2
+  exit 1
+fi

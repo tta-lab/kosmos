@@ -52,12 +52,14 @@
           ${./tests/ttal-tmux-project-picker-test} \
           ${./tests/temenos-ca-test} \
           ${./tests/tmux-tmpdir-test} \
+          ${./tests/tmux-copy-mode-test} \
           ${./tests/orga-cli-service-test} \
           ${./tests/ttal-wezterm-projects-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-env-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-tmpdir-test}
+        KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-copy-mode-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-wezterm-projects-test}
         touch $out
