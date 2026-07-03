@@ -4,6 +4,11 @@
   ...
 }: let
   cfg = config.kosmos.wsl.navidrome;
+  keposCloudflaredCredentialsFile = ../../secrets/cloudflared-kepos-credentials.age;
+  haveKeposTunnel =
+    config.kosmos.wsl ? keposMatrix
+    && config.kosmos.wsl.keposMatrix.enable
+    && builtins.pathExists keposCloudflaredCredentialsFile;
 in {
   options.kosmos.wsl.navidrome = {
     enable = lib.mkEnableOption "Navidrome music server for kosmos-wsl";
@@ -15,23 +20,34 @@ in {
     };
   };
 
-  config = lib.mkIf cfg.enable {
-    services.navidrome = {
-      enable = true;
-      user = "neil";
-      group = "users";
+  config = lib.mkIf cfg.enable (lib.mkMerge [
+    {
+      warnings = lib.mkIf (!haveKeposTunnel) [
+        ''
+          Navidrome is enabled without the kepos Cloudflare tunnel.
+          It will listen locally only until kosmos.wsl.keposMatrix is enabled and secrets/cloudflared-kepos-credentials.age exists.
+        ''
+      ];
 
-      settings = {
-        Address = "127.0.0.1";
-        Port = 4533;
-        MusicFolder = toString cfg.musicFolder;
-        BaseUrl = "https://music.guion.io";
-        EnableDownloads = false;
-        EnableSharing = false;
-        EnableInsightsCollector = false;
+      services.navidrome = {
+        enable = true;
+        user = "neil";
+        group = "users";
+
+        settings = {
+          Address = "127.0.0.1";
+          Port = 4533;
+          MusicFolder = toString cfg.musicFolder;
+          BaseUrl = "https://music.guion.io";
+          EnableDownloads = false;
+          EnableSharing = false;
+          EnableInsightsCollector = false;
+        };
       };
-    };
+    }
 
-    services.cloudflared.tunnels.kepos.ingress."music.guion.io" = "http://127.0.0.1:4533";
-  };
+    (lib.mkIf haveKeposTunnel {
+      services.cloudflared.tunnels.kepos.ingress."music.guion.io" = "http://127.0.0.1:4533";
+    })
+  ]);
 }
