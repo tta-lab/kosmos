@@ -81,6 +81,8 @@ in {
           default = "http_status:404";
         };
       };
+
+      systemd.services.cloudflared-tunnel-kepos.environment.TUNNEL_TRANSPORT_PROTOCOL = "http2";
     })
   ]);
 }
