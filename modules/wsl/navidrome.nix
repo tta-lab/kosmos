@@ -37,13 +37,26 @@ in {
         settings = {
           Address = "127.0.0.1";
           Port = 4533;
-          MusicFolder = toString cfg.musicFolder;
+          MusicFolder = "/music";
           BaseUrl = "https://music.guion.io";
           EnableDownloads = false;
           EnableSharing = false;
           EnableInsightsCollector = false;
         };
       };
+
+      systemd.services.navidrome.serviceConfig.BindReadOnlyPaths =
+        lib.mkForce
+        ([
+            "${config.security.pki.caBundle}:/etc/ssl/certs/ca-certificates.crt"
+            builtins.storeDir
+            "/etc"
+            "${toString cfg.musicFolder}:/music"
+          ]
+          ++ lib.optionals config.services.resolved.enable [
+            "/run/systemd/resolve/stub-resolv.conf"
+            "/run/systemd/resolve/resolv.conf"
+          ]);
     }
 
     (lib.mkIf haveKeposTunnel {
