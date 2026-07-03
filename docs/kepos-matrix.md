@@ -52,6 +52,11 @@ systemctl status cloudflared-tunnel-kepos
 curl http://127.0.0.1:6167/_matrix/client/versions
 ```
 
+The tunnel is forced to use HTTP/2 transport with
+`TUNNEL_TRANSPORT_PROTOCOL=http2`. The kosmos-wsl network currently blocks or
+drops the UDP path used by QUIC, so forcing HTTP/2 avoids slow startup retries
+before cloudflared falls back.
+
 ## Registration Token
 
 Registration is token-gated:
