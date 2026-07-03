@@ -15,6 +15,7 @@ _: {
     ../../modules/wsl/secrets.nix
     ../../modules/wsl/mihomo.nix
     ../../modules/wsl/kepos-matrix.nix
+    ../../modules/wsl/navidrome.nix
     ../../modules/wsl/apt-cacher-ng.nix
     ../../modules/configs.nix
   ];
@@ -30,7 +31,10 @@ _: {
       port = 22;
     }
   ];
-  kosmos.wsl.frpcSsh.enable = true;
-  kosmos.wsl.keposMatrix.enable = true;
+  kosmos.wsl = {
+    frpcSsh.enable = true;
+    keposMatrix.enable = true;
+    navidrome.enable = true;
+  };
   system.stateVersion = "25.05";
 }
