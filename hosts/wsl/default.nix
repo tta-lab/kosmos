@@ -14,6 +14,7 @@ _: {
     ../../modules/wsl/frpc-ssh.nix
     ../../modules/wsl/secrets.nix
     ../../modules/wsl/mihomo.nix
+    ../../modules/wsl/kepos-matrix.nix
     ../../modules/wsl/apt-cacher-ng.nix
     ../../modules/configs.nix
   ];
@@ -30,5 +31,6 @@ _: {
     }
   ];
   kosmos.wsl.frpcSsh.enable = true;
+  kosmos.wsl.keposMatrix.enable = true;
   system.stateVersion = "25.05";
 }

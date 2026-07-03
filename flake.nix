@@ -81,7 +81,7 @@
     nixosConfigurations.wsl = nixpkgs.lib.nixosSystem {
       inherit system;
       specialArgs = {
-        inherit agenix pkgsUnstable fenix;
+        inherit agenix nixpkgs-unstable pkgsUnstable fenix;
       };
       modules = [
         nixos-wsl.nixosModules.default
