@@ -12,6 +12,9 @@
     builtins.pathExists tuwunelRegistrationTokenFile
     && builtins.pathExists cloudflaredCredentialsFile;
 in {
+  # This module is imported from the WSL flake configuration, which passes
+  # nixpkgs-unstable through specialArgs so we can use the upstream Tuwunel
+  # NixOS module before kosmos moves past 25.05.
   imports = [
     "${nixpkgs-unstable}/nixos/modules/services/matrix/tuwunel.nix"
   ];
