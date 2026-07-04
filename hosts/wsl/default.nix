@@ -15,6 +15,7 @@ _: {
     ../../modules/wsl/secrets.nix
     ../../modules/wsl/mihomo.nix
     ../../modules/wsl/kepos-matrix.nix
+    ../../modules/wsl/jellyfin.nix
     ../../modules/wsl/navidrome.nix
     ../../modules/wsl/apt-cacher-ng.nix
     ../../modules/configs.nix
@@ -33,6 +34,7 @@ _: {
   ];
   kosmos.wsl = {
     frpcSsh.enable = true;
+    jellyfin.enable = true;
     keposMatrix.enable = true;
     navidrome.enable = true;
   };
