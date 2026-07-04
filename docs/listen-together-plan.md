@@ -47,6 +47,33 @@ It also avoids adopting a larger product with its own registration, upload,
 admin, and email flows. The shared listening service should only coordinate room
 state; it should not become another music platform.
 
+## Server Deployment
+
+Kepos deploys `alsoGAMER/listen-together` as a native NixOS systemd service,
+not Docker. The service is a small static Go binary with no database and no
+disk state, so Nix packaging keeps the runtime simple and lets systemd own
+restart, logs, and lifecycle.
+
+The WSL module runs the service on local port `4040` and publishes it through
+the existing Kepos Cloudflare tunnel:
+
+```text
+https://party.guion.io -> cloudflared kepos tunnel -> http://127.0.0.1:4040
+```
+
+Production guardrails:
+
+- `LT_ALLOWED_SERVERS=https://music.guion.io` so the sync server only validates
+  credentials against the Kepos Navidrome instance.
+- `LT_ALLOWED_ORIGINS=https://party.guion.io,https://music.guion.io` for browser
+  WebSocket origin checks. Native desktop clients without a browser origin still
+  work, which matches upstream behavior.
+- `LT_MAX_ROOMS=20` and `LT_MAX_MEMBERS_PER_ROOM=12` to cap a public endpoint.
+- No `LT_STATS_TOKEN` for now, so `/stats` stays disabled.
+
+Rooms are ephemeral. A restart clears active rooms, but not Navidrome users,
+music, playlists, or playback history.
+
 ## Non-Goals
 
 - Do not add a second account system.
