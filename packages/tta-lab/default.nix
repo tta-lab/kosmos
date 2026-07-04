@@ -14,11 +14,11 @@
 }: {
   flicknote = stdenvNoCC.mkDerivation {
     pname = "flicknote";
-    version = "0.3.1";
+    version = "0.3.5";
 
     src = fetchurl {
-      url = "https://github.com/GuionAI/flicknote-cli/releases/download/v0.3.1/flicknote-cli-x86_64-unknown-linux-musl.tar.xz";
-      hash = "sha256-R8QGFEJvoB8odQirOdqq9y7mWyQ03rRqQb/Q8UOeogk=";
+      url = "https://github.com/GuionAI/flicknote-cli/releases/download/v0.3.5/flicknote-cli-x86_64-unknown-linux-musl.tar.xz";
+      hash = "sha256-9ZklzR2GhOm65ZiWhM5Y9B5vKmdVTYugB6V+YpKz4zI=";
     };
 
     installPhase = ''
@@ -31,11 +31,11 @@
 
   taskwarrior = stdenvNoCC.mkDerivation {
     pname = "taskwarrior-guion";
-    version = "3.4.2-guion.16";
+    version = "3.4.2-guion.17";
 
     src = fetchurl {
-      url = "https://github.com/GuionAI/taskwarrior/releases/download/v3.4.2-guion.16/task-3.4.2-guion.16-x86_64-linux.tar.gz";
-      hash = "sha256-MYv9uQsCceqJbFpPr6g2CV0XN34IToXxASx/1WOJO7Q=";
+      url = "https://github.com/GuionAI/taskwarrior/releases/download/v3.4.2-guion.17/task-3.4.2-guion.17-x86_64-linux.tar.gz";
+      hash = "sha256-WyKqwtywraNOvYWtIsuz0mMlZfi3CGQ64nocTEkTTdk=";
     };
     # The archive has multiple top-level entries; keep unpacking at the archive root.
     sourceRoot = ".";
