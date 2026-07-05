@@ -16,6 +16,7 @@ _: {
     ../../modules/wsl/mihomo.nix
     ../../modules/wsl/kepos-matrix.nix
     ../../modules/wsl/navidrome.nix
+    ../../modules/wsl/listen-together.nix
     ../../modules/wsl/apt-cacher-ng.nix
     ../../modules/configs.nix
   ];
@@ -34,6 +35,7 @@ _: {
   kosmos.wsl = {
     frpcSsh.enable = true;
     keposMatrix.enable = true;
+    listenTogether.enable = true;
     navidrome.enable = true;
   };
   system.stateVersion = "25.05";
