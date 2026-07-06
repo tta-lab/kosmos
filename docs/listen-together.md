@@ -54,6 +54,41 @@ cloudflared tunnel route dns nuc-wsl party.guion.io
 Desktop clients can use the listen-together author's Feishin fork first. Mobile
 support should come later from a Navic fork if the desktop proof works well.
 
+## Queue Control Boundary
+
+Queue control should be centered on Navidrome, not on Feishin.
+
+Feishin has a remote control server, but it is a player remote: it is suitable
+for play, pause, seek, volume, rating, and similar playback controls. It is not
+a stable shared queue API for searching songs, adding tracks, replacing queues,
+or letting friends vote on what plays next.
+
+Navidrome is the better boundary for shared listening because it already owns:
+
+- the music library
+- user accounts
+- track IDs
+- playlists
+- Subsonic/OpenSubsonic compatibility
+- the server-side play queue surface that Feishin can sync with
+
+The listen-together layer should therefore treat Navidrome as the source of
+truth for music identity and queue writes. Feishin, Navic, or any other client
+should remain replaceable playback frontends.
+
+Target shape:
+
+- Friends log in with Navidrome accounts.
+- A room service searches Navidrome/OpenSubsonic, not local Feishin state.
+- Queue operations write Navidrome track IDs.
+- Desktop clients test first with the listen-together Feishin fork.
+- Mobile support can later use a Navic fork against the same room and Navidrome
+  queue model.
+
+This keeps the hard part in one place. If Feishin's own remote API grows a full
+queue API later, it can be an optimization for that client, not the core system
+contract.
+
 ## Next Steps
 
 After deploying the WSL configuration, verify the local service and public route:
@@ -77,6 +112,12 @@ Then test the desktop client path with the listen-together Feishin fork:
 Music server: https://music.guion.io
 Listen Together server: https://party.guion.io
 ```
+
+In Feishin Web, open `https://player.guion.io`, then check Settings -> Playback.
+New browser profiles should already have Listen Together enabled and pointed at
+`https://party.guion.io`. Existing browser profiles may keep older persisted
+settings; turn on Listen Together there if the player-bar room control is not
+visible.
 
 Use two Navidrome users for the first proof. Check:
 
