@@ -32,6 +32,12 @@ stdenv.mkDerivation (finalAttrs: {
       --replace-fail '"resolutions": {' '"pnpm": {"overrides": {"xml2js": "0.5.0", "react-router": "7.14.0"}}, "resolutions": {'
     substituteInPlace src/renderer/index.html \
       --replace-fail 'src="settings.js"' 'src="settings.js?v=1961f14e-subsonic"'
+    substituteInPlace src/renderer/router/app-outlet.tsx \
+      --replace-fail "import { useAuthStore, useAuthStoreActions } from '/@/renderer/store';" "import { useAuthStore, useAuthStoreActions } from '/@/renderer/store';"$'\n'"import { toServerType } from '/@/shared/types/types';" \
+      --replace-fail "url: state.currentServer.url," "url: state.currentServer.url,"$'\n'"                      type: state.currentServer.type," \
+      --replace-fail "const persistedUrl = normalizeServerUrl(currentServer.url);"$'\n\n'"        return configuredUrl !== persistedUrl;" "const persistedUrl = normalizeServerUrl(currentServer.url);"$'\n'"        const configuredType = toServerType(window.SERVER_TYPE);"$'\n\n'"        return ("$'\n'"            configuredUrl !== persistedUrl ||"$'\n'"            (configuredType !== null && currentServer.type !== configuredType)"$'\n'"        );" \
+      --replace-fail "updateServer(currentServer.id, {" "const configuredType = toServerType(window.SERVER_TYPE);"$'\n'"            updateServer(currentServer.id, {" \
+      --replace-fail "url: normalizeServerUrl(window.SERVER_URL)," "url: normalizeServerUrl(window.SERVER_URL),"$'\n'"                ...(configuredType !== null ? { type: configuredType } : {}),"
   '';
 
   buildPhase = ''
