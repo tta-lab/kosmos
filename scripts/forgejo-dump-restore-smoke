@@ -117,7 +117,7 @@ cleanup() {
 trap cleanup EXIT
 
 printf 'extracting latest Forgejo dump %s to %s...\n' "$latest" "$extract_dir"
-sudo tar -I zstd -xf "$latest" -C "$extract_dir"
+sudo tar --warning=no-timestamp -I zstd -xf "$latest" -C "$extract_dir"
 sudo chown -R "$(id -u):$(id -g)" "$extract_dir"
 
 "${restore_smoke_cmd[@]}" \
