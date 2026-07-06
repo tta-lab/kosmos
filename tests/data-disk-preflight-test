@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+
+bash "${repo_root}/scripts/data-disk-preflight" --help | grep -q 'usage: data-disk-preflight'

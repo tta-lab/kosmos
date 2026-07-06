@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+expected_uuid="${KOSMOS_DATA_DISK_UUID:-bf1ab97f-1d98-4977-89ed-58a8d0098e6c}"
+expected_fs="${KOSMOS_DATA_DISK_FS:-ext4}"
+mount_point="${KOSMOS_DATA_DISK_MOUNT_POINT:-/mnt/nuc-data}"
+
+usage() {
+  cat <<'EOF'
+usage: data-disk-preflight [--uuid <uuid>] [--mount-point <path>]
+
+Read-only preflight for the NUC data disk before enabling the Nix mount. This
+does not mount, fsck, format, or write to the device.
+
+Options:
+  --uuid <uuid>          Expected filesystem UUID. Default: bf1ab97f-1d98-4977-89ed-58a8d0098e6c
+  --fs <type>            Expected filesystem type. Default: ext4
+  --mount-point <path>   Expected mount point. Default: /mnt/nuc-data
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --uuid)
+      expected_uuid="$2"
+      shift 2
+      ;;
+    --fs)
+      expected_fs="$2"
+      shift 2
+      ;;
+    --mount-point)
+      mount_point="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+require() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    printf 'missing required command: %s\n' "$1" >&2
+    exit 1
+  fi
+}
+
+require blkid
+require findmnt
+require lsblk
+require readlink
+
+device="/dev/disk/by-uuid/${expected_uuid}"
+
+printf 'checking NUC data disk candidate without mounting it\n'
+printf 'expected uuid: %s\n' "$expected_uuid"
+printf 'expected fs: %s\n' "$expected_fs"
+printf 'expected mount point: %s\n' "$mount_point"
+
+if [[ ! -e "$device" ]]; then
+  printf 'missing device path: %s\n' "$device" >&2
+  printf 'available block devices:\n' >&2
+  lsblk -o NAME,SIZE,FSTYPE,UUID,MOUNTPOINTS >&2
+  exit 1
+fi
+
+resolved="$(readlink -f "$device")"
+actual_fs="$(blkid -p -o value -s TYPE "$device" 2>/dev/null || sudo -n blkid -p -o value -s TYPE "$device")"
+
+if [[ "$actual_fs" != "$expected_fs" ]]; then
+  printf 'unexpected filesystem type for %s: expected %s, got %s\n' "$device" "$expected_fs" "$actual_fs" >&2
+  exit 1
+fi
+
+printf 'ok: stable device path exists: %s -> %s\n' "$device" "$resolved"
+printf 'ok: filesystem type is %s\n' "$actual_fs"
+
+if findmnt --source "$resolved" >/dev/null 2>&1 || findmnt --source "$device" >/dev/null 2>&1; then
+  current_target="$(findmnt --noheadings --output TARGET --source "$resolved" 2>/dev/null || findmnt --noheadings --output TARGET --source "$device")"
+  if [[ "$current_target" == "$mount_point" ]]; then
+    printf 'ok: device is already mounted at %s\n' "$mount_point"
+  else
+    printf 'device is already mounted at unexpected target: %s\n' "$current_target" >&2
+    exit 1
+  fi
+else
+  printf 'pending: device is present but not mounted at %s\n' "$mount_point"
+fi
+
+printf 'nix device path: %s\n' "$device"
+printf 'data disk preflight passed\n'

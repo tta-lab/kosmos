@@ -51,6 +51,7 @@
           ${./scripts/dagger-large-registry-smoke} \
           ${./scripts/dagger-engine-isolation-smoke} \
           ${./scripts/dagger-unix-socket-smoke} \
+          ${./scripts/data-disk-preflight} \
           ${./scripts/devops-gate-status} \
           ${./scripts/forgejo-backup-replicate} \
           ${./scripts/forgejo-backup-smoke} \
@@ -70,6 +71,7 @@
           ${./tests/temenos-ca-test} \
           ${./tests/dagger-large-registry-smoke-test} \
           ${./tests/dagger-engine-isolation-smoke-test} \
+          ${./tests/data-disk-preflight-test} \
           ${./tests/forgejo-backup-smoke-test} \
           ${./tests/forgejo-dump-restore-smoke-test} \
           ${./tests/forgejo-restore-smoke-test} \
@@ -83,6 +85,7 @@
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-large-registry-smoke-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-engine-isolation-smoke-test}
+        KOSMOS_REPO_ROOT=${./.} bash ${./tests/data-disk-preflight-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-backup-smoke-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-dump-restore-smoke-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-restore-smoke-test}

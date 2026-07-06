@@ -182,6 +182,10 @@ Current WSL disk discovery shows the extra 1T disk as:
 Do not rely on `/dev/sde` for persistent config. After confirming this is the
 intended NUC data disk, enable the Nix mount with the stable UUID path:
 
+```bash
+kosmos-data-disk-preflight
+```
+
 ```nix
 kosmos.wsl.dataDisk = {
   enable = true;

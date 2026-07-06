@@ -75,6 +75,7 @@
   daggerLocalRegistrySmoke = pkgs.writeScriptBin "kosmos-dagger-local-registry-smoke" (builtins.readFile ../../scripts/dagger-local-registry-smoke);
   daggerLargeRegistrySmoke = pkgs.writeScriptBin "kosmos-dagger-large-registry-smoke" (builtins.readFile ../../scripts/dagger-large-registry-smoke);
   daggerUnixSocketSmoke = pkgs.writeScriptBin "kosmos-dagger-unix-socket-smoke" (builtins.readFile ../../scripts/dagger-unix-socket-smoke);
+  dataDiskPreflight = pkgs.writeScriptBin "kosmos-data-disk-preflight" (builtins.readFile ../../scripts/data-disk-preflight);
   devopsGateStatus = pkgs.writeScriptBin "kosmos-devops-gate-status" (builtins.readFile ../../scripts/devops-gate-status);
   devopsSmoke = pkgs.writeScriptBin "kosmos-wsl-devops-smoke" (builtins.readFile ../../scripts/wsl-devops-smoke);
   forgejoBackupReplicate = pkgs.writeScriptBin "kosmos-forgejo-backup-replicate" (builtins.readFile ../../scripts/forgejo-backup-replicate);
@@ -107,6 +108,7 @@ in {
       daggerEngineIsolationSmoke
       daggerLargeRegistrySmoke
       daggerUnixSocketSmoke
+      dataDiskPreflight
       devopsGateStatus
       docker-compose
       devopsSmoke
