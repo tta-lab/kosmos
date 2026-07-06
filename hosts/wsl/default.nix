@@ -15,6 +15,9 @@ _: {
     ../../modules/wsl/secrets.nix
     ../../modules/wsl/mihomo.nix
     ../../modules/wsl/kepos-matrix.nix
+    ../../modules/wsl/forgejo.nix
+    ../../modules/wsl/dagger.nix
+    ../../modules/wsl/woodpecker.nix
     ../../modules/wsl/navidrome.nix
     ../../modules/wsl/listen-together.nix
     ../../modules/wsl/feishin-web.nix
@@ -36,6 +39,9 @@ _: {
   kosmos.wsl = {
     frpcSsh.enable = true;
     keposMatrix.enable = true;
+    forgejo.enable = true;
+    dagger.enable = true;
+    woodpecker.enable = true;
     listenTogether.enable = true;
     feishinWeb.enable = true;
     navidrome.enable = true;
