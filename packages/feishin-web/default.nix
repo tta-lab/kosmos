@@ -30,6 +30,8 @@ stdenv.mkDerivation (finalAttrs: {
   postPatch = ''
     substituteInPlace package.json \
       --replace-fail '"resolutions": {' '"pnpm": {"overrides": {"xml2js": "0.5.0", "react-router": "7.14.0"}}, "resolutions": {'
+    substituteInPlace src/renderer/index.html \
+      --replace-fail 'src="settings.js"' 'src="settings.js?v=1961f14e-subsonic"'
   '';
 
   buildPhase = ''

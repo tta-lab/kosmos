@@ -18,7 +18,7 @@
     window.SERVER_URL = "${cfg.musicServerUrl}";
     window.REMOTE_URL = "https://${cfg.publicHostname}";
     window.SERVER_NAME = "${cfg.serverName}";
-    window.SERVER_TYPE = "navidrome";
+    window.SERVER_TYPE = "subsonic";
     window.SERVER_LOCK = "true";
     window.LEGACY_AUTHENTICATION = "false";
     window.ANALYTICS_DISABLED = "true";
@@ -35,6 +35,22 @@
     mkdir -p "$out"
     cp -r ${cfg.package}/share/feishin-web/. "$out/"
     cp ${settingsJs} "$out/settings.js"
+  '';
+
+  serverConfig = pkgs.writeText "feishin-web-static-server.toml" ''
+    [general]
+    host = "127.0.0.1"
+    port = ${toString cfg.port}
+    root = "${webRoot}"
+    page-fallback = "${webRoot}/index.html"
+    cache-control-headers = false
+
+    [advanced]
+
+    [[advanced.headers]]
+    source = "/settings.js"
+    [advanced.headers.headers]
+    Cache-Control = "no-store"
   '';
 in {
   options.kosmos.wsl.feishinWeb = {
@@ -88,7 +104,7 @@ in {
 
         serviceConfig = {
           DynamicUser = true;
-          ExecStart = "${lib.getExe pkgs.static-web-server} --host 127.0.0.1 --port ${toString cfg.port} --root ${webRoot} --page-fallback ${webRoot}/index.html";
+          ExecStart = "${lib.getExe pkgs.static-web-server} --config-file ${serverConfig}";
           Restart = "on-failure";
           RestartSec = "5s";
           NoNewPrivileges = true;

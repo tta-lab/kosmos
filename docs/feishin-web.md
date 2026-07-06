@@ -21,7 +21,7 @@ The generated web config locks the default server to Navidrome:
 
 ```text
 SERVER_NAME=Kepos Music
-SERVER_TYPE=navidrome
+SERVER_TYPE=subsonic
 SERVER_URL=https://music.guion.io
 SERVER_LOCK=true
 ```
