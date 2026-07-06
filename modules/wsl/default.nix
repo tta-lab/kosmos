@@ -74,6 +74,7 @@
   daggerLocalRegistrySmoke = pkgs.writeScriptBin "kosmos-dagger-local-registry-smoke" (builtins.readFile ../../scripts/dagger-local-registry-smoke);
   daggerUnixSocketSmoke = pkgs.writeScriptBin "kosmos-dagger-unix-socket-smoke" (builtins.readFile ../../scripts/dagger-unix-socket-smoke);
   devopsSmoke = pkgs.writeScriptBin "kosmos-wsl-devops-smoke" (builtins.readFile ../../scripts/wsl-devops-smoke);
+  forgejoBackupReplicate = pkgs.writeScriptBin "kosmos-forgejo-backup-replicate" (builtins.readFile ../../scripts/forgejo-backup-replicate);
   forgejoBackupSmoke = pkgs.writeScriptBin "kosmos-forgejo-backup-smoke" (builtins.readFile ../../scripts/forgejo-backup-smoke);
   forgejoCutoverPreflight = pkgs.writeScriptBin "kosmos-forgejo-cutover-preflight" (builtins.readFile ../../scripts/forgejo-cutover-preflight);
   forgejoHttpsGitSmoke = pkgs.writeScriptBin "kosmos-forgejo-https-git-smoke" (builtins.readFile ../../scripts/forgejo-https-git-smoke);
@@ -103,6 +104,7 @@ in {
       docker-compose
       devopsSmoke
       forgejo
+      forgejoBackupReplicate
       forgejoBackupSmoke
       forgejoCutoverPreflight
       forgejoHttpsGitSmoke

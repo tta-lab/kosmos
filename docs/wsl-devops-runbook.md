@@ -134,6 +134,17 @@ This triggers `forgejo-dump.service` and verifies a non-empty
 dump path only; before production cutover, move or replicate backups to the NUC
 data disk and test a restore from that location.
 
+After the NUC data disk is mounted, replicate dumps there:
+
+```bash
+kosmos-forgejo-backup-replicate --target-dir /mnt/nuc-data/forgejo-backups
+kosmos-forgejo-cutover-preflight --backup-dir /mnt/nuc-data/forgejo-backups
+```
+
+The replication helper refuses to use a target on the same filesystem as
+`/var/lib/forgejo` unless `--allow-same-filesystem` is passed. That override is
+for staging checks only, not production cutover.
+
 If the public hostname does not reach the WSL tunnel, route it to the `nuc-wsl`
 Cloudflare tunnel:
 
@@ -323,13 +334,14 @@ df -h /var/lib/forgejo /var/backup/forgejo
 Check cutover backup guardrails:
 
 ```bash
-kosmos-forgejo-cutover-preflight
+kosmos-forgejo-cutover-preflight --backup-dir /mnt/nuc-data/forgejo-backups
 ```
 
 This requires a non-empty Forgejo dump and fails if `/var/lib/forgejo` and the
-Forgejo backup directory are on the same filesystem. That failure is expected
-until backups are moved or replicated to the NUC data disk. For staging-only
-checks, use:
+Forgejo backup directory are on the same filesystem. Use the replicated backup
+directory on the NUC data disk for production cutover. The current WSL host also
+shows an unmounted extra 1T disk as `sde`; mount that disk before choosing the
+final `/mnt/nuc-data` path. For staging-only checks, use:
 
 ```bash
 kosmos-forgejo-cutover-preflight --allow-same-filesystem

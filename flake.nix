@@ -49,6 +49,7 @@
         shellcheck \
           ${./scripts/dagger-local-registry-smoke} \
           ${./scripts/dagger-unix-socket-smoke} \
+          ${./scripts/forgejo-backup-replicate} \
           ${./scripts/forgejo-backup-smoke} \
           ${./scripts/forgejo-cutover-preflight} \
           ${./scripts/forgejo-https-git-smoke} \

@@ -514,6 +514,8 @@ After all services have moved to Forgejo Packages:
 - Verify `kosmos-forgejo-cutover-preflight` passes without
   `--allow-same-filesystem` before cutover, so the latest Forgejo dump is not
   only on the same filesystem as the live Forgejo state.
+- Verify `kosmos-forgejo-backup-replicate` copies non-empty dumps to the NUC
+  data disk backup directory, and then point cutover preflight at that directory.
 - Verify `kosmos-forgejo-restore-smoke` passes against a cold-copy directory
   before treating the migration dry run as proven.
 - Verify a cold copy can be used to start a target Forgejo instance and pass

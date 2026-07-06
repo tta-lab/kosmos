@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+source_dir="${FORGEJO_BACKUP_SOURCE_DIR:-/var/backup/forgejo}"
+state_dir="${FORGEJO_STATE_DIR:-/var/lib/forgejo}"
+target_dir="${FORGEJO_BACKUP_REPLICA_DIR:-}"
+allow_same_filesystem=0
+
+usage() {
+  cat >&2 <<'EOF'
+usage: forgejo-backup-replicate --target-dir <path> [--allow-same-filesystem]
+
+Copy non-empty Forgejo dump files to a secondary backup directory. By default,
+the target directory must be on a different filesystem than the live Forgejo
+state directory.
+
+Options:
+  --source-dir <path>          Forgejo dump directory. Default: /var/backup/forgejo
+  --state-dir <path>           Live Forgejo state dir. Default: /var/lib/forgejo
+  --target-dir <path>          Secondary backup directory
+  --allow-same-filesystem      Warn instead of failing when target/state share a filesystem
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --source-dir)
+      source_dir="$2"
+      shift 2
+      ;;
+    --state-dir)
+      state_dir="$2"
+      shift 2
+      ;;
+    --target-dir)
+      target_dir="$2"
+      shift 2
+      ;;
+    --allow-same-filesystem)
+      allow_same_filesystem=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage
+      exit 2
+      ;;
+  esac
+done
+
+require() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    printf 'missing required command: %s\n' "$1" >&2
+    exit 1
+  fi
+}
+
+sudo_test() {
+  sudo test "$@"
+}
+
+path_device() {
+  stat -c '%d' "$1"
+}
+
+require cp
+require find
+require mkdir
+require sort
+require stat
+require sudo
+require tee
+
+if [[ -z "$target_dir" ]]; then
+  usage
+  exit 2
+fi
+
+sudo_test -d "$source_dir" || {
+  printf 'missing Forgejo backup source directory: %s\n' "$source_dir" >&2
+  exit 1
+}
+
+sudo_test -d "$state_dir" || {
+  printf 'missing live Forgejo state directory: %s\n' "$state_dir" >&2
+  exit 1
+}
+
+sudo mkdir -p "$target_dir"
+
+state_device="$(path_device "$state_dir")"
+target_device="$(path_device "$target_dir")"
+if [[ "$state_device" == "$target_device" ]]; then
+  message="Forgejo state and replica target are on the same filesystem: ${state_dir} and ${target_dir}"
+  if [[ "$allow_same_filesystem" -eq 1 ]]; then
+    printf 'warn: %s\n' "$message" >&2
+  else
+    printf '%s\n' "$message" >&2
+    printf 'mount the NUC data disk and use a target directory on that filesystem, or pass --allow-same-filesystem for staging-only checks\n' >&2
+    exit 1
+  fi
+fi
+
+mapfile -t dumps < <(
+  sudo find "$source_dir" \
+    -maxdepth 1 \
+    -type f \
+    -name 'forgejo-dump-*.tar.zst' \
+    -size +0c \
+    -printf '%T@ %p\n' \
+    | sort -n \
+    | awk '{$1=""; sub(/^ /, ""); print}'
+)
+
+if [[ "${#dumps[@]}" -eq 0 ]]; then
+  printf 'no non-empty Forgejo dumps found in %s\n' "$source_dir" >&2
+  exit 1
+fi
+
+for dump in "${dumps[@]}"; do
+  printf 'replicating %s -> %s/\n' "$dump" "$target_dir"
+  sudo cp -a --no-clobber "$dump" "$target_dir/"
+done
+
+latest_source="${dumps[-1]}"
+latest_name="$(basename "$latest_source")"
+sudo_test -s "${target_dir}/${latest_name}" || {
+  printf 'latest replicated dump is missing or empty: %s/%s\n' "$target_dir" "$latest_name" >&2
+  exit 1
+}
+
+printf '%s\n' "$latest_name" | sudo tee "${target_dir}/LATEST" >/dev/null
+printf 'Forgejo backup replication passed: %s dumps available in %s\n' "${#dumps[@]}" "$target_dir"
