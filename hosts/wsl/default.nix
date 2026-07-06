@@ -17,6 +17,7 @@ _: {
     ../../modules/wsl/kepos-matrix.nix
     ../../modules/wsl/navidrome.nix
     ../../modules/wsl/listen-together.nix
+    ../../modules/wsl/feishin-web.nix
     ../../modules/wsl/apt-cacher-ng.nix
     ../../modules/configs.nix
   ];
@@ -36,6 +37,7 @@ _: {
     frpcSsh.enable = true;
     keposMatrix.enable = true;
     listenTogether.enable = true;
+    feishinWeb.enable = true;
     navidrome.enable = true;
   };
   system.stateVersion = "25.05";
