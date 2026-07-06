@@ -133,6 +133,19 @@ items fail the command:
 kosmos-devops-gate-status --deep --strict
 ```
 
+Current staging should report `0 failed` and may still report these pending
+external gates:
+
+| Pending gate | Resolution |
+|---|---|
+| `Forgejo package-write smoke token file missing or empty` | Create a package read/write token in Forgejo, store it with `agenix -e secrets/forgejo-smoke-token.age`, rebuild WSL, then run `kosmos-forgejo-https-git-smoke`, `kosmos-dagger-local-registry-smoke`, and `kosmos-dagger-large-registry-smoke`. |
+| `Woodpecker age secrets not created` | Create the Forgejo OAuth app and shared agent secret, store `secrets/woodpecker-server-env.age` and `secrets/woodpecker-agent-env.age`, rebuild WSL, then run `kosmos-woodpecker-preflight` and the Woodpecker Dagger job smoke. |
+| `NUC data disk not mounted at /mnt/nuc-data` | Confirm `kosmos-data-disk-preflight`, enable `kosmos.wsl.dataDisk` with the stable UUID path, rebuild WSL, and verify `mountpoint /mnt/nuc-data`. |
+| `Forgejo backup directory is still on live state filesystem` | Set `kosmos.wsl.forgejo.backupReplicaDir = "/mnt/nuc-data/forgejo-backups"`, rebuild WSL, run `kosmos-forgejo-backup-replicate --target-dir /mnt/nuc-data/forgejo-backups`, then require `kosmos-forgejo-cutover-preflight --backup-dir /mnt/nuc-data/forgejo-backups` to pass without `--allow-same-filesystem`. |
+
+Do not use `--allow-same-filesystem` to clear a production cutover gate. That
+flag is only for staging checks before the NUC data disk is mounted.
+
 Smoke test HTTPS Git clone and push:
 
 ```bash
