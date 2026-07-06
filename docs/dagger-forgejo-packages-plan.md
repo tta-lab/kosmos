@@ -24,6 +24,21 @@ During staging, use `git-wsl.guion.io`. Do not point production manifests at
 `git.guion.io/guionai/*` until the Forgejo data migration and DNS cutover are
 complete.
 
+Separate the registry write path from the human/public path:
+
+- WSL-local CI and Dagger publishes should eventually use a local or LAN route
+  that does not traverse Cloudflare.
+- Human Git UI, HTTPS clone/push, and external package pulls use the Cloudflare
+  hostname, currently `git-wsl.guion.io` during staging and `git.guion.io` after
+  cutover.
+- Do not route Dagger's runner endpoint or routine CI image pushes through
+  Cloudflare. Cloudflare has request upload limits and is the wrong primary path
+  for large registry layer uploads when the services already run together.
+- Do not switch Dagger engine to Podman host networking for this. The Dagger
+  engine manages its own BuildKit/CNI networking and failed to start with
+  `--network=host` in WSL testing. Keep the official privileged engine container
+  shape unless a new approach is tested end-to-end.
+
 This deliberately makes the NUC WSL instance a personal devops box. Production
 does not need WSL for already-running pods, but rollout, reschedule to an empty
 node, rollback to an uncached image, and new deployments will depend on
@@ -348,7 +363,12 @@ Then update Dagger publish targets from:
 registry-docker-registry.devops.svc:5000/<image>:<tag>
 ```
 
-to:
+to a tested WSL-local or LAN Forgejo Packages endpoint for CI writes. The exact
+internal registry address remains a follow-up design item because the Dagger
+engine runs inside its own privileged container and `127.0.0.1` inside that
+container is not the WSL host.
+
+The public pull reference after cutover should remain:
 
 ```text
 git.guion.io/guionai/<image>:<tag>
@@ -361,7 +381,10 @@ Success criteria:
 
 - Dagger engine starts after WSL reboot without manual shell state.
 - cache config is present under the engine's real config path.
-- a build can publish to `git-wsl.guion.io/guionai/*`.
+- a build can publish to Forgejo Packages through the currently tested staging
+  hostname.
+- before production CI migration, a non-Cloudflare internal publish path is
+  selected and proven with a large enough image to matter.
 - stopping the engine leaves Forgejo and cloudflared unaffected.
 - a throwaway Woodpecker job can reach the Dagger Unix socket before production
   build pipelines are migrated.
@@ -467,8 +490,9 @@ After all services have moved to Forgejo Packages:
   through Cloudflare.
 - Verify cloudflared routes for `git-wsl.guion.io` and later `git.guion.io`
   point to Forgejo's HTTP port, not to an unrelated WSL service.
-- Verify Forgejo package upload size limits and Cloudflare request limits before
-  pushing large images.
+- Verify large-image behavior on the internal WSL registry path before migrating
+  real CI jobs. Cloudflare request upload limits still matter for public/manual
+  uploads, but routine WSL CI publishes should not use Cloudflare.
 - Verify NUC disk mount and backup target paths before moving real Forgejo data.
 - Verify a cold copy can be used to start a target Forgejo instance and pass
   login, clone, push, package list, and package pull checks. A tar copy alone is
