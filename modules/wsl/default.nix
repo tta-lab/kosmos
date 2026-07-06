@@ -76,6 +76,7 @@
   devopsSmoke = pkgs.writeScriptBin "kosmos-wsl-devops-smoke" (builtins.readFile ../../scripts/wsl-devops-smoke);
   forgejoBackupSmoke = pkgs.writeScriptBin "kosmos-forgejo-backup-smoke" (builtins.readFile ../../scripts/forgejo-backup-smoke);
   forgejoHttpsGitSmoke = pkgs.writeScriptBin "kosmos-forgejo-https-git-smoke" (builtins.readFile ../../scripts/forgejo-https-git-smoke);
+  forgejoK8sPullSecretSmoke = pkgs.writeScriptBin "kosmos-forgejo-k8s-pull-secret-smoke" (builtins.readFile ../../scripts/forgejo-k8s-pull-secret-smoke);
   forgejoMigrationDryRun = pkgs.writeScriptBin "kosmos-forgejo-migration-dry-run" (builtins.readFile ../../scripts/forgejo-migration-dry-run);
   woodpeckerPreflight = pkgs.writeScriptBin "kosmos-woodpecker-preflight" (builtins.readFile ../../scripts/woodpecker-preflight);
 in {
@@ -100,6 +101,7 @@ in {
       devopsSmoke
       forgejoBackupSmoke
       forgejoHttpsGitSmoke
+      forgejoK8sPullSecretSmoke
       forgejoMigrationDryRun
       k3d
       proxyEnv

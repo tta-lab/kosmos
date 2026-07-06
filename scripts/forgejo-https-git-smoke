@@ -4,6 +4,9 @@ set -euo pipefail
 hostname="${FORGEJO_SMOKE_HOSTNAME:-git-wsl.guion.io}"
 user="${FORGEJO_SMOKE_USER:-neil}"
 admin_file="${FORGEJO_SMOKE_ADMIN_FILE:-/root/kosmos-forgejo-admin-init.txt}"
+token="${FORGEJO_SMOKE_TOKEN:-}"
+token_file="${FORGEJO_SMOKE_TOKEN_FILE:-}"
+use_admin_bootstrap="${FORGEJO_SMOKE_USE_ADMIN_BOOTSTRAP:-}"
 
 require() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -17,21 +20,43 @@ require date
 require git
 require mktemp
 require rm
-require sudo
 
-if ! sudo test -r "$admin_file"; then
-  printf 'missing readable Forgejo admin bootstrap file: %s\n' "$admin_file" >&2
+read_credential() {
+  if [[ -n "$token" ]]; then
+    printf '%s' "$token"
+    return
+  fi
+
+  if [[ -n "$token_file" ]]; then
+    if [[ ! -r "$token_file" ]]; then
+      printf 'missing readable Forgejo token file: %s\n' "$token_file" >&2
+      exit 1
+    fi
+    tr -d '\r\n' < "$token_file"
+    return
+  fi
+
+  if [[ "$use_admin_bootstrap" == "1" ]]; then
+    require sudo
+    if ! sudo test -r "$admin_file"; then
+      printf 'missing readable Forgejo admin bootstrap file: %s\n' "$admin_file" >&2
+      exit 1
+    fi
+
+    sudo awk -F': ' '$1 == "Password" { print $2; exit }' "$admin_file"
+    return
+  fi
+
+  printf 'provide FORGEJO_SMOKE_TOKEN or FORGEJO_SMOKE_TOKEN_FILE; set FORGEJO_SMOKE_USE_ADMIN_BOOTSTRAP=1 only for bootstrap fallback\n' >&2
   exit 1
-fi
+}
 
 export FORGEJO_USER="$user"
-FORGEJO_PASS="$(
-  sudo awk -F': ' '$1 == "Password" { print $2; exit }' "$admin_file"
-)"
+FORGEJO_PASS="$(read_credential)"
 export FORGEJO_PASS
 
 if [[ -z "$FORGEJO_PASS" ]]; then
-  printf 'failed to read Forgejo password from %s\n' "$admin_file" >&2
+  printf 'Forgejo smoke credential is empty\n' >&2
   exit 1
 fi
 

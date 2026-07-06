@@ -8,6 +8,9 @@ image="${FORGEJO_SMOKE_IMAGE:-local-dagger-smoke}"
 tag="${FORGEJO_SMOKE_TAG:-latest}"
 user="${FORGEJO_SMOKE_USER:-neil}"
 admin_file="${FORGEJO_SMOKE_ADMIN_FILE:-/root/kosmos-forgejo-admin-init.txt}"
+token="${FORGEJO_SMOKE_TOKEN:-}"
+token_file="${FORGEJO_SMOKE_TOKEN_FILE:-}"
+use_admin_bootstrap="${FORGEJO_SMOKE_USE_ADMIN_BOOTSTRAP:-}"
 
 require() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -19,23 +22,45 @@ require() {
 require awk
 require dagger
 require docker
-require sudo
 
-if ! sudo test -r "$admin_file"; then
-  printf 'missing readable Forgejo admin bootstrap file: %s\n' "$admin_file" >&2
+read_credential() {
+  if [[ -n "$token" ]]; then
+    printf '%s' "$token"
+    return
+  fi
+
+  if [[ -n "$token_file" ]]; then
+    if [[ ! -r "$token_file" ]]; then
+      printf 'missing readable Forgejo token file: %s\n' "$token_file" >&2
+      exit 1
+    fi
+    tr -d '\r\n' < "$token_file"
+    return
+  fi
+
+  if [[ "$use_admin_bootstrap" == "1" ]]; then
+    require sudo
+    if ! sudo test -r "$admin_file"; then
+      printf 'missing readable Forgejo admin bootstrap file: %s\n' "$admin_file" >&2
+      exit 1
+    fi
+
+    sudo awk -F': ' '$1 == "Password" { print $2; exit }' "$admin_file"
+    return
+  fi
+
+  printf 'provide FORGEJO_SMOKE_TOKEN or FORGEJO_SMOKE_TOKEN_FILE; set FORGEJO_SMOKE_USE_ADMIN_BOOTSTRAP=1 only for bootstrap fallback\n' >&2
+  exit 1
+}
+
+credential="$(read_credential)"
+
+if [[ -z "$credential" ]]; then
+  printf 'Forgejo smoke credential is empty\n' >&2
   exit 1
 fi
 
-password="$(
-  sudo awk -F': ' '$1 == "Password" { print $2; exit }' "$admin_file"
-)"
-
-if [[ -z "$password" ]]; then
-  printf 'failed to read Forgejo password from %s\n' "$admin_file" >&2
-  exit 1
-fi
-
-export FORGEJO_PASSWORD="$password"
+export FORGEJO_PASSWORD="$credential"
 export DAGGER_NO_NAG=1
 
 dagger_ref="${dagger_registry}/${owner}/${image}:${tag}"
@@ -51,7 +76,7 @@ dagger -M call container \
 unset FORGEJO_PASSWORD
 
 printf 'pulling the same repository through local Docker address %s...\n' "$docker_ref"
-printf '%s\n' "$password" | docker login "$docker_registry" --username "$user" --password-stdin >/dev/null
+printf '%s\n' "$credential" | docker login "$docker_registry" --username "$user" --password-stdin >/dev/null
 docker pull "$docker_ref" >/dev/null
 
 printf 'Dagger local registry smoke passed: published %s and pulled %s\n' "$dagger_ref" "$docker_ref"

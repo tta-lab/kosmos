@@ -113,12 +113,15 @@ app shell.
 Smoke test HTTPS Git clone and push:
 
 ```bash
-kosmos-forgejo-https-git-smoke
+FORGEJO_SMOKE_TOKEN_FILE=/root/kosmos-forgejo-smoke-token.txt kosmos-forgejo-https-git-smoke
 ```
 
 The helper creates a temporary private repo on `git-wsl.guion.io`, clones it over
-HTTPS, commits and pushes one file, then deletes the repo. It reads the staging
-admin password from `/root/kosmos-forgejo-admin-init.txt` without printing it.
+HTTPS, commits and pushes one file, then deletes the repo. It expects a Forgejo
+token through `FORGEJO_SMOKE_TOKEN` or `FORGEJO_SMOKE_TOKEN_FILE`. The admin
+bootstrap password can still be used for initial bring-up by setting
+`FORGEJO_SMOKE_USE_ADMIN_BOOTSTRAP=1`, but that should not be the routine smoke
+credential.
 
 Smoke test the staging dump timer and backup path:
 
@@ -163,13 +166,14 @@ docker pull git-wsl.guion.io/guionai/dagger-smoke:latest
 Internal Dagger publish smoke:
 
 ```bash
-kosmos-dagger-local-registry-smoke
+FORGEJO_SMOKE_TOKEN_FILE=/root/kosmos-forgejo-smoke-token.txt kosmos-dagger-local-registry-smoke
 ```
 
 The helper publishes from Dagger to
 `host.containers.internal:3000/guionai/local-dagger-smoke:latest`, then pulls the
 same repository through `127.0.0.1:3000`. This is the path WSL Woodpecker jobs
-should use for image writes.
+should use for image writes. It uses the same token-first credential handling as
+the HTTPS Git smoke.
 
 ## Woodpecker Secrets
 
@@ -248,40 +252,22 @@ apps-share
 Verify source and mirrored secret metadata without printing secret data:
 
 ```bash
-kubectl get secret forgejo-packages -n devops \
-  -o custom-columns='NS:.metadata.namespace,NAME:.metadata.name,TYPE:.type'
-for ns in apps-dev apps-prod apps-share; do
-  kubectl get secret forgejo-packages -n "$ns" \
-    -o custom-columns='NS:.metadata.namespace,NAME:.metadata.name,TYPE:.type'
-done
+kosmos-forgejo-k8s-pull-secret-smoke
 ```
 
 Private image pull smoke in `apps-dev`:
 
 ```bash
-kubectl delete pod forgejo-packages-pull-smoke -n apps-dev --ignore-not-found --wait=true
-kubectl apply -n apps-dev -f - <<'EOF'
-apiVersion: v1
-kind: Pod
-metadata:
-  name: forgejo-packages-pull-smoke
-spec:
-  restartPolicy: Never
-  imagePullSecrets:
-    - name: forgejo-packages
-  containers:
-    - name: smoke
-      image: git-wsl.guion.io/guionai/dagger-smoke:latest
-      imagePullPolicy: Always
-      command: ["/smoke.txt"]
-EOF
-kubectl get pod forgejo-packages-pull-smoke -n apps-dev \
-  -o jsonpath='{.status.containerStatuses[0].imageID}{"\n"}'
-kubectl delete pod forgejo-packages-pull-smoke -n apps-dev --ignore-not-found --wait=false
+FORGEJO_PULL_SECRET_SMOKE_IMAGE=git-wsl.guion.io/guionai/dagger-smoke:latest \
+  kosmos-forgejo-k8s-pull-secret-smoke
 ```
 
-The smoke image is scratch-based, so the pod can fail after the pull. The pass
-condition is a populated `imageID` and no `ErrImagePull` or `ImagePullBackOff`.
+The helper checks that the source and mirrored secrets are
+`kubernetes.io/dockerconfigjson`, verifies the Reflector annotations on the
+source secret, creates a throwaway pod in `apps-dev`, waits for a populated
+`imageID`, then deletes the pod. The smoke image is scratch-based, so the pod can
+fail after the pull; the pass condition is the successful image pull, not a
+running container.
 
 ## Forgejo Migration Preflight
 
