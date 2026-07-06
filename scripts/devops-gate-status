@@ -76,6 +76,12 @@ socket_exists() {
   [[ -S "$1" ]]
 }
 
+file_nonempty_maybe_root() {
+  local path="$1"
+
+  [[ -s "$path" ]] || sudo -n test -s "$path" 2>/dev/null
+}
+
 http_status_ok() {
   local url="$1"
   local status
@@ -149,7 +155,7 @@ else
   fail "Podman socket exists"
 fi
 
-if sudo test -s "$smoke_token_file" 2>/dev/null; then
+if file_nonempty_maybe_root "$smoke_token_file"; then
   ok "Forgejo package-write smoke token file exists"
 else
   wait "Forgejo package-write smoke token file missing or empty: ${smoke_token_file}"
