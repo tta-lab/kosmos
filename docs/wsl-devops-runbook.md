@@ -150,12 +150,16 @@ Smoke test the staging dump timer and backup path:
 
 ```bash
 kosmos-forgejo-backup-smoke
+kosmos-forgejo-dump-restore-smoke
 ```
 
 This triggers `forgejo-dump.service` and verifies a non-empty
-`forgejo-dump-*.tar.zst` exists in `/var/backup/forgejo`. This proves the staging
-dump path only; before production cutover, move or replicate backups to the NUC
-data disk and test a restore from that location.
+`forgejo-dump-*.tar.zst` exists in `/var/backup/forgejo`. The backup smoke also
+checks that the archive contains `app.ini`, `data/forgejo.db`, `forgejo-db.sql`,
+and package data. The dump restore smoke extracts the latest dump into `/tmp`,
+starts a temporary Forgejo on loopback, and checks its health/login endpoints.
+Before production cutover, move or replicate backups to the NUC data disk and
+test a restore from that location.
 
 After the NUC data disk is mounted, replicate dumps there:
 

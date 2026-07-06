@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+
+bash "${repo_root}/scripts/forgejo-restore-smoke" --help 2>&1 | grep -q 'usage: forgejo-restore-smoke'
+grep -q 'RUN_USER' "${repo_root}/scripts/forgejo-restore-smoke"

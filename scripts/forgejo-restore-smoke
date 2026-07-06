@@ -92,13 +92,34 @@ check_candidate_exists() {
   return 1
 }
 
+first_existing_path() {
+  local root="$1"
+  shift
+  local candidate
+
+  for candidate in "$@"; do
+    if sudo_test -e "${root}/${candidate}"; then
+      printf '%s/%s\n' "$root" "$candidate"
+      return 0
+    fi
+  done
+
+  printf 'none of the expected paths exist under %s:\n' "$root" >&2
+  printf '  %s\n' "$@" >&2
+  return 1
+}
+
 write_restore_config() {
   local source_config="$1"
   local target_config="$2"
 
-  sudo awk -v root="$copy_dir_real" -v port="$port" '
+  sudo awk -v root="$copy_dir_real" -v port="$port" -v user="$user" -v repoRoot="$repo_root" '
     /^[[:space:]]*WORK_PATH[[:space:]]*=/ {
       print "WORK_PATH = " root
+      next
+    }
+    /^[[:space:]]*RUN_USER[[:space:]]*=/ {
+      print "RUN_USER = " user
       next
     }
     /^[[:space:]]*PATH[[:space:]]*=[[:space:]]*\/.*forgejo\.db[[:space:]]*$/ {
@@ -114,7 +135,7 @@ write_restore_config() {
       next
     }
     /^[[:space:]]*ROOT[[:space:]]*=/ {
-      print "ROOT = " root "/repositories"
+      print "ROOT = " repoRoot
       next
     }
     /^[[:space:]]*HTTP_ADDR[[:space:]]*=/ {
@@ -155,6 +176,8 @@ wait_for_http() {
 require awk
 require curl
 require gitea
+require id
+require mkdir
 require realpath
 require rm
 require sudo
@@ -176,10 +199,24 @@ sudo_test -d "$state_dir" || {
 
 copy_dir_real="$(realpath_sudo "$copy_dir")"
 state_dir_real="$(realpath_sudo "$state_dir")"
+user="$(id -un)"
 if [[ "$copy_dir_real" == "$state_dir_real" ]]; then
   printf 'refusing to run restore smoke against live Forgejo state: %s\n' "$state_dir_real" >&2
   exit 1
 fi
+
+repo_root="$(
+  first_existing_path "$copy_dir_real" \
+    repositories \
+    repos \
+    gitea-repositories \
+    git/repositories
+)"
+
+sudo chown -R "$(id -u):$(id -g)" "$copy_dir_real"
+mkdir -p "${copy_dir_real}/log"
+mkdir -p "${copy_dir_real}/.ssh"
+touch "${copy_dir_real}/.ssh/authorized_keys"
 
 source_config="$(
   check_candidate_exists "$copy_dir_real" \

@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+backup_dir="${FORGEJO_BACKUP_DIR:-/var/backup/forgejo}"
+scratch_root="${FORGEJO_DUMP_RESTORE_SCRATCH_ROOT:-/tmp}"
+restore_smoke="${FORGEJO_RESTORE_SMOKE:-kosmos-forgejo-restore-smoke}"
+port="${FORGEJO_DUMP_RESTORE_PORT:-13000}"
+keep_scratch=0
+
+usage() {
+  cat <<'EOF'
+usage: forgejo-dump-restore-smoke [--keep-scratch]
+
+Extract the latest Forgejo dump archive to a temporary non-production directory,
+then run forgejo-restore-smoke against that extracted copy.
+
+Options:
+  --backup-dir <path>      Forgejo dump directory. Default: /var/backup/forgejo
+  --scratch-root <path>    Parent directory for temporary extraction
+  --restore-smoke <path>   Restore smoke command. Default: kosmos-forgejo-restore-smoke
+  --port <port>            Temporary Forgejo port. Default: 13000
+  --keep-scratch           Keep extracted dump and restore logs after exit
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --backup-dir)
+      backup_dir="$2"
+      shift 2
+      ;;
+    --scratch-root)
+      scratch_root="$2"
+      shift 2
+      ;;
+    --restore-smoke)
+      restore_smoke="$2"
+      shift 2
+      ;;
+    --port)
+      port="$2"
+      shift 2
+      ;;
+    --keep-scratch)
+      keep_scratch=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+require() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    printf 'missing required command: %s\n' "$1" >&2
+    exit 1
+  fi
+}
+
+find_latest_dump() {
+  sudo find "$backup_dir" \
+    -maxdepth 1 \
+    -type f \
+    -name 'forgejo-dump-*.tar.zst' \
+    -printf '%T@ %p\n' \
+    | sort -n \
+    | tail -1 \
+    | cut -d' ' -f2-
+}
+
+require cut
+require find
+require id
+require mktemp
+require rm
+require sort
+require sudo
+require tail
+require tar
+
+if command -v "$restore_smoke" >/dev/null 2>&1 || [[ -x "$restore_smoke" ]]; then
+  restore_smoke_cmd=("$restore_smoke")
+elif [[ -r "$restore_smoke" ]]; then
+  restore_smoke_cmd=(bash "$restore_smoke")
+else
+  printf 'missing restore smoke command: %s\n' "$restore_smoke" >&2
+  exit 1
+fi
+
+latest="$(find_latest_dump)"
+if [[ -z "$latest" ]]; then
+  printf 'no Forgejo dump found in %s\n' "$backup_dir" >&2
+  exit 1
+fi
+
+extract_dir="$(mktemp -d "${scratch_root%/}/kosmos-forgejo-dump-restore.XXXXXX")"
+restore_scratch="${extract_dir}.scratch"
+
+cleanup() {
+  local exit_code=$?
+
+  if [[ "$keep_scratch" -eq 1 ]]; then
+    printf 'kept extracted dump: %s\n' "$extract_dir"
+    printf 'kept restore scratch: %s\n' "$restore_scratch"
+  else
+    rm -rf "$extract_dir" "$restore_scratch"
+  fi
+
+  exit "$exit_code"
+}
+trap cleanup EXIT
+
+printf 'extracting latest Forgejo dump %s to %s...\n' "$latest" "$extract_dir"
+sudo tar -I zstd -xf "$latest" -C "$extract_dir"
+sudo chown -R "$(id -u):$(id -g)" "$extract_dir"
+
+"${restore_smoke_cmd[@]}" \
+  --copy-dir "$extract_dir" \
+  --scratch-dir "$restore_scratch" \
+  --port "$port"
+
+printf 'Forgejo dump restore smoke passed for %s\n' "$latest"

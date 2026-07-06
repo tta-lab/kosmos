@@ -80,6 +80,7 @@
   forgejoBackupReplicate = pkgs.writeScriptBin "kosmos-forgejo-backup-replicate" (builtins.readFile ../../scripts/forgejo-backup-replicate);
   forgejoBackupSmoke = pkgs.writeScriptBin "kosmos-forgejo-backup-smoke" (builtins.readFile ../../scripts/forgejo-backup-smoke);
   forgejoCutoverPreflight = pkgs.writeScriptBin "kosmos-forgejo-cutover-preflight" (builtins.readFile ../../scripts/forgejo-cutover-preflight);
+  forgejoDumpRestoreSmoke = pkgs.writeScriptBin "kosmos-forgejo-dump-restore-smoke" (builtins.readFile ../../scripts/forgejo-dump-restore-smoke);
   forgejoHttpsGitSmoke = pkgs.writeScriptBin "kosmos-forgejo-https-git-smoke" (builtins.readFile ../../scripts/forgejo-https-git-smoke);
   forgejoK8sPullSecretSmoke = pkgs.writeScriptBin "kosmos-forgejo-k8s-pull-secret-smoke" (builtins.readFile ../../scripts/forgejo-k8s-pull-secret-smoke);
   forgejoMigrationDryRun = pkgs.writeScriptBin "kosmos-forgejo-migration-dry-run" (builtins.readFile ../../scripts/forgejo-migration-dry-run);
@@ -113,6 +114,7 @@ in {
       forgejoBackupReplicate
       forgejoBackupSmoke
       forgejoCutoverPreflight
+      forgejoDumpRestoreSmoke
       forgejoHttpsGitSmoke
       forgejoK8sPullSecretSmoke
       forgejoMigrationDryRun
