@@ -222,22 +222,22 @@ docker push git-wsl.guion.io/guionai/smoke:latest
 docker pull git-wsl.guion.io/guionai/smoke:latest
 ```
 
-Dagger publish smoke:
-
-```bash
-export FORGEJO_PASSWORD="$(sudo awk -F': ' '$1 == "Password" { print $2; exit }' /root/kosmos-forgejo-admin-init.txt)"
-dagger -M call container \
-  with-new-file --path /smoke.txt --contents "kosmos dagger registry smoke" \
-  with-registry-auth --address git-wsl.guion.io --username neil --secret env://FORGEJO_PASSWORD \
-  publish --address git-wsl.guion.io/guionai/dagger-smoke:latest
-unset FORGEJO_PASSWORD
-docker pull git-wsl.guion.io/guionai/dagger-smoke:latest
-```
-
 Internal Dagger publish smoke:
 
 ```bash
 kosmos-dagger-local-registry-smoke
+```
+
+The helper publishes from Dagger to
+`host.containers.internal:3000/guionai/local-dagger-smoke:latest`, then pulls the
+same repository through `127.0.0.1:3000`. This is the path WSL Woodpecker jobs
+should use for image writes. The helper uses token-first credential handling and
+does not use the Cloudflare route for routine layer uploads.
+
+Public staging pull check:
+
+```bash
+docker pull git-wsl.guion.io/guionai/local-dagger-smoke:latest
 ```
 
 `/home/neil/.config/kosmos/forgejo-smoke-token` should contain a package-write
@@ -270,11 +270,8 @@ DAGGER_LARGE_SMOKE_SIZE_MIB=512 \
   kosmos-dagger-large-registry-smoke
 ```
 
-The helper publishes from Dagger to
-`host.containers.internal:3000/guionai/local-dagger-smoke:latest`, then pulls the
-same repository through `127.0.0.1:3000`. This is the path WSL Woodpecker jobs
-should use for image writes. It uses the same token-first credential handling as
-the HTTPS Git smoke.
+This is the same internal write path with a larger layer. It uses the same
+token-first credential handling as the HTTPS Git smoke.
 
 ## Woodpecker Secrets
 
