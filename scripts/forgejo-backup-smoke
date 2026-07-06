@@ -5,6 +5,30 @@ service="${FORGEJO_BACKUP_SERVICE:-forgejo-dump.service}"
 timer="${FORGEJO_BACKUP_TIMER:-forgejo-dump.timer}"
 backup_dir="${FORGEJO_BACKUP_DIR:-/var/backup/forgejo}"
 
+usage() {
+  cat <<'EOF'
+usage: forgejo-backup-smoke
+
+Trigger the Forgejo dump service, find the latest non-empty tar.zst dump, and
+verify basic archive content needed for restore/migration confidence.
+
+Environment:
+  FORGEJO_BACKUP_SERVICE  systemd dump service. Default: forgejo-dump.service
+  FORGEJO_BACKUP_TIMER    systemd dump timer. Default: forgejo-dump.timer
+  FORGEJO_BACKUP_DIR      Forgejo dump directory. Default: /var/backup/forgejo
+EOF
+}
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  usage
+  exit 0
+fi
+
+if [[ "$#" -gt 0 ]]; then
+  usage >&2
+  exit 2
+fi
+
 require() {
   if ! command -v "$1" >/dev/null 2>&1; then
     printf 'missing required command: %s\n' "$1" >&2
@@ -12,12 +36,31 @@ require() {
   fi
 }
 
+archive_has_path() {
+  local archive_list="$1"
+  shift
+  local candidate
+
+  for candidate in "$@"; do
+    if grep -Fxq "$candidate" "$archive_list" || grep -Fq "${candidate}/" "$archive_list"; then
+      printf 'ok: dump archive contains %s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  printf 'dump archive is missing expected paths:\n' >&2
+  printf '  %s\n' "$@" >&2
+  return 1
+}
+
 require awk
 require cut
 require find
+require grep
 require sort
 require sudo
 require systemctl
+require tar
 require tail
 
 printf 'checking %s...\n' "$timer"
@@ -55,5 +98,14 @@ if [[ "$size" -le 0 ]]; then
   printf 'latest forgejo dump is empty: %s\n' "$path" >&2
   exit 1
 fi
+
+archive_list="$(mktemp)"
+trap 'rm -f "$archive_list"' EXIT
+
+sudo tar -I zstd -tf "$path" | tee "$archive_list" >/dev/null
+archive_has_path "$archive_list" app.ini custom/conf/app.ini
+archive_has_path "$archive_list" data/forgejo.db gitea/gitea.db forgejo.db
+archive_has_path "$archive_list" forgejo-db.sql
+archive_has_path "$archive_list" data/packages
 
 printf 'forgejo backup smoke passed: %s bytes at %s\n' "$size" "$path"

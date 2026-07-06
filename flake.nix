@@ -69,6 +69,7 @@
           ${./tests/temenos-ca-test} \
           ${./tests/dagger-large-registry-smoke-test} \
           ${./tests/dagger-engine-isolation-smoke-test} \
+          ${./tests/forgejo-backup-smoke-test} \
           ${./tests/tmux-tmpdir-test} \
           ${./tests/tmux-copy-mode-test} \
           ${./tests/devops-gate-status-test} \
@@ -79,6 +80,7 @@
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-large-registry-smoke-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-engine-isolation-smoke-test}
+        KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-backup-smoke-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-env-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-tmpdir-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-copy-mode-test}
