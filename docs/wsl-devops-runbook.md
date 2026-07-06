@@ -145,6 +145,17 @@ The replication helper refuses to use a target on the same filesystem as
 `/var/lib/forgejo` unless `--allow-same-filesystem` is passed. That override is
 for staging checks only, not production cutover.
 
+Once the final mount path is stable, set:
+
+```nix
+kosmos.wsl.forgejo.backupReplicaDir = "/mnt/nuc-data/forgejo-backups";
+```
+
+This enables `forgejo-backup-replicate.timer`, which runs the same guarded
+replication helper on `kosmos.wsl.forgejo.backupReplicaCalendar` (default:
+`hourly`). The timer is intentionally disabled while the option is `null`, so the
+current staging setup does not assume a final data-disk path.
+
 If the public hostname does not reach the WSL tunnel, route it to the `nuc-wsl`
 Cloudflare tunnel:
 

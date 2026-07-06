@@ -516,6 +516,9 @@ After all services have moved to Forgejo Packages:
   only on the same filesystem as the live Forgejo state.
 - Verify `kosmos-forgejo-backup-replicate` copies non-empty dumps to the NUC
   data disk backup directory, and then point cutover preflight at that directory.
+- Once the NUC data-disk path is final, configure
+  `kosmos.wsl.forgejo.backupReplicaDir` so Nix enables the guarded
+  `forgejo-backup-replicate.timer`.
 - Verify `kosmos-forgejo-restore-smoke` passes against a cold-copy directory
   before treating the migration dry run as proven.
 - Verify a cold copy can be used to start a target Forgejo instance and pass
