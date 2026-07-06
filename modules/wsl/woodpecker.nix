@@ -135,10 +135,12 @@ in {
         after = [
           "podman.socket"
           "podman-dagger-engine.service"
+          "forgejo-internal-registry-proxy.service"
         ];
         wants = [
           "podman.socket"
           "podman-dagger-engine.service"
+          "forgejo-internal-registry-proxy.service"
         ];
       };
     })
