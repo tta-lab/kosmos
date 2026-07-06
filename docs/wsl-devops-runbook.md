@@ -158,6 +158,66 @@ The agent mounts `/run/dagger` into every pipeline step with
 a throwaway Woodpecker job that the socket exists and `dagger version` can reach
 the engine.
 
+## Kubernetes Pull Secret
+
+The staging package pull token is stored outside git:
+
+```text
+/root/kosmos-forgejo-k8s-packages-pull-token.txt
+```
+
+The source Kubernetes secret is:
+
+```text
+devops/forgejo-packages
+```
+
+It has type `kubernetes.io/dockerconfigjson` and Reflector annotations for:
+
+```text
+apps-dev
+apps-prod
+apps-share
+```
+
+Verify source and mirrored secret metadata without printing secret data:
+
+```bash
+kubectl get secret forgejo-packages -n devops \
+  -o custom-columns='NS:.metadata.namespace,NAME:.metadata.name,TYPE:.type'
+for ns in apps-dev apps-prod apps-share; do
+  kubectl get secret forgejo-packages -n "$ns" \
+    -o custom-columns='NS:.metadata.namespace,NAME:.metadata.name,TYPE:.type'
+done
+```
+
+Private image pull smoke in `apps-dev`:
+
+```bash
+kubectl delete pod forgejo-packages-pull-smoke -n apps-dev --ignore-not-found --wait=true
+kubectl apply -n apps-dev -f - <<'EOF'
+apiVersion: v1
+kind: Pod
+metadata:
+  name: forgejo-packages-pull-smoke
+spec:
+  restartPolicy: Never
+  imagePullSecrets:
+    - name: forgejo-packages
+  containers:
+    - name: smoke
+      image: git-wsl.guion.io/guionai/dagger-smoke:latest
+      imagePullPolicy: Always
+      command: ["/smoke.txt"]
+EOF
+kubectl get pod forgejo-packages-pull-smoke -n apps-dev \
+  -o jsonpath='{.status.containerStatuses[0].imageID}{"\n"}'
+kubectl delete pod forgejo-packages-pull-smoke -n apps-dev --ignore-not-found --wait=false
+```
+
+The smoke image is scratch-based, so the pod can fail after the pull. The pass
+condition is a populated `imageID` and no `ErrImagePull` or `ImagePullBackOff`.
+
 ## Production Cutover Guardrails
 
 Do not move `git.guion.io` until all of these are true:
