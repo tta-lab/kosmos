@@ -53,3 +53,37 @@ cloudflared tunnel route dns nuc-wsl party.guion.io
 
 Desktop clients can use the listen-together author's Feishin fork first. Mobile
 support should come later from a Navic fork if the desktop proof works well.
+
+## Next Steps
+
+After deploying the WSL configuration, verify the local service and public route:
+
+```bash
+systemctl status listen-together
+curl http://127.0.0.1:4040/healthz
+systemctl status cloudflared-tunnel-kepos
+curl https://party.guion.io/healthz
+```
+
+If the public route fails but the local health check works, restart the tunnel:
+
+```bash
+sudo systemctl restart cloudflared-tunnel-kepos
+```
+
+Then test the desktop client path with the listen-together Feishin fork:
+
+```text
+Music server: https://music.guion.io
+Listen Together server: https://party.guion.io
+```
+
+Use two Navidrome users for the first proof. Check:
+
+- both users can log in
+- one user can create a room
+- the second user can join the room
+- play, pause, seek, next track, and queue changes sync
+- reconnect works after closing and reopening the client
+
+Only start the mobile Navic fork after this desktop proof works.
