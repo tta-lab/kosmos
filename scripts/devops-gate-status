@@ -3,6 +3,7 @@ set -euo pipefail
 
 strict=0
 deep=0
+smoke_token_file="${FORGEJO_SMOKE_TOKEN_FILE:-/root/kosmos-forgejo-smoke-token.txt}"
 
 usage() {
   cat <<'EOF'
@@ -14,6 +15,10 @@ Options:
   --strict  Exit non-zero when any gate is pending or failed
   --deep    Run checks that may create temporary cluster objects, such as the
             Kubernetes private image pull smoke
+
+Environment:
+  FORGEJO_SMOKE_TOKEN_FILE  Package-write smoke token file checked by this
+                            command. Default: /root/kosmos-forgejo-smoke-token.txt
 EOF
 }
 
@@ -142,6 +147,12 @@ if socket_exists /run/podman/podman.sock; then
   ok "Podman socket exists"
 else
   fail "Podman socket exists"
+fi
+
+if sudo test -s "$smoke_token_file" 2>/dev/null; then
+  ok "Forgejo package-write smoke token file exists"
+else
+  wait "Forgejo package-write smoke token file missing or empty: ${smoke_token_file}"
 fi
 
 if file_exists secrets/woodpecker-server-env.age && file_exists secrets/woodpecker-agent-env.age; then

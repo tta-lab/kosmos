@@ -4,3 +4,4 @@ set -euo pipefail
 repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
 
 bash "${repo_root}/scripts/devops-gate-status" --help | grep -q 'usage: devops-gate-status'
+bash "${repo_root}/scripts/devops-gate-status" --help | grep -q 'FORGEJO_SMOKE_TOKEN_FILE'
