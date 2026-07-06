@@ -82,6 +82,16 @@ curl -I https://git-wsl.guion.io/v2/
 The `/v2/` response should be a container-registry response, not the Forgejo HTML
 app shell.
 
+Smoke test HTTPS Git clone and push:
+
+```bash
+kosmos-forgejo-https-git-smoke
+```
+
+The helper creates a temporary private repo on `git-wsl.guion.io`, clones it over
+HTTPS, commits and pushes one file, then deletes the repo. It reads the staging
+admin password from `/root/kosmos-forgejo-admin-init.txt` without printing it.
+
 If the public hostname does not reach the WSL tunnel, route it to the `nuc-wsl`
 Cloudflare tunnel:
 
