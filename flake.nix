@@ -218,6 +218,37 @@
           pkgs.runCommand "kosmos-data-disk-backup-module-check" {} ''
             touch $out
           '';
+
+      dagger-module = let
+        eval = nixpkgs.lib.nixosSystem {
+          inherit system;
+          modules = [
+            ./modules/wsl/dagger.nix
+            (_: {
+              system.stateVersion = "25.05";
+              kosmos.wsl.dagger.enable = true;
+            })
+          ];
+        };
+        cfg = eval.config;
+        container = cfg.virtualisation.oci-containers.containers.dagger-engine;
+        has = value: list: builtins.elem value list;
+      in
+        assert cfg.virtualisation.oci-containers.backend == "podman";
+        assert container.autoStart;
+        assert container.privileged;
+        assert container.image == "registry.dagger.io/engine:v${cfg.kosmos.wsl.dagger.package.version}";
+        assert container.pull == "missing";
+        assert has "127.0.0.1:8080:8080" container.ports;
+        assert has "/var/lib/dagger:/var/lib/dagger" container.volumes;
+        assert has "/etc/dagger/engine.json:/etc/dagger/engine.json:ro" container.volumes;
+        assert has "/run/dagger:/run/dagger" container.volumes;
+        assert has "tcp://0.0.0.0:8080" container.cmd;
+        assert has "unix:///run/dagger/engine.sock" container.cmd;
+        assert has "L+ '/var/lib/dagger/config/dagger/engine.json' - - - - /etc/dagger/engine.json" cfg.systemd.tmpfiles.rules;
+          pkgs.runCommand "kosmos-dagger-module-check" {} ''
+            touch $out
+          '';
     };
 
     nixosConfigurations.kosmos = nixpkgs.lib.nixosSystem {
