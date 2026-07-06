@@ -13,4 +13,6 @@ in {
   "secrets/mihomo-config.age".publicKeys = users ++ systems;
   "secrets/tuwunel-registration-token.age".publicKeys = users ++ systems;
   "secrets/cloudflared-kepos-credentials.age".publicKeys = users ++ systems;
+  "secrets/woodpecker-server-env.age".publicKeys = users ++ systems;
+  "secrets/woodpecker-agent-env.age".publicKeys = users ++ systems;
 }

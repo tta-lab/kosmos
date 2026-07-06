@@ -61,6 +61,7 @@ sudo systemctl restart podman-dagger-engine
 Check local service state:
 
 ```bash
+kosmos-wsl-devops-smoke
 systemctl status forgejo
 curl -I http://127.0.0.1:3000/
 curl -I https://git-wsl.guion.io/v2/

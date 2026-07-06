@@ -48,6 +48,7 @@
         shellcheck \
           ${./scripts/ttal-tmux-project-picker} \
           ${./scripts/ttal-wezterm-projects} \
+          ${./scripts/wsl-devops-smoke} \
           ${./tests/temenos-env-test} \
           ${./tests/ttal-tmux-project-picker-test} \
           ${./tests/temenos-ca-test} \

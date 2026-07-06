@@ -71,6 +71,7 @@
       esac
     '';
   };
+  devopsSmoke = pkgs.writeScriptBin "kosmos-wsl-devops-smoke" (builtins.readFile ../../scripts/wsl-devops-smoke);
 in {
   wsl = {
     enable = true;
@@ -88,6 +89,7 @@ in {
   environment = {
     systemPackages = with pkgs; [
       docker-compose
+      devopsSmoke
       k3d
       proxyEnv
     ];
