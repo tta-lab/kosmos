@@ -263,6 +263,10 @@ zero, mounts `devops/gitea-shared-storage` into a temporary copy pod, streams a
 tar copy of `/data` to `/var/lib/forgejo-migration-dry-runs/<timestamp>`, and
 then restores the original replica count with a trap.
 
+That command proves the cold-copy path only. A full migration dry run still needs
+the copied data restored or mounted into a target Forgejo instance, then checked
+with login, clone, push, package list, and package pull.
+
 ## Production Cutover Guardrails
 
 Do not move `git.guion.io` until all of these are true:

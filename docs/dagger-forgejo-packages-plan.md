@@ -6,7 +6,7 @@ Move the devops control plane to the long-running kosmos WSL NUC so Dagger build
 cache, Git traffic, CI, and Forgejo package storage do not consume production
 cluster worker disk.
 
-The target shape is:
+The final target shape is:
 
 ```text
 kosmos WSL
@@ -20,6 +20,10 @@ production cluster
   pull images from git.guion.io/guionai/<image>:<tag>
 ```
 
+During staging, use `git-wsl.guion.io`. Do not point production manifests at
+`git.guion.io/guionai/*` until the Forgejo data migration and DNS cutover are
+complete.
+
 This deliberately makes the NUC WSL instance a personal devops box. Production
 does not need WSL for already-running pods, but rollout, reschedule to an empty
 node, rollback to an uncached image, and new deployments will depend on
@@ -30,7 +34,8 @@ The plan should be implemented in small PRs. The expected kosmos files are:
 - `modules/wsl/forgejo.nix` for Forgejo and its cloudflared route.
 - `modules/wsl/dagger.nix` for Dagger engine/runtime configuration.
 - `modules/wsl/woodpecker.nix` for Woodpecker server/agent wiring.
-- `modules/wsl/secrets.nix` and root `secrets.nix` for agenix secrets.
+- root `secrets.nix`, plus module-local `age.secrets` or `modules/wsl/secrets.nix`
+  entries when a service needs agenix secrets.
 - `hosts/wsl/default.nix` to import and enable the modules.
 
 Do not fold the full migration into the first implementation PR. The first PR
@@ -89,9 +94,12 @@ In kosmos WSL:
 
 - Podman is enabled with Docker compatibility and Docker socket support.
 - `docker-compose` is installed.
-- Dagger is not currently wired into the NixOS configuration.
-- Forgejo is not currently deployed.
+- In this staging PR, Forgejo is wired through NixOS at `git-wsl.guion.io`.
+- In this staging PR, Dagger is wired through NixOS as a pinned CLI plus a
+  systemd-managed Podman engine container.
 - Woodpecker agent is the intended CI runner. Forgejo Actions is out of scope.
+  In this staging PR, the Woodpecker module exists but services are gated on
+  env secrets.
 
 ## Recommendation
 
@@ -310,11 +318,11 @@ verification passes.
 not be the only migration mechanism unless the dry run proves the restore path
 end-to-end.
 
-### Phase 4: Dagger on kosmos WSL
+### Phase 4: CI Build Path on kosmos WSL
 
-Add Dagger to the kosmos WSL NixOS configuration. Prefer the Nixpkgs package if
-available in the pinned inputs; otherwise package the official binary or use the
-official install path as a temporary bridge.
+Dagger is part of the staging MVP: the WSL NixOS configuration should provide a
+pinned CLI wrapper and a systemd-managed engine container with an explicit cache
+GC policy before real builds run.
 
 If the Dagger engine must run as the official engine container, run it through a
 systemd-managed Podman/Docker-compatible unit. Do not introduce Docker Compose
@@ -355,6 +363,8 @@ Success criteria:
 - cache config is present under the engine's real config path.
 - a build can publish to `git-wsl.guion.io/guionai/*`.
 - stopping the engine leaves Forgejo and cloudflared unaffected.
+- a throwaway Woodpecker job can reach the Dagger Unix socket before production
+  build pipelines are migrated.
 
 ### Phase 4b: Woodpecker Agent and Internal Runner Endpoint
 
@@ -460,6 +470,9 @@ After all services have moved to Forgejo Packages:
 - Verify Forgejo package upload size limits and Cloudflare request limits before
   pushing large images.
 - Verify NUC disk mount and backup target paths before moving real Forgejo data.
+- Verify a cold copy can be used to start a target Forgejo instance and pass
+  login, clone, push, package list, and package pull checks. A tar copy alone is
+  not a completed migration dry run.
 - Verify WSL reboot behavior for Forgejo, Dagger, Woodpecker, and cloudflared.
 
 ## Decisions
