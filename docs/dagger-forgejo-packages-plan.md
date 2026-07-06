@@ -17,7 +17,7 @@ kosmos WSL
   Cloudflare HTTP routes for Forgejo HTTPS Git and Packages
       v
 production cluster
-  pull images from git.guion.io/GuionAI/<image>:<tag>
+  pull images from git.guion.io/guionai/<image>:<tag>
 ```
 
 This deliberately makes the NUC WSL instance a personal devops box. Production
@@ -43,7 +43,7 @@ should make the staging service reachable and easy to turn off.
 - Forgejo container image names must use `{registry}/{owner}/{image}`.
 - `owner` is a Forgejo user or organization. A unified namespace is possible only
   if it is a real Forgejo user/org, for example
-  `git.guion.io/GuionAI/<image>` because the `GuionAI` org exists.
+  `git.guion.io/guionai/<image>` because OCI repository names must be lowercase. The Forgejo organization display name can remain `GuionAI`.
 - Forgejo packages belong to an owner, not directly to a repository. Packages can
   be linked to repositories later, or auto-linked by image source labels or by
   naming the image after the repository.
@@ -97,10 +97,10 @@ In kosmos WSL:
 
 Adopt a phased **WSL DevOps Box** migration.
 
-Use the existing `GuionAI` organization as the image owner:
+Use the existing `GuionAI` organization as the Forgejo owner, but use lowercase `guionai` in OCI image references:
 
 ```text
-git.guion.io/GuionAI/<image>:<tag>
+git.guion.io/guionai/<image>:<tag>
 ```
 
 Keep the old cluster Forgejo, cluster registry, and cluster Dagger during rollout
@@ -176,9 +176,9 @@ Smoke test package push/pull against the staging hostname:
 ```bash
 docker login git-wsl.guion.io
 docker pull hello-world:latest
-docker tag hello-world:latest git-wsl.guion.io/GuionAI/smoke:latest
-docker push git-wsl.guion.io/GuionAI/smoke:latest
-docker pull git-wsl.guion.io/GuionAI/smoke:latest
+docker tag hello-world:latest git-wsl.guion.io/guionai/smoke:latest
+docker push git-wsl.guion.io/guionai/smoke:latest
+docker pull git-wsl.guion.io/guionai/smoke:latest
 ```
 
 Deploy Dagger on WSL through NixOS/systemd and confirm it can publish to the
@@ -199,7 +199,7 @@ account if that matches the app model.
 
 Production images should be private by default. Use one canonical registry pull
 secret, then mirror or replicate it into every namespace that needs to pull
-`git.guion.io/GuionAI/*` images. This can be handled by the existing secret
+`git.guion.io/guionai/*` images. This can be handled by the existing secret
 mirroring pattern if it supports `kubernetes.io/dockerconfigjson` secrets; if
 not, add that support before the first service migration.
 
@@ -244,7 +244,7 @@ Audit notes:
   `registry-docker-registry.devops.svc:5000` and should receive the pull secret.
 - `supa-dev` and `supa-prod` currently run `ghcr.io/guionai/pgwire-supabase-proxy`.
   Add them to reflection targets only if this image moves to Forgejo Packages or
-  becomes private under `git.guion.io/GuionAI`.
+  becomes private under `git.guion.io/guionai`.
 - `infra-dev` and `infra-prod` currently do not run GuionAI/private app images
   that need the Forgejo pull secret.
 
@@ -343,7 +343,7 @@ registry-docker-registry.devops.svc:5000/<image>:<tag>
 to:
 
 ```text
-git.guion.io/GuionAI/<image>:<tag>
+git.guion.io/guionai/<image>:<tag>
 ```
 
 For private registry publish, prefer Dagger registry auth rather than relying on
@@ -353,7 +353,7 @@ Success criteria:
 
 - Dagger engine starts after WSL reboot without manual shell state.
 - cache config is present under the engine's real config path.
-- a build can publish to `git-wsl.guion.io/GuionAI/*`.
+- a build can publish to `git-wsl.guion.io/guionai/*`.
 - stopping the engine leaves Forgejo and cloudflared unaffected.
 
 ### Phase 4b: Woodpecker Agent and Internal Runner Endpoint
@@ -415,7 +415,7 @@ untouched pre-cutover data. Any writes accepted by WSL after cutover would need
 manual reconciliation before rollback, so rollback should be decided quickly.
 
 Cutover is not complete until a production cluster pod pulls a private
-`git.guion.io/GuionAI/*` image through the mirrored secret and a developer can
+`git.guion.io/guionai/*` image through the mirrored secret and a developer can
 push to a test repository over HTTPS Git.
 
 ### Phase 6: First Service Migration
@@ -465,7 +465,7 @@ After all services have moved to Forgejo Packages:
 ## Decisions
 
 - Staging hostname: `git-wsl.guion.io`.
-- Image owner: existing Forgejo org `GuionAI`.
+- Image owner: existing Forgejo org `GuionAI`; OCI image references use lowercase `guionai`.
 - Production images: private by default.
 - WSL devops scope: Forgejo, Forgejo Packages, Woodpecker server, Woodpecker
   agent, Dagger engine, cloudflared routes, and backups all live on kosmos WSL.

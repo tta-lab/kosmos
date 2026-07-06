@@ -58,6 +58,18 @@ sudo systemctl restart podman-dagger-engine
 
 ## Forgejo Staging
 
+The staging admin bootstrap credentials are stored outside git:
+
+```text
+/root/kosmos-forgejo-admin-init.txt
+```
+
+Read it only when you need to log in:
+
+```bash
+sudo cat /root/kosmos-forgejo-admin-init.txt
+```
+
 Check local service state:
 
 ```bash
@@ -70,14 +82,33 @@ curl -I https://git-wsl.guion.io/v2/
 The `/v2/` response should be a container-registry response, not the Forgejo HTML
 app shell.
 
-Smoke test Packages after the admin user and `GuionAI` org exist:
+If the public hostname does not reach the WSL tunnel, route it to the `nuc-wsl`
+Cloudflare tunnel:
+
+```bash
+cloudflared tunnel route dns --overwrite-dns c0e179cd-14fc-4cd9-ba4c-00a445844c74 git-wsl.guion.io
+```
+
+Smoke test Packages after the admin user and `GuionAI` org exist. Use lowercase `guionai` in the OCI image path:
 
 ```bash
 docker login git-wsl.guion.io
 docker pull hello-world:latest
-docker tag hello-world:latest git-wsl.guion.io/GuionAI/smoke:latest
-docker push git-wsl.guion.io/GuionAI/smoke:latest
-docker pull git-wsl.guion.io/GuionAI/smoke:latest
+docker tag hello-world:latest git-wsl.guion.io/guionai/smoke:latest
+docker push git-wsl.guion.io/guionai/smoke:latest
+docker pull git-wsl.guion.io/guionai/smoke:latest
+```
+
+Dagger publish smoke:
+
+```bash
+export FORGEJO_PASSWORD="$(sudo awk -F': ' '$1 == "Password" { print $2; exit }' /root/kosmos-forgejo-admin-init.txt)"
+dagger -M call container \
+  with-new-file --path /smoke.txt --contents "kosmos dagger registry smoke" \
+  with-registry-auth --address git-wsl.guion.io --username neil --secret env://FORGEJO_PASSWORD \
+  publish --address git-wsl.guion.io/guionai/dagger-smoke:latest
+unset FORGEJO_PASSWORD
+docker pull git-wsl.guion.io/guionai/dagger-smoke:latest
 ```
 
 ## Woodpecker Secrets
@@ -134,7 +165,7 @@ Do not move `git.guion.io` until all of these are true:
 - Forgejo staging login works.
 - HTTPS clone and push work.
 - Packages push and pull work through `git-wsl.guion.io`.
-- Dagger can publish an image to `git-wsl.guion.io/GuionAI/*`.
+- Dagger can publish an image to `git-wsl.guion.io/guionai/*`.
 - A Kubernetes pod in `apps-dev` pulls a private staging image using the mirrored
   `forgejo-packages` secret.
 - A cold copy or restore dry run of the current Forgejo `/data` volume has been
