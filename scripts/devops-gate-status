@@ -15,7 +15,8 @@ Options:
   --strict  Exit non-zero when any gate is pending or failed
   --deep    Run checks that may create temporary cluster objects, such as the
             Kubernetes private image pull smoke, and non-production restore
-            checks such as kosmos-data-disk-preflight,
+            checks such as kosmos-cloudflared-ingress-smoke,
+            kosmos-data-disk-preflight,
             kosmos-dagger-engine-config-smoke,
             kosmos-forgejo-backup-smoke, and
             kosmos-forgejo-dump-restore-smoke
@@ -245,6 +246,16 @@ else
 fi
 
 if [[ "$deep" -eq 1 ]]; then
+  if have_command kosmos-cloudflared-ingress-smoke; then
+    if kosmos-cloudflared-ingress-smoke; then
+      ok "deep Cloudflared ingress smoke"
+    else
+      fail "deep Cloudflared ingress smoke"
+    fi
+  else
+    wait "kosmos-cloudflared-ingress-smoke unavailable"
+  fi
+
   if have_command kosmos-dagger-engine-config-smoke; then
     if kosmos-dagger-engine-config-smoke; then
       ok "deep Dagger engine config smoke"
@@ -295,6 +306,7 @@ if [[ "$deep" -eq 1 ]]; then
     wait "kosmos-forgejo-k8s-pull-secret-smoke unavailable"
   fi
 else
+  wait "deep Cloudflared ingress smoke skipped"
   wait "deep Dagger engine config smoke skipped"
   wait "deep NUC data disk preflight skipped"
   wait "deep Forgejo backup dump content smoke skipped"

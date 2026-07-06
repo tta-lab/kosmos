@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+
+bash "${repo_root}/scripts/cloudflared-ingress-smoke" --help | grep -q 'usage: cloudflared-ingress-smoke'
+bash "${repo_root}/scripts/cloudflared-ingress-smoke" --help | grep -q 'git-wsl.guion.io'
+bash "${repo_root}/scripts/cloudflared-ingress-smoke" --help | grep -q 'http://127.0.0.1:3000'
+grep -q 'cloudflared-tunnel-kepos.service' "${repo_root}/scripts/cloudflared-ingress-smoke"
+grep -q 'ingress rule' "${repo_root}/scripts/cloudflared-ingress-smoke"

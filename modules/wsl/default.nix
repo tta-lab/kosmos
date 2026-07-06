@@ -71,6 +71,7 @@
       esac
     '';
   };
+  cloudflaredIngressSmoke = pkgs.writeScriptBin "kosmos-cloudflared-ingress-smoke" (builtins.readFile ../../scripts/cloudflared-ingress-smoke);
   daggerEngineIsolationSmoke = pkgs.writeScriptBin "kosmos-dagger-engine-isolation-smoke" (builtins.readFile ../../scripts/dagger-engine-isolation-smoke);
   daggerEngineConfigSmoke = pkgs.writeScriptBin "kosmos-dagger-engine-config-smoke" (builtins.readFile ../../scripts/dagger-engine-config-smoke);
   daggerLocalRegistrySmoke = pkgs.writeScriptBin "kosmos-dagger-local-registry-smoke" (builtins.readFile ../../scripts/dagger-local-registry-smoke);
@@ -105,6 +106,7 @@ in {
 
   environment = {
     systemPackages = with pkgs; [
+      cloudflaredIngressSmoke
       daggerLocalRegistrySmoke
       daggerEngineIsolationSmoke
       daggerEngineConfigSmoke
