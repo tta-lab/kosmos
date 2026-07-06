@@ -1,0 +1,168 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+state_dir="${FORGEJO_STATE_DIR:-/var/lib/forgejo}"
+backup_dir="${FORGEJO_BACKUP_DIR:-/var/backup/forgejo}"
+migration_copy_dir="${FORGEJO_MIGRATION_COPY_DIR:-}"
+allow_same_filesystem=0
+
+usage() {
+  cat >&2 <<'EOF'
+usage: forgejo-cutover-preflight [--migration-copy-dir <path>] [--allow-same-filesystem]
+
+Checks that Forgejo has a non-empty dump and that the backup target is not on
+the same filesystem as the Forgejo state directory. Use --migration-copy-dir to
+also check that an existing cold-copy directory has the expected Forgejo shape.
+
+Options:
+  --state-dir <path>            Forgejo state dir. Default: /var/lib/forgejo
+  --backup-dir <path>           Forgejo dump dir. Default: /var/backup/forgejo
+  --migration-copy-dir <path>   Existing dry-run cold-copy directory to inspect
+  --allow-same-filesystem       Warn instead of failing when backup/state share a filesystem
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --state-dir)
+      state_dir="$2"
+      shift 2
+      ;;
+    --backup-dir)
+      backup_dir="$2"
+      shift 2
+      ;;
+    --migration-copy-dir)
+      migration_copy_dir="$2"
+      shift 2
+      ;;
+    --allow-same-filesystem)
+      allow_same_filesystem=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage
+      exit 2
+      ;;
+  esac
+done
+
+require() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    printf 'missing required command: %s\n' "$1" >&2
+    exit 1
+  fi
+}
+
+sudo_test() {
+  sudo test "$@"
+}
+
+find_latest_dump() {
+  sudo find "$backup_dir" \
+    -maxdepth 1 \
+    -type f \
+    -name 'forgejo-dump-*.tar.zst' \
+    -printf '%T@ %s %p\n' \
+    | sort -n \
+    | tail -1
+}
+
+path_device() {
+  stat -c '%d' "$1"
+}
+
+check_candidate_exists() {
+  local root="$1"
+  shift
+  local candidate
+
+  for candidate in "$@"; do
+    if sudo_test -e "${root}/${candidate}"; then
+      printf 'ok: found %s\n' "${root}/${candidate}"
+      return 0
+    fi
+  done
+
+  printf 'none of the expected paths exist under %s:\n' "$root" >&2
+  printf '  %s\n' "$@" >&2
+  return 1
+}
+
+require awk
+require find
+require sort
+require stat
+require sudo
+require tail
+
+sudo_test -d "$state_dir" || {
+  printf 'missing Forgejo state directory: %s\n' "$state_dir" >&2
+  exit 1
+}
+
+sudo_test -d "$backup_dir" || {
+  printf 'missing Forgejo backup directory: %s\n' "$backup_dir" >&2
+  exit 1
+}
+
+latest="$(find_latest_dump)"
+if [[ -z "$latest" ]]; then
+  printf 'no forgejo dump found in %s\n' "$backup_dir" >&2
+  exit 1
+fi
+
+dump_size="$(awk '{ print $2 }' <<<"$latest")"
+dump_path="$(awk '{$1=""; $2=""; sub(/^  /, ""); print}' <<<"$latest")"
+if [[ "$dump_size" -le 0 ]]; then
+  printf 'latest forgejo dump is empty: %s\n' "$dump_path" >&2
+  exit 1
+fi
+printf 'ok: latest dump is non-empty: %s bytes at %s\n' "$dump_size" "$dump_path"
+
+state_device="$(path_device "$state_dir")"
+backup_device="$(path_device "$backup_dir")"
+if [[ "$state_device" == "$backup_device" ]]; then
+  message="Forgejo state and backup directories are on the same filesystem: ${state_dir} and ${backup_dir}"
+  if [[ "$allow_same_filesystem" -eq 1 ]]; then
+    printf 'warn: %s\n' "$message" >&2
+  else
+    printf '%s\n' "$message" >&2
+    printf 'move or replicate backups to the NUC data disk before production cutover, or pass --allow-same-filesystem for staging-only checks\n' >&2
+    exit 1
+  fi
+else
+  printf 'ok: backup directory is on a different filesystem than Forgejo state\n'
+fi
+
+if [[ -n "$migration_copy_dir" ]]; then
+  sudo_test -d "$migration_copy_dir" || {
+    printf 'missing migration copy directory: %s\n' "$migration_copy_dir" >&2
+    exit 1
+  }
+
+  check_candidate_exists "$migration_copy_dir" \
+    custom/conf/app.ini \
+    gitea/conf/app.ini \
+    app.ini
+
+  check_candidate_exists "$migration_copy_dir" \
+    data/forgejo.db \
+    gitea/gitea.db \
+    gitea.db
+
+  check_candidate_exists "$migration_copy_dir" \
+    data/repo-archive \
+    data/packages \
+    gitea-repositories \
+    git/repositories \
+    repositories
+
+  printf 'ok: migration copy has the expected Forgejo data shape\n'
+fi
+
+printf 'Forgejo cutover preflight passed\n'

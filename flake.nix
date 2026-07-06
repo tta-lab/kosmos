@@ -49,6 +49,7 @@
           ${./scripts/dagger-local-registry-smoke} \
           ${./scripts/dagger-unix-socket-smoke} \
           ${./scripts/forgejo-backup-smoke} \
+          ${./scripts/forgejo-cutover-preflight} \
           ${./scripts/forgejo-https-git-smoke} \
           ${./scripts/forgejo-k8s-pull-secret-smoke} \
           ${./scripts/forgejo-migration-dry-run} \

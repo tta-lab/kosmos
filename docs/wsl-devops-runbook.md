@@ -298,6 +298,21 @@ kubectl get pvc gitea-shared-storage -n devops \
 df -h /var/lib/forgejo /var/backup/forgejo
 ```
 
+Check cutover backup guardrails:
+
+```bash
+kosmos-forgejo-cutover-preflight
+```
+
+This requires a non-empty Forgejo dump and fails if `/var/lib/forgejo` and the
+Forgejo backup directory are on the same filesystem. That failure is expected
+until backups are moved or replicated to the NUC data disk. For staging-only
+checks, use:
+
+```bash
+kosmos-forgejo-cutover-preflight --allow-same-filesystem
+```
+
 Do not run the dry-run copy while `deployment/forgejo` is serving writes. The
 SQLite-backed source must be put in a maintenance window and scaled to zero
 before copying `/data`.
@@ -318,6 +333,17 @@ That command proves the cold-copy path only. A full migration dry run still need
 the copied data restored or mounted into a target Forgejo instance, then checked
 with login, clone, push, package list, and package pull.
 
+After a guarded copy, inspect the copied directory shape before trying a restore:
+
+```bash
+kosmos-forgejo-cutover-preflight \
+  --allow-same-filesystem \
+  --migration-copy-dir /var/lib/forgejo-migration-dry-runs/<copy-dir>
+```
+
+This still is not a completed restore test; it only verifies that the copied
+directory looks like Forgejo data and that a dump exists.
+
 ## Production Cutover Guardrails
 
 Do not move `git.guion.io` until all of these are true:
@@ -328,5 +354,6 @@ Do not move `git.guion.io` until all of these are true:
 - Dagger can publish an image to `git-wsl.guion.io/guionai/*`.
 - A Kubernetes pod in `apps-dev` pulls a private staging image using the mirrored
   `forgejo-packages` secret.
+- `kosmos-forgejo-cutover-preflight` passes without `--allow-same-filesystem`.
 - A cold copy or restore dry run of the current Forgejo `/data` volume has been
   tested.

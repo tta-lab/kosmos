@@ -511,6 +511,9 @@ After all services have moved to Forgejo Packages:
   real CI jobs. Cloudflare request upload limits still matter for public/manual
   uploads, but routine WSL CI publishes should not use Cloudflare.
 - Verify NUC disk mount and backup target paths before moving real Forgejo data.
+- Verify `kosmos-forgejo-cutover-preflight` passes without
+  `--allow-same-filesystem` before cutover, so the latest Forgejo dump is not
+  only on the same filesystem as the live Forgejo state.
 - Verify a cold copy can be used to start a target Forgejo instance and pass
   login, clone, push, package list, and package pull checks. A tar copy alone is
   not a completed migration dry run.
