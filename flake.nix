@@ -145,6 +145,41 @@
           pkgs.runCommand "kosmos-woodpecker-module-check" {} ''
             touch $out
           '';
+
+      forgejo-module = let
+        eval = nixpkgs.lib.nixosSystem {
+          inherit system;
+          modules = [
+            ./modules/wsl/forgejo.nix
+            (_: {
+              system.stateVersion = "25.05";
+              kosmos.wsl.forgejo.enable = true;
+            })
+          ];
+        };
+        cfg = eval.config;
+        inherit (cfg.services) forgejo;
+        inherit (cfg.systemd.services) forgejo-internal-registry-proxy;
+        has = value: list: builtins.elem value list;
+      in
+        assert forgejo.enable;
+        assert forgejo.database.type == "sqlite3";
+        assert forgejo.database.path == "/var/lib/forgejo/data/forgejo.db";
+        assert forgejo.dump.enable;
+        assert forgejo.dump.backupDir == "/var/backup/forgejo";
+        assert forgejo.settings.server.ROOT_URL == "https://git-wsl.guion.io/";
+        assert forgejo.settings.server.HTTP_ADDR == "127.0.0.1";
+        assert forgejo.settings.server.HTTP_PORT == 3000;
+        assert forgejo.settings.server.DISABLE_SSH;
+        assert forgejo.settings.packages.ENABLED;
+        assert forgejo.settings.service.DISABLE_REGISTRATION;
+        assert forgejo.settings.service.REQUIRE_SIGNIN_VIEW;
+        assert !forgejo.settings.actions.ENABLED;
+        assert has "forgejo.service" forgejo-internal-registry-proxy.after;
+        assert has "forgejo.service" forgejo-internal-registry-proxy.wants;
+          pkgs.runCommand "kosmos-forgejo-module-check" {} ''
+            touch $out
+          '';
     };
 
     nixosConfigurations.kosmos = nixpkgs.lib.nixosSystem {

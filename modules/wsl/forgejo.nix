@@ -153,6 +153,7 @@ in {
         ];
         wants = [
           "network-online.target"
+          "forgejo.service"
         ];
         wantedBy = [
           "multi-user.target"
