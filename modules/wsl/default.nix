@@ -72,6 +72,7 @@
     '';
   };
   devopsSmoke = pkgs.writeScriptBin "kosmos-wsl-devops-smoke" (builtins.readFile ../../scripts/wsl-devops-smoke);
+  forgejoMigrationDryRun = pkgs.writeScriptBin "kosmos-forgejo-migration-dry-run" (builtins.readFile ../../scripts/forgejo-migration-dry-run);
 in {
   wsl = {
     enable = true;
@@ -90,6 +91,7 @@ in {
     systemPackages = with pkgs; [
       docker-compose
       devopsSmoke
+      forgejoMigrationDryRun
       k3d
       proxyEnv
     ];

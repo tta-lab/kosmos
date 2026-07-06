@@ -46,6 +46,7 @@
         ];
       } ''
         shellcheck \
+          ${./scripts/forgejo-migration-dry-run} \
           ${./scripts/ttal-tmux-project-picker} \
           ${./scripts/ttal-wezterm-projects} \
           ${./scripts/wsl-devops-smoke} \

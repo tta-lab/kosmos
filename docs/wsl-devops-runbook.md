@@ -238,6 +238,7 @@ image: registry-docker-registry.devops.svc:5000/forgejo:ttal-prreview-filter-roo
 Check this before any dry run:
 
 ```bash
+kosmos-forgejo-migration-dry-run --preflight
 kubectl get deploy,pod,pvc -n devops | grep -E 'forgejo|gitea-shared-storage'
 kubectl get deploy forgejo -n devops \
   -o jsonpath='{range .spec.template.spec.containers[*]}{.name}{" "}{.image}{"\n"}{end}'
@@ -249,6 +250,18 @@ df -h /var/lib/forgejo /var/backup/forgejo
 Do not run the dry-run copy while `deployment/forgejo` is serving writes. The
 SQLite-backed source must be put in a maintenance window and scaled to zero
 before copying `/data`.
+
+During a maintenance window, run the guarded cold-copy dry run:
+
+```bash
+kosmos-forgejo-migration-dry-run --execute-copy --confirm-stop-source
+```
+
+The helper refuses to stop the source deployment unless both flags are present.
+It records the original replica count, scales `devops/deployment/forgejo` to
+zero, mounts `devops/gitea-shared-storage` into a temporary copy pod, streams a
+tar copy of `/data` to `/var/lib/forgejo-migration-dry-runs/<timestamp>`, and
+then restores the original replica count with a trap.
 
 ## Production Cutover Guardrails
 
