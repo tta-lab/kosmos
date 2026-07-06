@@ -130,6 +130,17 @@ in {
           woodpecker-plugin-git
         ];
       };
+
+      systemd.services.woodpecker-agent-wsl-podman = {
+        after = [
+          "podman.socket"
+          "podman-dagger-engine.service"
+        ];
+        wants = [
+          "podman.socket"
+          "podman-dagger-engine.service"
+        ];
+      };
     })
 
     (lib.mkIf (haveSecrets && cfg.enableCloudflared) {

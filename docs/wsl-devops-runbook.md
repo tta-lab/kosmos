@@ -32,6 +32,11 @@ dagger version
 kosmos-dagger-unix-socket-smoke
 ```
 
+This path does not require Docker daemon. Nix installs the Dagger CLI and owns
+the systemd unit, while rootful Podman runs the official Dagger engine OCI image.
+Do not replace this with Docker Compose, and do not try to make the engine a
+pure Nix service unless there is a tested upstream-supported path.
+
 The `dagger` wrapper defaults to `tcp://127.0.0.1:8080`, but it preserves an
 explicit `_EXPERIMENTAL_DAGGER_RUNNER_HOST` override. The Unix socket smoke uses
 that override to verify the same `/run/dagger/engine.sock` endpoint that

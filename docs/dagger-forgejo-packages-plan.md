@@ -136,12 +136,16 @@ Prefer NixOS modules and systemd services for all long-running WSL services:
 
 - Forgejo through the NixOS Forgejo module if it fits.
 - Cloudflared through existing NixOS cloudflared wiring.
-- Dagger engine through a systemd-managed container or package, not Compose.
+- Dagger CLI through Nix. Dagger engine through the official OCI image managed
+  by systemd/Podman, not Docker daemon and not Compose.
 - Woodpecker agent through a NixOS/systemd service.
 - Backup through a NixOS timer.
 
-Podman/Docker compatibility remains useful as Dagger's container runtime backend,
-but Docker Compose should not own these services.
+Podman/Docker compatibility remains useful because Dagger's official engine is
+distributed and operated as an OCI container. The goal is to avoid a Docker
+daemon and Compose ownership, not to repackage the Dagger engine as a pure Nix
+service. Repackaging the engine would put upgrade and cache behavior on us
+instead of the supported Dagger path.
 
 ## Proposed Phases
 
@@ -344,6 +348,15 @@ GC policy before real builds run.
 If the Dagger engine must run as the official engine container, run it through a
 systemd-managed Podman/Docker-compatible unit. Do not introduce Docker Compose
 for this.
+
+Do not require Docker daemon for the WSL path. The intended implementation is:
+
+```text
+NixOS module -> systemd unit -> rootful Podman -> official Dagger engine image
+```
+
+The Dagger CLI itself is installed by Nix, but the engine remains the supported
+OCI image.
 
 Configure Dagger engine cache on WSL with an explicit GC policy so it cannot eat
 the whole WSL disk. A starting policy can be:
