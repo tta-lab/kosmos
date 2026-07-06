@@ -190,6 +190,9 @@ in {
         after = [
           "forgejo-dump.service"
         ];
+        unitConfig.RequiresMountsFor = [
+          cfg.backupReplicaDir
+        ];
         path = with pkgs; [
           coreutils
           findutils

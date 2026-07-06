@@ -180,6 +180,44 @@
           pkgs.runCommand "kosmos-forgejo-module-check" {} ''
             touch $out
           '';
+
+      data-disk-backup-module = let
+        eval = nixpkgs.lib.nixosSystem {
+          inherit system;
+          modules = [
+            ./modules/wsl/data-disk.nix
+            ./modules/wsl/forgejo.nix
+            (_: {
+              system.stateVersion = "25.05";
+              kosmos.wsl = {
+                dataDisk = {
+                  enable = true;
+                  device = "/dev/disk/by-uuid/bf1ab97f-1d98-4977-89ed-58a8d0098e6c";
+                };
+                forgejo = {
+                  enable = true;
+                  backupReplicaDir = "/mnt/nuc-data/forgejo-backups";
+                };
+              };
+            })
+          ];
+        };
+        cfg = eval.config;
+        backupService = cfg.systemd.services.forgejo-backup-replicate;
+        backupTimer = cfg.systemd.timers.forgejo-backup-replicate;
+        dataDisk = cfg.fileSystems."/mnt/nuc-data";
+        has = value: list: builtins.elem value list;
+      in
+        assert dataDisk.device == "/dev/disk/by-uuid/bf1ab97f-1d98-4977-89ed-58a8d0098e6c";
+        assert dataDisk.fsType == "ext4";
+        assert !dataDisk.neededForBoot;
+        assert has "forgejo-dump.service" backupService.after;
+        assert has "/mnt/nuc-data/forgejo-backups" backupService.unitConfig.RequiresMountsFor;
+        assert backupTimer.timerConfig.OnCalendar == "hourly";
+        assert backupTimer.timerConfig.Unit == "forgejo-backup-replicate.service";
+          pkgs.runCommand "kosmos-data-disk-backup-module-check" {} ''
+            touch $out
+          '';
     };
 
     nixosConfigurations.kosmos = nixpkgs.lib.nixosSystem {
