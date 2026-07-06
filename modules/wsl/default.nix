@@ -71,6 +71,7 @@
       esac
     '';
   };
+  daggerEngineIsolationSmoke = pkgs.writeScriptBin "kosmos-dagger-engine-isolation-smoke" (builtins.readFile ../../scripts/dagger-engine-isolation-smoke);
   daggerLocalRegistrySmoke = pkgs.writeScriptBin "kosmos-dagger-local-registry-smoke" (builtins.readFile ../../scripts/dagger-local-registry-smoke);
   daggerLargeRegistrySmoke = pkgs.writeScriptBin "kosmos-dagger-large-registry-smoke" (builtins.readFile ../../scripts/dagger-large-registry-smoke);
   daggerUnixSocketSmoke = pkgs.writeScriptBin "kosmos-dagger-unix-socket-smoke" (builtins.readFile ../../scripts/dagger-unix-socket-smoke);
@@ -102,6 +103,7 @@ in {
   environment = {
     systemPackages = with pkgs; [
       daggerLocalRegistrySmoke
+      daggerEngineIsolationSmoke
       daggerLargeRegistrySmoke
       daggerUnixSocketSmoke
       devopsGateStatus

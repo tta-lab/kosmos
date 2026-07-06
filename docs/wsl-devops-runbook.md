@@ -84,6 +84,18 @@ After changing the engine config, restart the engine container:
 sudo systemctl restart podman-dagger-engine
 ```
 
+Verify Forgejo and the registry proxy do not depend on the Dagger engine:
+
+```bash
+sudo kosmos-dagger-engine-isolation-smoke
+```
+
+The helper temporarily stops `podman-dagger-engine.service`, checks Forgejo's
+local and public registry endpoints, then starts the engine again and waits for
+`/run/dagger/engine.sock`. It verifies the WSL-internal registry endpoint only
+after the engine is back, because that path depends on the Podman bridge used by
+the Dagger engine.
+
 ## Forgejo Staging
 
 The staging admin bootstrap credentials are stored outside git:

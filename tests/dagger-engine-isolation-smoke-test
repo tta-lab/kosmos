@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+
+bash "${repo_root}/scripts/dagger-engine-isolation-smoke" --help | grep -q 'usage: dagger-engine-isolation-smoke'
