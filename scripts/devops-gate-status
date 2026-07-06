@@ -15,7 +15,8 @@ Options:
   --strict  Exit non-zero when any gate is pending or failed
   --deep    Run checks that may create temporary cluster objects, such as the
             Kubernetes private image pull smoke, and non-production restore
-            checks such as kosmos-forgejo-backup-smoke and
+            checks such as kosmos-data-disk-preflight,
+            kosmos-forgejo-backup-smoke, and
             kosmos-forgejo-dump-restore-smoke
 
 Environment:
@@ -209,6 +210,16 @@ else
 fi
 
 if [[ "$deep" -eq 1 ]]; then
+  if have_command kosmos-data-disk-preflight; then
+    if kosmos-data-disk-preflight; then
+      ok "deep NUC data disk preflight"
+    else
+      fail "deep NUC data disk preflight"
+    fi
+  else
+    wait "kosmos-data-disk-preflight unavailable"
+  fi
+
   if have_command kosmos-forgejo-backup-smoke; then
     if kosmos-forgejo-backup-smoke; then
       ok "deep Forgejo backup dump content smoke"
@@ -239,6 +250,7 @@ if [[ "$deep" -eq 1 ]]; then
     wait "kosmos-forgejo-k8s-pull-secret-smoke unavailable"
   fi
 else
+  wait "deep NUC data disk preflight skipped"
   wait "deep Forgejo backup dump content smoke skipped"
   wait "deep Forgejo dump restore smoke skipped"
   wait "deep Kubernetes private image pull smoke skipped"

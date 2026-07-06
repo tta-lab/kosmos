@@ -8,4 +8,5 @@ bash "${repo_root}/scripts/devops-gate-status" --help | grep -q 'FORGEJO_SMOKE_T
 bash "${repo_root}/scripts/devops-gate-status" --help | grep -q '/home/neil/.config/kosmos/forgejo-smoke-token'
 bash "${repo_root}/scripts/devops-gate-status" --help | grep -q 'kosmos-forgejo-backup-smoke'
 bash "${repo_root}/scripts/devops-gate-status" --help | grep -q 'kosmos-forgejo-dump-restore-smoke'
+bash "${repo_root}/scripts/devops-gate-status" --help | grep -q 'kosmos-data-disk-preflight'
 grep -q 'sudo -n test -s' "${repo_root}/scripts/devops-gate-status"
