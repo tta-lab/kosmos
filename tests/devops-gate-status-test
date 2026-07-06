@@ -5,4 +5,5 @@ repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
 
 bash "${repo_root}/scripts/devops-gate-status" --help | grep -q 'usage: devops-gate-status'
 bash "${repo_root}/scripts/devops-gate-status" --help | grep -q 'FORGEJO_SMOKE_TOKEN_FILE'
+bash "${repo_root}/scripts/devops-gate-status" --help | grep -q '/home/neil/.config/kosmos/forgejo-smoke-token'
 grep -q 'sudo -n test -s' "${repo_root}/scripts/devops-gate-status"

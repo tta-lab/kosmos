@@ -11,7 +11,8 @@ user="${FORGEJO_SMOKE_USER:-neil}"
 base_image="${DAGGER_LARGE_SMOKE_BASE_IMAGE:-alpine:3.20}"
 admin_file="${FORGEJO_SMOKE_ADMIN_FILE:-/root/kosmos-forgejo-admin-init.txt}"
 token="${FORGEJO_SMOKE_TOKEN:-}"
-token_file="${FORGEJO_SMOKE_TOKEN_FILE:-}"
+token_file_explicit="${FORGEJO_SMOKE_TOKEN_FILE+x}"
+token_file="${FORGEJO_SMOKE_TOKEN_FILE:-/home/neil/.config/kosmos/forgejo-smoke-token}"
 use_admin_bootstrap="${FORGEJO_SMOKE_USE_ADMIN_BOOTSTRAP:-}"
 
 usage() {
@@ -27,7 +28,7 @@ Environment:
   DAGGER_LOCAL_REGISTRY         Registry address seen by the Dagger engine. Default: host.containers.internal:3000
   DOCKER_LOCAL_REGISTRY         Registry address seen by local Docker/Podman. Default: 127.0.0.1:3000
   FORGEJO_SMOKE_TOKEN           Forgejo token with package write/read access
-  FORGEJO_SMOKE_TOKEN_FILE      File containing the Forgejo token
+  FORGEJO_SMOKE_TOKEN_FILE      File containing the Forgejo token. Default: /home/neil/.config/kosmos/forgejo-smoke-token
   FORGEJO_SMOKE_USER            Forgejo username. Default: neil
   FORGEJO_SMOKE_OWNER           Forgejo package owner. Default: guionai
   FORGEJO_SMOKE_IMAGE           Image name. Default: large-dagger-smoke
@@ -66,13 +67,14 @@ read_credential() {
     return
   fi
 
-  if [[ -n "$token_file" ]]; then
-    if [[ ! -r "$token_file" ]]; then
-      printf 'missing readable Forgejo token file: %s\n' "$token_file" >&2
-      exit 1
-    fi
+  if [[ -r "$token_file" ]]; then
     tr -d '\r\n' < "$token_file"
     return
+  fi
+
+  if [[ -n "$token_file_explicit" ]]; then
+      printf 'missing readable Forgejo token file: %s\n' "$token_file" >&2
+      exit 1
   fi
 
   if [[ "$use_admin_bootstrap" == "1" ]]; then

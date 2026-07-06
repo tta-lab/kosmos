@@ -5,7 +5,8 @@ hostname="${FORGEJO_SMOKE_HOSTNAME:-git-wsl.guion.io}"
 user="${FORGEJO_SMOKE_USER:-neil}"
 admin_file="${FORGEJO_SMOKE_ADMIN_FILE:-/root/kosmos-forgejo-admin-init.txt}"
 token="${FORGEJO_SMOKE_TOKEN:-}"
-token_file="${FORGEJO_SMOKE_TOKEN_FILE:-}"
+token_file_explicit="${FORGEJO_SMOKE_TOKEN_FILE+x}"
+token_file="${FORGEJO_SMOKE_TOKEN_FILE:-/home/neil/.config/kosmos/forgejo-smoke-token}"
 use_admin_bootstrap="${FORGEJO_SMOKE_USE_ADMIN_BOOTSTRAP:-}"
 
 require() {
@@ -27,13 +28,14 @@ read_credential() {
     return
   fi
 
-  if [[ -n "$token_file" ]]; then
-    if [[ ! -r "$token_file" ]]; then
-      printf 'missing readable Forgejo token file: %s\n' "$token_file" >&2
-      exit 1
-    fi
+  if [[ -r "$token_file" ]]; then
     tr -d '\r\n' < "$token_file"
     return
+  fi
+
+  if [[ -n "$token_file_explicit" ]]; then
+    printf 'missing readable Forgejo token file: %s\n' "$token_file" >&2
+    exit 1
   fi
 
   if [[ "$use_admin_bootstrap" == "1" ]]; then

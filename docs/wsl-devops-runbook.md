@@ -136,12 +136,13 @@ kosmos-devops-gate-status --deep --strict
 Smoke test HTTPS Git clone and push:
 
 ```bash
-FORGEJO_SMOKE_TOKEN_FILE=/root/kosmos-forgejo-smoke-token.txt kosmos-forgejo-https-git-smoke
+kosmos-forgejo-https-git-smoke
 ```
 
 The helper creates a temporary private repo on `git-wsl.guion.io`, clones it over
 HTTPS, commits and pushes one file, then deletes the repo. It expects a Forgejo
-token through `FORGEJO_SMOKE_TOKEN` or `FORGEJO_SMOKE_TOKEN_FILE`. The admin
+token through `FORGEJO_SMOKE_TOKEN`, `FORGEJO_SMOKE_TOKEN_FILE`, or the default
+agenix-backed path at `/home/neil/.config/kosmos/forgejo-smoke-token`. The admin
 bootstrap password can still be used for initial bring-up by setting
 `FORGEJO_SMOKE_USE_ADMIN_BOOTSTRAP=1`, but that should not be the routine smoke
 credential.
@@ -232,26 +233,28 @@ docker pull git-wsl.guion.io/guionai/dagger-smoke:latest
 Internal Dagger publish smoke:
 
 ```bash
-FORGEJO_SMOKE_TOKEN_FILE=/root/kosmos-forgejo-smoke-token.txt kosmos-dagger-local-registry-smoke
+kosmos-dagger-local-registry-smoke
 ```
 
-`/root/kosmos-forgejo-smoke-token.txt` should contain a package-write token for
-the staging Forgejo instance. It is separate from the Kubernetes package pull
-token. The pull token is intentionally read-only and should not be reused for
-publish smoke tests or CI.
+`/home/neil/.config/kosmos/forgejo-smoke-token` should contain a package-write
+token for the staging Forgejo instance. It is separate from the Kubernetes
+package pull token. The pull token is intentionally read-only and should not be
+reused for publish smoke tests or CI.
 
 Create the smoke token from the Forgejo UI or API with package read/write access,
-then place it on WSL without printing it:
+then store it as an agenix secret:
 
 ```bash
-sudo install -m 0400 -o root -g root /dev/stdin /root/kosmos-forgejo-smoke-token.txt
+agenix -e secrets/forgejo-smoke-token.age
+git add secrets/forgejo-smoke-token.age
 ```
 
-Paste the token, press Enter, then Ctrl-D. Verify only the file shape:
+The secret is already registered in `secrets.nix`; once the `.age` file exists,
+WSL decrypts it to the default smoke token path. Verify only the file shape:
 
 ```bash
-sudo test -s /root/kosmos-forgejo-smoke-token.txt
-sudo stat -c '%U %G %a %n' /root/kosmos-forgejo-smoke-token.txt
+test -s /home/neil/.config/kosmos/forgejo-smoke-token
+stat -c '%U %G %a %n' /home/neil/.config/kosmos/forgejo-smoke-token
 ```
 
 Before migrating real CI jobs, run a larger internal registry smoke. It uses the
@@ -259,8 +262,7 @@ same WSL-local write path as CI and generates a random payload so the layer does
 not collapse to a tiny compressed upload:
 
 ```bash
-FORGEJO_SMOKE_TOKEN_FILE=/root/kosmos-forgejo-smoke-token.txt \
-  DAGGER_LARGE_SMOKE_SIZE_MIB=512 \
+DAGGER_LARGE_SMOKE_SIZE_MIB=512 \
   kosmos-dagger-large-registry-smoke
 ```
 

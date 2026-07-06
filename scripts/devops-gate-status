@@ -3,7 +3,7 @@ set -euo pipefail
 
 strict=0
 deep=0
-smoke_token_file="${FORGEJO_SMOKE_TOKEN_FILE:-/root/kosmos-forgejo-smoke-token.txt}"
+smoke_token_file="${FORGEJO_SMOKE_TOKEN_FILE:-/home/neil/.config/kosmos/forgejo-smoke-token}"
 
 usage() {
   cat <<'EOF'
@@ -18,7 +18,7 @@ Options:
 
 Environment:
   FORGEJO_SMOKE_TOKEN_FILE  Package-write smoke token file checked by this
-                            command. Default: /root/kosmos-forgejo-smoke-token.txt
+                            command. Default: /home/neil/.config/kosmos/forgejo-smoke-token
 EOF
 }
 
