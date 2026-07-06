@@ -218,6 +218,38 @@ kubectl delete pod forgejo-packages-pull-smoke -n apps-dev --ignore-not-found --
 The smoke image is scratch-based, so the pod can fail after the pull. The pass
 condition is a populated `imageID` and no `ErrImagePull` or `ImagePullBackOff`.
 
+## Forgejo Migration Preflight
+
+Current source Forgejo in the production cluster:
+
+```text
+namespace: devops
+deployment: forgejo
+pod: forgejo-*
+http service: forgejo-http:3000
+ssh service: forgejo-ssh:22
+pvc: gitea-shared-storage
+pvc storage class: local-path-retain
+pvc size: 20Gi
+data volume mount: data -> gitea-shared-storage
+image: registry-docker-registry.devops.svc:5000/forgejo:ttal-prreview-filter-rootless
+```
+
+Check this before any dry run:
+
+```bash
+kubectl get deploy,pod,pvc -n devops | grep -E 'forgejo|gitea-shared-storage'
+kubectl get deploy forgejo -n devops \
+  -o jsonpath='{range .spec.template.spec.containers[*]}{.name}{" "}{.image}{"\n"}{end}'
+kubectl get pvc gitea-shared-storage -n devops \
+  -o custom-columns='NAME:.metadata.name,STATUS:.status.phase,VOLUME:.spec.volumeName,SC:.spec.storageClassName,SIZE:.spec.resources.requests.storage'
+df -h /var/lib/forgejo /var/backup/forgejo
+```
+
+Do not run the dry-run copy while `deployment/forgejo` is serving writes. The
+SQLite-backed source must be put in a maintenance window and scaled to zero
+before copying `/data`.
+
 ## Production Cutover Guardrails
 
 Do not move `git.guion.io` until all of these are true:
