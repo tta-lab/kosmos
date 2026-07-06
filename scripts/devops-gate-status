@@ -71,6 +71,10 @@ unit_active() {
   systemctl is-active --quiet "$1"
 }
 
+unit_enabled() {
+  systemctl is-enabled --quiet "$1"
+}
+
 file_exists() {
   [[ -f "$1" ]]
 }
@@ -116,10 +120,22 @@ else
   fail "Forgejo service active"
 fi
 
+if unit_enabled forgejo.service; then
+  ok "Forgejo service enabled"
+else
+  fail "Forgejo service enabled"
+fi
+
 if unit_active podman-dagger-engine.service; then
   ok "Dagger engine service active"
 else
   fail "Dagger engine service active"
+fi
+
+if unit_enabled podman-dagger-engine.service; then
+  ok "Dagger engine service enabled"
+else
+  fail "Dagger engine service enabled"
 fi
 
 if unit_active forgejo-internal-registry-proxy.service; then
@@ -128,10 +144,22 @@ else
   fail "internal Forgejo registry proxy active"
 fi
 
+if unit_enabled forgejo-internal-registry-proxy.service; then
+  ok "internal Forgejo registry proxy enabled"
+else
+  fail "internal Forgejo registry proxy enabled"
+fi
+
 if unit_active cloudflared-tunnel-kepos.service; then
   ok "Cloudflared kepos tunnel service active"
 else
   fail "Cloudflared kepos tunnel service active"
+fi
+
+if unit_enabled cloudflared-tunnel-kepos.service; then
+  ok "Cloudflared kepos tunnel service enabled"
+else
+  fail "Cloudflared kepos tunnel service enabled"
 fi
 
 if http_status_ok http://127.0.0.1:3000/; then

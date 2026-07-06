@@ -11,3 +11,5 @@ bash "${repo_root}/scripts/devops-gate-status" --help | grep -q 'kosmos-forgejo-
 bash "${repo_root}/scripts/devops-gate-status" --help | grep -q 'kosmos-data-disk-preflight'
 grep -q 'sudo -n test -s' "${repo_root}/scripts/devops-gate-status"
 grep -q 'cloudflared-tunnel-kepos.service' "${repo_root}/scripts/devops-gate-status"
+grep -q 'unit_enabled' "${repo_root}/scripts/devops-gate-status"
+grep -q 'podman-dagger-engine.service' "${repo_root}/scripts/devops-gate-status"
