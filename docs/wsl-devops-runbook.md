@@ -102,6 +102,7 @@ Check local service state:
 
 ```bash
 kosmos-wsl-devops-smoke
+kosmos-devops-gate-status
 systemctl status forgejo
 curl -I http://127.0.0.1:3000/
 curl -I https://git-wsl.guion.io/v2/
@@ -109,6 +110,16 @@ curl -I https://git-wsl.guion.io/v2/
 
 The `/v2/` response should be a container-registry response, not the Forgejo HTML
 app shell.
+
+`kosmos-devops-gate-status` is read-only by default. It reports ok/pending/fail
+for the staging services, sockets, backup target, Woodpecker secret state, and
+Kubernetes pull-secret metadata. Use `--deep` to also run the private image pull
+smoke that creates a temporary pod, and `--strict` before cutover to make pending
+items fail the command:
+
+```bash
+kosmos-devops-gate-status --deep --strict
+```
 
 Smoke test HTTPS Git clone and push:
 
