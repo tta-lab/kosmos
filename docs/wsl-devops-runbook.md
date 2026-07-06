@@ -197,9 +197,14 @@ files to git, and rebuild WSL.
 After secrets exist, check:
 
 ```bash
+kosmos-woodpecker-preflight
 systemctl status woodpecker-server
 systemctl status woodpecker-agent-wsl-podman
 ```
+
+Before secrets exist, `kosmos-woodpecker-preflight` should report the missing
+age files as pending while still checking the Dagger and Podman sockets that the
+future agent will need.
 
 Woodpecker uses the Podman/Docker backend. Pipeline containers that need Dagger
 receive this global environment variable from the Woodpecker server:

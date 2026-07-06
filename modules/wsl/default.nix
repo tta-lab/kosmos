@@ -77,6 +77,7 @@
   forgejoBackupSmoke = pkgs.writeScriptBin "kosmos-forgejo-backup-smoke" (builtins.readFile ../../scripts/forgejo-backup-smoke);
   forgejoHttpsGitSmoke = pkgs.writeScriptBin "kosmos-forgejo-https-git-smoke" (builtins.readFile ../../scripts/forgejo-https-git-smoke);
   forgejoMigrationDryRun = pkgs.writeScriptBin "kosmos-forgejo-migration-dry-run" (builtins.readFile ../../scripts/forgejo-migration-dry-run);
+  woodpeckerPreflight = pkgs.writeScriptBin "kosmos-woodpecker-preflight" (builtins.readFile ../../scripts/woodpecker-preflight);
 in {
   wsl = {
     enable = true;
@@ -102,6 +103,7 @@ in {
       forgejoMigrationDryRun
       k3d
       proxyEnv
+      woodpeckerPreflight
     ];
   };
 
