@@ -145,6 +145,23 @@ The replication helper refuses to use a target on the same filesystem as
 `/var/lib/forgejo` unless `--allow-same-filesystem` is passed. That override is
 for staging checks only, not production cutover.
 
+Current WSL disk discovery shows the extra 1T disk as:
+
+```text
+/dev/sde  ext4  UUID=bf1ab97f-1d98-4977-89ed-58a8d0098e6c
+```
+
+Do not rely on `/dev/sde` for persistent config. After confirming this is the
+intended NUC data disk, enable the Nix mount with the stable UUID path:
+
+```nix
+kosmos.wsl.dataDisk = {
+  enable = true;
+  device = "/dev/disk/by-uuid/bf1ab97f-1d98-4977-89ed-58a8d0098e6c";
+  mountPoint = "/mnt/nuc-data";
+};
+```
+
 Once the final mount path is stable, set:
 
 ```nix

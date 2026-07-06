@@ -15,6 +15,7 @@ _: {
     ../../modules/wsl/secrets.nix
     ../../modules/wsl/mihomo.nix
     ../../modules/wsl/kepos-matrix.nix
+    ../../modules/wsl/data-disk.nix
     ../../modules/wsl/forgejo.nix
     ../../modules/wsl/dagger.nix
     ../../modules/wsl/woodpecker.nix
