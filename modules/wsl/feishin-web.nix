@@ -17,6 +17,7 @@
 
     window.SERVER_URL = "${cfg.musicServerUrl}";
     window.REMOTE_URL = "https://${cfg.publicHostname}";
+    window.LISTEN_TOGETHER_URL = "https://party.guion.io";
     window.SERVER_NAME = "${cfg.serverName}";
     window.SERVER_TYPE = "subsonic";
     window.SERVER_LOCK = "true";

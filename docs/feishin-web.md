@@ -5,6 +5,7 @@ Feishin Web is a prettier browser client for the existing Navidrome server.
 - Public URL: `https://player.guion.io`
 - Local service: `127.0.0.1:9180`
 - Music server: `https://music.guion.io`
+- Listen Together server: `https://party.guion.io`
 - Source fork: `alsoGAMER/feishin`, commit `1961f14e063ddbe568c9ec6e815753d22d60f1e4`
 - WSL module: `modules/wsl/feishin-web.nix`
 
@@ -24,6 +25,15 @@ SERVER_NAME=Kepos Music
 SERVER_TYPE=subsonic
 SERVER_URL=https://music.guion.io
 SERVER_LOCK=true
+LISTEN_TOGETHER_URL=https://party.guion.io
+```
+
+New browser profiles default the Listen Together client to enabled with the
+Kepos sidecar URL. Existing browser profiles may keep their persisted playback
+settings; enable it manually in Feishin under Settings -> Playback and set:
+
+```text
+Listen Together server=https://party.guion.io
 ```
 
 After the first deploy, create the Cloudflare DNS route if it does not already

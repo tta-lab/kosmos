@@ -38,6 +38,9 @@ stdenv.mkDerivation (finalAttrs: {
       --replace-fail "const persistedUrl = normalizeServerUrl(currentServer.url);"$'\n\n'"        return configuredUrl !== persistedUrl;" "const persistedUrl = normalizeServerUrl(currentServer.url);"$'\n'"        const configuredType = toServerType(window.SERVER_TYPE);"$'\n\n'"        return ("$'\n'"            configuredUrl !== persistedUrl ||"$'\n'"            (configuredType !== null && currentServer.type !== configuredType)"$'\n'"        );" \
       --replace-fail "updateServer(currentServer.id, {" "const configuredType = toServerType(window.SERVER_TYPE);"$'\n'"            updateServer(currentServer.id, {" \
       --replace-fail "url: normalizeServerUrl(window.SERVER_URL)," "url: normalizeServerUrl(window.SERVER_URL),"$'\n'"                ...(configuredType !== null ? { type: configuredType } : {}),"
+    substituteInPlace src/renderer/store/sync.store.ts \
+      --replace-fail "enabled: false," "enabled: Boolean((window as any).LISTEN_TOGETHER_URL)," \
+      --replace-fail $'sidecarUrl: \'\',' $'sidecarUrl: (window as any).LISTEN_TOGETHER_URL || \'\','
   '';
 
   buildPhase = ''
