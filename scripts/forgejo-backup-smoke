@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+service="${FORGEJO_BACKUP_SERVICE:-forgejo-dump.service}"
+timer="${FORGEJO_BACKUP_TIMER:-forgejo-dump.timer}"
+backup_dir="${FORGEJO_BACKUP_DIR:-/var/backup/forgejo}"
+
+require() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    printf 'missing required command: %s\n' "$1" >&2
+    exit 1
+  fi
+}
+
+require awk
+require cut
+require find
+require sort
+require sudo
+require systemctl
+require tail
+
+printf 'checking %s...\n' "$timer"
+systemctl is-enabled --quiet "$timer"
+systemctl is-active --quiet "$timer"
+
+printf 'running %s...\n' "$service"
+sudo systemctl start "$service"
+
+result="$(systemctl show "$service" --property=Result --value)"
+if [[ "$result" != "success" ]]; then
+  printf '%s result was %s\n' "$service" "$result" >&2
+  exit 1
+fi
+
+latest="$(
+  sudo find "$backup_dir" \
+    -maxdepth 1 \
+    -type f \
+    -name 'forgejo-dump-*.tar.zst' \
+    -printf '%T@ %s %p\n' \
+    | sort -n \
+    | tail -1
+)"
+
+if [[ -z "$latest" ]]; then
+  printf 'no forgejo dump found in %s\n' "$backup_dir" >&2
+  exit 1
+fi
+
+size="$(awk '{ print $2 }' <<<"$latest")"
+path="$(cut -d' ' -f3- <<<"$latest")"
+
+if [[ "$size" -le 0 ]]; then
+  printf 'latest forgejo dump is empty: %s\n' "$path" >&2
+  exit 1
+fi
+
+printf 'forgejo backup smoke passed: %s bytes at %s\n' "$size" "$path"

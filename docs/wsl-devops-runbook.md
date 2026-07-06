@@ -92,6 +92,17 @@ The helper creates a temporary private repo on `git-wsl.guion.io`, clones it ove
 HTTPS, commits and pushes one file, then deletes the repo. It reads the staging
 admin password from `/root/kosmos-forgejo-admin-init.txt` without printing it.
 
+Smoke test the staging dump timer and backup path:
+
+```bash
+kosmos-forgejo-backup-smoke
+```
+
+This triggers `forgejo-dump.service` and verifies a non-empty
+`forgejo-dump-*.tar.zst` exists in `/var/backup/forgejo`. This proves the staging
+dump path only; before production cutover, move or replicate backups to the NUC
+data disk and test a restore from that location.
+
 If the public hostname does not reach the WSL tunnel, route it to the `nuc-wsl`
 Cloudflare tunnel:
 

@@ -72,6 +72,7 @@
     '';
   };
   devopsSmoke = pkgs.writeScriptBin "kosmos-wsl-devops-smoke" (builtins.readFile ../../scripts/wsl-devops-smoke);
+  forgejoBackupSmoke = pkgs.writeScriptBin "kosmos-forgejo-backup-smoke" (builtins.readFile ../../scripts/forgejo-backup-smoke);
   forgejoHttpsGitSmoke = pkgs.writeScriptBin "kosmos-forgejo-https-git-smoke" (builtins.readFile ../../scripts/forgejo-https-git-smoke);
   forgejoMigrationDryRun = pkgs.writeScriptBin "kosmos-forgejo-migration-dry-run" (builtins.readFile ../../scripts/forgejo-migration-dry-run);
 in {
@@ -92,6 +93,7 @@ in {
     systemPackages = with pkgs; [
       docker-compose
       devopsSmoke
+      forgejoBackupSmoke
       forgejoHttpsGitSmoke
       forgejoMigrationDryRun
       k3d
