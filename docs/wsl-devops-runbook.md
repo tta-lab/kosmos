@@ -219,6 +219,25 @@ Internal Dagger publish smoke:
 FORGEJO_SMOKE_TOKEN_FILE=/root/kosmos-forgejo-smoke-token.txt kosmos-dagger-local-registry-smoke
 ```
 
+`/root/kosmos-forgejo-smoke-token.txt` should contain a package-write token for
+the staging Forgejo instance. It is separate from the Kubernetes package pull
+token. The pull token is intentionally read-only and should not be reused for
+publish smoke tests or CI.
+
+Create the smoke token from the Forgejo UI or API with package read/write access,
+then place it on WSL without printing it:
+
+```bash
+sudo install -m 0400 -o root -g root /dev/stdin /root/kosmos-forgejo-smoke-token.txt
+```
+
+Paste the token, press Enter, then Ctrl-D. Verify only the file shape:
+
+```bash
+sudo test -s /root/kosmos-forgejo-smoke-token.txt
+sudo stat -c '%U %G %a %n' /root/kosmos-forgejo-smoke-token.txt
+```
+
 Before migrating real CI jobs, run a larger internal registry smoke. It uses the
 same WSL-local write path as CI and generates a random payload so the layer does
 not collapse to a tiny compressed upload:
