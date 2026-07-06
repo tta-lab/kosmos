@@ -71,6 +71,7 @@
       esac
     '';
   };
+  daggerLocalRegistrySmoke = pkgs.writeScriptBin "kosmos-dagger-local-registry-smoke" (builtins.readFile ../../scripts/dagger-local-registry-smoke);
   daggerUnixSocketSmoke = pkgs.writeScriptBin "kosmos-dagger-unix-socket-smoke" (builtins.readFile ../../scripts/dagger-unix-socket-smoke);
   devopsSmoke = pkgs.writeScriptBin "kosmos-wsl-devops-smoke" (builtins.readFile ../../scripts/wsl-devops-smoke);
   forgejoBackupSmoke = pkgs.writeScriptBin "kosmos-forgejo-backup-smoke" (builtins.readFile ../../scripts/forgejo-backup-smoke);
@@ -92,6 +93,7 @@ in {
 
   environment = {
     systemPackages = with pkgs; [
+      daggerLocalRegistrySmoke
       daggerUnixSocketSmoke
       docker-compose
       devopsSmoke
@@ -108,6 +110,12 @@ in {
     dockerCompat = true;
     dockerSocket.enable = true;
   };
+
+  virtualisation.containers.registries.insecure = [
+    "127.0.0.1:3000"
+    "10.88.0.1:3000"
+    "host.containers.internal:3000"
+  ];
 
   programs.nix-ld = {
     enable = true;

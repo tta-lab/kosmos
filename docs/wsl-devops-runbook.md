@@ -44,10 +44,15 @@ Forgejo on `127.0.0.1`. In WSL testing, the engine failed to start because it
 still needs its own BuildKit/CNI networking. Keep the official privileged engine
 container shape.
 
-The desired final CI write path is still local or LAN, not Cloudflare. The exact
-internal registry address needs a separate tested design. Until then, the staging
-publish smoke uses `git-wsl.guion.io`; do not treat that public hostname as the
-large-image production CI upload path.
+The CI write path is local, not Cloudflare. The Dagger engine publishes to:
+
+```text
+host.containers.internal:3000/guionai/<image>:<tag>
+```
+
+`forgejo-internal-registry-proxy.service` binds only on the Podman bridge gateway
+and forwards that traffic to Forgejo's loopback listener. This lets the Dagger
+engine write packages without exposing Forgejo's local port on WSL `eth0`.
 
 The engine GC policy is written to:
 
@@ -149,6 +154,17 @@ dagger -M call container \
 unset FORGEJO_PASSWORD
 docker pull git-wsl.guion.io/guionai/dagger-smoke:latest
 ```
+
+Internal Dagger publish smoke:
+
+```bash
+kosmos-dagger-local-registry-smoke
+```
+
+The helper publishes from Dagger to
+`host.containers.internal:3000/guionai/local-dagger-smoke:latest`, then pulls the
+same repository through `127.0.0.1:3000`. This is the path WSL Woodpecker jobs
+should use for image writes.
 
 ## Woodpecker Secrets
 

@@ -26,8 +26,10 @@ complete.
 
 Separate the registry write path from the human/public path:
 
-- WSL-local CI and Dagger publishes should eventually use a local or LAN route
-  that does not traverse Cloudflare.
+- WSL-local CI and Dagger publishes use the Podman bridge-only Forgejo proxy:
+  `host.containers.internal:3000/guionai/<image>:<tag>` from inside the Dagger
+  engine container. The proxy binds on the Podman bridge gateway and forwards to
+  Forgejo's loopback listener, so the write path does not traverse Cloudflare.
 - Human Git UI, HTTPS clone/push, and external package pulls use the Cloudflare
   hostname, currently `git-wsl.guion.io` during staging and `git.guion.io` after
   cutover.
@@ -363,10 +365,11 @@ Then update Dagger publish targets from:
 registry-docker-registry.devops.svc:5000/<image>:<tag>
 ```
 
-to a tested WSL-local or LAN Forgejo Packages endpoint for CI writes. The exact
-internal registry address remains a follow-up design item because the Dagger
-engine runs inside its own privileged container and `127.0.0.1` inside that
-container is not the WSL host.
+to the internal WSL Forgejo Packages endpoint for CI writes:
+
+```text
+host.containers.internal:3000/guionai/<image>:<tag>
+```
 
 The public pull reference after cutover should remain:
 
@@ -381,10 +384,11 @@ Success criteria:
 
 - Dagger engine starts after WSL reboot without manual shell state.
 - cache config is present under the engine's real config path.
-- a build can publish to Forgejo Packages through the currently tested staging
-  hostname.
-- before production CI migration, a non-Cloudflare internal publish path is
-  selected and proven with a large enough image to matter.
+- a build can publish to Forgejo Packages through
+  `host.containers.internal:3000/guionai/*`.
+- the same package can be pulled through a local or public registry address.
+- before production CI migration, the internal path is proven with a large enough
+  image to matter.
 - stopping the engine leaves Forgejo and cloudflared unaffected.
 - a throwaway Woodpecker job can reach the Dagger Unix socket before production
   build pipelines are migrated.

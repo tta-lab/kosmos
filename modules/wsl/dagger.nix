@@ -15,6 +15,8 @@
         sweepSize
         ;
     };
+
+    registries.${cfg.internalRegistryHost}.http = true;
   });
   daggerWrapper = pkgs.writeShellApplication {
     name = "dagger";
@@ -66,6 +68,12 @@ in {
       type = lib.types.port;
       default = 8080;
       description = "Local Dagger engine TCP port.";
+    };
+
+    internalRegistryHost = lib.mkOption {
+      type = lib.types.str;
+      default = "host.containers.internal:3000";
+      description = "Forgejo Packages host as seen from the Dagger engine container for WSL-local HTTP publishes.";
     };
 
     gc = {
