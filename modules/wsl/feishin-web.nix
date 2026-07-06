@@ -17,7 +17,8 @@
 
     window.SERVER_URL = "${cfg.musicServerUrl}";
     window.REMOTE_URL = "https://${cfg.publicHostname}";
-    window.LISTEN_TOGETHER_URL = "https://party.guion.io";
+    window.LISTEN_TOGETHER_URL = "${cfg.listenTogetherUrl}";
+    window.LISTEN_TOGETHER_ENABLED = "${lib.boolToString cfg.listenTogetherEnabled}";
     window.SERVER_NAME = "${cfg.serverName}";
     window.SERVER_TYPE = "subsonic";
     window.SERVER_LOCK = "true";
@@ -85,6 +86,18 @@ in {
       type = lib.types.str;
       default = "Kepos Music";
       description = "Display name for the preconfigured Navidrome server.";
+    };
+
+    listenTogetherUrl = lib.mkOption {
+      type = lib.types.str;
+      default = "https://party.guion.io";
+      description = "Listen Together sidecar URL preconfigured in Feishin.";
+    };
+
+    listenTogetherEnabled = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Whether new Feishin browser profiles should enable Listen Together by default.";
     };
   };
 

@@ -26,6 +26,7 @@ SERVER_TYPE=subsonic
 SERVER_URL=https://music.guion.io
 SERVER_LOCK=true
 LISTEN_TOGETHER_URL=https://party.guion.io
+LISTEN_TOGETHER_ENABLED=true
 ```
 
 New browser profiles default the Listen Together client to enabled with the

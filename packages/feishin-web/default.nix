@@ -51,7 +51,7 @@ stdenv.mkDerivation (finalAttrs: {
     # asking users to discover Settings -> Playback first. Existing profiles may
     # keep their persisted sync settings.
     substituteInPlace src/renderer/store/sync.store.ts \
-      --replace-fail "enabled: false," "enabled: Boolean((window as any).LISTEN_TOGETHER_URL)," \
+      --replace-fail "enabled: false," "enabled: (window as any).LISTEN_TOGETHER_ENABLED === true || (window as any).LISTEN_TOGETHER_ENABLED === 'true'," \
       --replace-fail $'sidecarUrl: \'\',' $'sidecarUrl: (window as any).LISTEN_TOGETHER_URL || \'\','
   '';
 
