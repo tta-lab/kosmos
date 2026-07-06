@@ -43,6 +43,7 @@
           jq
           python3
           shellcheck
+          woodpecker-cli
         ];
       } ''
         shellcheck \
@@ -55,6 +56,7 @@
           ${./scripts/forgejo-migration-dry-run} \
           ${./scripts/ttal-tmux-project-picker} \
           ${./scripts/ttal-wezterm-projects} \
+          ${./scripts/woodpecker-dagger-job-smoke} \
           ${./scripts/woodpecker-preflight} \
           ${./scripts/wsl-devops-smoke} \
           ${./tests/temenos-env-test} \
@@ -64,6 +66,7 @@
           ${./tests/tmux-copy-mode-test} \
           ${./tests/orga-cli-service-test} \
           ${./tests/ttal-wezterm-projects-test}
+        woodpecker-cli lint --strict ${./fixtures/woodpecker/dagger-unix-socket-smoke.yml}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-env-test}

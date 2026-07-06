@@ -227,6 +227,28 @@ The agent mounts `/run/dagger` into every pipeline step with
 a throwaway Woodpecker job that the socket exists and `dagger version` can reach
 the engine.
 
+Lint the throwaway Dagger socket smoke pipeline:
+
+```bash
+kosmos-woodpecker-dagger-job-smoke --lint-only
+```
+
+After Woodpecker OAuth login is working and a smoke repository exists with
+`fixtures/woodpecker/dagger-unix-socket-smoke.yml` as its pipeline config,
+trigger a real pipeline:
+
+```bash
+WOODPECKER_SERVER=http://127.0.0.1:9000 \
+WOODPECKER_TOKEN_FILE=/root/kosmos-woodpecker-token.txt \
+WOODPECKER_SMOKE_REPO=neil/kosmos-woodpecker-smoke \
+  kosmos-woodpecker-dagger-job-smoke
+```
+
+The helper uses `woodpecker-cli` to create a pipeline and waits for success. The
+pipeline runs `registry.dagger.io/engine:v0.19.11`, checks
+`/run/dagger/engine.sock`, then runs `dagger version` against that Unix socket.
+This is the real gate before migrating production build jobs to the WSL agent.
+
 ## Kubernetes Pull Secret
 
 The staging package pull token is stored outside git:
