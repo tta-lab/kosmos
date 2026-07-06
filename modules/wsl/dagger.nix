@@ -24,7 +24,7 @@
     text = ''
       export XDG_CONFIG_HOME="${cfg.stateDir}/config"
       export XDG_CACHE_HOME="${cfg.stateDir}/cache"
-      export _EXPERIMENTAL_DAGGER_RUNNER_HOST="${cfg.runnerHost}"
+      export _EXPERIMENTAL_DAGGER_RUNNER_HOST="''${_EXPERIMENTAL_DAGGER_RUNNER_HOST:-${cfg.runnerHost}}"
       exec ${lib.getExe cfg.package} "$@"
     '';
   };

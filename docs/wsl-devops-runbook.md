@@ -29,7 +29,13 @@ The engine runs as a systemd-managed Podman container:
 ```bash
 systemctl status podman-dagger-engine
 dagger version
+kosmos-dagger-unix-socket-smoke
 ```
+
+The `dagger` wrapper defaults to `tcp://127.0.0.1:8080`, but it preserves an
+explicit `_EXPERIMENTAL_DAGGER_RUNNER_HOST` override. The Unix socket smoke uses
+that override to verify the same `/run/dagger/engine.sock` endpoint that
+Woodpecker pipeline containers will receive.
 
 The engine GC policy is written to:
 
