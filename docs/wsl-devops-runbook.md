@@ -366,6 +366,22 @@ kosmos-forgejo-cutover-preflight \
 This still is not a completed restore test; it only verifies that the copied
 directory looks like Forgejo data and that a dump exists.
 
+Then run the non-production restore smoke:
+
+```bash
+kosmos-forgejo-restore-smoke \
+  --copy-dir /var/lib/forgejo-migration-dry-runs/<copy-dir> \
+  --port 13000
+```
+
+The helper refuses to run against the live `/var/lib/forgejo` state directory. It
+creates a temporary `app.ini` with paths rewritten to the copied data directory,
+runs `forgejo doctor check --all`, starts Forgejo on `127.0.0.1:<port>`, checks
+`/api/healthz` and `/user/login`, then stops the temporary process. Passing this
+smoke proves that the copied data can at least be opened and served by Forgejo;
+manual login, clone, push, package list, and package pull checks are still
+required before production cutover.
+
 ## Production Cutover Guardrails
 
 Do not move `git.guion.io` until all of these are true:
@@ -377,5 +393,7 @@ Do not move `git.guion.io` until all of these are true:
 - A Kubernetes pod in `apps-dev` pulls a private staging image using the mirrored
   `forgejo-packages` secret.
 - `kosmos-forgejo-cutover-preflight` passes without `--allow-same-filesystem`.
+- `kosmos-forgejo-restore-smoke` passes against a copied source Forgejo data
+  directory.
 - A cold copy or restore dry run of the current Forgejo `/data` volume has been
   tested.

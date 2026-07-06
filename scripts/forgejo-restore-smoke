@@ -1,0 +1,247 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+copy_dir="${FORGEJO_RESTORE_COPY_DIR:-}"
+state_dir="${FORGEJO_STATE_DIR:-/var/lib/forgejo}"
+scratch_dir="${FORGEJO_RESTORE_SCRATCH_DIR:-/tmp/kosmos-forgejo-restore-smoke}"
+port="${FORGEJO_RESTORE_PORT:-13000}"
+timeout_seconds="${FORGEJO_RESTORE_TIMEOUT_SECONDS:-90}"
+keep_scratch=0
+
+usage() {
+  cat >&2 <<'EOF'
+usage: forgejo-restore-smoke --copy-dir <path> [--port <port>] [--keep-scratch]
+
+Run a non-production restore smoke against an existing cold-copy directory. The
+script refuses to run against the live Forgejo state directory. It creates a
+temporary app.ini with paths rewritten to the copy directory, runs
+`forgejo doctor check --all`, starts Forgejo on a temporary loopback port, checks
+health/login endpoints, then stops the temporary process.
+
+Options:
+  --copy-dir <path>       Existing cold-copy Forgejo data directory
+  --state-dir <path>      Live Forgejo state dir to refuse. Default: /var/lib/forgejo
+  --scratch-dir <path>    Scratch dir for patched config and logs
+  --port <port>           Temporary local port. Default: 13000
+  --keep-scratch          Keep scratch dir after exit
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --copy-dir)
+      copy_dir="$2"
+      shift 2
+      ;;
+    --state-dir)
+      state_dir="$2"
+      shift 2
+      ;;
+    --scratch-dir)
+      scratch_dir="$2"
+      shift 2
+      ;;
+    --port)
+      port="$2"
+      shift 2
+      ;;
+    --keep-scratch)
+      keep_scratch=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage
+      exit 2
+      ;;
+  esac
+done
+
+require() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    printf 'missing required command: %s\n' "$1" >&2
+    exit 1
+  fi
+}
+
+sudo_test() {
+  sudo test "$@"
+}
+
+realpath_sudo() {
+  sudo realpath "$1"
+}
+
+check_candidate_exists() {
+  local root="$1"
+  shift
+  local candidate
+
+  for candidate in "$@"; do
+    if sudo_test -e "${root}/${candidate}"; then
+      printf '%s/%s\n' "$root" "$candidate"
+      return 0
+    fi
+  done
+
+  printf 'none of the expected paths exist under %s:\n' "$root" >&2
+  printf '  %s\n' "$@" >&2
+  return 1
+}
+
+write_restore_config() {
+  local source_config="$1"
+  local target_config="$2"
+
+  sudo awk -v root="$copy_dir_real" -v port="$port" '
+    /^[[:space:]]*WORK_PATH[[:space:]]*=/ {
+      print "WORK_PATH = " root
+      next
+    }
+    /^[[:space:]]*PATH[[:space:]]*=[[:space:]]*\/.*forgejo\.db[[:space:]]*$/ {
+      print "PATH = " root "/data/forgejo.db"
+      next
+    }
+    /^[[:space:]]*PATH[[:space:]]*=[[:space:]]*\/.*\/lfs[[:space:]]*$/ {
+      print "PATH = " root "/data/lfs"
+      next
+    }
+    /^[[:space:]]*ROOT_PATH[[:space:]]*=/ {
+      print "ROOT_PATH = " root "/log"
+      next
+    }
+    /^[[:space:]]*ROOT[[:space:]]*=/ {
+      print "ROOT = " root "/repositories"
+      next
+    }
+    /^[[:space:]]*HTTP_ADDR[[:space:]]*=/ {
+      print "HTTP_ADDR = 127.0.0.1"
+      next
+    }
+    /^[[:space:]]*HTTP_PORT[[:space:]]*=/ {
+      print "HTTP_PORT = " port
+      next
+    }
+    /^[[:space:]]*ROOT_URL[[:space:]]*=/ {
+      print "ROOT_URL = http://127.0.0.1:" port "/"
+      next
+    }
+    { print }
+  ' "$source_config" | tee "$target_config" >/dev/null
+}
+
+wait_for_http() {
+  local path="$1"
+  local deadline=$((SECONDS + timeout_seconds))
+  local status
+
+  while [[ "$SECONDS" -lt "$deadline" ]]; do
+    status="$(
+      curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:${port}${path}" || true
+    )"
+    if [[ "$status" == "200" ]]; then
+      return 0
+    fi
+    sleep 2
+  done
+
+  printf 'timed out waiting for %s on temporary Forgejo port %s\n' "$path" "$port" >&2
+  return 1
+}
+
+require awk
+require curl
+require gitea
+require realpath
+require rm
+require sudo
+
+if [[ -z "$copy_dir" ]]; then
+  usage
+  exit 2
+fi
+
+sudo_test -d "$copy_dir" || {
+  printf 'missing restore copy directory: %s\n' "$copy_dir" >&2
+  exit 1
+}
+
+sudo_test -d "$state_dir" || {
+  printf 'missing live Forgejo state directory: %s\n' "$state_dir" >&2
+  exit 1
+}
+
+copy_dir_real="$(realpath_sudo "$copy_dir")"
+state_dir_real="$(realpath_sudo "$state_dir")"
+if [[ "$copy_dir_real" == "$state_dir_real" ]]; then
+  printf 'refusing to run restore smoke against live Forgejo state: %s\n' "$state_dir_real" >&2
+  exit 1
+fi
+
+source_config="$(
+  check_candidate_exists "$copy_dir_real" \
+    custom/conf/app.ini \
+    gitea/conf/app.ini \
+    app.ini
+)"
+check_candidate_exists "$copy_dir_real" \
+  data/forgejo.db \
+  gitea/gitea.db \
+  gitea.db \
+  >/dev/null
+
+rm -rf "$scratch_dir"
+mkdir -p "$scratch_dir"
+config="${scratch_dir}/app.ini"
+pid_file="${scratch_dir}/forgejo.pid"
+web_log="${scratch_dir}/forgejo-web.log"
+doctor_log="${scratch_dir}/forgejo-doctor.log"
+write_restore_config "$source_config" "$config"
+
+cleanup() {
+  local exit_code=$?
+
+  if [[ -n "${web_pid:-}" ]] && kill -0 "$web_pid" 2>/dev/null; then
+    kill "$web_pid" 2>/dev/null || true
+    wait "$web_pid" 2>/dev/null || true
+  fi
+
+  if [[ "$keep_scratch" -ne 1 ]]; then
+    rm -rf "$scratch_dir"
+  else
+    printf 'kept restore smoke scratch dir: %s\n' "$scratch_dir"
+  fi
+
+  exit "$exit_code"
+}
+trap cleanup EXIT
+
+printf 'running forgejo doctor check against copy %s...\n' "$copy_dir_real"
+HOME="$copy_dir_real" \
+FORGEJO_WORK_DIR="$copy_dir_real" \
+FORGEJO_CUSTOM="${copy_dir_real}/custom" \
+gitea \
+  --work-path "$copy_dir_real" \
+  --custom-path "${copy_dir_real}/custom" \
+  --config "$config" \
+  doctor check --all --log-file "$doctor_log"
+
+printf 'starting temporary Forgejo restore smoke on 127.0.0.1:%s...\n' "$port"
+HOME="$copy_dir_real" \
+FORGEJO_WORK_DIR="$copy_dir_real" \
+FORGEJO_CUSTOM="${copy_dir_real}/custom" \
+gitea \
+  --work-path "$copy_dir_real" \
+  --custom-path "${copy_dir_real}/custom" \
+  --config "$config" \
+  web --port "$port" --pid "$pid_file" \
+  >"$web_log" 2>&1 &
+web_pid="$!"
+
+wait_for_http /api/healthz
+wait_for_http /user/login
+
+printf 'Forgejo restore smoke passed for %s on temporary port %s\n' "$copy_dir_real" "$port"

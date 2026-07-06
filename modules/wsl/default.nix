@@ -79,6 +79,7 @@
   forgejoHttpsGitSmoke = pkgs.writeScriptBin "kosmos-forgejo-https-git-smoke" (builtins.readFile ../../scripts/forgejo-https-git-smoke);
   forgejoK8sPullSecretSmoke = pkgs.writeScriptBin "kosmos-forgejo-k8s-pull-secret-smoke" (builtins.readFile ../../scripts/forgejo-k8s-pull-secret-smoke);
   forgejoMigrationDryRun = pkgs.writeScriptBin "kosmos-forgejo-migration-dry-run" (builtins.readFile ../../scripts/forgejo-migration-dry-run);
+  forgejoRestoreSmoke = pkgs.writeScriptBin "kosmos-forgejo-restore-smoke" (builtins.readFile ../../scripts/forgejo-restore-smoke);
   woodpeckerDaggerJobSmoke = pkgs.writeScriptBin "kosmos-woodpecker-dagger-job-smoke" (builtins.readFile ../../scripts/woodpecker-dagger-job-smoke);
   woodpeckerPreflight = pkgs.writeScriptBin "kosmos-woodpecker-preflight" (builtins.readFile ../../scripts/woodpecker-preflight);
 in {
@@ -101,11 +102,13 @@ in {
       daggerUnixSocketSmoke
       docker-compose
       devopsSmoke
+      forgejo
       forgejoBackupSmoke
       forgejoCutoverPreflight
       forgejoHttpsGitSmoke
       forgejoK8sPullSecretSmoke
       forgejoMigrationDryRun
+      forgejoRestoreSmoke
       k3d
       proxyEnv
       woodpecker-cli

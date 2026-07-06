@@ -54,6 +54,7 @@
           ${./scripts/forgejo-https-git-smoke} \
           ${./scripts/forgejo-k8s-pull-secret-smoke} \
           ${./scripts/forgejo-migration-dry-run} \
+          ${./scripts/forgejo-restore-smoke} \
           ${./scripts/ttal-tmux-project-picker} \
           ${./scripts/ttal-wezterm-projects} \
           ${./scripts/woodpecker-dagger-job-smoke} \
