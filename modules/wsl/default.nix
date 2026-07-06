@@ -72,6 +72,7 @@
     '';
   };
   daggerLocalRegistrySmoke = pkgs.writeScriptBin "kosmos-dagger-local-registry-smoke" (builtins.readFile ../../scripts/dagger-local-registry-smoke);
+  daggerLargeRegistrySmoke = pkgs.writeScriptBin "kosmos-dagger-large-registry-smoke" (builtins.readFile ../../scripts/dagger-large-registry-smoke);
   daggerUnixSocketSmoke = pkgs.writeScriptBin "kosmos-dagger-unix-socket-smoke" (builtins.readFile ../../scripts/dagger-unix-socket-smoke);
   devopsGateStatus = pkgs.writeScriptBin "kosmos-devops-gate-status" (builtins.readFile ../../scripts/devops-gate-status);
   devopsSmoke = pkgs.writeScriptBin "kosmos-wsl-devops-smoke" (builtins.readFile ../../scripts/wsl-devops-smoke);
@@ -101,6 +102,7 @@ in {
   environment = {
     systemPackages = with pkgs; [
       daggerLocalRegistrySmoke
+      daggerLargeRegistrySmoke
       daggerUnixSocketSmoke
       devopsGateStatus
       docker-compose

@@ -219,6 +219,16 @@ Internal Dagger publish smoke:
 FORGEJO_SMOKE_TOKEN_FILE=/root/kosmos-forgejo-smoke-token.txt kosmos-dagger-local-registry-smoke
 ```
 
+Before migrating real CI jobs, run a larger internal registry smoke. It uses the
+same WSL-local write path as CI and generates a random payload so the layer does
+not collapse to a tiny compressed upload:
+
+```bash
+FORGEJO_SMOKE_TOKEN_FILE=/root/kosmos-forgejo-smoke-token.txt \
+  DAGGER_LARGE_SMOKE_SIZE_MIB=512 \
+  kosmos-dagger-large-registry-smoke
+```
+
 The helper publishes from Dagger to
 `host.containers.internal:3000/guionai/local-dagger-smoke:latest`, then pulls the
 same repository through `127.0.0.1:3000`. This is the path WSL Woodpecker jobs

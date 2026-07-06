@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+
+bash "${repo_root}/scripts/dagger-large-registry-smoke" --help | grep -q 'usage: dagger-large-registry-smoke'
