@@ -16,6 +16,7 @@ Options:
   --deep    Run checks that may create temporary cluster objects, such as the
             Kubernetes private image pull smoke, and non-production restore
             checks such as kosmos-data-disk-preflight,
+            kosmos-dagger-engine-config-smoke,
             kosmos-forgejo-backup-smoke, and
             kosmos-forgejo-dump-restore-smoke
 
@@ -244,6 +245,16 @@ else
 fi
 
 if [[ "$deep" -eq 1 ]]; then
+  if have_command kosmos-dagger-engine-config-smoke; then
+    if kosmos-dagger-engine-config-smoke; then
+      ok "deep Dagger engine config smoke"
+    else
+      fail "deep Dagger engine config smoke"
+    fi
+  else
+    wait "kosmos-dagger-engine-config-smoke unavailable"
+  fi
+
   if have_command kosmos-data-disk-preflight; then
     if kosmos-data-disk-preflight; then
       ok "deep NUC data disk preflight"
@@ -284,6 +295,7 @@ if [[ "$deep" -eq 1 ]]; then
     wait "kosmos-forgejo-k8s-pull-secret-smoke unavailable"
   fi
 else
+  wait "deep Dagger engine config smoke skipped"
   wait "deep NUC data disk preflight skipped"
   wait "deep Forgejo backup dump content smoke skipped"
   wait "deep Forgejo dump restore smoke skipped"

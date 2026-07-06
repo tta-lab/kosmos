@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+config_path="${DAGGER_ENGINE_CONFIG:-/etc/dagger/engine.json}"
+state_config_path="${DAGGER_STATE_ENGINE_CONFIG:-/var/lib/dagger/config/dagger/engine.json}"
+expected_registry="${DAGGER_INTERNAL_REGISTRY:-host.containers.internal:3000}"
+expected_max_used_space="${DAGGER_GC_MAX_USED_SPACE:-100GB}"
+expected_reserved_space="${DAGGER_GC_RESERVED_SPACE:-10GB}"
+expected_min_free_space="${DAGGER_GC_MIN_FREE_SPACE:-20%}"
+expected_sweep_size="${DAGGER_GC_SWEEP_SIZE:-50%}"
+
+usage() {
+  cat <<'EOF'
+usage: dagger-engine-config-smoke
+
+Verify the installed Dagger engine config has the WSL cache GC policy and the
+local Forgejo Packages registry marked as HTTP for internal Podman bridge
+publishes.
+
+Environment:
+  DAGGER_ENGINE_CONFIG          Engine config path. Default: /etc/dagger/engine.json
+  DAGGER_STATE_ENGINE_CONFIG    CLI state config copy. Default: /var/lib/dagger/config/dagger/engine.json
+  DAGGER_INTERNAL_REGISTRY      Expected internal registry. Default: host.containers.internal:3000
+  DAGGER_GC_MAX_USED_SPACE      Expected gc.maxUsedSpace. Default: 100GB
+  DAGGER_GC_RESERVED_SPACE      Expected gc.reservedSpace. Default: 10GB
+  DAGGER_GC_MIN_FREE_SPACE      Expected gc.minFreeSpace. Default: 20%
+  DAGGER_GC_SWEEP_SIZE          Expected gc.sweepSize. Default: 50%
+EOF
+}
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  usage
+  exit 0
+fi
+
+if [[ "$#" -gt 0 ]]; then
+  usage >&2
+  exit 2
+fi
+
+require() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    printf 'missing required command: %s\n' "$1" >&2
+    exit 1
+  fi
+}
+
+json_value() {
+  local path="$1"
+  local jq_filter="$2"
+
+  jq -er "$jq_filter" "$path"
+}
+
+check_json_value() {
+  local path="$1"
+  local jq_filter="$2"
+  local expected="$3"
+  local label="$4"
+  local actual
+
+  actual="$(json_value "$path" "$jq_filter")"
+  if [[ "$actual" != "$expected" ]]; then
+    printf '%s mismatch in %s: expected %s, got %s\n' "$label" "$path" "$expected" "$actual" >&2
+    return 1
+  fi
+
+  printf 'ok: %s = %s\n' "$label" "$actual"
+}
+
+require jq
+
+for path in "$config_path" "$state_config_path"; do
+  if [[ ! -s "$path" ]]; then
+    printf 'missing or empty Dagger engine config: %s\n' "$path" >&2
+    exit 1
+  fi
+
+  check_json_value "$path" '.gc.maxUsedSpace' "$expected_max_used_space" "${path}: gc.maxUsedSpace"
+  check_json_value "$path" '.gc.reservedSpace' "$expected_reserved_space" "${path}: gc.reservedSpace"
+  check_json_value "$path" '.gc.minFreeSpace' "$expected_min_free_space" "${path}: gc.minFreeSpace"
+  check_json_value "$path" '.gc.sweepSize' "$expected_sweep_size" "${path}: gc.sweepSize"
+  check_json_value "$path" ".registries[\"${expected_registry}\"].http | tostring" "true" "${path}: registries.${expected_registry}.http"
+done
+
+printf 'Dagger engine config smoke passed for %s and %s\n' "$config_path" "$state_config_path"

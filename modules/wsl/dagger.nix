@@ -143,7 +143,7 @@ in {
       "d '${cfg.stateDir}/config/dagger' 0775 root users - -"
       "d '${cfg.stateDir}/cache' 0775 root users - -"
       "d '/run/dagger' 0775 root users - -"
-      "C '${cfg.stateDir}/config/dagger/engine.json' 0664 root users - ${engineConfig}"
+      "L+ '${cfg.stateDir}/config/dagger/engine.json' - - - - /etc/dagger/engine.json"
     ];
   };
 }

@@ -49,6 +49,7 @@
         shellcheck \
           ${./scripts/dagger-local-registry-smoke} \
           ${./scripts/dagger-large-registry-smoke} \
+          ${./scripts/dagger-engine-config-smoke} \
           ${./scripts/dagger-engine-isolation-smoke} \
           ${./scripts/dagger-unix-socket-smoke} \
           ${./scripts/data-disk-preflight} \
@@ -70,6 +71,7 @@
           ${./tests/ttal-tmux-project-picker-test} \
           ${./tests/temenos-ca-test} \
           ${./tests/dagger-large-registry-smoke-test} \
+          ${./tests/dagger-engine-config-smoke-test} \
           ${./tests/dagger-engine-isolation-smoke-test} \
           ${./tests/data-disk-preflight-test} \
           ${./tests/forgejo-backup-smoke-test} \
@@ -84,6 +86,7 @@
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-large-registry-smoke-test}
+        KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-engine-config-smoke-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-engine-isolation-smoke-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/data-disk-preflight-test}
         KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-backup-smoke-test}
