@@ -93,6 +93,20 @@ source_pod() {
     -o jsonpath='{.items[0].metadata.name}'
 }
 
+source_version() {
+  local pod="$1"
+
+  kubectl exec "$pod" -n "$namespace" -- sh -eu -c '
+    if command -v woodpecker-server >/dev/null 2>&1; then
+      woodpecker-server --version
+    elif command -v woodpecker >/dev/null 2>&1; then
+      woodpecker --version
+    else
+      printf "unknown"
+    fi
+  ' 2>/dev/null || printf 'unknown'
+}
+
 wait_deployment_pods_gone() {
   local selector="$1"
   local deadline=$((SECONDS + 180))
@@ -214,7 +228,7 @@ discover() {
   require kubectl
   require jq
 
-  local report_dir report image replicas ready detected_pvc pod env_names mounts driver_hint
+  local report_dir report image version replicas ready detected_pvc pod env_names mounts driver_hint
 
   report_dir="${target_base}/reports"
   run_sudo install -d -o "$(id -u)" -g "$(id -g)" "$report_dir"
@@ -238,6 +252,11 @@ discover() {
   ready="$(kubectl get deploy "$deployment" -n "$namespace" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || true)"
   detected_pvc="$(discover_state_pvc || true)"
   pod="$(source_pod || true)"
+  if [[ -n "$pod" ]]; then
+    version="$(source_version "$pod")"
+  else
+    version="unknown"
+  fi
   env_names="$(
     kubectl get deploy "$deployment" -n "$namespace" -o json |
       jq -r '.spec.template.spec.containers[0].env[]?.name' |
@@ -259,6 +278,7 @@ discover() {
     printf -- '- replicas: `%s`\n' "${replicas:-unknown}"
     printf -- '- ready replicas: `%s`\n' "${ready:-0}"
     printf -- '- image: `%s`\n' "$image"
+    printf -- '- version: `%s`\n' "$version"
     printf -- '- running pod inspected: `%s`\n' "${pod:-none}"
     printf -- '- state path: `%s`\n' "$state_path"
     printf -- '- detected state PVC: `%s`\n' "${detected_pvc:-unknown}"

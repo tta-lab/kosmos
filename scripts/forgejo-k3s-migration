@@ -202,6 +202,20 @@ pod_first_existing_path() {
   ' sh "$@"
 }
 
+source_version() {
+  local pod="$1"
+
+  kubectl exec "$pod" -n "$namespace" -- sh -eu -c '
+    if command -v forgejo >/dev/null 2>&1; then
+      forgejo --version
+    elif command -v gitea >/dev/null 2>&1; then
+      gitea --version
+    else
+      printf "unknown"
+    fi
+  ' 2>/dev/null || printf 'unknown'
+}
+
 app_ini_value() {
   local file="$1"
   local section="$2"
@@ -234,7 +248,7 @@ discover() {
   require mktemp
   require sha256sum
 
-  local report_dir report pod app_ini tmp_app image replicas ready pvc_status pvc_size db_type db_path repo_root package_path lfs_path attachment_path avatar_path repo_avatar_path repo_archive_path
+  local report_dir report pod app_ini tmp_app image version replicas ready pvc_status pvc_size db_type db_path repo_root package_path lfs_path attachment_path avatar_path repo_avatar_path repo_archive_path
 
   report_dir="${target_base}/reports"
   run_sudo install -d -o "$(id -u)" -g "$(id -g)" "$report_dir"
@@ -260,6 +274,7 @@ discover() {
   repo_archive_path="unknown"
 
   if [[ -n "$pod" ]]; then
+    version="$(source_version "$pod")"
     app_ini="$(find_app_ini_in_pod "$pod" || true)"
     if [[ -n "$app_ini" ]]; then
       kubectl exec "$pod" -n "$namespace" -- cat "$app_ini" >"$tmp_app"
@@ -303,6 +318,9 @@ discover() {
       repo_archive_path="$(app_ini_value "$tmp_app" repository.archive STORAGE_PATH || true)"
     fi
   fi
+  if [[ -z "${version:-}" ]]; then
+    version="unknown"
+  fi
 
   {
     printf '# Forgejo k3s discovery\n\n'
@@ -311,6 +329,7 @@ discover() {
     printf -- '- replicas: `%s`\n' "${replicas:-unknown}"
     printf -- '- ready replicas: `%s`\n' "${ready:-0}"
     printf -- '- image: `%s`\n' "$image"
+    printf -- '- version: `%s`\n' "$version"
     printf -- '- pvc: `%s`\n' "$pvc"
     printf -- '- pvc status: `%s`\n' "$pvc_status"
     printf -- '- pvc size: `%s`\n' "$pvc_size"

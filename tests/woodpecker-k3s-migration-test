@@ -23,6 +23,7 @@ grep -q 'kubectl-cp' "$script"
 grep -q 'restore_original_replicas' "$script"
 grep -Fq "wait_deployment_pods_gone \"\$selector\"" "$script"
 grep -q 'source Woodpecker deployment not found' "$script"
+grep -q 'source_version' "$script"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
