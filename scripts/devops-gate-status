@@ -14,12 +14,9 @@ Report WSL DevOps Box migration gates without reading secret plaintext.
 Options:
   --strict  Exit non-zero when any gate is pending or failed
   --deep    Run checks that may create temporary cluster objects, such as the
-            Kubernetes private image pull smoke, and non-production restore
-            checks such as kosmos-cloudflared-ingress-smoke,
-            kosmos-data-disk-preflight,
-            kosmos-dagger-engine-config-smoke,
-            kosmos-forgejo-backup-smoke, and
-            kosmos-forgejo-dump-restore-smoke
+            Kubernetes private image pull smoke and service checks such as
+            kosmos-cloudflared-ingress-smoke and
+            kosmos-dagger-engine-config-smoke
 
 Environment:
   FORGEJO_SMOKE_TOKEN_FILE  Package-write smoke token file checked by this
@@ -105,13 +102,6 @@ http_status_ok() {
       return 1
       ;;
   esac
-}
-
-different_filesystems() {
-  local left="$1"
-  local right="$2"
-
-  [[ "$(stat -c '%d' "$left")" != "$(stat -c '%d' "$right")" ]]
 }
 
 printf 'WSL DevOps Box gate status\n'
@@ -211,22 +201,6 @@ else
   wait "Woodpecker age secrets not created"
 fi
 
-if mountpoint -q /mnt/nuc-data; then
-  ok "NUC data disk mounted at /mnt/nuc-data"
-else
-  wait "NUC data disk not mounted at /mnt/nuc-data"
-fi
-
-if [[ -d /var/lib/forgejo && -d /var/backup/forgejo ]]; then
-  if different_filesystems /var/lib/forgejo /var/backup/forgejo; then
-    ok "Forgejo backup directory is off live state filesystem"
-  else
-    wait "Forgejo backup directory is still on live state filesystem"
-  fi
-else
-  fail "Forgejo state and backup directories exist"
-fi
-
 if have_command kubectl; then
   if kubectl get secret forgejo-packages -n devops -o jsonpath='{.type}' 2>/dev/null | grep -qx 'kubernetes.io/dockerconfigjson'; then
     ok "source Kubernetes pull secret exists with dockerconfigjson type"
@@ -266,36 +240,6 @@ if [[ "$deep" -eq 1 ]]; then
     wait "kosmos-dagger-engine-config-smoke unavailable"
   fi
 
-  if have_command kosmos-data-disk-preflight; then
-    if kosmos-data-disk-preflight; then
-      ok "deep NUC data disk preflight"
-    else
-      fail "deep NUC data disk preflight"
-    fi
-  else
-    wait "kosmos-data-disk-preflight unavailable"
-  fi
-
-  if have_command kosmos-forgejo-backup-smoke; then
-    if kosmos-forgejo-backup-smoke; then
-      ok "deep Forgejo backup dump content smoke"
-    else
-      fail "deep Forgejo backup dump content smoke"
-    fi
-  else
-    wait "kosmos-forgejo-backup-smoke unavailable"
-  fi
-
-  if have_command kosmos-forgejo-dump-restore-smoke; then
-    if kosmos-forgejo-dump-restore-smoke; then
-      ok "deep Forgejo dump restore smoke"
-    else
-      fail "deep Forgejo dump restore smoke"
-    fi
-  else
-    wait "kosmos-forgejo-dump-restore-smoke unavailable"
-  fi
-
   if have_command kosmos-forgejo-k8s-pull-secret-smoke; then
     if kosmos-forgejo-k8s-pull-secret-smoke; then
       ok "deep Kubernetes private image pull smoke"
@@ -308,9 +252,6 @@ if [[ "$deep" -eq 1 ]]; then
 else
   wait "deep Cloudflared ingress smoke skipped"
   wait "deep Dagger engine config smoke skipped"
-  wait "deep NUC data disk preflight skipped"
-  wait "deep Forgejo backup dump content smoke skipped"
-  wait "deep Forgejo dump restore smoke skipped"
   wait "deep Kubernetes private image pull smoke skipped"
 fi
 

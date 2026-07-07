@@ -124,10 +124,10 @@ The `/v2/` response should be a container-registry response, not the Forgejo HTM
 app shell.
 
 `kosmos-devops-gate-status` is read-only by default. It reports ok/pending/fail
-for the staging services, sockets, backup target, Woodpecker secret state, and
-Kubernetes pull-secret metadata. Use `--deep` to also run the private image pull
-smoke that creates a temporary pod, and `--strict` before cutover to make pending
-items fail the command:
+for the staging services, sockets, Woodpecker secret state, and Kubernetes
+pull-secret metadata. Use `--deep` to also run the private image pull smoke that
+creates a temporary pod, and `--strict` before cutover to make pending items fail
+the command:
 
 ```bash
 kosmos-devops-gate-status --deep --strict
@@ -140,11 +140,9 @@ external gates:
 |---|---|
 | `Forgejo package-write smoke token file missing or empty` | Create a package read/write token in Forgejo, store it with `agenix -e secrets/forgejo-smoke-token.age`, rebuild WSL, then run `kosmos-forgejo-https-git-smoke`, `kosmos-dagger-local-registry-smoke`, and `kosmos-dagger-large-registry-smoke`. |
 | `Woodpecker age secrets not created` | Create the Forgejo OAuth app and shared agent secret, store `secrets/woodpecker-server-env.age` and `secrets/woodpecker-agent-env.age`, rebuild WSL, then run `kosmos-woodpecker-preflight` and the Woodpecker Dagger job smoke. |
-| `NUC data disk not mounted at /mnt/nuc-data` | Confirm `kosmos-data-disk-preflight`, enable `kosmos.wsl.dataDisk` with the stable UUID path, rebuild WSL, and verify `mountpoint /mnt/nuc-data`. |
-| `Forgejo backup directory is still on live state filesystem` | Set `kosmos.wsl.forgejo.backupReplicaDir = "/mnt/nuc-data/forgejo-backups"`, rebuild WSL, run `kosmos-forgejo-backup-replicate --target-dir /mnt/nuc-data/forgejo-backups`, then require `kosmos-forgejo-cutover-preflight --backup-dir /mnt/nuc-data/forgejo-backups` to pass without `--allow-same-filesystem`. |
 
-Do not use `--allow-same-filesystem` to clear a production cutover gate. That
-flag is only for staging checks before the NUC data disk is mounted.
+Data-disk and off-root backup work is deferred from the current DevOps MVP gate.
+Known disk findings are recorded in [wsl-data-disk-notes.md](./wsl-data-disk-notes.md).
 
 Smoke test HTTPS Git clone and push:
 
@@ -172,51 +170,8 @@ This triggers `forgejo-dump.service` and verifies a non-empty
 checks that the archive contains `app.ini`, `data/forgejo.db`, `forgejo-db.sql`,
 and package data. The dump restore smoke extracts the latest dump into `/tmp`,
 starts a temporary Forgejo on loopback, and checks its health/login endpoints.
-Before production cutover, move or replicate backups to the NUC data disk and
-test a restore from that location.
-
-After the NUC data disk is mounted, replicate dumps there:
-
-```bash
-kosmos-forgejo-backup-replicate --target-dir /mnt/nuc-data/forgejo-backups
-kosmos-forgejo-cutover-preflight --backup-dir /mnt/nuc-data/forgejo-backups
-```
-
-The replication helper refuses to use a target on the same filesystem as
-`/var/lib/forgejo` unless `--allow-same-filesystem` is passed. That override is
-for staging checks only, not production cutover.
-
-Current WSL disk discovery shows the extra 1T disk as:
-
-```text
-/dev/sde  ext4  UUID=bf1ab97f-1d98-4977-89ed-58a8d0098e6c
-```
-
-Do not rely on `/dev/sde` for persistent config. After confirming this is the
-intended NUC data disk, enable the Nix mount with the stable UUID path:
-
-```bash
-kosmos-data-disk-preflight
-```
-
-```nix
-kosmos.wsl.dataDisk = {
-  enable = true;
-  device = "/dev/disk/by-uuid/bf1ab97f-1d98-4977-89ed-58a8d0098e6c";
-  mountPoint = "/mnt/nuc-data";
-};
-```
-
-Once the final mount path is stable, set:
-
-```nix
-kosmos.wsl.forgejo.backupReplicaDir = "/mnt/nuc-data/forgejo-backups";
-```
-
-This enables `forgejo-backup-replicate.timer`, which runs the same guarded
-replication helper on `kosmos.wsl.forgejo.backupReplicaCalendar` (default:
-`hourly`). The timer is intentionally disabled while the option is `null`, so the
-current staging setup does not assume a final data-disk path.
+Off-root backup replication is intentionally deferred; see
+[wsl-data-disk-notes.md](./wsl-data-disk-notes.md).
 
 If the public hostname does not reach the WSL tunnel, route it to the `nuc-wsl`
 Cloudflare tunnel:
@@ -448,7 +403,9 @@ kubectl get pvc gitea-shared-storage -n devops \
 df -h /var/lib/forgejo /var/backup/forgejo
 ```
 
-Check cutover backup guardrails:
+Backup guardrails are deferred from this PR. Before a future production cutover,
+revisit [wsl-data-disk-notes.md](./wsl-data-disk-notes.md), attach or replace the
+data disk, and then check backup placement:
 
 ```bash
 kosmos-forgejo-cutover-preflight --backup-dir /mnt/nuc-data/forgejo-backups
@@ -456,9 +413,8 @@ kosmos-forgejo-cutover-preflight --backup-dir /mnt/nuc-data/forgejo-backups
 
 This requires a non-empty Forgejo dump and fails if `/var/lib/forgejo` and the
 Forgejo backup directory are on the same filesystem. Use the replicated backup
-directory on the NUC data disk for production cutover. The current WSL host also
-shows an unmounted extra 1T disk as `sde`; mount that disk before choosing the
-final `/mnt/nuc-data` path. For staging-only checks, use:
+directory on the NUC data disk for production cutover. For staging-only checks,
+use:
 
 ```bash
 kosmos-forgejo-cutover-preflight --allow-same-filesystem
