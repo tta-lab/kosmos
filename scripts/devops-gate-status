@@ -62,6 +62,10 @@ wait() {
   pending=$((pending + 1))
 }
 
+skip() {
+  printf 'skipped: %s\n' "$1"
+}
+
 have_command() {
   command -v "$1" >/dev/null 2>&1
 }
@@ -250,9 +254,9 @@ if [[ "$deep" -eq 1 ]]; then
     wait "kosmos-forgejo-k8s-pull-secret-smoke unavailable"
   fi
 else
-  wait "deep Cloudflared ingress smoke skipped"
-  wait "deep Dagger engine config smoke skipped"
-  wait "deep Kubernetes private image pull smoke skipped"
+  skip "deep Cloudflared ingress smoke"
+  skip "deep Dagger engine config smoke"
+  skip "deep Kubernetes private image pull smoke"
 fi
 
 printf 'summary: %s failed, %s pending\n' "$failures" "$pending"
