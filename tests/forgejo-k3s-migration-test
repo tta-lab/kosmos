@@ -36,6 +36,8 @@ grep -q 'source_version' "$script"
 grep -q 'update_restore_result' "$script"
 grep -q 'collect_source_metadata' "$script"
 grep -q 'gitea/data/packages' "$script"
+grep -q 'incomplete Forgejo data shape' "$script"
+grep -q 'FORGEJO_RESTORE_SMOKE' "$script"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -51,6 +53,7 @@ chmod +x "${fakebin}/kosmos-forgejo-restore-smoke"
 
 printf '{"restore_smoke_result":"not-run"}\n' >"${tmp}/copy/manifest.json"
 FAKE_RESTORE_ARGS="${tmp}/restore.args" \
+  FORGEJO_RESTORE_SMOKE="${fakebin}/kosmos-forgejo-restore-smoke" \
   PATH="${fakebin}:$PATH" \
   bash "$script" --restore-smoke "${tmp}/copy/data" --known-user neil --require-package-data
 

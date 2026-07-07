@@ -2,6 +2,7 @@
   config,
   lib,
   pkgs,
+  pkgsUnstable,
   ...
 }: let
   cfg = config.kosmos.wsl.forgejo;
@@ -17,8 +18,8 @@ in {
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.forgejo;
-      description = "Forgejo package to run. Use the non-LTS package for staging so it is closer to current Forgejo releases.";
+      default = pkgsUnstable.forgejo;
+      description = "Forgejo package to run. Uses nixpkgs-unstable so restored k3s data from the current Forgejo line is not opened with the older stable package.";
     };
 
     publicHostname = lib.mkOption {

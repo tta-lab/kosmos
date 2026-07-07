@@ -48,9 +48,9 @@ elif [[ "$1" == "apply" ]]; then
 elif [[ "$1" == "wait" ]]; then
   exit 0
 elif [[ "$1" == "cp" ]]; then
-  mkdir -p "$3/custom/conf" "$3/data" "$3/packages"
-  printf '[database]\nDB_TYPE = sqlite3\nPATH = /data/forgejo.db\n' >"$3/custom/conf/app.ini"
-  printf 'db\n' >"$3/data/forgejo.db"
+  mkdir -p "$3/gitea/conf" "$3/git/gitea-repositories" "$3/packages"
+  printf '[database]\nDB_TYPE = sqlite3\nPATH = /data/forgejo.db\n' >"$3/gitea/conf/app.ini"
+  printf 'db\n' >"$3/forgejo.db"
 elif [[ "$1" == "exec" ]]; then
   if [[ "$*" == *"sh -eu -c"* ]]; then
     printf '/data/custom/conf/app.ini\n'

@@ -11,6 +11,7 @@ known_users=()
 known_orgs=()
 clone_repos=()
 require_package_data=0
+forgejo_bin="${FORGEJO_BIN:-}"
 
 usage() {
   cat >&2 <<'EOF'
@@ -289,7 +290,17 @@ verify_package_data() {
 
 require awk
 require curl
-require gitea
+if [[ -z "$forgejo_bin" ]]; then
+  if command -v forgejo >/dev/null 2>&1; then
+    forgejo_bin="$(command -v forgejo)"
+  else
+    forgejo_bin="$(command -v gitea || true)"
+  fi
+fi
+if [[ -z "$forgejo_bin" ]]; then
+  printf 'missing required command: forgejo or gitea\n' >&2
+  exit 1
+fi
 if [[ "${#clone_repos[@]}" -gt 0 ]]; then
   require git
 fi
@@ -331,6 +342,7 @@ repo_root="$(
     repositories \
     repos \
     gitea-repositories \
+    git/gitea-repositories \
     git/repositories
 )"
 
@@ -380,7 +392,7 @@ printf 'running forgejo doctor check against working copy %s from artifact %s...
 HOME="$working_copy_real" \
 FORGEJO_WORK_DIR="$working_copy_real" \
 FORGEJO_CUSTOM="${working_copy_real}/custom" \
-gitea \
+"$forgejo_bin" \
   --work-path "$working_copy_real" \
   --custom-path "${working_copy_real}/custom" \
   --config "$config" \
@@ -390,7 +402,7 @@ printf 'starting temporary Forgejo restore smoke on 127.0.0.1:%s...\n' "$port"
 HOME="$working_copy_real" \
 FORGEJO_WORK_DIR="$working_copy_real" \
 FORGEJO_CUSTOM="${working_copy_real}/custom" \
-gitea \
+"$forgejo_bin" \
   --work-path "$working_copy_real" \
   --custom-path "${working_copy_real}/custom" \
   --config "$config" \

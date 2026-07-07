@@ -516,7 +516,7 @@ cold_copy() {
 
   cleanup() {
     local exit_code=$?
-    if [[ "$keep_pod" -ne 1 ]]; then
+    if [[ "$keep_pod" -ne 1 && -n "${pod:-}" ]]; then
       kubectl delete pod "$pod" -n "$namespace" --ignore-not-found --wait=false >/dev/null 2>&1 || true
     fi
     restore_original_replicas "$original_replicas"
@@ -558,6 +558,15 @@ EOF
   printf 'copying /data to %s/data with kubectl cp...\n' "$target"
   if kubectl cp "${namespace}/${pod}:/data" "${target}/data"; then
     copy_method="kubectl-cp"
+    if ! run_sudo test -f "${target}/data/gitea/conf/app.ini" \
+      || ! run_sudo test -f "${target}/data/forgejo.db" \
+      || ! run_sudo test -d "${target}/data/git/gitea-repositories"; then
+      printf 'kubectl cp produced an incomplete Forgejo data shape; retrying with tar streaming fallback...\n' >&2
+      run_sudo rm -rf "${target}/data"
+      run_sudo mkdir -p "${target}/data"
+      kubectl exec "$pod" -n "$namespace" -- tar -C /data -cf - . | run_sudo tar -C "${target}/data" -xf -
+      copy_method="tar-stream"
+    fi
   else
     printf 'kubectl cp failed; retrying with tar streaming fallback...\n' >&2
     run_sudo rm -rf "${target}/data"
@@ -579,16 +588,23 @@ EOF
 }
 
 restore_smoke() {
-  local script
+  local local_script
+  local restore_smoke_command="${FORGEJO_RESTORE_SMOKE:-}"
+  local restore_cmd=()
   local restore_args=()
   local root_dir
 
   [[ -n "$copy_dir" ]] || die "--restore-smoke requires a copy directory" 2
 
-  if command -v kosmos-forgejo-restore-smoke >/dev/null 2>&1; then
-    script="kosmos-forgejo-restore-smoke"
+  local_script="$(dirname "$0")/forgejo-restore-smoke"
+  if [[ -n "$restore_smoke_command" ]]; then
+    restore_cmd=(bash "$restore_smoke_command")
+  elif [[ -f "$local_script" ]]; then
+    restore_cmd=(bash "$local_script")
+  elif command -v kosmos-forgejo-restore-smoke >/dev/null 2>&1; then
+    restore_cmd=(kosmos-forgejo-restore-smoke)
   else
-    script="$(dirname "$0")/forgejo-restore-smoke"
+    restore_cmd=(bash "$local_script")
   fi
 
   restore_args+=(--copy-dir "$copy_dir" --port "$restore_port")
@@ -606,7 +622,7 @@ restore_smoke() {
   fi
 
   root_dir="$(copy_root_for_dir "$copy_dir")"
-  if "$script" "${restore_args[@]}"; then
+  if "${restore_cmd[@]}" "${restore_args[@]}"; then
     update_restore_result "$root_dir" passed
     return 0
   fi
