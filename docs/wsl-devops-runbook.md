@@ -208,7 +208,8 @@ kubectl cp devops/<copy-pod>:/data /var/backup/forgejo-k3s/cold-copies/<timestam
 If `kubectl cp` fails, it falls back to explicit tar streaming from the same
 read-only pod. The original replica count is restored on exit unless
 `--leave-stopped` is set. Each copy gets a `manifest.json` recording the source
-image, PVC, copy method, app.ini checksum, copy path, and byte count.
+image, version, PVC, copy method, app.ini path/checksum, copy path, byte count,
+and later restore-smoke result.
 
 Validate a copy before treating it as usable:
 
@@ -234,6 +235,10 @@ and HTTP Git clone against the temporary restored Forgejo. Private repos still
 need a separate authenticated clone check after cutover because the restore smoke
 does not read or inject credentials.
 
+The restore smoke copies the artifact into a scratch working directory before it
+rewrites `app.ini`, creates runtime files, or starts Forgejo. The original copied
+artifact is not mutated by validation.
+
 Before cutover, use the preflight wrapper. It requires the manifest, checks that
 package data exists, then runs the restore smoke:
 
@@ -257,8 +262,8 @@ kosmos-forgejo-k3s-migration --backup-live-dump
 
 ## k3s Woodpecker Migration to WSL
 
-Start with discovery. The script records deployment shape, image, state mount,
-and database-related environment variable names, but it never prints secret
+Start with discovery. The script records deployment shape, image, version, state
+mount, DB driver signal, and datasource source kind, but it never prints secret
 values:
 
 ```bash
