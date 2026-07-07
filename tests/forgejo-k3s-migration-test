@@ -28,8 +28,31 @@ grep -q 'copy_method' "$script"
 grep -q 'kubectl-cp' "$script"
 grep -q 'tar-stream' "$script"
 grep -q 'restore_original_replicas' "$script"
-grep -Fq "root_dir=\"\$(dirname \"\$copy_dir\")\"" "$script"
+grep -q 'copy_root_for_dir' "$script"
 grep -Fq "wait_deployment_pods_gone \"\$selector\"" "$script"
 grep -q 'cleanup_live_dump' "$script"
 grep -q 'restore_args' "$script"
 grep -q 'source_version' "$script"
+grep -q 'update_restore_result' "$script"
+
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+fakebin="${tmp}/bin"
+mkdir -p "$fakebin" "${tmp}/copy/data"
+
+bash_path="$(command -v bash)"
+printf '#!%s\n' "$bash_path" >"${fakebin}/kosmos-forgejo-restore-smoke"
+cat >>"${fakebin}/kosmos-forgejo-restore-smoke" <<'EOF'
+printf '%s\n' "$*" >"$FAKE_RESTORE_ARGS"
+EOF
+chmod +x "${fakebin}/kosmos-forgejo-restore-smoke"
+
+printf '{"restore_smoke_result":"not-run"}\n' >"${tmp}/copy/manifest.json"
+FAKE_RESTORE_ARGS="${tmp}/restore.args" \
+  PATH="${fakebin}:$PATH" \
+  bash "$script" --restore-smoke "${tmp}/copy/data" --known-user neil --require-package-data
+
+jq -e '.restore_smoke_result == "passed"' "${tmp}/copy/manifest.json" >/dev/null
+jq -e '.restore_smoke_checked_at | type == "string"' "${tmp}/copy/manifest.json" >/dev/null
+grep -q -- '--known-user neil' "${tmp}/restore.args"
+grep -q -- '--require-package-data' "${tmp}/restore.args"
