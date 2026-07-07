@@ -7,7 +7,6 @@
 }: let
   cfg = config.kosmos.wsl.forgejo;
   keposCloudflaredCredentialsFile = ../../secrets/cloudflared-kepos-credentials.age;
-  forgejoBackupReplicate = pkgs.writeScript "forgejo-backup-replicate" (builtins.readFile ../../scripts/forgejo-backup-replicate);
   haveKeposTunnel =
     config.kosmos.wsl ? keposMatrix
     && config.kosmos.wsl.keposMatrix.enable
@@ -38,24 +37,6 @@ in {
       type = lib.types.str;
       default = "/var/lib/forgejo";
       description = "Forgejo persistent state directory.";
-    };
-
-    backupDir = lib.mkOption {
-      type = lib.types.str;
-      default = "/var/backup/forgejo";
-      description = "Forgejo dump directory. Final backups should move to the NUC data disk.";
-    };
-
-    backupReplicaDir = lib.mkOption {
-      type = lib.types.nullOr lib.types.str;
-      default = null;
-      description = "Secondary backup directory on the NUC data disk. Null disables automatic dump replication.";
-    };
-
-    backupReplicaCalendar = lib.mkOption {
-      type = lib.types.str;
-      default = "hourly";
-      description = "systemd OnCalendar value for Forgejo dump replication when backupReplicaDir is set.";
     };
 
     enableCloudflared = lib.mkOption {
@@ -99,12 +80,6 @@ in {
         database = {
           type = "sqlite3";
           path = "${cfg.stateDir}/data/forgejo.db";
-        };
-
-        dump = {
-          enable = true;
-          inherit (cfg) backupDir;
-          type = "tar.zst";
         };
 
         lfs.enable = true;
@@ -181,41 +156,6 @@ in {
             exit 1
           '';
           ExecStart = "${pkgs.socat}/bin/socat TCP-LISTEN:${toString cfg.internalRegistryPort},bind=${cfg.internalRegistryAddress},fork,reuseaddr TCP:127.0.0.1:${toString cfg.port}";
-        };
-      };
-    })
-
-    (lib.mkIf (cfg.backupReplicaDir != null) {
-      systemd.services.forgejo-backup-replicate = {
-        description = "Replicate Forgejo dumps to the NUC data disk";
-        after = [
-          "forgejo-dump.service"
-        ];
-        unitConfig.RequiresMountsFor = [
-          cfg.backupReplicaDir
-        ];
-        path = with pkgs; [
-          coreutils
-          findutils
-          gawk
-          gnused
-          sudo
-        ];
-        serviceConfig = {
-          Type = "oneshot";
-          ExecStart = "${pkgs.bash}/bin/bash ${forgejoBackupReplicate} --source-dir ${lib.escapeShellArg cfg.backupDir} --state-dir ${lib.escapeShellArg cfg.stateDir} --target-dir ${lib.escapeShellArg cfg.backupReplicaDir}";
-        };
-      };
-
-      systemd.timers.forgejo-backup-replicate = {
-        description = "Replicate Forgejo dumps to the NUC data disk";
-        wantedBy = [
-          "timers.target"
-        ];
-        timerConfig = {
-          OnCalendar = cfg.backupReplicaCalendar;
-          Persistent = true;
-          Unit = "forgejo-backup-replicate.service";
         };
       };
     })

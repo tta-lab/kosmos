@@ -54,21 +54,12 @@
             ${./scripts/dagger-engine-config-smoke} \
             ${./scripts/dagger-engine-isolation-smoke} \
             ${./scripts/dagger-unix-socket-smoke} \
-            ${./scripts/data-disk-preflight} \
             ${./scripts/devops-gate-status} \
-            ${./scripts/forgejo-backup-replicate} \
-            ${./scripts/forgejo-backup-smoke} \
-            ${./scripts/forgejo-cutover-preflight} \
-            ${./scripts/forgejo-dump-restore-smoke} \
             ${./scripts/forgejo-https-git-smoke} \
             ${./scripts/forgejo-k8s-pull-secret-smoke} \
-            ${./scripts/forgejo-k3s-migration} \
-            ${./scripts/forgejo-migration-dry-run} \
-            ${./scripts/forgejo-restore-smoke} \
             ${./scripts/ttal-tmux-project-picker} \
             ${./scripts/ttal-wezterm-projects} \
             ${./scripts/woodpecker-dagger-job-smoke} \
-            ${./scripts/woodpecker-k3s-migration} \
             ${./scripts/woodpecker-preflight} \
             ${./scripts/wsl-devops-smoke} \
             ${./tests/temenos-env-test} \
@@ -78,18 +69,11 @@
             ${./tests/dagger-large-registry-smoke-test} \
             ${./tests/dagger-engine-config-smoke-test} \
             ${./tests/dagger-engine-isolation-smoke-test} \
-            ${./tests/data-disk-preflight-test} \
-            ${./tests/forgejo-backup-smoke-test} \
-            ${./tests/forgejo-dump-restore-smoke-test} \
-            ${./tests/forgejo-k3s-migration-mock-test} \
-            ${./tests/forgejo-k3s-migration-test} \
-            ${./tests/forgejo-restore-smoke-test} \
             ${./tests/tmux-tmpdir-test} \
             ${./tests/tmux-copy-mode-test} \
             ${./tests/devops-gate-status-test} \
             ${./tests/orga-cli-service-test} \
-            ${./tests/ttal-wezterm-projects-test} \
-            ${./tests/woodpecker-k3s-migration-test}
+            ${./tests/ttal-wezterm-projects-test}
           WOODPECKER_DISABLE_UPDATE_CHECK=true woodpecker-cli lint --strict ${./fixtures/woodpecker/dagger-unix-socket-smoke.yml}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
@@ -97,19 +81,12 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-large-registry-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-engine-config-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-engine-isolation-smoke-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/data-disk-preflight-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-backup-smoke-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-dump-restore-smoke-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-k3s-migration-mock-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-k3s-migration-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-restore-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-env-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-tmpdir-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-copy-mode-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/devops-gate-status-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-wezterm-projects-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/woodpecker-k3s-migration-test}
           touch $out
         '';
 
@@ -173,8 +150,6 @@
         assert forgejo.enable;
         assert forgejo.database.type == "sqlite3";
         assert forgejo.database.path == "/var/lib/forgejo/data/forgejo.db";
-        assert forgejo.dump.enable;
-        assert forgejo.dump.backupDir == "/var/backup/forgejo";
         assert forgejo.settings.server.ROOT_URL == "https://git.guion.io/";
         assert forgejo.settings.server.HTTP_ADDR == "127.0.0.1";
         assert forgejo.settings.server.HTTP_PORT == 3000;
@@ -186,44 +161,6 @@
         assert has "forgejo.service" forgejo-internal-registry-proxy.after;
         assert has "forgejo.service" forgejo-internal-registry-proxy.wants;
           pkgs.runCommand "kosmos-forgejo-module-check" {} ''
-            touch $out
-          '';
-
-      data-disk-backup-module = let
-        eval = nixpkgs.lib.nixosSystem {
-          inherit system;
-          modules = [
-            ./modules/wsl/data-disk.nix
-            ./modules/wsl/forgejo.nix
-            (_: {
-              system.stateVersion = "25.05";
-              kosmos.wsl = {
-                dataDisk = {
-                  enable = true;
-                  device = "/dev/disk/by-uuid/bf1ab97f-1d98-4977-89ed-58a8d0098e6c";
-                };
-                forgejo = {
-                  enable = true;
-                  backupReplicaDir = "/mnt/nuc-data/forgejo-backups";
-                };
-              };
-            })
-          ];
-        };
-        cfg = eval.config;
-        backupService = cfg.systemd.services.forgejo-backup-replicate;
-        backupTimer = cfg.systemd.timers.forgejo-backup-replicate;
-        dataDisk = cfg.fileSystems."/mnt/nuc-data";
-        has = value: list: builtins.elem value list;
-      in
-        assert dataDisk.device == "/dev/disk/by-uuid/bf1ab97f-1d98-4977-89ed-58a8d0098e6c";
-        assert dataDisk.fsType == "ext4";
-        assert !dataDisk.neededForBoot;
-        assert has "forgejo-dump.service" backupService.after;
-        assert has "/mnt/nuc-data/forgejo-backups" backupService.unitConfig.RequiresMountsFor;
-        assert backupTimer.timerConfig.OnCalendar == "hourly";
-        assert backupTimer.timerConfig.Unit == "forgejo-backup-replicate.service";
-          pkgs.runCommand "kosmos-data-disk-backup-module-check" {} ''
             touch $out
           '';
 

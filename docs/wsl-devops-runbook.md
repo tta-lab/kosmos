@@ -1,30 +1,55 @@
 # WSL DevOps Runbook
 
-This runbook covers the WSL DevOps implementation from
-`docs/dagger-forgejo-packages-plan.md`.
+This is the current operating note for the WSL DevOps control plane.
+Historical k3s migration, restore-smoke, and backup helper scripts were removed
+after cutover.
 
 ## Services
 
 - Forgejo: `https://git.guion.io`
-- Dagger engine: local only, `tcp://127.0.0.1:8080`
-- Woodpecker: clean WSL instance, service gated on secrets
+- Woodpecker: `https://ci.guion.io`
+- Dagger engine: local only, `tcp://127.0.0.1:8080` and
+  `unix:///run/dagger/engine.sock`
 
-Forgejo and Dagger are enabled in `hosts/wsl/default.nix`. Woodpecker is enabled
-there too, but its systemd services do not start until the required env secrets
-exist.
+Forgejo, Dagger, and Woodpecker are enabled from `hosts/wsl/default.nix`.
+Cloudflare routes for `git.guion.io` and `ci.guion.io` are served by the WSL
+`nuc-wsl` tunnel, not by the production k3s cluster.
+
+## Health Checks
+
+Use the gate command for normal checks:
+
+```bash
+kosmos-devops-gate-status --strict
+```
+
+Use the smoke command when checking all local services after a deploy:
+
+```bash
+kosmos-wsl-devops-smoke
+```
+
+Check public ingress:
+
+```bash
+kosmos-cloudflared-ingress-smoke
+curl -I https://git.guion.io/v2/
+curl -I https://ci.guion.io/
+```
+
+The `/v2/` response should be a container-registry response, not the Forgejo
+HTML app shell.
+
+Use `--deep` only when you want the Kubernetes private-image pull smoke:
+
+```bash
+kosmos-devops-gate-status --deep --strict
+```
 
 ## Dagger
 
-The `dagger` command installed by Nix is a wrapper around the pinned Dagger CLI.
-It sets:
-
-```text
-XDG_CONFIG_HOME=/var/lib/dagger/config
-XDG_CACHE_HOME=/var/lib/dagger/cache
-_EXPERIMENTAL_DAGGER_RUNNER_HOST=tcp://127.0.0.1:8080
-```
-
-The engine runs as a systemd-managed Podman container:
+Nix installs the Dagger CLI wrapper. The engine is a systemd-managed rootful
+Podman container running the official Dagger engine image.
 
 ```bash
 systemctl status podman-dagger-engine
@@ -32,71 +57,30 @@ dagger version
 kosmos-dagger-unix-socket-smoke
 ```
 
-This path does not require Docker daemon. Nix installs the Dagger CLI and owns
-the systemd unit, while rootful Podman runs the official Dagger engine OCI image.
-Do not replace this with Docker Compose, and do not try to make the engine a
-pure Nix service unless there is a tested upstream-supported path.
-
-The `dagger` wrapper defaults to `tcp://127.0.0.1:8080`, but it preserves an
-explicit `_EXPERIMENTAL_DAGGER_RUNNER_HOST` override. The Unix socket smoke uses
-that override to verify the same `/run/dagger/engine.sock` endpoint that
-Woodpecker pipeline containers will receive.
-
-Dagger's runner endpoint is local only. Do not expose it through Cloudflare.
-
-Do not switch the Dagger engine container to host networking just to reach
-Forgejo on `127.0.0.1`. In WSL testing, the engine failed to start because it
-still needs its own BuildKit/CNI networking. Keep the official privileged engine
-container shape.
-
-The CI write path is local, not Cloudflare. The Dagger engine publishes to:
-
-```text
-host.containers.internal:3000/guionai/<image>:<tag>
-```
-
-`forgejo-internal-registry-proxy.service` binds only on the Podman bridge gateway
-and forwards that traffic to Forgejo's loopback listener. This lets the Dagger
-engine write packages without exposing Forgejo's local port on WSL `eth0`.
-
-The engine GC policy is written to:
+Dagger cache policy is written to:
 
 ```text
 /etc/dagger/engine.json
 ```
 
-Current policy:
-
-```json
-{
-  "gc": {
-    "maxUsedSpace": "100GB",
-    "reservedSpace": "10GB",
-    "minFreeSpace": "20%",
-    "sweepSize": "50%"
-  }
-}
-```
-
-After changing the engine config, restart the engine container:
+After changing the engine config:
 
 ```bash
 sudo systemctl restart podman-dagger-engine
 ```
 
-Verify Forgejo and the registry proxy do not depend on the Dagger engine:
-
-```bash
-sudo kosmos-dagger-engine-isolation-smoke
-```
-
-The helper temporarily stops `podman-dagger-engine.service`, checks Forgejo's
-local and public registry endpoints, then starts the engine again and waits for
-`/run/dagger/engine.sock`. It verifies the WSL-internal registry endpoint only
-after the engine is back, because that path depends on the Podman bridge used by
-the Dagger engine.
+Do not expose the Dagger engine through Cloudflare. Woodpecker receives the Unix
+socket mount and talks to it locally.
 
 ## Forgejo
+
+Local checks:
+
+```bash
+systemctl status forgejo
+curl -I http://127.0.0.1:3000/
+curl -I https://git.guion.io/v2/
+```
 
 The admin bootstrap credentials are stored outside git:
 
@@ -104,547 +88,54 @@ The admin bootstrap credentials are stored outside git:
 /root/kosmos-forgejo-admin-init.txt
 ```
 
-Read it only when you need to log in:
+Read them only when initial login or recovery needs it:
 
 ```bash
 sudo cat /root/kosmos-forgejo-admin-init.txt
 ```
 
-Check local service state:
+The WSL-local registry publish path is:
 
-```bash
-kosmos-wsl-devops-smoke
-kosmos-devops-gate-status
-systemctl status forgejo
-curl -I http://127.0.0.1:3000/
-curl -I https://git.guion.io/v2/
+```text
+host.containers.internal:3000/guionai/<image>:<tag>
 ```
 
-The `/v2/` response should be a container-registry response, not the Forgejo HTML
-app shell.
+`forgejo-internal-registry-proxy.service` binds only on the Podman bridge
+gateway and forwards to Forgejo's loopback listener. This lets Dagger publish
+packages without sending registry writes through Cloudflare.
 
-`kosmos-devops-gate-status` is read-only by default. It reports ok/pending/fail
-for the WSL services, sockets, Woodpecker secret state, and Kubernetes
-pull-secret metadata. Use `--deep` to also run the private image pull smoke that
-creates a temporary pod, and `--strict` before cutover to make pending items fail
-the command:
-
-```bash
-kosmos-devops-gate-status --deep --strict
-```
-
-Current WSL state should report `0 failed` and may still report these pending
-external gates:
-
-| Pending gate | Resolution |
-|---|---|
-| `Forgejo package-write smoke token file missing or empty` | Create a package read/write token in Forgejo, store it with `agenix -e secrets/forgejo-smoke-token.age`, rebuild WSL, then run `kosmos-forgejo-https-git-smoke`, `kosmos-dagger-local-registry-smoke`, and `kosmos-dagger-large-registry-smoke`. |
-| `Woodpecker age secrets not created` | Create the Forgejo OAuth app and shared agent secret, store `secrets/woodpecker-server-env.age` and `secrets/woodpecker-agent-env.age`, rebuild WSL, then run `kosmos-woodpecker-preflight` and the Woodpecker Dagger job smoke. |
-
-Data-disk and off-root backup work is deferred from the current DevOps MVP gate.
-Known disk findings are recorded in [wsl-data-disk-notes.md](./wsl-data-disk-notes.md).
-
-Smoke test HTTPS Git clone and push:
+Package and Git smoke tests use the agenix-backed Forgejo smoke token:
 
 ```bash
 kosmos-forgejo-https-git-smoke
-```
-
-The helper creates a temporary private repo on `git.guion.io`, clones it over
-HTTPS, commits and pushes one file, then deletes the repo. It expects a Forgejo
-token through `FORGEJO_SMOKE_TOKEN`, `FORGEJO_SMOKE_TOKEN_FILE`, or the default
-agenix-backed path at `/home/neil/.config/kosmos/forgejo-smoke-token`. The admin
-bootstrap password can still be used for initial bring-up by setting
-`FORGEJO_SMOKE_USE_ADMIN_BOOTSTRAP=1`, but that should not be the routine smoke
-credential.
-
-Smoke test the dump timer and backup path:
-
-```bash
-kosmos-forgejo-backup-smoke
-kosmos-forgejo-dump-restore-smoke
-```
-
-This triggers `forgejo-dump.service` and verifies a non-empty
-`forgejo-dump-*.tar.zst` exists in `/var/backup/forgejo`. The backup smoke also
-checks that the archive contains `app.ini`, `data/forgejo.db`, `forgejo-db.sql`,
-and package data. The dump restore smoke extracts the latest dump into `/tmp`,
-starts a temporary Forgejo on loopback, and checks its health/login endpoints.
-Off-root backup replication is intentionally deferred; see
-[wsl-data-disk-notes.md](./wsl-data-disk-notes.md).
-
-## k3s Forgejo Migration to WSL
-
-The migration path from the existing k3s Forgejo into WSL is intentionally
-simple for V1 because this instance is currently single-user. Use a maintenance
-window: pause agents, avoid git pushes, stop the source deployment, copy the PVC,
-then verify the copy before any cutover.
-
-Discovery is read-only and writes a report under `/var/backup/forgejo-k3s`:
-
-```bash
-kosmos-forgejo-k3s-migration --discover
-```
-
-The report records the source namespace, deployment, PVC, image, app.ini path,
-database type/path, repository root, package path, LFS, attachments, avatars, and
-repo archive path. It reads `app.ini` from the running source pod instead of
-assuming those paths.
-
-During a maintenance window, create a cold copy:
-
-```bash
-kosmos-forgejo-k3s-migration --cold-copy --confirm-stop-source
-```
-
-The script scales `devops/forgejo` to zero, mounts the
-`gitea-shared-storage` PVC read-only in a temporary pod, and tries `kubectl cp`
-first:
-
-```text
-kubectl cp devops/<copy-pod>:/data /var/backup/forgejo-k3s/cold-copies/<timestamp>/data
-```
-
-If `kubectl cp` fails, it falls back to explicit tar streaming from the same
-read-only pod. The original replica count is restored on exit unless
-`--leave-stopped` is set. Each copy gets a `manifest.json` recording the source
-image, version, PVC, copy method, app.ini path/checksum, copy path, byte count,
-and later restore-smoke result.
-
-Validate a copy before treating it as usable:
-
-```bash
-kosmos-forgejo-k3s-migration \
-  --restore-smoke /var/backup/forgejo-k3s/cold-copies/<timestamp>/data
-```
-
-For final rehearsal, make the restore smoke prove more than bootability. Add
-known identities and at least one public repo from the source instance:
-
-```bash
-kosmos-forgejo-k3s-migration \
-  --restore-smoke /var/backup/forgejo-k3s/cold-copies/<timestamp>/data \
-  --require-package-data \
-  --known-user neil \
-  --known-org GuionAI \
-  --clone-repo neil/<known-public-repo>
-```
-
-Those checks verify package blob presence on disk, user and org API visibility,
-and HTTP Git clone against the temporary restored Forgejo. Private repos still
-need a separate authenticated clone check after cutover because the restore smoke
-does not read or inject credentials.
-
-The restore smoke copies the artifact into a scratch working directory before it
-rewrites `app.ini`, creates runtime files, or starts Forgejo. The original copied
-artifact is not mutated by validation.
-
-Before cutover, use the preflight wrapper. It requires the manifest, checks that
-package data exists, then runs the restore smoke:
-
-```bash
-kosmos-forgejo-k3s-migration \
-  --cutover-preflight \
-  --copy-dir /var/backup/forgejo-k3s/cold-copies/<timestamp>/data \
-  --require-package-data \
-  --known-user neil \
-  --known-org GuionAI \
-  --clone-repo neil/<known-public-repo>
-```
-
-`forgejo dump` is still useful as a secondary archive, but the cold `/data` copy
-is the primary migration artifact because it preserves SQLite, repositories, LFS,
-attachments, avatars, and package blobs in the source layout:
-
-```bash
-kosmos-forgejo-k3s-migration --backup-live-dump
-```
-
-## k3s Woodpecker Migration to WSL
-
-Start with discovery. The script records deployment shape, image, version, state
-mount, DB driver signal, and datasource source kind, but it never prints secret
-values:
-
-```bash
-kosmos-woodpecker-k3s-migration --discover
-```
-
-If the old Woodpecker state is worth keeping, copy it during a maintenance
-window:
-
-```bash
-kosmos-woodpecker-k3s-migration --cold-copy --confirm-stop-source
-```
-
-The script stops the source server deployment, discovers the PVC mounted at
-`/var/lib/woodpecker` unless `--pvc` is passed, tries `kubectl cp`, falls back to
-tar streaming if needed, writes a manifest, and restores the original replica
-count on exit. Secrets still move through agenix; do not copy plaintext cluster
-env into WSL state.
-
-After copying, inspect the state before deciding whether to migrate it:
-
-```bash
-kosmos-woodpecker-k3s-migration \
-  --inspect-copy /var/backup/woodpecker-k3s/cold-copies/<timestamp>
-```
-
-If the copied state contains a SQLite candidate, the script recommends migrating
-the copied state after source shutdown and WSL startup verification. If no DB
-candidate is found, it recommends keeping the clean WSL Woodpecker setup and
-manually re-enabling repositories.
-
-If the source Woodpecker state is small or disposable, prefer a clean WSL
-Woodpecker setup and manually re-enable repos. The must-keep system of record is
-Forgejo; Woodpecker history is useful but not critical.
-
-If the public hostname does not reach the WSL tunnel, route it to the `nuc-wsl`
-Cloudflare tunnel:
-
-```bash
-cloudflared tunnel route dns --overwrite-dns c0e179cd-14fc-4cd9-ba4c-00a445844c74 git.guion.io
-```
-
-Smoke test Packages after the admin user and `GuionAI` org exist. Use lowercase `guionai` in the OCI image path:
-
-```bash
-docker login git.guion.io
-docker pull hello-world:latest
-docker tag hello-world:latest git.guion.io/guionai/smoke:latest
-docker push git.guion.io/guionai/smoke:latest
-docker pull git.guion.io/guionai/smoke:latest
-```
-
-Internal Dagger publish smoke:
-
-```bash
 kosmos-dagger-local-registry-smoke
+kosmos-dagger-large-registry-smoke
 ```
 
-The helper publishes from Dagger to
-`host.containers.internal:3000/guionai/local-dagger-smoke:latest`, then pulls the
-same repository through `127.0.0.1:3000`. This is the path WSL Woodpecker jobs
-should use for image writes. The helper uses token-first credential handling and
-does not use the Cloudflare route for routine layer uploads.
+## Woodpecker
 
-Public pull check:
+Check service state:
 
 ```bash
-docker pull git.guion.io/guionai/local-dagger-smoke:latest
-```
-
-`/home/neil/.config/kosmos/forgejo-smoke-token` should contain a narrowly scoped
-token for the WSL Forgejo instance. It is separate from the Kubernetes
-package pull token. The pull token is intentionally read-only and should not be
-reused for publish smoke tests or CI.
-
-Use these scopes:
-
-- Package push/pull only: `write:package`. If the UI shows read and write as
-  separate checkboxes, select both `read:package` and `write:package`.
-- Full local smoke, including `kosmos-forgejo-https-git-smoke`:
-  `write:package`, `write:repository`, and `write:user`. The HTTPS Git smoke
-  calls `/api/v1/user/repos` to create a temporary private repo, pushes to it,
-  then deletes it. Forgejo requires `write:user` for that user-scoped create
-  endpoint.
-
-The token user must be able to publish packages under the target owner,
-currently `GuionAI` / lowercase OCI path `guionai`. A `neil` token works because
-`neil` is the WSL admin. The existing `k8s-packages-pull` token has only
-`read:package` and is not enough for publish smoke. The `wsl-bootstrap` token
-has `all` and will work, but it is broader than the long-term smoke token should
-be.
-
-Create the smoke token from the Forgejo UI or API, then store it as an agenix
-secret:
-
-```bash
-agenix -e secrets/forgejo-smoke-token.age
-git add secrets/forgejo-smoke-token.age
-```
-
-The secret is already registered in `secrets.nix`; once the `.age` file exists,
-WSL decrypts it to the default smoke token path. Verify only the file shape:
-
-```bash
-test -s /home/neil/.config/kosmos/forgejo-smoke-token
-stat -c '%U %G %a %n' /home/neil/.config/kosmos/forgejo-smoke-token
-```
-
-Before migrating real CI jobs, run a larger internal registry smoke. It uses the
-same WSL-local write path as CI and generates a random payload so the layer does
-not collapse to a tiny compressed upload:
-
-```bash
-DAGGER_LARGE_SMOKE_SIZE_MIB=512 \
-  kosmos-dagger-large-registry-smoke
-```
-
-This is the same internal write path with a larger layer. It uses the same
-token-first credential handling as the HTTPS Git smoke.
-
-## Woodpecker Secrets
-
-Woodpecker needs two env files.
-
-Server env:
-
-```text
-WOODPECKER_AGENT_SECRET=<shared-agent-secret>
-WOODPECKER_FORGEJO_CLIENT=<forgejo-oauth-client-id>
-WOODPECKER_FORGEJO_SECRET=<forgejo-oauth-client-secret>
-```
-
-Agent env:
-
-```text
-WOODPECKER_AGENT_SECRET=<same-shared-agent-secret>
-```
-
-Create them as agenix secrets:
-
-```bash
-agenix -e secrets/woodpecker-server-env.age
-agenix -e secrets/woodpecker-agent-env.age
-```
-
-Then register both files in root `secrets.nix` with `users ++ systems`, add the
-files to git, and rebuild WSL.
-
-After secrets exist, check:
-
-```bash
-kosmos-woodpecker-preflight
 systemctl status woodpecker-server
 systemctl status woodpecker-agent-wsl-podman
+kosmos-woodpecker-preflight
 ```
 
-Before secrets exist, `kosmos-woodpecker-preflight` should report the missing
-age files as pending while still checking the Dagger and Podman sockets that the
-future agent will need.
-
-Woodpecker uses the Podman/Docker backend. Pipeline containers that need Dagger
-receive this global environment variable from the Woodpecker server:
-
-```text
-_EXPERIMENTAL_DAGGER_RUNNER_HOST=unix:///run/dagger/engine.sock
-```
-
-The agent mounts `/run/dagger` into every pipeline step with
-`WOODPECKER_BACKEND_DOCKER_VOLUMES`. Before relying on this from CI, verify from
-a throwaway Woodpecker job that the socket exists and `dagger version` can reach
-the engine.
-
-Lint the throwaway Dagger socket smoke pipeline:
+Run the Dagger job smoke when validating CI end to end:
 
 ```bash
-kosmos-woodpecker-dagger-job-smoke --lint-only
+kosmos-woodpecker-dagger-job-smoke
 ```
 
-After Woodpecker OAuth login is working and a smoke repository exists with
-`fixtures/woodpecker/dagger-unix-socket-smoke.yml` as its pipeline config,
-trigger a real pipeline:
+Woodpecker data from the old cluster was not migrated. Re-enable repos and
+secrets in the WSL instance as needed.
 
-```bash
-WOODPECKER_SERVER=http://127.0.0.1:8000 \
-WOODPECKER_TOKEN_FILE=/root/kosmos-woodpecker-token.txt \
-WOODPECKER_SMOKE_REPO=neil/kosmos-woodpecker-smoke \
-  kosmos-woodpecker-dagger-job-smoke
-```
+## Backup
 
-The helper uses `woodpecker-cli` to create a pipeline and waits for success. The
-pipeline runs `registry.dagger.io/engine:v0.19.11`, checks
-`/run/dagger/engine.sock`, then runs `dagger version` against that Unix socket.
-This is the real gate before migrating production build jobs to the WSL agent.
+No Forgejo or Woodpecker backup automation is part of the current WSL DevOps
+setup. The old migration-time dump, restore-smoke, data-disk, and replication
+helpers were removed to keep the live system small.
 
-## Current Cutover State
-
-Current decision: keep Woodpecker history disposable. Do not migrate k3s
-Woodpecker data unless clean-start setup proves unexpectedly painful. The system
-of record is Forgejo; CI run history and old repo enablement state are not worth
-adding DB migration risk.
-
-Current ownership after cutover:
-
-| Component | Target owner | Notes |
-|---|---|---|
-| Git UI and HTTPS Git | kosmos WSL Forgejo | Public hostname remains `git.guion.io`. |
-| Forgejo Packages image registry | kosmos WSL Forgejo | Public pull path is `git.guion.io/guionai/<image>:<tag>`. |
-| CI server and local CI agent | kosmos WSL Woodpecker | Public hostname remains `ci.guion.io`; clean-start Woodpecker, manually re-enable repos. |
-| Build engine and cache | kosmos WSL Dagger | Local-only engine endpoint; do not expose through Cloudflare. |
-| Cloudflare `git.guion.io` and `ci.guion.io` routes | kosmos WSL `nuc-wsl` tunnel | Cluster tunnel must not keep Git or CI hostnames. |
-| Old cluster Forgejo | retired | Workload, services, PVC, PV, local-path data, and bootstrap/config secrets removed. |
-| Old cluster Dagger | retired | StatefulSet, service, and config removed. No Dagger PVC existed. |
-| Old cluster Woodpecker | retired | StatefulSets, services, PVCs, PV, local-path data, and `woodpecker-secrets` removed. |
-| Old cluster registry | retired last | Delete only after no workload references `registry-docker-registry.devops.svc:5000`. |
-
-Remaining cutover work:
-
-1. Manually enable the repositories that should use WSL Woodpecker. Do not import
-   old Woodpecker DB state.
-2. Run one real WSL Woodpecker pipeline that reaches the WSL Dagger engine and
-   publishes an image to WSL Forgejo Packages.
-3. Audit production workloads for old registry references:
-   `kubectl get deploy,statefulset,daemonset,job,cronjob -A -o yaml | rg 'registry-docker-registry\\.devops\\.svc:5000'`.
-4. Migrate service image references from
-   `registry-docker-registry.devops.svc:5000/...` to
-   `git.guion.io/guionai/...` gradually.
-5. After no workloads reference the old registry, remove cluster
-   `devops-registry` and clean `/var/lib/registry` on the registry node by
-   explicit decision.
-
-## Kubernetes Pull Secret
-
-The package pull token is stored outside git:
-
-```text
-/root/kosmos-forgejo-k8s-packages-pull-token.txt
-```
-
-The source Kubernetes secret is:
-
-```text
-devops/forgejo-packages
-```
-
-It has type `kubernetes.io/dockerconfigjson` and Reflector annotations for:
-
-```text
-apps-dev
-apps-prod
-apps-share
-```
-
-Verify source and mirrored secret metadata without printing secret data:
-
-```bash
-kosmos-forgejo-k8s-pull-secret-smoke
-```
-
-Private image pull smoke in `apps-dev`:
-
-```bash
-FORGEJO_PULL_SECRET_SMOKE_IMAGE=git.guion.io/guionai/dagger-smoke:latest \
-  kosmos-forgejo-k8s-pull-secret-smoke
-```
-
-The helper checks that the source and mirrored secrets are
-`kubernetes.io/dockerconfigjson`, verifies the Reflector annotations on the
-source secret, creates a throwaway pod in `apps-dev`, waits for a populated
-`imageID`, then deletes the pod. The smoke image is scratch-based, so the pod can
-fail after the pull; the pass condition is the successful image pull, not a
-running container.
-
-## Forgejo Migration Preflight
-
-Current source Forgejo in the production cluster:
-
-```text
-namespace: devops
-deployment: forgejo
-pod: forgejo-*
-http service: forgejo-http:3000
-ssh service: forgejo-ssh:22
-pvc: gitea-shared-storage
-pvc storage class: local-path-retain
-pvc size: 20Gi
-data volume mount: data -> gitea-shared-storage
-image: registry-docker-registry.devops.svc:5000/forgejo:ttal-prreview-filter-rootless
-```
-
-Check this before any dry run:
-
-```bash
-kosmos-forgejo-migration-dry-run --preflight
-kubectl get deploy,pod,pvc -n devops | grep -E 'forgejo|gitea-shared-storage'
-kubectl get deploy forgejo -n devops \
-  -o jsonpath='{range .spec.template.spec.containers[*]}{.name}{" "}{.image}{"\n"}{end}'
-kubectl get pvc gitea-shared-storage -n devops \
-  -o custom-columns='NAME:.metadata.name,STATUS:.status.phase,VOLUME:.spec.volumeName,SC:.spec.storageClassName,SIZE:.spec.resources.requests.storage'
-df -h /var/lib/forgejo /var/backup/forgejo
-```
-
-Backup guardrails are deferred from this PR. Before a future production cutover,
-revisit [wsl-data-disk-notes.md](./wsl-data-disk-notes.md), attach or replace the
-data disk, and then check backup placement:
-
-```bash
-kosmos-forgejo-cutover-preflight --backup-dir /mnt/nuc-data/forgejo-backups
-```
-
-This requires a non-empty Forgejo dump and fails if `/var/lib/forgejo` and the
-Forgejo backup directory are on the same filesystem. Use the replicated backup
-directory on the NUC data disk for production cutover. For staging-only checks,
-use:
-
-```bash
-kosmos-forgejo-cutover-preflight --allow-same-filesystem
-```
-
-Do not run the dry-run copy while `deployment/forgejo` is serving writes. The
-SQLite-backed source must be put in a maintenance window and scaled to zero
-before copying `/data`.
-
-During a maintenance window, run the guarded cold-copy dry run:
-
-```bash
-kosmos-forgejo-migration-dry-run --execute-copy --confirm-stop-source
-```
-
-The helper refuses to stop the source deployment unless both flags are present.
-It records the original replica count, scales `devops/deployment/forgejo` to
-zero, mounts `devops/gitea-shared-storage` into a temporary copy pod, streams a
-tar copy of `/data` to `/var/lib/forgejo-migration-dry-runs/<timestamp>`, and
-then restores the original replica count with a trap.
-
-That command proves the cold-copy path only. A full migration dry run still needs
-the copied data restored or mounted into a target Forgejo instance, then checked
-with login, clone, push, package list, and package pull.
-
-After a guarded copy, inspect the copied directory shape before trying a restore:
-
-```bash
-kosmos-forgejo-cutover-preflight \
-  --allow-same-filesystem \
-  --migration-copy-dir /var/lib/forgejo-migration-dry-runs/<copy-dir>
-```
-
-This still is not a completed restore test; it only verifies that the copied
-directory looks like Forgejo data and that a dump exists.
-
-Then run the non-production restore smoke:
-
-```bash
-kosmos-forgejo-restore-smoke \
-  --copy-dir /var/lib/forgejo-migration-dry-runs/<copy-dir> \
-  --port 13000
-```
-
-The helper refuses to run against the live `/var/lib/forgejo` state directory. It
-creates a temporary `app.ini` with paths rewritten to the copied data directory,
-runs `forgejo doctor check --all`, starts Forgejo on `127.0.0.1:<port>`, checks
-`/api/healthz` and `/user/login`, then stops the temporary process. Passing this
-smoke proves that the copied data can at least be opened and served by Forgejo;
-manual login, clone, push, package list, and package pull checks are still
-required before production cutover.
-
-## Future Cutover Guardrails
-
-For future repeats, rollback decisions, or similar hostname moves, do not treat a
-cutover as complete until all of these are true:
-
-- Forgejo WSL login works.
-- HTTPS clone and push work.
-- Packages push and pull work through `git.guion.io`.
-- Dagger can publish an image to `git.guion.io/guionai/*`.
-- A Kubernetes pod in `apps-dev` pulls a private WSL image using the mirrored
-  `forgejo-packages` secret.
-- `kosmos-forgejo-cutover-preflight` passes without `--allow-same-filesystem`.
-- `kosmos-forgejo-restore-smoke` passes against a copied source Forgejo data
-  directory.
-- A cold copy or restore dry run of the current Forgejo `/data` volume has been
-  tested.
-
-After cutover, `git-wsl.guion.io` is deprecated. Do not add new project remotes,
-Cloudflare routes, image references, or smoke defaults that depend on it.
+If backup becomes important, design it as a new change with a clear restore
+test. Do not revive the old cutover scripts as routine backup tooling.
