@@ -42,7 +42,10 @@ _: {
     keposMatrix.enable = true;
     forgejo.enable = true;
     dagger.enable = true;
-    woodpecker.enable = true;
+    woodpecker = {
+      enable = true;
+      enableCloudflared = true;
+    };
     listenTogether.enable = true;
     feishinWeb.enable = true;
     navidrome.enable = true;

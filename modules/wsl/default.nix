@@ -1,4 +1,8 @@
-{pkgs, ...}: let
+{
+  pkgs,
+  pkgsUnstable,
+  ...
+}: let
   proxyEnv = pkgs.writeShellApplication {
     name = "kosmos-wsl-proxy-env";
     runtimeInputs = with pkgs; [
@@ -127,7 +131,7 @@ in {
       forgejoRestoreSmoke
       k3d
       proxyEnv
-      woodpecker-cli
+      pkgsUnstable.woodpecker-cli
       woodpeckerDaggerJobSmoke
       woodpeckerPreflight
     ];

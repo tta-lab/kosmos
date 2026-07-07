@@ -2,11 +2,14 @@
   config,
   lib,
   pkgs,
+  pkgsUnstable,
   ...
 }: let
   cfg = config.kosmos.wsl.woodpecker;
   serverEnvironmentAgeFile = ../../secrets/woodpecker-server-env.age;
   agentEnvironmentAgeFile = ../../secrets/woodpecker-agent-env.age;
+  defaultServerEnvironmentFile = "/run/agenix/woodpecker-server-env";
+  defaultAgentEnvironmentFile = "/run/agenix/woodpecker-agent-env";
   haveDefaultSecrets =
     builtins.pathExists serverEnvironmentAgeFile
     && builtins.pathExists agentEnvironmentAgeFile;
@@ -14,13 +17,13 @@
     if cfg.serverEnvironmentFile != null
     then cfg.serverEnvironmentFile
     else if haveDefaultSecrets
-    then config.age.secrets.woodpecker-server-env.path
+    then defaultServerEnvironmentFile
     else null;
   effectiveAgentEnvironmentFile =
     if cfg.agentEnvironmentFile != null
     then cfg.agentEnvironmentFile
     else if haveDefaultSecrets
-    then config.age.secrets.woodpecker-agent-env.path
+    then defaultAgentEnvironmentFile
     else null;
   haveSecrets = effectiveServerEnvironmentFile != null && effectiveAgentEnvironmentFile != null;
 in {
@@ -35,8 +38,14 @@ in {
 
     port = lib.mkOption {
       type = lib.types.port;
+      default = 8000;
+      description = "Local Woodpecker HTTP server port.";
+    };
+
+    grpcPort = lib.mkOption {
+      type = lib.types.port;
       default = 9000;
-      description = "Local Woodpecker server port.";
+      description = "Local Woodpecker gRPC port used by agents.";
     };
 
     forgejoUrl = lib.mkOption {
@@ -81,6 +90,7 @@ in {
           owner = "root";
           group = "root";
           mode = "0400";
+          path = defaultServerEnvironmentFile;
         };
 
         woodpecker-agent-env = {
@@ -88,14 +98,17 @@ in {
           owner = "root";
           group = "root";
           mode = "0400";
+          path = defaultAgentEnvironmentFile;
         };
       };
 
       services.woodpecker-server = {
         enable = true;
+        package = pkgsUnstable.woodpecker-server;
         environment = {
           WOODPECKER_HOST = "https://${cfg.publicHostname}";
           WOODPECKER_SERVER_ADDR = "127.0.0.1:${toString cfg.port}";
+          WOODPECKER_GRPC_ADDR = "127.0.0.1:${toString cfg.grpcPort}";
           WOODPECKER_FORGEJO = "true";
           WOODPECKER_FORGEJO_URL = cfg.forgejoUrl;
           WOODPECKER_OPEN = "false";
@@ -109,10 +122,13 @@ in {
 
       services.woodpecker-agents.agents.wsl-podman = {
         enable = true;
+        package = pkgsUnstable.woodpecker-agent;
         environment = {
-          WOODPECKER_SERVER = "127.0.0.1:${toString cfg.port}";
+          WOODPECKER_SERVER = "127.0.0.1:${toString cfg.grpcPort}";
           WOODPECKER_BACKEND = "docker";
+          WOODPECKER_AGENT_CONFIG_FILE = "";
           WOODPECKER_CONNECT_RETRY_COUNT = "1";
+          WOODPECKER_HEALTHCHECK_ADDR = "127.0.0.1:9001";
           WOODPECKER_BACKEND_DOCKER_VOLUMES = "/run/dagger:/run/dagger";
           DOCKER_HOST = "unix:///run/podman/podman.sock";
         };

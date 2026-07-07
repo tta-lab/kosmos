@@ -113,6 +113,7 @@ in {
     # Languages
     gcc
     pkgsUnstable.bun
+    pkgsUnstable.pnpm
     pkgsUnstable.go
     pkgsUnstable.golangci-lint
     pkgsUnstable.gotestsum

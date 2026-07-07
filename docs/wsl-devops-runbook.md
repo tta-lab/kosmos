@@ -253,13 +253,30 @@ Public staging pull check:
 docker pull git-wsl.guion.io/guionai/local-dagger-smoke:latest
 ```
 
-`/home/neil/.config/kosmos/forgejo-smoke-token` should contain a package-write
+`/home/neil/.config/kosmos/forgejo-smoke-token` should contain a narrowly scoped
 token for the staging Forgejo instance. It is separate from the Kubernetes
 package pull token. The pull token is intentionally read-only and should not be
 reused for publish smoke tests or CI.
 
-Create the smoke token from the Forgejo UI or API with package read/write access,
-then store it as an agenix secret:
+Use these scopes:
+
+- Package push/pull only: `write:package`. If the UI shows read and write as
+  separate checkboxes, select both `read:package` and `write:package`.
+- Full local smoke, including `kosmos-forgejo-https-git-smoke`:
+  `write:package`, `write:repository`, and `write:user`. The HTTPS Git smoke
+  calls `/api/v1/user/repos` to create a temporary private repo, pushes to it,
+  then deletes it. Forgejo requires `write:user` for that user-scoped create
+  endpoint.
+
+The token user must be able to publish packages under the target owner,
+currently `GuionAI` / lowercase OCI path `guionai`. A `neil` token works because
+`neil` is the staging admin. The existing `k8s-packages-pull` token has only
+`read:package` and is not enough for publish smoke. The `wsl-bootstrap` token
+has `all` and will work, but it is broader than the long-term smoke token should
+be.
+
+Create the smoke token from the Forgejo UI or API, then store it as an agenix
+secret:
 
 ```bash
 agenix -e secrets/forgejo-smoke-token.age
@@ -349,7 +366,7 @@ After Woodpecker OAuth login is working and a smoke repository exists with
 trigger a real pipeline:
 
 ```bash
-WOODPECKER_SERVER=http://127.0.0.1:9000 \
+WOODPECKER_SERVER=http://127.0.0.1:8000 \
 WOODPECKER_TOKEN_FILE=/root/kosmos-woodpecker-token.txt \
 WOODPECKER_SMOKE_REPO=neil/kosmos-woodpecker-smoke \
   kosmos-woodpecker-dagger-job-smoke
