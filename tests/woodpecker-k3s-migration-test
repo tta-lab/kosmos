@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+script="${repo_root}/scripts/woodpecker-k3s-migration"
+
+bash "$script" --help 2>&1 | grep -q 'usage: kosmos-woodpecker-k3s-migration'
+bash "$script" --help 2>&1 | grep -q -- '--discover'
+bash "$script" --help 2>&1 | grep -q -- '--cold-copy --confirm-stop-source'
+bash "$script" --help 2>&1 | grep -q 'kubectl cp'
+bash "$script" --help 2>&1 | grep -q 'secret values are never printed'
+
+if bash "$script" --cold-copy 2>/tmp/woodpecker-k3s-migration.err; then
+  echo 'expected --cold-copy without --confirm-stop-source to fail' >&2
+  exit 1
+fi
+grep -q -- '--cold-copy requires --confirm-stop-source' /tmp/woodpecker-k3s-migration.err
+
+grep -q 'WOODPECKER_DATABASE_DRIVER' "$script"
+grep -q 'copy_method' "$script"
+grep -q 'kubectl-cp' "$script"
+grep -q 'restore_original_replicas' "$script"
+grep -Fq "wait_deployment_pods_gone \"\$selector\"" "$script"

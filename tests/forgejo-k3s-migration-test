@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+script="${repo_root}/scripts/forgejo-k3s-migration"
+
+bash "$script" --help 2>&1 | grep -q 'usage: kosmos-forgejo-k3s-migration'
+bash "$script" --help 2>&1 | grep -q -- '--cold-copy --confirm-stop-source'
+bash "$script" --help 2>&1 | grep -q 'kubectl cp'
+bash "$script" --help 2>&1 | grep -q 'tar streaming fallback'
+
+if bash "$script" --cold-copy 2>/tmp/forgejo-k3s-migration.err; then
+  echo 'expected --cold-copy without --confirm-stop-source to fail' >&2
+  exit 1
+fi
+grep -q -- '--cold-copy requires --confirm-stop-source' /tmp/forgejo-k3s-migration.err
+
+if bash "$script" --restore-smoke 2>/tmp/forgejo-k3s-migration.err; then
+  echo 'expected --restore-smoke without path to fail' >&2
+  exit 1
+fi
+grep -q -- '--restore-smoke requires a copy directory' /tmp/forgejo-k3s-migration.err
+
+grep -q 'copy_method' "$script"
+grep -q 'kubectl-cp' "$script"
+grep -q 'tar-stream' "$script"
+grep -q 'restore_original_replicas' "$script"
+grep -Fq "root_dir=\"\$(dirname \"\$copy_dir\")\"" "$script"
+grep -Fq "wait_deployment_pods_gone \"\$selector\"" "$script"
+grep -q 'cleanup_live_dump' "$script"

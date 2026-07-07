@@ -62,11 +62,13 @@
             ${./scripts/forgejo-dump-restore-smoke} \
             ${./scripts/forgejo-https-git-smoke} \
             ${./scripts/forgejo-k8s-pull-secret-smoke} \
+            ${./scripts/forgejo-k3s-migration} \
             ${./scripts/forgejo-migration-dry-run} \
             ${./scripts/forgejo-restore-smoke} \
             ${./scripts/ttal-tmux-project-picker} \
             ${./scripts/ttal-wezterm-projects} \
             ${./scripts/woodpecker-dagger-job-smoke} \
+            ${./scripts/woodpecker-k3s-migration} \
             ${./scripts/woodpecker-preflight} \
             ${./scripts/wsl-devops-smoke} \
             ${./tests/temenos-env-test} \
@@ -79,12 +81,15 @@
             ${./tests/data-disk-preflight-test} \
             ${./tests/forgejo-backup-smoke-test} \
             ${./tests/forgejo-dump-restore-smoke-test} \
+            ${./tests/forgejo-k3s-migration-mock-test} \
+            ${./tests/forgejo-k3s-migration-test} \
             ${./tests/forgejo-restore-smoke-test} \
             ${./tests/tmux-tmpdir-test} \
             ${./tests/tmux-copy-mode-test} \
             ${./tests/devops-gate-status-test} \
             ${./tests/orga-cli-service-test} \
-            ${./tests/ttal-wezterm-projects-test}
+            ${./tests/ttal-wezterm-projects-test} \
+            ${./tests/woodpecker-k3s-migration-test}
           WOODPECKER_DISABLE_UPDATE_CHECK=true woodpecker-cli lint --strict ${./fixtures/woodpecker/dagger-unix-socket-smoke.yml}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
@@ -95,6 +100,8 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/data-disk-preflight-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-backup-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-dump-restore-smoke-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-k3s-migration-mock-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-k3s-migration-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-restore-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-env-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-tmpdir-test}
@@ -102,6 +109,7 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/devops-gate-status-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-wezterm-projects-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/woodpecker-k3s-migration-test}
           touch $out
         '';
 

@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+fakebin="${tmp}/bin"
+mkdir -p "$fakebin"
+bash_path="$(command -v bash)"
+
+printf '#!%s\n' "$bash_path" >"${fakebin}/sudo"
+cat >>"${fakebin}/sudo" <<'EOF'
+exec "$@"
+EOF
+chmod +x "${fakebin}/sudo"
+
+printf '#!%s\n' "$bash_path" >"${fakebin}/kubectl"
+cat >>"${fakebin}/kubectl" <<'EOF'
+set -euo pipefail
+
+printf '%s\n' "$*" >>"$KUBECTL_LOG"
+
+if [[ "$1" == "get" && "$2" == "deploy" ]]; then
+  case "$*" in
+    *"{.spec.replicas}"*)
+      printf '1'
+      ;;
+    *"{.spec.template.spec.containers[0].image}"*)
+      printf 'forgejo:test'
+      ;;
+    *"-o json"*)
+      printf '%s\n' '{"spec":{"replicas":1,"selector":{"matchLabels":{"app":"forgejo"}},"template":{"spec":{"containers":[{"image":"forgejo:test"}]}}}}'
+      ;;
+    *)
+      printf 'unexpected deploy query: %s\n' "$*" >&2
+      exit 1
+      ;;
+  esac
+elif [[ "$1" == "scale" && "$2" == "deploy" ]]; then
+  exit 0
+elif [[ "$1" == "rollout" && "$2" == "status" ]]; then
+  exit 0
+elif [[ "$1" == "get" && "$2" == "pod" ]]; then
+  printf '%s\n' '{"items":[]}'
+elif [[ "$1" == "apply" ]]; then
+  cat >/dev/null
+elif [[ "$1" == "wait" ]]; then
+  exit 0
+elif [[ "$1" == "cp" ]]; then
+  mkdir -p "$3/custom/conf" "$3/data" "$3/packages"
+  printf '[database]\nDB_TYPE = sqlite3\nPATH = /data/forgejo.db\n' >"$3/custom/conf/app.ini"
+  printf 'db\n' >"$3/data/forgejo.db"
+elif [[ "$1" == "exec" ]]; then
+  if [[ "$*" == *"sh -eu -c"* ]]; then
+    printf '/data/custom/conf/app.ini\n'
+  elif [[ "$*" == *" cat /data/custom/conf/app.ini"* ]]; then
+    printf '[database]\nDB_TYPE = sqlite3\nPATH = /data/forgejo.db\n'
+  fi
+elif [[ "$1" == "delete" ]]; then
+  exit 0
+else
+  printf 'unexpected kubectl call: %s\n' "$*" >&2
+  exit 1
+fi
+EOF
+chmod +x "${fakebin}/kubectl"
+
+export KUBECTL_LOG="${tmp}/kubectl.log"
+PATH="${fakebin}:$PATH" bash "${repo_root}/scripts/forgejo-k3s-migration" \
+  --cold-copy \
+  --confirm-stop-source \
+  --target-base "${tmp}/backup"
+
+manifest="$(find "${tmp}/backup/cold-copies" -name manifest.json -print -quit)"
+test -n "$manifest"
+jq -e '.kind == "forgejo-cold-copy"' "$manifest" >/dev/null
+jq -e '.copy_method == "kubectl-cp"' "$manifest" >/dev/null
+jq -e '.source.image == "forgejo:test"' "$manifest" >/dev/null
+
+scale_line="$(grep -n -- 'scale deploy forgejo' "$KUBECTL_LOG" | cut -d: -f1 | head -n 1)"
+pod_wait_line="$(grep -n -- 'get pod -n devops -l app=forgejo -o json' "$KUBECTL_LOG" | cut -d: -f1 | head -n 1)"
+apply_line="$(grep -n -- 'apply -n devops -f -' "$KUBECTL_LOG" | cut -d: -f1 | head -n 1)"
+cp_line="$(grep -n -- 'cp devops/forgejo-data-copy' "$KUBECTL_LOG" | cut -d: -f1 | head -n 1)"
+restore_line="$(grep -n -- 'scale deploy forgejo -n devops --replicas=1' "$KUBECTL_LOG" | cut -d: -f1 | tail -n 1)"
+
+test "$scale_line" -lt "$pod_wait_line"
+test "$pod_wait_line" -lt "$apply_line"
+test "$apply_line" -lt "$cp_line"
+test "$cp_line" -lt "$restore_line"

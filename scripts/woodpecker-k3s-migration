@@ -1,0 +1,393 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2016
+set -euo pipefail
+
+namespace="devops"
+deployment="woodpecker-server"
+pvc=""
+state_path="/var/lib/woodpecker"
+target_base="/var/backup/woodpecker-k3s"
+copy_image="busybox:1.36"
+mode=""
+confirm_stop_source=0
+confirm_overwrite_target=0
+leave_stopped=0
+keep_pod=0
+
+usage() {
+  cat >&2 <<'EOF'
+usage: kosmos-woodpecker-k3s-migration --discover
+       kosmos-woodpecker-k3s-migration --cold-copy --confirm-stop-source
+
+Options:
+  --namespace <name>              Source namespace. Default: devops
+  --deployment <name>             Source Woodpecker server deployment. Default: woodpecker-server
+  --pvc <name>                    Source PVC. If omitted, discover the claim mounted at /var/lib/woodpecker
+  --state-path <path>             Woodpecker state path in the pod. Default: /var/lib/woodpecker
+  --target-base <path>            WSL backup root. Default: /var/backup/woodpecker-k3s
+  --copy-image <image>            Temporary pod image with tar. Default: busybox:1.36
+  --confirm-stop-source           Required with --cold-copy
+  --confirm-overwrite-target      Allow copying into an existing target directory
+  --leave-stopped                 Keep source deployment stopped after copy
+  --keep-pod                      Keep temporary copy pod for inspection
+
+Discovery prints env var names such as WOODPECKER_DATABASE_DRIVER, but
+secret values are never printed. Cold copy uses kubectl cp first, then tar streaming
+fallback if kubectl cp is not faithful enough.
+EOF
+}
+
+die() {
+  printf '%s\n' "$1" >&2
+  exit "${2:-1}"
+}
+
+require() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    die "missing required command: $1"
+  fi
+}
+
+run_sudo() {
+  if [[ "$(id -u)" -eq 0 ]]; then
+    "$@"
+  else
+    sudo "$@"
+  fi
+}
+
+timestamp_utc() {
+  date -u +%Y%m%dT%H%M%SZ
+}
+
+set_mode() {
+  if [[ -n "$mode" ]]; then
+    die "choose exactly one migration mode" 2
+  fi
+  mode="$1"
+}
+
+deployment_selector() {
+  local selector
+  selector="$(
+    kubectl get deploy "$deployment" -n "$namespace" -o json 2>/dev/null |
+      jq -r '.spec.selector.matchLabels // {} | to_entries | map("\(.key)=\(.value)") | join(",")'
+  )"
+  printf '%s\n' "$selector"
+}
+
+source_pod() {
+  local selector
+
+  selector="$(deployment_selector)"
+
+  kubectl get pod -n "$namespace" -l "$selector" \
+    --field-selector=status.phase=Running \
+    -o jsonpath='{.items[0].metadata.name}'
+}
+
+wait_deployment_pods_gone() {
+  local selector="$1"
+  local deadline=$((SECONDS + 180))
+  local count
+
+  while [[ "$SECONDS" -lt "$deadline" ]]; do
+    count="$(
+      kubectl get pod -n "$namespace" -l "$selector" -o json |
+        jq -r '.items | length'
+    )"
+    if [[ "$count" == "0" ]]; then
+      return 0
+    fi
+    printf 'waiting for %s pod(s) matching %s to terminate...\n' "$count" "$selector"
+    sleep 3
+  done
+
+  die "timed out waiting for source pods matching ${selector} to terminate"
+}
+
+discover_state_pvc() {
+  kubectl get deploy "$deployment" -n "$namespace" -o json |
+    jq -r --arg state_path "$state_path" '
+      .spec.template.spec as $spec |
+      ($spec.containers[] | .volumeMounts[]? |
+        select(.mountPath == $state_path) | .name) as $volumeName |
+      $spec.volumes[]? |
+      select(.name == $volumeName) |
+      .persistentVolumeClaim.claimName // empty
+    ' | head -n 1
+}
+
+write_manifest() {
+  local path="$1"
+  local artifact="$2"
+  local copy_method="$3"
+  local image="$4"
+  local size_bytes="$5"
+
+  run_sudo mkdir -p "$path"
+  jq -n \
+    --arg timestamp "$(timestamp_utc)" \
+    --arg namespace "$namespace" \
+    --arg deployment "$deployment" \
+    --arg pvc "$pvc" \
+    --arg image "$image" \
+    --arg artifact "$artifact" \
+    --arg state_path "$state_path" \
+    --arg copy_method "$copy_method" \
+    --arg size_bytes "$size_bytes" \
+    '{
+      timestamp: $timestamp,
+      kind: "woodpecker-cold-copy",
+      source: {
+        namespace: $namespace,
+        deployment: $deployment,
+        pvc: $pvc,
+        image: $image,
+        state_path: $state_path
+      },
+      artifact: $artifact,
+      copy_method: $copy_method,
+      size_bytes: $size_bytes
+    }' | run_sudo tee "${path}/manifest.json" >/dev/null
+  printf 'manifest: %s\n' "${path}/manifest.json"
+}
+
+discover() {
+  require kubectl
+  require jq
+
+  local report_dir report image replicas ready detected_pvc pod env_names mounts driver_hint
+
+  report_dir="${target_base}/reports"
+  run_sudo mkdir -p "$report_dir"
+  report="${report_dir}/woodpecker-${namespace}-${deployment}-$(timestamp_utc).md"
+
+  image="$(kubectl get deploy "$deployment" -n "$namespace" -o jsonpath='{.spec.template.spec.containers[0].image}')"
+  replicas="$(kubectl get deploy "$deployment" -n "$namespace" -o jsonpath='{.spec.replicas}')"
+  ready="$(kubectl get deploy "$deployment" -n "$namespace" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || true)"
+  detected_pvc="$(discover_state_pvc || true)"
+  pod="$(source_pod || true)"
+  env_names="$(
+    kubectl get deploy "$deployment" -n "$namespace" -o json |
+      jq -r '.spec.template.spec.containers[0].env[]?.name' |
+      sort
+  )"
+  mounts="$(
+    kubectl get deploy "$deployment" -n "$namespace" -o json |
+      jq -r '.spec.template.spec.containers[0].volumeMounts[]? | "- `" + .name + "` -> `" + .mountPath + "`"'
+  )"
+  driver_hint="$(
+    printf '%s\n' "$env_names" |
+      grep -E '^WOODPECKER_DATABASE_DRIVER$|^WOODPECKER_DATABASE_DATASOURCE$' || true
+  )"
+
+  {
+    printf '# Woodpecker k3s discovery\n\n'
+    printf '- namespace: `%s`\n' "$namespace"
+    printf '- deployment: `%s`\n' "$deployment"
+    printf '- replicas: `%s`\n' "${replicas:-unknown}"
+    printf '- ready replicas: `%s`\n' "${ready:-0}"
+    printf '- image: `%s`\n' "$image"
+    printf '- running pod inspected: `%s`\n' "${pod:-none}"
+    printf '- state path: `%s`\n' "$state_path"
+    printf '- detected state PVC: `%s`\n' "${detected_pvc:-unknown}"
+    printf '\n## Database signals\n\n'
+    printf 'Secret values are never printed. These are only environment variable names.\n\n'
+    if [[ -n "$driver_hint" ]]; then
+      printf '%s\n' "$driver_hint" | sed 's/^/- `/' | sed 's/$/`/'
+    else
+      printf '- `WOODPECKER_DATABASE_DRIVER` not declared directly on the deployment\n'
+    fi
+    printf '\n## Volume mounts\n\n'
+    if [[ -n "$mounts" ]]; then
+      printf '%s\n' "$mounts"
+    else
+      printf '- none found on first container\n'
+    fi
+  } | run_sudo tee "$report"
+
+  printf 'report: %s\n' "$report"
+}
+
+restore_original_replicas() {
+  local original_replicas="$1"
+
+  if [[ "$leave_stopped" -eq 1 ]]; then
+    printf 'leaving source deployment stopped because --leave-stopped was set\n'
+    return
+  fi
+
+  kubectl scale deploy "$deployment" -n "$namespace" --replicas="$original_replicas" >/dev/null 2>&1 || true
+}
+
+cold_copy() {
+  [[ "$confirm_stop_source" -eq 1 ]] || die "--cold-copy requires --confirm-stop-source" 2
+
+  require kubectl
+  require jq
+  require sudo
+  require date
+
+  local original_replicas timestamp target pod image copy_method size_bytes selector
+
+  if [[ -z "$pvc" ]]; then
+    pvc="$(discover_state_pvc || true)"
+  fi
+  [[ -n "$pvc" ]] || die "could not discover Woodpecker state PVC; pass --pvc" 2
+
+  selector="$(deployment_selector)"
+  original_replicas="$(kubectl get deploy "$deployment" -n "$namespace" -o jsonpath='{.spec.replicas}')"
+  if [[ -z "$original_replicas" ]]; then
+    original_replicas=1
+  fi
+
+  timestamp="$(timestamp_utc)"
+  target="${target_base}/cold-copies/${deployment}-${timestamp}"
+  pod="${deployment}-state-copy-${timestamp,,}"
+  image="$(kubectl get deploy "$deployment" -n "$namespace" -o jsonpath='{.spec.template.spec.containers[0].image}')"
+
+  if run_sudo test -e "$target" && [[ "$confirm_overwrite_target" -ne 1 ]]; then
+    die "refusing to overwrite existing target: $target" 2
+  fi
+
+  cleanup() {
+    local exit_code=$?
+    if [[ "$keep_pod" -ne 1 ]]; then
+      kubectl delete pod "$pod" -n "$namespace" --ignore-not-found --wait=false >/dev/null 2>&1 || true
+    fi
+    restore_original_replicas "$original_replicas"
+    exit "$exit_code"
+  }
+  trap cleanup EXIT
+
+  printf 'stopping source deployment %s/%s for cold copy...\n' "$namespace" "$deployment"
+  kubectl scale deploy "$deployment" -n "$namespace" --replicas=0
+  kubectl rollout status deploy "$deployment" -n "$namespace" --timeout=180s
+  wait_deployment_pods_gone "$selector"
+
+  run_sudo install -d -o "$(id -u)" -g "$(id -g)" "$target"
+
+  cat <<EOF | kubectl apply -n "$namespace" -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ${pod}
+spec:
+  restartPolicy: Never
+  containers:
+    - name: copy
+      image: ${copy_image}
+      command: ["sh", "-c", "sleep 3600"]
+      volumeMounts:
+        - name: state
+          mountPath: ${state_path}
+          readOnly: true
+  volumes:
+    - name: state
+      persistentVolumeClaim:
+        claimName: ${pvc}
+        readOnly: true
+EOF
+
+  kubectl wait pod "$pod" -n "$namespace" --for=condition=Ready --timeout=180s
+
+  printf 'copying %s to %s/state with kubectl cp...\n' "$state_path" "$target"
+  if kubectl cp "${namespace}/${pod}:${state_path}" "${target}/state"; then
+    copy_method="kubectl-cp"
+  else
+    printf 'kubectl cp failed; retrying with tar streaming fallback...\n' >&2
+    run_sudo rm -rf "${target}/state"
+    run_sudo mkdir -p "${target}/state"
+    kubectl exec "$pod" -n "$namespace" -- tar -C "$state_path" -cf - . | run_sudo tar -C "${target}/state" -xf -
+    copy_method="tar-stream"
+  fi
+
+  size_bytes="$(run_sudo du -sb "${target}/state" | awk '{print $1}')"
+  write_manifest "$target" "${target}/state" "$copy_method" "$image" "$size_bytes"
+
+  if [[ "$keep_pod" -ne 1 ]]; then
+    kubectl delete pod "$pod" -n "$namespace" --ignore-not-found --wait=false >/dev/null 2>&1 || true
+  fi
+  restore_original_replicas "$original_replicas"
+  trap - EXIT
+
+  printf 'Woodpecker cold copy complete: %s\n' "$target"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --discover)
+      set_mode discover
+      shift
+      ;;
+    --cold-copy)
+      set_mode cold-copy
+      shift
+      ;;
+    --namespace)
+      namespace="$2"
+      shift 2
+      ;;
+    --deployment)
+      deployment="$2"
+      shift 2
+      ;;
+    --pvc)
+      pvc="$2"
+      shift 2
+      ;;
+    --state-path)
+      state_path="$2"
+      shift 2
+      ;;
+    --target-base)
+      target_base="$2"
+      shift 2
+      ;;
+    --copy-image)
+      copy_image="$2"
+      shift 2
+      ;;
+    --confirm-stop-source)
+      confirm_stop_source=1
+      shift
+      ;;
+    --confirm-overwrite-target)
+      confirm_overwrite_target=1
+      shift
+      ;;
+    --leave-stopped)
+      leave_stopped=1
+      shift
+      ;;
+    --keep-pod)
+      keep_pod=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage
+      exit 2
+      ;;
+  esac
+done
+
+case "$mode" in
+  discover)
+    discover
+    ;;
+  cold-copy)
+    cold_copy
+    ;;
+  "")
+    usage
+    exit 2
+    ;;
+  *)
+    die "unknown mode: $mode" 2
+    ;;
+esac

@@ -90,9 +90,11 @@
   forgejoDumpRestoreSmoke = pkgs.writeScriptBin "kosmos-forgejo-dump-restore-smoke" (builtins.readFile ../../scripts/forgejo-dump-restore-smoke);
   forgejoHttpsGitSmoke = pkgs.writeScriptBin "kosmos-forgejo-https-git-smoke" (builtins.readFile ../../scripts/forgejo-https-git-smoke);
   forgejoK8sPullSecretSmoke = pkgs.writeScriptBin "kosmos-forgejo-k8s-pull-secret-smoke" (builtins.readFile ../../scripts/forgejo-k8s-pull-secret-smoke);
+  forgejoK3sMigration = pkgs.writeScriptBin "kosmos-forgejo-k3s-migration" (builtins.readFile ../../scripts/forgejo-k3s-migration);
   forgejoMigrationDryRun = pkgs.writeScriptBin "kosmos-forgejo-migration-dry-run" (builtins.readFile ../../scripts/forgejo-migration-dry-run);
   forgejoRestoreSmoke = pkgs.writeScriptBin "kosmos-forgejo-restore-smoke" (builtins.readFile ../../scripts/forgejo-restore-smoke);
   woodpeckerDaggerJobSmoke = pkgs.writeScriptBin "kosmos-woodpecker-dagger-job-smoke" (builtins.readFile ../../scripts/woodpecker-dagger-job-smoke);
+  woodpeckerK3sMigration = pkgs.writeScriptBin "kosmos-woodpecker-k3s-migration" (builtins.readFile ../../scripts/woodpecker-k3s-migration);
   woodpeckerPreflight = pkgs.writeScriptBin "kosmos-woodpecker-preflight" (builtins.readFile ../../scripts/woodpecker-preflight);
 in {
   wsl = {
@@ -127,12 +129,14 @@ in {
       forgejoDumpRestoreSmoke
       forgejoHttpsGitSmoke
       forgejoK8sPullSecretSmoke
+      forgejoK3sMigration
       forgejoMigrationDryRun
       forgejoRestoreSmoke
       k3d
       proxyEnv
       pkgsUnstable.woodpecker-cli
       woodpeckerDaggerJobSmoke
+      woodpeckerK3sMigration
       woodpeckerPreflight
     ];
   };

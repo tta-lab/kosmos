@@ -173,6 +173,94 @@ starts a temporary Forgejo on loopback, and checks its health/login endpoints.
 Off-root backup replication is intentionally deferred; see
 [wsl-data-disk-notes.md](./wsl-data-disk-notes.md).
 
+## k3s Forgejo Migration to WSL
+
+The migration path from the existing k3s Forgejo into WSL is intentionally
+simple for V1 because this instance is currently single-user. Use a maintenance
+window: pause agents, avoid git pushes, stop the source deployment, copy the PVC,
+then verify the copy before any cutover.
+
+Discovery is read-only and writes a report under `/var/backup/forgejo-k3s`:
+
+```bash
+kosmos-forgejo-k3s-migration --discover
+```
+
+The report records the source namespace, deployment, PVC, image, app.ini path,
+database type/path, repository root, package path, LFS, attachments, avatars, and
+repo archive path. It reads `app.ini` from the running source pod instead of
+assuming those paths.
+
+During a maintenance window, create a cold copy:
+
+```bash
+kosmos-forgejo-k3s-migration --cold-copy --confirm-stop-source
+```
+
+The script scales `devops/forgejo` to zero, mounts the
+`gitea-shared-storage` PVC read-only in a temporary pod, and tries `kubectl cp`
+first:
+
+```text
+kubectl cp devops/<copy-pod>:/data /var/backup/forgejo-k3s/cold-copies/<timestamp>/data
+```
+
+If `kubectl cp` fails, it falls back to explicit tar streaming from the same
+read-only pod. The original replica count is restored on exit unless
+`--leave-stopped` is set. Each copy gets a `manifest.json` recording the source
+image, PVC, copy method, app.ini checksum, copy path, and byte count.
+
+Validate a copy before treating it as usable:
+
+```bash
+kosmos-forgejo-k3s-migration \
+  --restore-smoke /var/backup/forgejo-k3s/cold-copies/<timestamp>/data
+```
+
+Before cutover, use the preflight wrapper. It requires the manifest, checks that
+package data exists, then runs the restore smoke:
+
+```bash
+kosmos-forgejo-k3s-migration \
+  --cutover-preflight \
+  --copy-dir /var/backup/forgejo-k3s/cold-copies/<timestamp>/data
+```
+
+`forgejo dump` is still useful as a secondary archive, but the cold `/data` copy
+is the primary migration artifact because it preserves SQLite, repositories, LFS,
+attachments, avatars, and package blobs in the source layout:
+
+```bash
+kosmos-forgejo-k3s-migration --backup-live-dump
+```
+
+## k3s Woodpecker Migration to WSL
+
+Start with discovery. The script records deployment shape, image, state mount,
+and database-related environment variable names, but it never prints secret
+values:
+
+```bash
+kosmos-woodpecker-k3s-migration --discover
+```
+
+If the old Woodpecker state is worth keeping, copy it during a maintenance
+window:
+
+```bash
+kosmos-woodpecker-k3s-migration --cold-copy --confirm-stop-source
+```
+
+The script stops the source server deployment, discovers the PVC mounted at
+`/var/lib/woodpecker` unless `--pvc` is passed, tries `kubectl cp`, falls back to
+tar streaming if needed, writes a manifest, and restores the original replica
+count on exit. Secrets still move through agenix; do not copy plaintext cluster
+env into WSL state.
+
+If the source Woodpecker state is small or disposable, prefer a clean WSL
+Woodpecker setup and manually re-enable repos. The must-keep system of record is
+Forgejo; Woodpecker history is useful but not critical.
+
 If the public hostname does not reach the WSL tunnel, route it to the `nuc-wsl`
 Cloudflare tunnel:
 

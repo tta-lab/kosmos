@@ -1,0 +1,588 @@
+#!/usr/bin/env bash
+# shellcheck disable=SC2016
+set -euo pipefail
+
+namespace="devops"
+deployment="forgejo"
+pvc="gitea-shared-storage"
+target_base="/var/backup/forgejo-k3s"
+copy_image="busybox:1.36"
+copy_dir=""
+mode=""
+confirm_stop_source=0
+confirm_overwrite_target=0
+leave_stopped=0
+keep_pod=0
+restore_port="13000"
+
+usage() {
+  cat >&2 <<'EOF'
+usage: kosmos-forgejo-k3s-migration --discover
+       kosmos-forgejo-k3s-migration --backup-live-dump
+       kosmos-forgejo-k3s-migration --cold-copy --confirm-stop-source
+       kosmos-forgejo-k3s-migration --restore-smoke <copy-dir>
+       kosmos-forgejo-k3s-migration --cutover-preflight --copy-dir <copy-dir>
+
+Options:
+  --namespace <name>              Source namespace. Default: devops
+  --deployment <name>             Source Forgejo deployment. Default: forgejo
+  --pvc <name>                    Source PVC mounted as /data. Default: gitea-shared-storage
+  --target-base <path>            WSL backup root. Default: /var/backup/forgejo-k3s
+  --copy-image <image>            Temporary pod image with tar. Default: busybox:1.36
+  --copy-dir <path>               Existing cold-copy directory for restore/cutover checks
+  --port <port>                   Temporary restore smoke port. Default: 13000
+  --confirm-stop-source           Required with --cold-copy
+  --confirm-overwrite-target      Allow copying into an existing target directory
+  --leave-stopped                 Keep source deployment stopped after copy
+  --keep-pod                      Keep temporary copy pod for inspection
+
+Cold copy behavior:
+  The source deployment is scaled to zero, the PVC is mounted read-only, and
+  kubectl cp is tried first. If kubectl cp fails, the script uses tar streaming fallback
+  from the same read-only pod. A manifest records copy_method as
+  kubectl-cp or tar-stream.
+EOF
+}
+
+die() {
+  printf '%s\n' "$1" >&2
+  exit "${2:-1}"
+}
+
+require() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    die "missing required command: $1"
+  fi
+}
+
+set_mode() {
+  if [[ -n "$mode" ]]; then
+    die "choose exactly one migration mode" 2
+  fi
+  mode="$1"
+}
+
+run_sudo() {
+  if [[ "$(id -u)" -eq 0 ]]; then
+    "$@"
+  else
+    sudo "$@"
+  fi
+}
+
+timestamp_utc() {
+  date -u +%Y%m%dT%H%M%SZ
+}
+
+write_manifest() {
+  local path="$1"
+  local kind="$2"
+  local artifact="$3"
+  local copy_method="$4"
+  local restore_smoke_result="${5:-not-run}"
+  local image="${6:-unknown}"
+  local app_ini_sha="${7:-unknown}"
+  local size_bytes="${8:-unknown}"
+  local manifest="${path}/manifest.json"
+
+  run_sudo mkdir -p "$path"
+  jq -n \
+    --arg timestamp "$(timestamp_utc)" \
+    --arg kind "$kind" \
+    --arg namespace "$namespace" \
+    --arg deployment "$deployment" \
+    --arg pvc "$pvc" \
+    --arg image "$image" \
+    --arg app_ini_sha256 "$app_ini_sha" \
+    --arg artifact "$artifact" \
+    --arg copy_method "$copy_method" \
+    --arg size_bytes "$size_bytes" \
+    --arg restore_smoke_result "$restore_smoke_result" \
+    '{
+      timestamp: $timestamp,
+      kind: $kind,
+      source: {
+        namespace: $namespace,
+        deployment: $deployment,
+        pvc: $pvc,
+        image: $image,
+        app_ini_sha256: $app_ini_sha256
+      },
+      artifact: $artifact,
+      copy_method: $copy_method,
+      size_bytes: $size_bytes,
+      restore_smoke_result: $restore_smoke_result
+    }' | run_sudo tee "$manifest" >/dev/null
+  printf 'manifest: %s\n' "$manifest"
+}
+
+deployment_selector() {
+  local selector
+  selector="$(
+    kubectl get deploy "$deployment" -n "$namespace" -o json 2>/dev/null |
+      jq -r '.spec.selector.matchLabels // {} | to_entries | map("\(.key)=\(.value)") | join(",")'
+  )"
+  if [[ -z "$selector" ]]; then
+    selector="app.kubernetes.io/name=forgejo,app.kubernetes.io/instance=forgejo"
+  fi
+  printf '%s\n' "$selector"
+}
+
+source_pod() {
+  local selector
+
+  selector="$(deployment_selector)"
+
+  kubectl get pod -n "$namespace" -l "$selector" \
+    --field-selector=status.phase=Running \
+    -o jsonpath='{.items[0].metadata.name}'
+}
+
+wait_deployment_pods_gone() {
+  local selector="$1"
+  local deadline=$((SECONDS + 180))
+  local count
+
+  while [[ "$SECONDS" -lt "$deadline" ]]; do
+    count="$(
+      kubectl get pod -n "$namespace" -l "$selector" -o json |
+        jq -r '.items | length'
+    )"
+    if [[ "$count" == "0" ]]; then
+      return 0
+    fi
+    printf 'waiting for %s pod(s) matching %s to terminate...\n' "$count" "$selector"
+    sleep 3
+  done
+
+  die "timed out waiting for source pods matching ${selector} to terminate"
+}
+
+find_app_ini_in_pod() {
+  local pod="$1"
+
+  kubectl exec "$pod" -n "$namespace" -- sh -eu -c '
+    for path in \
+      /data/gitea/conf/app.ini \
+      /data/forgejo/conf/app.ini \
+      /data/custom/conf/app.ini \
+      /data/app.ini \
+      /etc/forgejo/app.ini \
+      /etc/gitea/app.ini
+    do
+      if [ -f "$path" ]; then
+        printf "%s\n" "$path"
+        exit 0
+      fi
+    done
+    exit 1
+  '
+}
+
+app_ini_value() {
+  local file="$1"
+  local section="$2"
+  local key="$3"
+
+  awk -v want_section="$section" -v want_key="$key" '
+    /^[[:space:]]*\[/ {
+      current=$0
+      gsub(/^[[:space:]]*\[/, "", current)
+      gsub(/\][[:space:]]*$/, "", current)
+      next
+    }
+    current == want_section {
+      split($0, parts, "=")
+      key=parts[1]
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", key)
+      if (key == want_key) {
+        value=substr($0, index($0, "=") + 1)
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+        print value
+        exit
+      }
+    }
+  ' "$file"
+}
+
+discover() {
+  require kubectl
+  require jq
+  require mktemp
+  require sha256sum
+
+  local report_dir report pod app_ini tmp_app image replicas ready pvc_status pvc_size db_type db_path repo_root package_path lfs_path attachment_path avatar_path repo_avatar_path repo_archive_path
+
+  report_dir="${target_base}/reports"
+  run_sudo mkdir -p "$report_dir"
+  report="${report_dir}/forgejo-${namespace}-${deployment}-$(timestamp_utc).md"
+
+  image="$(kubectl get deploy "$deployment" -n "$namespace" -o jsonpath='{.spec.template.spec.containers[0].image}')"
+  replicas="$(kubectl get deploy "$deployment" -n "$namespace" -o jsonpath='{.spec.replicas}')"
+  ready="$(kubectl get deploy "$deployment" -n "$namespace" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || true)"
+  pvc_status="$(kubectl get pvc "$pvc" -n "$namespace" -o jsonpath='{.status.phase}')"
+  pvc_size="$(kubectl get pvc "$pvc" -n "$namespace" -o jsonpath='{.spec.resources.requests.storage}')"
+  pod="$(source_pod || true)"
+
+  tmp_app="$(mktemp)"
+  app_ini="not-found"
+  db_type="unknown"
+  db_path="unknown"
+  repo_root="unknown"
+  package_path="unknown"
+  lfs_path="unknown"
+  attachment_path="unknown"
+  avatar_path="unknown"
+  repo_avatar_path="unknown"
+  repo_archive_path="unknown"
+
+  if [[ -n "$pod" ]]; then
+    app_ini="$(find_app_ini_in_pod "$pod" || true)"
+    if [[ -n "$app_ini" ]]; then
+      kubectl exec "$pod" -n "$namespace" -- cat "$app_ini" >"$tmp_app"
+      db_type="$(app_ini_value "$tmp_app" database DB_TYPE || true)"
+      db_path="$(app_ini_value "$tmp_app" database PATH || true)"
+      repo_root="$(app_ini_value "$tmp_app" repository ROOT || true)"
+      package_path="$(app_ini_value "$tmp_app" packages STORAGE_PATH || true)"
+      lfs_path="$(app_ini_value "$tmp_app" lfs PATH || true)"
+      attachment_path="$(app_ini_value "$tmp_app" attachment PATH || true)"
+      avatar_path="$(app_ini_value "$tmp_app" picture AVATAR_UPLOAD_PATH || true)"
+      repo_avatar_path="$(app_ini_value "$tmp_app" repository 'AVATAR_UPLOAD_PATH' || true)"
+      repo_archive_path="$(app_ini_value "$tmp_app" repository.archive STORAGE_PATH || true)"
+    fi
+  fi
+
+  {
+    printf '# Forgejo k3s discovery\n\n'
+    printf '- namespace: `%s`\n' "$namespace"
+    printf '- deployment: `%s`\n' "$deployment"
+    printf '- replicas: `%s`\n' "${replicas:-unknown}"
+    printf '- ready replicas: `%s`\n' "${ready:-0}"
+    printf '- image: `%s`\n' "$image"
+    printf '- pvc: `%s`\n' "$pvc"
+    printf '- pvc status: `%s`\n' "$pvc_status"
+    printf '- pvc size: `%s`\n' "$pvc_size"
+    printf '- running pod inspected: `%s`\n' "${pod:-none}"
+    printf '- app.ini: `%s`\n' "${app_ini:-not-found}"
+    printf '- app.ini sha256: `%s`\n' "$(if [[ -s "$tmp_app" ]]; then sha256sum "$tmp_app" | awk '{print $1}'; else printf unknown; fi)"
+    printf '\n## app.ini paths\n\n'
+    printf '- database type: `%s`\n' "${db_type:-unknown}"
+    printf '- database path: `%s`\n' "${db_path:-unknown}"
+    printf '- repository root: `%s`\n' "${repo_root:-unknown}"
+    printf '- package storage path: `%s`\n' "${package_path:-unknown}"
+    printf '- LFS path: `%s`\n' "${lfs_path:-unknown}"
+    printf '- attachment path: `%s`\n' "${attachment_path:-unknown}"
+    printf '- avatar path: `%s`\n' "${avatar_path:-unknown}"
+    printf '- repo avatar path: `%s`\n' "${repo_avatar_path:-unknown}"
+    printf '- repo archive path: `%s`\n' "${repo_archive_path:-unknown}"
+  } | run_sudo tee "$report"
+
+  rm -f "$tmp_app"
+  printf 'report: %s\n' "$report"
+}
+
+backup_live_dump() {
+  require kubectl
+  require jq
+
+  local pod app_ini bin timestamp dump_name remote_dump target_dir target_file image app_sha tmp_app size_bytes
+
+  pod="$(source_pod)"
+  [[ -n "$pod" ]] || die "no running source pod found for live dump"
+  app_ini="$(find_app_ini_in_pod "$pod")"
+  bin="$(
+    kubectl exec "$pod" -n "$namespace" -- sh -eu -c '
+      if command -v forgejo >/dev/null 2>&1; then
+        command -v forgejo
+      elif command -v gitea >/dev/null 2>&1; then
+        command -v gitea
+      else
+        exit 1
+      fi
+    '
+  )"
+
+  timestamp="$(timestamp_utc)"
+  dump_name="forgejo-source-dump-${timestamp}.tar.zst"
+  remote_dump="/tmp/${dump_name}"
+  target_dir="${target_base}/dumps/${timestamp}"
+  target_file="${target_dir}/${dump_name}"
+
+  cleanup_live_dump() {
+    kubectl exec "$pod" -n "$namespace" -- rm -f "$remote_dump" >/dev/null 2>&1 || true
+  }
+  trap cleanup_live_dump EXIT
+
+  printf 'running source dump in %s/%s using %s...\n' "$namespace" "$pod" "$bin"
+  kubectl exec "$pod" -n "$namespace" -- sh -eu -c \
+    "cd /tmp && rm -f '$remote_dump' && '$bin' --config '$app_ini' dump --type tar.zst --file '$remote_dump'"
+
+  run_sudo install -d -o "$(id -u)" -g "$(id -g)" "$target_dir"
+  kubectl cp "${namespace}/${pod}:${remote_dump}" "$target_file"
+  cleanup_live_dump
+  trap - EXIT
+
+  image="$(kubectl get deploy "$deployment" -n "$namespace" -o jsonpath='{.spec.template.spec.containers[0].image}')"
+  tmp_app="$(mktemp)"
+  kubectl exec "$pod" -n "$namespace" -- cat "$app_ini" >"$tmp_app"
+  app_sha="$(sha256sum "$tmp_app" | awk '{print $1}')"
+  rm -f "$tmp_app"
+  size_bytes="$(stat -c '%s' "$target_file")"
+  write_manifest "$target_dir" "forgejo-live-dump" "$target_file" "forgejo-dump" "not-run" "$image" "$app_sha" "$size_bytes"
+  printf 'dump complete: %s\n' "$target_file"
+}
+
+restore_original_replicas() {
+  local original_replicas="$1"
+
+  if [[ "$leave_stopped" -eq 1 ]]; then
+    printf 'leaving source deployment stopped because --leave-stopped was set\n'
+    return
+  fi
+
+  kubectl scale deploy "$deployment" -n "$namespace" --replicas="$original_replicas" >/dev/null 2>&1 || true
+}
+
+cold_copy() {
+  [[ "$confirm_stop_source" -eq 1 ]] || die "--cold-copy requires --confirm-stop-source" 2
+
+  require kubectl
+  require jq
+  require sudo
+  require date
+
+  local original_replicas timestamp target pod image tmp_app app_ini app_sha copy_method size_bytes selector
+
+  selector="$(deployment_selector)"
+  original_replicas="$(kubectl get deploy "$deployment" -n "$namespace" -o jsonpath='{.spec.replicas}')"
+  if [[ -z "$original_replicas" ]]; then
+    original_replicas=1
+  fi
+
+  timestamp="$(timestamp_utc)"
+  target="${target_base}/cold-copies/${deployment}-${timestamp}"
+  pod="${deployment}-data-copy-${timestamp,,}"
+  image="$(kubectl get deploy "$deployment" -n "$namespace" -o jsonpath='{.spec.template.spec.containers[0].image}')"
+
+  if run_sudo test -e "$target" && [[ "$confirm_overwrite_target" -ne 1 ]]; then
+    die "refusing to overwrite existing target: $target" 2
+  fi
+
+  cleanup() {
+    local exit_code=$?
+    if [[ "$keep_pod" -ne 1 ]]; then
+      kubectl delete pod "$pod" -n "$namespace" --ignore-not-found --wait=false >/dev/null 2>&1 || true
+    fi
+    restore_original_replicas "$original_replicas"
+    exit "$exit_code"
+  }
+  trap cleanup EXIT
+
+  printf 'stopping source deployment %s/%s for cold copy...\n' "$namespace" "$deployment"
+  kubectl scale deploy "$deployment" -n "$namespace" --replicas=0
+  kubectl rollout status deploy "$deployment" -n "$namespace" --timeout=180s
+  wait_deployment_pods_gone "$selector"
+
+  run_sudo install -d -o "$(id -u)" -g "$(id -g)" "$target"
+
+  cat <<EOF | kubectl apply -n "$namespace" -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ${pod}
+spec:
+  restartPolicy: Never
+  containers:
+    - name: copy
+      image: ${copy_image}
+      command: ["sh", "-c", "sleep 3600"]
+      volumeMounts:
+        - name: data
+          mountPath: /data
+          readOnly: true
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: ${pvc}
+        readOnly: true
+EOF
+
+  kubectl wait pod "$pod" -n "$namespace" --for=condition=Ready --timeout=180s
+
+  printf 'copying /data to %s/data with kubectl cp...\n' "$target"
+  if kubectl cp "${namespace}/${pod}:/data" "${target}/data"; then
+    copy_method="kubectl-cp"
+  else
+    printf 'kubectl cp failed; retrying with tar streaming fallback...\n' >&2
+    run_sudo rm -rf "${target}/data"
+    run_sudo mkdir -p "${target}/data"
+    kubectl exec "$pod" -n "$namespace" -- tar -C /data -cf - . | run_sudo tar -C "${target}/data" -xf -
+    copy_method="tar-stream"
+  fi
+
+  tmp_app="$(mktemp)"
+  app_ini="$(find_app_ini_in_pod "$pod" || true)"
+  app_sha="unknown"
+  if [[ -n "$app_ini" ]]; then
+    kubectl exec "$pod" -n "$namespace" -- cat "$app_ini" >"$tmp_app"
+    app_sha="$(sha256sum "$tmp_app" | awk '{print $1}')"
+  fi
+  rm -f "$tmp_app"
+  size_bytes="$(run_sudo du -sb "${target}/data" | awk '{print $1}')"
+  write_manifest "$target" "forgejo-cold-copy" "${target}/data" "$copy_method" "not-run" "$image" "$app_sha" "$size_bytes"
+
+  if [[ "$keep_pod" -ne 1 ]]; then
+    kubectl delete pod "$pod" -n "$namespace" --ignore-not-found --wait=false >/dev/null 2>&1 || true
+  fi
+  restore_original_replicas "$original_replicas"
+  trap - EXIT
+
+  printf 'cold copy complete: %s\n' "$target"
+}
+
+restore_smoke() {
+  local script
+
+  [[ -n "$copy_dir" ]] || die "--restore-smoke requires a copy directory" 2
+
+  if command -v kosmos-forgejo-restore-smoke >/dev/null 2>&1; then
+    script="kosmos-forgejo-restore-smoke"
+  else
+    script="$(dirname "$0")/forgejo-restore-smoke"
+  fi
+
+  "$script" --copy-dir "$copy_dir" --port "$restore_port"
+}
+
+cutover_preflight() {
+  local root_dir restore_dir manifest
+
+  [[ -n "$copy_dir" ]] || die "--cutover-preflight requires --copy-dir" 2
+  [[ -d "$copy_dir" ]] || die "missing copy directory: $copy_dir"
+
+  if [[ -d "${copy_dir}/data" ]]; then
+    root_dir="$copy_dir"
+    restore_dir="${copy_dir}/data"
+  else
+    root_dir="$(dirname "$copy_dir")"
+    restore_dir="$copy_dir"
+  fi
+
+  manifest="${root_dir}/manifest.json"
+  [[ -f "$manifest" ]] || die "missing copy manifest: $manifest"
+
+  if [[ ! -d "${restore_dir}/packages" && ! -d "${restore_dir}/gitea/packages" && ! -d "${restore_dir}/forgejo/packages" ]]; then
+    die "package data was not found under copied data directory"
+  fi
+
+  copy_dir="$restore_dir"
+  restore_smoke
+  printf 'cutover preflight passed for %s\n' "$root_dir"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --discover)
+      set_mode discover
+      shift
+      ;;
+    --backup-live-dump)
+      set_mode backup-live-dump
+      shift
+      ;;
+    --cold-copy)
+      set_mode cold-copy
+      shift
+      ;;
+    --restore-smoke)
+      set_mode restore-smoke
+      if [[ $# -gt 1 && "$2" != --* ]]; then
+        copy_dir="$2"
+        shift 2
+      else
+        shift
+      fi
+      ;;
+    --cutover-preflight)
+      set_mode cutover-preflight
+      shift
+      ;;
+    --namespace)
+      namespace="$2"
+      shift 2
+      ;;
+    --deployment)
+      deployment="$2"
+      shift 2
+      ;;
+    --pvc)
+      pvc="$2"
+      shift 2
+      ;;
+    --target-base)
+      target_base="$2"
+      shift 2
+      ;;
+    --copy-image)
+      copy_image="$2"
+      shift 2
+      ;;
+    --copy-dir)
+      copy_dir="$2"
+      shift 2
+      ;;
+    --port)
+      restore_port="$2"
+      shift 2
+      ;;
+    --confirm-stop-source)
+      confirm_stop_source=1
+      shift
+      ;;
+    --confirm-overwrite-target)
+      confirm_overwrite_target=1
+      shift
+      ;;
+    --leave-stopped)
+      leave_stopped=1
+      shift
+      ;;
+    --keep-pod)
+      keep_pod=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage
+      exit 2
+      ;;
+  esac
+done
+
+case "$mode" in
+  discover)
+    discover
+    ;;
+  backup-live-dump)
+    backup_live_dump
+    ;;
+  cold-copy)
+    cold_copy
+    ;;
+  restore-smoke)
+    restore_smoke
+    ;;
+  cutover-preflight)
+    cutover_preflight
+    ;;
+  "")
+    usage
+    exit 2
+    ;;
+  *)
+    die "unknown mode: $mode" 2
+    ;;
+esac
