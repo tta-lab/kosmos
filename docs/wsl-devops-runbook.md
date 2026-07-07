@@ -278,6 +278,18 @@ tar streaming if needed, writes a manifest, and restores the original replica
 count on exit. Secrets still move through agenix; do not copy plaintext cluster
 env into WSL state.
 
+After copying, inspect the state before deciding whether to migrate it:
+
+```bash
+kosmos-woodpecker-k3s-migration \
+  --inspect-copy /var/backup/woodpecker-k3s/cold-copies/<timestamp>
+```
+
+If the copied state contains a SQLite candidate, the script recommends migrating
+the copied state after source shutdown and WSL startup verification. If no DB
+candidate is found, it recommends keeping the clean WSL Woodpecker setup and
+manually re-enabling repositories.
+
 If the source Woodpecker state is small or disposable, prefer a clean WSL
 Woodpecker setup and manually re-enable repos. The must-keep system of record is
 Forgejo; Woodpecker history is useful but not critical.

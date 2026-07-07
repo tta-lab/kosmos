@@ -7,6 +7,7 @@ script="${repo_root}/scripts/woodpecker-k3s-migration"
 bash "$script" --help 2>&1 | grep -q 'usage: kosmos-woodpecker-k3s-migration'
 bash "$script" --help 2>&1 | grep -q -- '--discover'
 bash "$script" --help 2>&1 | grep -q -- '--cold-copy --confirm-stop-source'
+bash "$script" --help 2>&1 | grep -q -- '--inspect-copy <path>'
 bash "$script" --help 2>&1 | grep -q 'kubectl cp'
 bash "$script" --help 2>&1 | grep -q 'secret values are never printed'
 
@@ -21,3 +22,16 @@ grep -q 'copy_method' "$script"
 grep -q 'kubectl-cp' "$script"
 grep -q 'restore_original_replicas' "$script"
 grep -Fq "wait_deployment_pods_gone \"\$selector\"" "$script"
+
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+mkdir -p "${tmp}/copy-with-db/state"
+touch "${tmp}/copy-with-db/state/woodpecker.sqlite"
+bash "$script" --inspect-copy "${tmp}/copy-with-db" >"${tmp}/with-db.out"
+grep -q 'sqlite candidate:' "${tmp}/with-db.out"
+grep -q 'recommendation: migrate copied SQLite state' "${tmp}/with-db.out"
+
+mkdir -p "${tmp}/copy-empty/state"
+bash "$script" --inspect-copy "${tmp}/copy-empty" >"${tmp}/empty.out"
+grep -q 'recommendation: keep clean WSL Woodpecker setup' "${tmp}/empty.out"

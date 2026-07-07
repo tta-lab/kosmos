@@ -9,6 +9,7 @@ state_path="/var/lib/woodpecker"
 target_base="/var/backup/woodpecker-k3s"
 copy_image="busybox:1.36"
 mode=""
+copy_dir=""
 confirm_stop_source=0
 confirm_overwrite_target=0
 leave_stopped=0
@@ -18,11 +19,13 @@ usage() {
   cat >&2 <<'EOF'
 usage: kosmos-woodpecker-k3s-migration --discover
        kosmos-woodpecker-k3s-migration --cold-copy --confirm-stop-source
+       kosmos-woodpecker-k3s-migration --inspect-copy <path>
 
 Options:
   --namespace <name>              Source namespace. Default: devops
   --deployment <name>             Source Woodpecker server deployment. Default: woodpecker-server
   --pvc <name>                    Source PVC. If omitted, discover the claim mounted at /var/lib/woodpecker
+  --copy-dir <path>               Existing cold-copy root or state directory
   --state-path <path>             Woodpecker state path in the pod. Default: /var/lib/woodpecker
   --target-base <path>            WSL backup root. Default: /var/backup/woodpecker-k3s
   --copy-image <image>            Temporary pod image with tar. Default: busybox:1.36
@@ -151,6 +154,56 @@ write_manifest() {
       size_bytes: $size_bytes
     }' | run_sudo tee "${path}/manifest.json" >/dev/null
   printf 'manifest: %s\n' "${path}/manifest.json"
+}
+
+copy_state_dir() {
+  local input="$1"
+
+  if [[ -d "${input}/state" ]]; then
+    printf '%s/state\n' "$input"
+    return 0
+  fi
+
+  printf '%s\n' "$input"
+}
+
+find_sqlite_candidates() {
+  local root="$1"
+
+  find "$root" -maxdepth 3 -type f \( \
+    -name '*.sqlite' -o \
+    -name '*.sqlite3' -o \
+    -name '*.db' \
+  \) | sort
+}
+
+inspect_copy() {
+  local state_dir sqlite_candidates manifest
+
+  [[ -n "$copy_dir" ]] || die "--inspect-copy requires a copy directory" 2
+  [[ -d "$copy_dir" ]] || die "missing copy directory: $copy_dir"
+
+  state_dir="$(copy_state_dir "$copy_dir")"
+  [[ -d "$state_dir" ]] || die "missing Woodpecker state directory: $state_dir"
+
+  manifest="$(dirname "$state_dir")/manifest.json"
+  printf 'Woodpecker copied state inspection\n'
+  printf 'state directory: %s\n' "$state_dir"
+  if [[ -f "$manifest" ]]; then
+    printf 'manifest: %s\n' "$manifest"
+  else
+    printf 'manifest: not found\n'
+  fi
+
+  sqlite_candidates="$(find_sqlite_candidates "$state_dir")"
+  if [[ -n "$sqlite_candidates" ]]; then
+    printf '%s\n' "$sqlite_candidates" | sed 's/^/sqlite candidate: /'
+    printf 'recommendation: migrate copied SQLite state after stopping the source server and verifying WSL Woodpecker startup\n'
+    return 0
+  fi
+
+  printf 'sqlite candidate: none found\n'
+  printf 'recommendation: keep clean WSL Woodpecker setup and manually re-enable repositories\n'
 }
 
 discover() {
@@ -325,6 +378,15 @@ while [[ $# -gt 0 ]]; do
       set_mode cold-copy
       shift
       ;;
+    --inspect-copy)
+      set_mode inspect-copy
+      if [[ $# -gt 1 && "$2" != --* ]]; then
+        copy_dir="$2"
+        shift 2
+      else
+        shift
+      fi
+      ;;
     --namespace)
       namespace="$2"
       shift 2
@@ -335,6 +397,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --pvc)
       pvc="$2"
+      shift 2
+      ;;
+    --copy-dir)
+      copy_dir="$2"
       shift 2
       ;;
     --state-path)
@@ -382,6 +448,9 @@ case "$mode" in
     ;;
   cold-copy)
     cold_copy
+    ;;
+  inspect-copy)
+    inspect_copy
     ;;
   "")
     usage
