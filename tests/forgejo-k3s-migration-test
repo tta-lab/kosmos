@@ -6,6 +6,9 @@ script="${repo_root}/scripts/forgejo-k3s-migration"
 
 bash "$script" --help 2>&1 | grep -q 'usage: kosmos-forgejo-k3s-migration'
 bash "$script" --help 2>&1 | grep -q -- '--cold-copy --confirm-stop-source'
+bash "$script" --help 2>&1 | grep -q -- '--known-user <name>'
+bash "$script" --help 2>&1 | grep -q -- '--clone-repo <owner/repo>'
+bash "$script" --help 2>&1 | grep -q -- '--require-package-data'
 bash "$script" --help 2>&1 | grep -q 'kubectl cp'
 bash "$script" --help 2>&1 | grep -q 'tar streaming fallback'
 
@@ -28,3 +31,4 @@ grep -q 'restore_original_replicas' "$script"
 grep -Fq "root_dir=\"\$(dirname \"\$copy_dir\")\"" "$script"
 grep -Fq "wait_deployment_pods_gone \"\$selector\"" "$script"
 grep -q 'cleanup_live_dump' "$script"
+grep -q 'restore_args' "$script"

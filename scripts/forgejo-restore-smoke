@@ -7,6 +7,10 @@ scratch_dir="${FORGEJO_RESTORE_SCRATCH_DIR:-/tmp/kosmos-forgejo-restore-smoke}"
 port="${FORGEJO_RESTORE_PORT:-13000}"
 timeout_seconds="${FORGEJO_RESTORE_TIMEOUT_SECONDS:-90}"
 keep_scratch=0
+known_users=()
+known_orgs=()
+clone_repos=()
+require_package_data=0
 
 usage() {
   cat >&2 <<'EOF'
@@ -16,13 +20,20 @@ Run a non-production restore smoke against an existing cold-copy directory. The
 script refuses to run against the live Forgejo state directory. It creates a
 temporary app.ini with paths rewritten to the copy directory, runs
 `forgejo doctor check --all`, starts Forgejo on a temporary loopback port, checks
-health/login endpoints, then stops the temporary process.
+health/login endpoints, optionally verifies known users/orgs, optionally clones
+known public repositories, optionally verifies package blobs, then stops the
+temporary process.
 
 Options:
   --copy-dir <path>       Existing cold-copy Forgejo data directory
   --state-dir <path>      Live Forgejo state dir to refuse. Default: /var/lib/forgejo
   --scratch-dir <path>    Scratch dir for patched config and logs
   --port <port>           Temporary local port. Default: 13000
+  --known-user <name>     Verify a known user through /api/v1/users/<name>
+  --known-org <name>      Verify a known org through /api/v1/orgs/<name>
+  --clone-repo <owner/repo>
+                          Clone a known public repo from the temporary instance
+  --require-package-data  Require package blobs/directories in the copied data
   --keep-scratch          Keep scratch dir after exit
 EOF
 }
@@ -44,6 +55,22 @@ while [[ $# -gt 0 ]]; do
     --port)
       port="$2"
       shift 2
+      ;;
+    --known-user)
+      known_users+=("$2")
+      shift 2
+      ;;
+    --known-org)
+      known_orgs+=("$2")
+      shift 2
+      ;;
+    --clone-repo)
+      clone_repos+=("$2")
+      shift 2
+      ;;
+    --require-package-data)
+      require_package_data=1
+      shift
       ;;
     --keep-scratch)
       keep_scratch=1
@@ -173,9 +200,76 @@ wait_for_http() {
   return 1
 }
 
+require_http_200() {
+  local path="$1"
+  local status
+
+  status="$(
+    curl --silent --output /dev/null --write-out '%{http_code}' "http://127.0.0.1:${port}${path}" || true
+  )"
+  if [[ "$status" != "200" ]]; then
+    printf 'expected HTTP 200 for %s on temporary Forgejo port %s, got %s\n' "$path" "$port" "$status" >&2
+    return 1
+  fi
+}
+
+verify_known_user() {
+  local user_name="$1"
+
+  require_http_200 "/api/v1/users/${user_name}"
+  printf 'verified known Forgejo user: %s\n' "$user_name"
+}
+
+verify_known_org() {
+  local org_name="$1"
+
+  require_http_200 "/api/v1/orgs/${org_name}"
+  printf 'verified known Forgejo org: %s\n' "$org_name"
+}
+
+verify_clone_repo() {
+  local repo="$1"
+  local clone_name
+  local target
+
+  if [[ "$repo" != */* ]]; then
+    printf 'clone repo must be owner/repo, got: %s\n' "$repo" >&2
+    return 1
+  fi
+
+  clone_name="${repo//\//-}"
+  target="${scratch_dir}/clone-${clone_name}"
+  git -c credential.helper= clone "http://127.0.0.1:${port}/${repo}.git" "$target" >/dev/null 2>&1
+  printf 'verified clone of known Forgejo repo: %s\n' "$repo"
+}
+
+verify_package_data() {
+  local candidate
+
+  for candidate in \
+    packages \
+    data/packages \
+    gitea/packages \
+    forgejo/packages \
+    data/gitea/packages \
+    data/forgejo/packages
+  do
+    if sudo_test -e "${copy_dir_real}/${candidate}"; then
+      printf 'verified package data path: %s/%s\n' "$copy_dir_real" "$candidate"
+      return 0
+    fi
+  done
+
+  printf 'package data was not found under copied Forgejo data: %s\n' "$copy_dir_real" >&2
+  return 1
+}
+
 require awk
 require curl
 require gitea
+if [[ "${#clone_repos[@]}" -gt 0 ]]; then
+  require git
+fi
 require id
 require mkdir
 require realpath
@@ -280,5 +374,21 @@ web_pid="$!"
 
 wait_for_http /api/healthz
 wait_for_http /user/login
+
+if [[ "$require_package_data" -eq 1 ]]; then
+  verify_package_data
+fi
+
+for known_user in "${known_users[@]}"; do
+  verify_known_user "$known_user"
+done
+
+for known_org in "${known_orgs[@]}"; do
+  verify_known_org "$known_org"
+done
+
+for clone_repo in "${clone_repos[@]}"; do
+  verify_clone_repo "$clone_repo"
+done
 
 printf 'Forgejo restore smoke passed for %s on temporary port %s\n' "$copy_dir_real" "$port"

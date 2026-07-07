@@ -217,13 +217,34 @@ kosmos-forgejo-k3s-migration \
   --restore-smoke /var/backup/forgejo-k3s/cold-copies/<timestamp>/data
 ```
 
+For final rehearsal, make the restore smoke prove more than bootability. Add
+known identities and at least one public repo from the source instance:
+
+```bash
+kosmos-forgejo-k3s-migration \
+  --restore-smoke /var/backup/forgejo-k3s/cold-copies/<timestamp>/data \
+  --require-package-data \
+  --known-user neil \
+  --known-org GuionAI \
+  --clone-repo neil/<known-public-repo>
+```
+
+Those checks verify package blob presence on disk, user and org API visibility,
+and HTTP Git clone against the temporary restored Forgejo. Private repos still
+need a separate authenticated clone check after cutover because the restore smoke
+does not read or inject credentials.
+
 Before cutover, use the preflight wrapper. It requires the manifest, checks that
 package data exists, then runs the restore smoke:
 
 ```bash
 kosmos-forgejo-k3s-migration \
   --cutover-preflight \
-  --copy-dir /var/backup/forgejo-k3s/cold-copies/<timestamp>/data
+  --copy-dir /var/backup/forgejo-k3s/cold-copies/<timestamp>/data \
+  --require-package-data \
+  --known-user neil \
+  --known-org GuionAI \
+  --clone-repo neil/<known-public-repo>
 ```
 
 `forgejo dump` is still useful as a secondary archive, but the cold `/data` copy
