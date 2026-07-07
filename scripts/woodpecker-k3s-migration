@@ -79,6 +79,10 @@ deployment_selector() {
   printf '%s\n' "$selector"
 }
 
+deployment_exists() {
+  kubectl get deploy "$deployment" -n "$namespace" >/dev/null 2>&1
+}
+
 source_pod() {
   local selector
 
@@ -213,8 +217,21 @@ discover() {
   local report_dir report image replicas ready detected_pvc pod env_names mounts driver_hint
 
   report_dir="${target_base}/reports"
-  run_sudo mkdir -p "$report_dir"
+  run_sudo install -d -o "$(id -u)" -g "$(id -g)" "$report_dir"
   report="${report_dir}/woodpecker-${namespace}-${deployment}-$(timestamp_utc).md"
+
+  if ! deployment_exists; then
+    {
+      printf '# Woodpecker k3s discovery\n\n'
+      printf -- '- namespace: `%s`\n' "$namespace"
+      printf -- '- deployment: `%s`\n' "$deployment"
+      printf -- '- status: `not found`\n'
+      printf '\n## Recommendation\n\n'
+      printf 'No source Woodpecker deployment was found in this namespace. Keep the clean WSL Woodpecker setup and manually re-enable repositories unless another namespace/deployment is identified.\n'
+    } | tee "$report"
+    printf 'report: %s\n' "$report"
+    return 0
+  fi
 
   image="$(kubectl get deploy "$deployment" -n "$namespace" -o jsonpath='{.spec.template.spec.containers[0].image}')"
   replicas="$(kubectl get deploy "$deployment" -n "$namespace" -o jsonpath='{.spec.replicas}')"
@@ -237,28 +254,28 @@ discover() {
 
   {
     printf '# Woodpecker k3s discovery\n\n'
-    printf '- namespace: `%s`\n' "$namespace"
-    printf '- deployment: `%s`\n' "$deployment"
-    printf '- replicas: `%s`\n' "${replicas:-unknown}"
-    printf '- ready replicas: `%s`\n' "${ready:-0}"
-    printf '- image: `%s`\n' "$image"
-    printf '- running pod inspected: `%s`\n' "${pod:-none}"
-    printf '- state path: `%s`\n' "$state_path"
-    printf '- detected state PVC: `%s`\n' "${detected_pvc:-unknown}"
+    printf -- '- namespace: `%s`\n' "$namespace"
+    printf -- '- deployment: `%s`\n' "$deployment"
+    printf -- '- replicas: `%s`\n' "${replicas:-unknown}"
+    printf -- '- ready replicas: `%s`\n' "${ready:-0}"
+    printf -- '- image: `%s`\n' "$image"
+    printf -- '- running pod inspected: `%s`\n' "${pod:-none}"
+    printf -- '- state path: `%s`\n' "$state_path"
+    printf -- '- detected state PVC: `%s`\n' "${detected_pvc:-unknown}"
     printf '\n## Database signals\n\n'
     printf 'Secret values are never printed. These are only environment variable names.\n\n'
     if [[ -n "$driver_hint" ]]; then
       printf '%s\n' "$driver_hint" | sed 's/^/- `/' | sed 's/$/`/'
     else
-      printf '- `WOODPECKER_DATABASE_DRIVER` not declared directly on the deployment\n'
+      printf -- '- `WOODPECKER_DATABASE_DRIVER` not declared directly on the deployment\n'
     fi
     printf '\n## Volume mounts\n\n'
     if [[ -n "$mounts" ]]; then
       printf '%s\n' "$mounts"
     else
-      printf '- none found on first container\n'
+      printf -- '- none found on first container\n'
     fi
-  } | run_sudo tee "$report"
+  } | tee "$report"
 
   printf 'report: %s\n' "$report"
 }
@@ -283,6 +300,8 @@ cold_copy() {
   require date
 
   local original_replicas timestamp target pod image copy_method size_bytes selector
+
+  deployment_exists || die "source Woodpecker deployment not found: ${namespace}/${deployment}" 2
 
   if [[ -z "$pvc" ]]; then
     pvc="$(discover_state_pvc || true)"

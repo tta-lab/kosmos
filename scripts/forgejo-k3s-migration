@@ -187,6 +187,21 @@ find_app_ini_in_pod() {
   '
 }
 
+pod_first_existing_path() {
+  local pod="$1"
+  shift
+
+  kubectl exec "$pod" -n "$namespace" -- sh -eu -c '
+    for path do
+      if [ -e "$path" ]; then
+        printf "%s\n" "$path"
+        exit 0
+      fi
+    done
+    exit 1
+  ' sh "$@"
+}
+
 app_ini_value() {
   local file="$1"
   local section="$2"
@@ -222,7 +237,7 @@ discover() {
   local report_dir report pod app_ini tmp_app image replicas ready pvc_status pvc_size db_type db_path repo_root package_path lfs_path attachment_path avatar_path repo_avatar_path repo_archive_path
 
   report_dir="${target_base}/reports"
-  run_sudo mkdir -p "$report_dir"
+  run_sudo install -d -o "$(id -u)" -g "$(id -g)" "$report_dir"
   report="${report_dir}/forgejo-${namespace}-${deployment}-$(timestamp_utc).md"
 
   image="$(kubectl get deploy "$deployment" -n "$namespace" -o jsonpath='{.spec.template.spec.containers[0].image}')"
@@ -250,8 +265,37 @@ discover() {
       kubectl exec "$pod" -n "$namespace" -- cat "$app_ini" >"$tmp_app"
       db_type="$(app_ini_value "$tmp_app" database DB_TYPE || true)"
       db_path="$(app_ini_value "$tmp_app" database PATH || true)"
+      if [[ -z "$db_path" ]]; then
+        db_path="$(app_ini_value "$tmp_app" database SQLITE_PATH || true)"
+      fi
+      if [[ -z "$db_path" && "$db_type" == "sqlite3" ]]; then
+        db_path="$(
+          pod_first_existing_path "$pod" \
+            /data/gitea/gitea.db \
+            /data/gitea/data/gitea.db \
+            /data/forgejo/forgejo.db \
+            /data/forgejo/data/forgejo.db \
+            /data/forgejo.db \
+            /data/gitea.db \
+            || true
+        )"
+      fi
       repo_root="$(app_ini_value "$tmp_app" repository ROOT || true)"
       package_path="$(app_ini_value "$tmp_app" packages STORAGE_PATH || true)"
+      if [[ -z "$package_path" ]]; then
+        package_path="$(app_ini_value "$tmp_app" storage.packages PATH || true)"
+      fi
+      if [[ -z "$package_path" ]]; then
+        package_path="$(
+          pod_first_existing_path "$pod" \
+            /data/gitea/packages \
+            /data/gitea/data/packages \
+            /data/forgejo/packages \
+            /data/forgejo/data/packages \
+            /data/packages \
+            || true
+        )"
+      fi
       lfs_path="$(app_ini_value "$tmp_app" lfs PATH || true)"
       attachment_path="$(app_ini_value "$tmp_app" attachment PATH || true)"
       avatar_path="$(app_ini_value "$tmp_app" picture AVATAR_UPLOAD_PATH || true)"
@@ -262,28 +306,28 @@ discover() {
 
   {
     printf '# Forgejo k3s discovery\n\n'
-    printf '- namespace: `%s`\n' "$namespace"
-    printf '- deployment: `%s`\n' "$deployment"
-    printf '- replicas: `%s`\n' "${replicas:-unknown}"
-    printf '- ready replicas: `%s`\n' "${ready:-0}"
-    printf '- image: `%s`\n' "$image"
-    printf '- pvc: `%s`\n' "$pvc"
-    printf '- pvc status: `%s`\n' "$pvc_status"
-    printf '- pvc size: `%s`\n' "$pvc_size"
-    printf '- running pod inspected: `%s`\n' "${pod:-none}"
-    printf '- app.ini: `%s`\n' "${app_ini:-not-found}"
-    printf '- app.ini sha256: `%s`\n' "$(if [[ -s "$tmp_app" ]]; then sha256sum "$tmp_app" | awk '{print $1}'; else printf unknown; fi)"
+    printf -- '- namespace: `%s`\n' "$namespace"
+    printf -- '- deployment: `%s`\n' "$deployment"
+    printf -- '- replicas: `%s`\n' "${replicas:-unknown}"
+    printf -- '- ready replicas: `%s`\n' "${ready:-0}"
+    printf -- '- image: `%s`\n' "$image"
+    printf -- '- pvc: `%s`\n' "$pvc"
+    printf -- '- pvc status: `%s`\n' "$pvc_status"
+    printf -- '- pvc size: `%s`\n' "$pvc_size"
+    printf -- '- running pod inspected: `%s`\n' "${pod:-none}"
+    printf -- '- app.ini: `%s`\n' "${app_ini:-not-found}"
+    printf -- '- app.ini sha256: `%s`\n' "$(if [[ -s "$tmp_app" ]]; then sha256sum "$tmp_app" | awk '{print $1}'; else printf unknown; fi)"
     printf '\n## app.ini paths\n\n'
-    printf '- database type: `%s`\n' "${db_type:-unknown}"
-    printf '- database path: `%s`\n' "${db_path:-unknown}"
-    printf '- repository root: `%s`\n' "${repo_root:-unknown}"
-    printf '- package storage path: `%s`\n' "${package_path:-unknown}"
-    printf '- LFS path: `%s`\n' "${lfs_path:-unknown}"
-    printf '- attachment path: `%s`\n' "${attachment_path:-unknown}"
-    printf '- avatar path: `%s`\n' "${avatar_path:-unknown}"
-    printf '- repo avatar path: `%s`\n' "${repo_avatar_path:-unknown}"
-    printf '- repo archive path: `%s`\n' "${repo_archive_path:-unknown}"
-  } | run_sudo tee "$report"
+    printf -- '- database type: `%s`\n' "${db_type:-unknown}"
+    printf -- '- database path: `%s`\n' "${db_path:-unknown}"
+    printf -- '- repository root: `%s`\n' "${repo_root:-unknown}"
+    printf -- '- package storage path: `%s`\n' "${package_path:-unknown}"
+    printf -- '- LFS path: `%s`\n' "${lfs_path:-unknown}"
+    printf -- '- attachment path: `%s`\n' "${attachment_path:-unknown}"
+    printf -- '- avatar path: `%s`\n' "${avatar_path:-unknown}"
+    printf -- '- repo avatar path: `%s`\n' "${repo_avatar_path:-unknown}"
+    printf -- '- repo archive path: `%s`\n' "${repo_archive_path:-unknown}"
+  } | tee "$report"
 
   rm -f "$tmp_app"
   printf 'report: %s\n' "$report"
