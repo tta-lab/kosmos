@@ -14,7 +14,7 @@
     && builtins.pathExists keposCloudflaredCredentialsFile;
 in {
   options.kosmos.wsl.forgejo = {
-    enable = lib.mkEnableOption "Forgejo staging service for the WSL devops box";
+    enable = lib.mkEnableOption "Forgejo service for the WSL devops box";
 
     package = lib.mkOption {
       type = lib.types.package;
@@ -24,8 +24,8 @@ in {
 
     publicHostname = lib.mkOption {
       type = lib.types.str;
-      default = "git-wsl.guion.io";
-      description = "Public staging hostname exposed through cloudflared.";
+      default = "git.guion.io";
+      description = "Public Forgejo hostname exposed through cloudflared.";
     };
 
     port = lib.mkOption {

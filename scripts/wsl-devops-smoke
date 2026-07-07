@@ -31,7 +31,7 @@ registry_endpoint_ok() {
       --silent \
       --output /dev/null \
       --write-out '%{http_code}' \
-      https://git-wsl.guion.io/v2/
+      https://git.guion.io/v2/
   )"
 
   case "$status" in

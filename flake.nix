@@ -175,7 +175,7 @@
         assert forgejo.database.path == "/var/lib/forgejo/data/forgejo.db";
         assert forgejo.dump.enable;
         assert forgejo.dump.backupDir == "/var/backup/forgejo";
-        assert forgejo.settings.server.ROOT_URL == "https://git-wsl.guion.io/";
+        assert forgejo.settings.server.ROOT_URL == "https://git.guion.io/";
         assert forgejo.settings.server.HTTP_ADDR == "127.0.0.1";
         assert forgejo.settings.server.HTTP_PORT == 3000;
         assert forgejo.settings.server.DISABLE_SSH;

@@ -1,13 +1,13 @@
 # WSL DevOps Runbook
 
-This runbook covers the staging implementation from
+This runbook covers the WSL DevOps implementation from
 `docs/dagger-forgejo-packages-plan.md`.
 
 ## Services
 
-- Forgejo staging: `https://git-wsl.guion.io`
+- Forgejo: `https://git.guion.io`
 - Dagger engine: local only, `tcp://127.0.0.1:8080`
-- Woodpecker staging: module present, service gated on secrets
+- Woodpecker: clean WSL instance, service gated on secrets
 
 Forgejo and Dagger are enabled in `hosts/wsl/default.nix`. Woodpecker is enabled
 there too, but its systemd services do not start until the required env secrets
@@ -96,9 +96,9 @@ local and public registry endpoints, then starts the engine again and waits for
 after the engine is back, because that path depends on the Podman bridge used by
 the Dagger engine.
 
-## Forgejo Staging
+## Forgejo
 
-The staging admin bootstrap credentials are stored outside git:
+The admin bootstrap credentials are stored outside git:
 
 ```text
 /root/kosmos-forgejo-admin-init.txt
@@ -117,14 +117,14 @@ kosmos-wsl-devops-smoke
 kosmos-devops-gate-status
 systemctl status forgejo
 curl -I http://127.0.0.1:3000/
-curl -I https://git-wsl.guion.io/v2/
+curl -I https://git.guion.io/v2/
 ```
 
 The `/v2/` response should be a container-registry response, not the Forgejo HTML
 app shell.
 
 `kosmos-devops-gate-status` is read-only by default. It reports ok/pending/fail
-for the staging services, sockets, Woodpecker secret state, and Kubernetes
+for the WSL services, sockets, Woodpecker secret state, and Kubernetes
 pull-secret metadata. Use `--deep` to also run the private image pull smoke that
 creates a temporary pod, and `--strict` before cutover to make pending items fail
 the command:
@@ -133,7 +133,7 @@ the command:
 kosmos-devops-gate-status --deep --strict
 ```
 
-Current staging should report `0 failed` and may still report these pending
+Current WSL state should report `0 failed` and may still report these pending
 external gates:
 
 | Pending gate | Resolution |
@@ -150,7 +150,7 @@ Smoke test HTTPS Git clone and push:
 kosmos-forgejo-https-git-smoke
 ```
 
-The helper creates a temporary private repo on `git-wsl.guion.io`, clones it over
+The helper creates a temporary private repo on `git.guion.io`, clones it over
 HTTPS, commits and pushes one file, then deletes the repo. It expects a Forgejo
 token through `FORGEJO_SMOKE_TOKEN`, `FORGEJO_SMOKE_TOKEN_FILE`, or the default
 agenix-backed path at `/home/neil/.config/kosmos/forgejo-smoke-token`. The admin
@@ -158,7 +158,7 @@ bootstrap password can still be used for initial bring-up by setting
 `FORGEJO_SMOKE_USE_ADMIN_BOOTSTRAP=1`, but that should not be the routine smoke
 credential.
 
-Smoke test the staging dump timer and backup path:
+Smoke test the dump timer and backup path:
 
 ```bash
 kosmos-forgejo-backup-smoke
@@ -303,17 +303,17 @@ If the public hostname does not reach the WSL tunnel, route it to the `nuc-wsl`
 Cloudflare tunnel:
 
 ```bash
-cloudflared tunnel route dns --overwrite-dns c0e179cd-14fc-4cd9-ba4c-00a445844c74 git-wsl.guion.io
+cloudflared tunnel route dns --overwrite-dns c0e179cd-14fc-4cd9-ba4c-00a445844c74 git.guion.io
 ```
 
 Smoke test Packages after the admin user and `GuionAI` org exist. Use lowercase `guionai` in the OCI image path:
 
 ```bash
-docker login git-wsl.guion.io
+docker login git.guion.io
 docker pull hello-world:latest
-docker tag hello-world:latest git-wsl.guion.io/guionai/smoke:latest
-docker push git-wsl.guion.io/guionai/smoke:latest
-docker pull git-wsl.guion.io/guionai/smoke:latest
+docker tag hello-world:latest git.guion.io/guionai/smoke:latest
+docker push git.guion.io/guionai/smoke:latest
+docker pull git.guion.io/guionai/smoke:latest
 ```
 
 Internal Dagger publish smoke:
@@ -328,14 +328,14 @@ same repository through `127.0.0.1:3000`. This is the path WSL Woodpecker jobs
 should use for image writes. The helper uses token-first credential handling and
 does not use the Cloudflare route for routine layer uploads.
 
-Public staging pull check:
+Public pull check:
 
 ```bash
-docker pull git-wsl.guion.io/guionai/local-dagger-smoke:latest
+docker pull git.guion.io/guionai/local-dagger-smoke:latest
 ```
 
 `/home/neil/.config/kosmos/forgejo-smoke-token` should contain a narrowly scoped
-token for the staging Forgejo instance. It is separate from the Kubernetes
+token for the WSL Forgejo instance. It is separate from the Kubernetes
 package pull token. The pull token is intentionally read-only and should not be
 reused for publish smoke tests or CI.
 
@@ -351,7 +351,7 @@ Use these scopes:
 
 The token user must be able to publish packages under the target owner,
 currently `GuionAI` / lowercase OCI path `guionai`. A `neil` token works because
-`neil` is the staging admin. The existing `k8s-packages-pull` token has only
+`neil` is the WSL admin. The existing `k8s-packages-pull` token has only
 `read:package` and is not enough for publish smoke. The `wsl-bootstrap` token
 has `all` and will work, but it is broader than the long-term smoke token should
 be.
@@ -458,9 +458,45 @@ pipeline runs `registry.dagger.io/engine:v0.19.11`, checks
 `/run/dagger/engine.sock`, then runs `dagger version` against that Unix socket.
 This is the real gate before migrating production build jobs to the WSL agent.
 
+## Current Cutover State
+
+Current decision: keep Woodpecker history disposable. Do not migrate k3s
+Woodpecker data unless clean-start setup proves unexpectedly painful. The system
+of record is Forgejo; CI run history and old repo enablement state are not worth
+adding DB migration risk.
+
+Current ownership after cutover:
+
+| Component | Target owner | Notes |
+|---|---|---|
+| Git UI and HTTPS Git | kosmos WSL Forgejo | Public hostname remains `git.guion.io`. |
+| Forgejo Packages image registry | kosmos WSL Forgejo | Public pull path is `git.guion.io/guionai/<image>:<tag>`. |
+| CI server and local CI agent | kosmos WSL Woodpecker | Public hostname remains `ci.guion.io`; clean-start Woodpecker, manually re-enable repos. |
+| Build engine and cache | kosmos WSL Dagger | Local-only engine endpoint; do not expose through Cloudflare. |
+| Cloudflare `git.guion.io` and `ci.guion.io` routes | kosmos WSL `nuc-wsl` tunnel | Cluster tunnel must not keep Git or CI hostnames. |
+| Old cluster Forgejo | retired | Workload, services, PVC, PV, local-path data, and bootstrap/config secrets removed. |
+| Old cluster Dagger | retired | StatefulSet, service, and config removed. No Dagger PVC existed. |
+| Old cluster Woodpecker | retired | StatefulSets, services, PVCs, PV, local-path data, and `woodpecker-secrets` removed. |
+| Old cluster registry | retired last | Delete only after no workload references `registry-docker-registry.devops.svc:5000`. |
+
+Remaining cutover work:
+
+1. Manually enable the repositories that should use WSL Woodpecker. Do not import
+   old Woodpecker DB state.
+2. Run one real WSL Woodpecker pipeline that reaches the WSL Dagger engine and
+   publishes an image to WSL Forgejo Packages.
+3. Audit production workloads for old registry references:
+   `kubectl get deploy,statefulset,daemonset,job,cronjob -A -o yaml | rg 'registry-docker-registry\\.devops\\.svc:5000'`.
+4. Migrate service image references from
+   `registry-docker-registry.devops.svc:5000/...` to
+   `git.guion.io/guionai/...` gradually.
+5. After no workloads reference the old registry, remove cluster
+   `devops-registry` and clean `/var/lib/registry` on the registry node by
+   explicit decision.
+
 ## Kubernetes Pull Secret
 
-The staging package pull token is stored outside git:
+The package pull token is stored outside git:
 
 ```text
 /root/kosmos-forgejo-k8s-packages-pull-token.txt
@@ -489,7 +525,7 @@ kosmos-forgejo-k8s-pull-secret-smoke
 Private image pull smoke in `apps-dev`:
 
 ```bash
-FORGEJO_PULL_SECRET_SMOKE_IMAGE=git-wsl.guion.io/guionai/dagger-smoke:latest \
+FORGEJO_PULL_SECRET_SMOKE_IMAGE=git.guion.io/guionai/dagger-smoke:latest \
   kosmos-forgejo-k8s-pull-secret-smoke
 ```
 
@@ -593,18 +629,22 @@ smoke proves that the copied data can at least be opened and served by Forgejo;
 manual login, clone, push, package list, and package pull checks are still
 required before production cutover.
 
-## Production Cutover Guardrails
+## Future Cutover Guardrails
 
-Do not move `git.guion.io` until all of these are true:
+For future repeats, rollback decisions, or similar hostname moves, do not treat a
+cutover as complete until all of these are true:
 
-- Forgejo staging login works.
+- Forgejo WSL login works.
 - HTTPS clone and push work.
-- Packages push and pull work through `git-wsl.guion.io`.
-- Dagger can publish an image to `git-wsl.guion.io/guionai/*`.
-- A Kubernetes pod in `apps-dev` pulls a private staging image using the mirrored
+- Packages push and pull work through `git.guion.io`.
+- Dagger can publish an image to `git.guion.io/guionai/*`.
+- A Kubernetes pod in `apps-dev` pulls a private WSL image using the mirrored
   `forgejo-packages` secret.
 - `kosmos-forgejo-cutover-preflight` passes without `--allow-same-filesystem`.
 - `kosmos-forgejo-restore-smoke` passes against a copied source Forgejo data
   directory.
 - A cold copy or restore dry run of the current Forgejo `/data` volume has been
   tested.
+
+After cutover, `git-wsl.guion.io` is deprecated. Do not add new project remotes,
+Cloudflare routes, image references, or smoke defaults that depend on it.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-hostname="${FORGEJO_SMOKE_HOSTNAME:-git-wsl.guion.io}"
+hostname="${FORGEJO_SMOKE_HOSTNAME:-git.guion.io}"
 user="${FORGEJO_SMOKE_USER:-neil}"
 admin_file="${FORGEJO_SMOKE_ADMIN_FILE:-/root/kosmos-forgejo-admin-init.txt}"
 token="${FORGEJO_SMOKE_TOKEN:-}"

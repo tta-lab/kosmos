@@ -164,16 +164,16 @@ else
   fail "local Forgejo HTTP responds"
 fi
 
-if http_status_ok https://git-wsl.guion.io/v2/; then
-  ok "public staging registry endpoint responds"
+if http_status_ok https://git.guion.io/v2/; then
+  ok "public registry endpoint responds"
 else
-  fail "public staging registry endpoint responds"
+  fail "public registry endpoint responds"
 fi
 
 if http_status_ok http://10.88.0.1:3000/v2/; then
-  ok "internal staging registry endpoint responds"
+  ok "internal registry endpoint responds"
 else
-  fail "internal staging registry endpoint responds"
+  fail "internal registry endpoint responds"
 fi
 
 if socket_exists /run/dagger/engine.sock; then

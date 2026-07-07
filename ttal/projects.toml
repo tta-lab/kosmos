@@ -10,7 +10,7 @@
 [devops]
   name = "Guion DevOps"
   path = "/home/neil/code/projects/GuionAI/guion-devops"
-  remote = "https://git-wsl.guion.io/GuionAI/guion-devops.git"
+  remote = "https://git.guion.io/GuionAI/guion-devops.git"
 
 [diary]
   name = "Diary CLI"
@@ -63,7 +63,7 @@
 [fd]
   name = "FlickNote Deploy(legacy flux, new service will use self contained tanka)"
   path = "/home/neil/code/projects/neil/flick-deploy"
-  remote = "https://git-wsl.guion.io/neil/flick-deploy.git"
+  remote = "https://git.guion.io/neil/flick-deploy.git"
 
 [fn-cli]
   name = "FlickNote CLI"

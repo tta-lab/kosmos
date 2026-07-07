@@ -3,7 +3,7 @@ set -euo pipefail
 
 engine_unit="${DAGGER_ENGINE_UNIT:-podman-dagger-engine.service}"
 local_forgejo_url="${FORGEJO_LOCAL_URL:-http://127.0.0.1:3000/}"
-public_registry_url="${FORGEJO_PUBLIC_REGISTRY_URL:-https://git-wsl.guion.io/v2/}"
+public_registry_url="${FORGEJO_PUBLIC_REGISTRY_URL:-https://git.guion.io/v2/}"
 internal_registry_url="${FORGEJO_INTERNAL_REGISTRY_URL:-http://10.88.0.1:3000/v2/}"
 socket_path="${DAGGER_ENGINE_SOCKET:-/run/dagger/engine.sock}"
 
@@ -22,7 +22,7 @@ Environment:
   DAGGER_ENGINE_UNIT             systemd unit to stop/start. Default: podman-dagger-engine.service
   DAGGER_ENGINE_SOCKET           Dagger Unix socket path. Default: /run/dagger/engine.sock
   FORGEJO_LOCAL_URL              Local Forgejo URL. Default: http://127.0.0.1:3000/
-  FORGEJO_PUBLIC_REGISTRY_URL    Public registry URL. Default: https://git-wsl.guion.io/v2/
+  FORGEJO_PUBLIC_REGISTRY_URL    Public registry URL. Default: https://git.guion.io/v2/
   FORGEJO_INTERNAL_REGISTRY_URL  Internal registry URL. Default: http://10.88.0.1:3000/v2/
 EOF
 }

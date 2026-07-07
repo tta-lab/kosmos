@@ -3,22 +3,22 @@ set -euo pipefail
 
 unit="${CLOUDFLARED_TUNNEL_UNIT:-cloudflared-tunnel-kepos.service}"
 config_path="${CLOUDFLARED_CONFIG:-}"
-url="${CLOUDFLARED_INGRESS_URL:-https://git-wsl.guion.io/v2/}"
-expected_hostname="${CLOUDFLARED_EXPECTED_HOSTNAME:-git-wsl.guion.io}"
+url="${CLOUDFLARED_INGRESS_URL:-https://git.guion.io/v2/}"
+expected_hostname="${CLOUDFLARED_EXPECTED_HOSTNAME:-git.guion.io}"
 expected_service="${CLOUDFLARED_EXPECTED_SERVICE:-http://127.0.0.1:3000}"
 
 usage() {
   cat <<'EOF'
 usage: cloudflared-ingress-smoke
 
-Validate the WSL cloudflared ingress config and verify that the Forgejo staging
+Validate the WSL cloudflared ingress config and verify that the Forgejo
 hostname routes to the local Forgejo HTTP service.
 
 Environment:
   CLOUDFLARED_TUNNEL_UNIT       systemd tunnel unit. Default: cloudflared-tunnel-kepos.service
   CLOUDFLARED_CONFIG            cloudflared config path. Default: inferred from the systemd unit
-  CLOUDFLARED_INGRESS_URL       URL to match. Default: https://git-wsl.guion.io/v2/
-  CLOUDFLARED_EXPECTED_HOSTNAME Expected matched hostname. Default: git-wsl.guion.io
+  CLOUDFLARED_INGRESS_URL       URL to match. Default: https://git.guion.io/v2/
+  CLOUDFLARED_EXPECTED_HOSTNAME Expected matched hostname. Default: git.guion.io
   CLOUDFLARED_EXPECTED_SERVICE  Expected matched service. Default: http://127.0.0.1:3000
 EOF
 }

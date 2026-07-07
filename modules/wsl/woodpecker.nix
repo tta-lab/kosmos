@@ -32,8 +32,8 @@ in {
 
     publicHostname = lib.mkOption {
       type = lib.types.str;
-      default = "ci-wsl.guion.io";
-      description = "Public staging hostname for Woodpecker.";
+      default = "ci.guion.io";
+      description = "Public Woodpecker hostname exposed through cloudflared.";
     };
 
     port = lib.mkOption {
@@ -50,7 +50,7 @@ in {
 
     forgejoUrl = lib.mkOption {
       type = lib.types.str;
-      default = "https://git-wsl.guion.io";
+      default = "https://git.guion.io";
       description = "Forgejo URL used by Woodpecker's Forgejo/Gitea integration.";
     };
 
@@ -69,7 +69,7 @@ in {
     enableCloudflared = lib.mkOption {
       type = lib.types.bool;
       default = false;
-      description = "Expose Woodpecker through cloudflared. Keep off until Forgejo staging is proven.";
+      description = "Expose Woodpecker through cloudflared.";
     };
   };
 

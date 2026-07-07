@@ -20,9 +20,9 @@ production cluster
   pull images from git.guion.io/guionai/<image>:<tag>
 ```
 
-During staging, use `git-wsl.guion.io`. Do not point production manifests at
-`git.guion.io/guionai/*` until the Forgejo data migration and DNS cutover are
-complete.
+Cutover target is `git.guion.io`. `git-wsl.guion.io` was only a staging
+hostname and should not be used for new remotes, routes, image references, or
+smoke defaults after cutover.
 
 Separate the registry write path from the human/public path:
 
@@ -31,8 +31,7 @@ Separate the registry write path from the human/public path:
   engine container. The proxy binds on the Podman bridge gateway and forwards to
   Forgejo's loopback listener, so the write path does not traverse Cloudflare.
 - Human Git UI, HTTPS clone/push, and external package pulls use the Cloudflare
-  hostname, currently `git-wsl.guion.io` during staging and `git.guion.io` after
-  cutover.
+  hostname `git.guion.io`.
 - Do not route Dagger's runner endpoint or routine CI image pushes through
   Cloudflare. Cloudflare has request upload limits and is the wrong primary path
   for large registry layer uploads when the services already run together.
@@ -98,25 +97,25 @@ should make the staging service reachable and easy to turn off.
 
 In `project get devops`:
 
-- `devops-forgejo` runs Forgejo at `git.guion.io`.
-- Forgejo currently has no explicit `[packages]` config in
-  `environments/devops-forgejo/main.jsonnet`; this should mean package registry
-  defaults apply, but we should smoke test before relying on it.
+- `devops-forgejo` is reduced to the `devops` namespace anchor. Forgejo moved
+  to kosmos WSL.
 - `devops-registry` runs a standalone Docker registry in the production cluster:
   `registry-docker-registry.devops.svc:5000`, NodePort `30500`.
-- `devops-dagger` runs Dagger engine in the production cluster and is configured
-  to push to that internal registry over HTTP.
+- `devops-dagger` is retired and renders no resources. Dagger moved to kosmos
+  WSL.
+- `devops-woodpecker` is retired and renders no resources. Woodpecker moved to
+  kosmos WSL.
 
 In kosmos WSL:
 
 - Podman is enabled with Docker compatibility and Docker socket support.
 - `docker-compose` is installed.
-- In this staging PR, Forgejo is wired through NixOS at `git-wsl.guion.io`.
-- In this staging PR, Dagger is wired through NixOS as a pinned CLI plus a
+- Forgejo is wired through NixOS at `git.guion.io`.
+- Dagger is wired through NixOS as a pinned CLI plus a
   systemd-managed Podman engine container.
 - Woodpecker agent is the intended CI runner. Forgejo Actions is out of scope.
-  In this staging PR, the Woodpecker module exists but services are gated on
-  env secrets.
+  The Woodpecker module is wired through NixOS and its services are gated on env
+  secrets.
 
 ## Recommendation
 
@@ -128,9 +127,9 @@ Use the existing `GuionAI` organization as the Forgejo owner, but use lowercase 
 git.guion.io/guionai/<image>:<tag>
 ```
 
-Keep the old cluster Forgejo, cluster registry, and cluster Dagger during rollout
-until WSL Forgejo backup/restore, package push/pull, and one service migration
-have been proven. Do not cut `git.guion.io` over until a tested backup exists.
+Keep the old cluster registry during rollout until service image references have
+moved to Forgejo Packages. The old cluster Forgejo, Dagger, and Woodpecker are
+retired after `git.guion.io` and `ci.guion.io` move to WSL.
 
 Prefer NixOS modules and systemd services for all long-running WSL services:
 
@@ -485,19 +484,19 @@ After the first service works, migrate the rest gradually.
 
 ### Phase 7: Decommission Old Infra
 
-Do not remove old infra immediately.
+The final decommission state is documented in
+[wsl-devops-runbook.md](./wsl-devops-runbook.md). Forgejo, Dagger, and
+Woodpecker have moved to kosmos WSL. Woodpecker data migration is intentionally
+out of scope; use a clean WSL Woodpecker instance and manually re-enable repos.
 
-After all services have moved to Forgejo Packages:
+The remaining cluster devops component is the old registry. After all services
+have moved to Forgejo Packages:
 
-- stop using `devops-dagger`
-- remove or scale down the cluster Dagger engine
 - keep `devops-registry` read-only or idle for one release window
-- keep cluster Forgejo PVC untouched until the WSL instance has survived at least
-  one backup/restore cycle and one release window
 - remove old registry only after no deployments reference
   `registry-docker-registry.devops.svc:5000`
-- clean Dagger and registry hostPath data from the worker after backups or an
-  explicit decision that rollback data is no longer needed
+- clean registry hostPath data from the worker after an explicit decision that
+  rollback data is no longer needed
 
 ## Implementation Checks
 
