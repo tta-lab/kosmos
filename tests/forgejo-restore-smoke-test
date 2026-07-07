@@ -13,3 +13,9 @@ grep -q 'verify_known_user' "${repo_root}/scripts/forgejo-restore-smoke"
 grep -q 'verify_known_org' "${repo_root}/scripts/forgejo-restore-smoke"
 grep -q 'verify_clone_repo' "${repo_root}/scripts/forgejo-restore-smoke"
 grep -q 'verify_package_data' "${repo_root}/scripts/forgejo-restore-smoke"
+grep -q 'working_copy_dir' "${repo_root}/scripts/forgejo-restore-smoke"
+grep -q 'prepare_working_copy' "${repo_root}/scripts/forgejo-restore-smoke"
+if grep -q 'chown -R .*copy_dir_real' "${repo_root}/scripts/forgejo-restore-smoke"; then
+  echo 'restore smoke must not chown the original copy directory' >&2
+  exit 1
+fi

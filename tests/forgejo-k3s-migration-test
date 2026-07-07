@@ -34,6 +34,8 @@ grep -q 'cleanup_live_dump' "$script"
 grep -q 'restore_args' "$script"
 grep -q 'source_version' "$script"
 grep -q 'update_restore_result' "$script"
+grep -q 'collect_source_metadata' "$script"
+grep -q 'gitea/data/packages' "$script"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT

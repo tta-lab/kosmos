@@ -139,6 +139,48 @@ discover_state_pvc() {
     ' | head -n 1
 }
 
+woodpecker_env_signal() {
+  local env_name="$1"
+  local field="$2"
+
+  kubectl get deploy "$deployment" -n "$namespace" -o json |
+    jq -r --arg env_name "$env_name" --arg field "$field" '
+      ([.spec.template.spec.containers[0].env[]? | select(.name == $env_name)] | first) as $env |
+      if $env == null then
+        "unset"
+      elif $env.valueFrom.secretKeyRef then
+        "secret:" + $env.valueFrom.secretKeyRef.name + "/" + $env.valueFrom.secretKeyRef.key
+      elif $env.valueFrom.configMapKeyRef then
+        "configmap:" + $env.valueFrom.configMapKeyRef.name + "/" + $env.valueFrom.configMapKeyRef.key
+      elif $field == "value" and $env.value then
+        $env.value
+      elif $env.value then
+        "literal"
+      else
+        "unknown"
+      end
+    ' | head -n 1
+}
+
+woodpecker_db_signals() {
+  local driver
+  local datasource_source
+  local datasource_hint
+
+  driver="$(woodpecker_env_signal WOODPECKER_DATABASE_DRIVER value)"
+  datasource_source="$(woodpecker_env_signal WOODPECKER_DATABASE_DATASOURCE source)"
+
+  if [[ "$datasource_source" == "unset" && ( "$driver" == "unset" || "$driver" == "sqlite3" ) ]]; then
+    datasource_hint="${state_path}/woodpecker.sqlite"
+  else
+    datasource_hint="redacted-or-external"
+  fi
+
+  printf -- '- database driver: `%s`\n' "$driver"
+  printf -- '- database datasource source: `%s`\n' "$datasource_source"
+  printf -- '- inferred sqlite path: `%s`\n' "$datasource_hint"
+}
+
 write_manifest() {
   local path="$1"
   local artifact="$2"
@@ -228,7 +270,7 @@ discover() {
   require kubectl
   require jq
 
-  local report_dir report image version replicas ready detected_pvc pod env_names mounts driver_hint
+  local report_dir report image version replicas ready detected_pvc pod mounts db_signals
 
   report_dir="${target_base}/reports"
   run_sudo install -d -o "$(id -u)" -g "$(id -g)" "$report_dir"
@@ -257,19 +299,11 @@ discover() {
   else
     version="unknown"
   fi
-  env_names="$(
-    kubectl get deploy "$deployment" -n "$namespace" -o json |
-      jq -r '.spec.template.spec.containers[0].env[]?.name' |
-      sort
-  )"
   mounts="$(
     kubectl get deploy "$deployment" -n "$namespace" -o json |
       jq -r '.spec.template.spec.containers[0].volumeMounts[]? | "- `" + .name + "` -> `" + .mountPath + "`"'
   )"
-  driver_hint="$(
-    printf '%s\n' "$env_names" |
-      grep -E '^WOODPECKER_DATABASE_DRIVER$|^WOODPECKER_DATABASE_DATASOURCE$' || true
-  )"
+  db_signals="$(woodpecker_db_signals)"
 
   {
     printf '# Woodpecker k3s discovery\n\n'
@@ -283,12 +317,8 @@ discover() {
     printf -- '- state path: `%s`\n' "$state_path"
     printf -- '- detected state PVC: `%s`\n' "${detected_pvc:-unknown}"
     printf '\n## Database signals\n\n'
-    printf 'Secret values are never printed. These are only environment variable names.\n\n'
-    if [[ -n "$driver_hint" ]]; then
-      printf '%s\n' "$driver_hint" | sed 's/^/- `/' | sed 's/$/`/'
-    else
-      printf -- '- `WOODPECKER_DATABASE_DRIVER` not declared directly on the deployment\n'
-    fi
+    printf 'Secret values are never printed. Secret/configmap references are reported by name and key only.\n\n'
+    printf '%s\n' "$db_signals"
     printf '\n## Volume mounts\n\n'
     if [[ -n "$mounts" ]]; then
       printf '%s\n' "$mounts"

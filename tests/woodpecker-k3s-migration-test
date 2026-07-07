@@ -24,6 +24,9 @@ grep -q 'restore_original_replicas' "$script"
 grep -Fq "wait_deployment_pods_gone \"\$selector\"" "$script"
 grep -q 'source Woodpecker deployment not found' "$script"
 grep -q 'source_version' "$script"
+grep -q 'woodpecker_db_signals' "$script"
+grep -q 'database driver:' "$script"
+grep -q 'database datasource source:' "$script"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT

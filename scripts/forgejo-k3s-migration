@@ -104,6 +104,8 @@ write_manifest() {
   local image="${6:-unknown}"
   local app_ini_sha="${7:-unknown}"
   local size_bytes="${8:-unknown}"
+  local source_version="${9:-unknown}"
+  local app_ini_path="${10:-unknown}"
   local manifest="${path}/manifest.json"
 
   run_sudo mkdir -p "$path"
@@ -114,6 +116,8 @@ write_manifest() {
     --arg deployment "$deployment" \
     --arg pvc "$pvc" \
     --arg image "$image" \
+    --arg source_version "$source_version" \
+    --arg app_ini_path "$app_ini_path" \
     --arg app_ini_sha256 "$app_ini_sha" \
     --arg artifact "$artifact" \
     --arg copy_method "$copy_method" \
@@ -127,6 +131,8 @@ write_manifest() {
         deployment: $deployment,
         pvc: $pvc,
         image: $image,
+        version: $source_version,
+        app_ini_path: $app_ini_path,
         app_ini_sha256: $app_ini_sha256
       },
       artifact: $artifact,
@@ -257,6 +263,28 @@ source_version() {
       printf "unknown"
     fi
   ' 2>/dev/null || printf 'unknown'
+}
+
+collect_source_metadata() {
+  local pod="$1"
+  local tmp_app
+
+  source_app_ini_path="unknown"
+  source_app_ini_sha="unknown"
+  source_version_value="unknown"
+
+  [[ -n "$pod" ]] || return 0
+
+  source_version_value="$(source_version "$pod")"
+  source_app_ini_path="$(find_app_ini_in_pod "$pod" || true)"
+  if [[ -n "$source_app_ini_path" ]]; then
+    tmp_app="$(mktemp)"
+    kubectl exec "$pod" -n "$namespace" -- cat "$source_app_ini_path" >"$tmp_app"
+    source_app_ini_sha="$(sha256sum "$tmp_app" | awk '{print $1}')"
+    rm -f "$tmp_app"
+  else
+    source_app_ini_path="unknown"
+  fi
 }
 
 app_ini_value() {
@@ -465,9 +493,13 @@ cold_copy() {
   require sudo
   require date
 
-  local original_replicas timestamp target pod image tmp_app app_ini app_sha copy_method size_bytes selector
+  local original_replicas timestamp target pod image copy_method size_bytes selector source_pod_name
+  local source_app_ini_path source_app_ini_sha source_version_value
 
   selector="$(deployment_selector)"
+  source_pod_name="$(source_pod || true)"
+  collect_source_metadata "$source_pod_name"
+
   original_replicas="$(kubectl get deploy "$deployment" -n "$namespace" -o jsonpath='{.spec.replicas}')"
   if [[ -z "$original_replicas" ]]; then
     original_replicas=1
@@ -534,16 +566,8 @@ EOF
     copy_method="tar-stream"
   fi
 
-  tmp_app="$(mktemp)"
-  app_ini="$(find_app_ini_in_pod "$pod" || true)"
-  app_sha="unknown"
-  if [[ -n "$app_ini" ]]; then
-    kubectl exec "$pod" -n "$namespace" -- cat "$app_ini" >"$tmp_app"
-    app_sha="$(sha256sum "$tmp_app" | awk '{print $1}')"
-  fi
-  rm -f "$tmp_app"
   size_bytes="$(run_sudo du -sb "${target}/data" | awk '{print $1}')"
-  write_manifest "$target" "forgejo-cold-copy" "${target}/data" "$copy_method" "not-run" "$image" "$app_sha" "$size_bytes"
+  write_manifest "$target" "forgejo-cold-copy" "${target}/data" "$copy_method" "not-run" "$image" "$source_app_ini_sha" "$size_bytes" "$source_version_value" "$source_app_ini_path"
 
   if [[ "$keep_pod" -ne 1 ]]; then
     kubectl delete pod "$pod" -n "$namespace" --ignore-not-found --wait=false >/dev/null 2>&1 || true
@@ -607,7 +631,11 @@ cutover_preflight() {
   manifest="${root_dir}/manifest.json"
   [[ -f "$manifest" ]] || die "missing copy manifest: $manifest"
 
-  if [[ ! -d "${restore_dir}/packages" && ! -d "${restore_dir}/gitea/packages" && ! -d "${restore_dir}/forgejo/packages" ]]; then
+  if [[ ! -d "${restore_dir}/packages" \
+    && ! -d "${restore_dir}/gitea/packages" \
+    && ! -d "${restore_dir}/forgejo/packages" \
+    && ! -d "${restore_dir}/gitea/data/packages" \
+    && ! -d "${restore_dir}/forgejo/data/packages" ]]; then
     die "package data was not found under copied data directory"
   fi
 

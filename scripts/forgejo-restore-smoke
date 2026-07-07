@@ -17,8 +17,9 @@ usage() {
 usage: forgejo-restore-smoke --copy-dir <path> [--port <port>] [--keep-scratch]
 
 Run a non-production restore smoke against an existing cold-copy directory. The
-script refuses to run against the live Forgejo state directory. It creates a
-temporary app.ini with paths rewritten to the copy directory, runs
+script refuses to run against the live Forgejo state directory. It copies the
+artifact into a scratch working tree, creates a temporary app.ini with paths
+rewritten to that working tree, runs
 `forgejo doctor check --all`, starts Forgejo on a temporary loopback port, checks
 health/login endpoints, optionally verifies known users/orgs, optionally clones
 known public repositories, optionally verifies package blobs, then stops the
@@ -140,21 +141,27 @@ write_restore_config() {
   local source_config="$1"
   local target_config="$2"
 
-  sudo awk -v root="$copy_dir_real" -v port="$port" -v user="$user" -v repoRoot="$repo_root" '
+  awk -v root="$working_copy_real" -v port="$port" -v user="$user" -v repoRoot="$repo_root" '
+    function trim(value) {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+      return value
+    }
+    function rewrite_value(value) {
+      value = trim(value)
+      if (value == "/data") {
+        return root
+      }
+      if (value ~ /^\/data\//) {
+        return root substr(value, 6)
+      }
+      return value
+    }
     /^[[:space:]]*WORK_PATH[[:space:]]*=/ {
       print "WORK_PATH = " root
       next
     }
     /^[[:space:]]*RUN_USER[[:space:]]*=/ {
       print "RUN_USER = " user
-      next
-    }
-    /^[[:space:]]*PATH[[:space:]]*=[[:space:]]*\/.*forgejo\.db[[:space:]]*$/ {
-      print "PATH = " root "/data/forgejo.db"
-      next
-    }
-    /^[[:space:]]*PATH[[:space:]]*=[[:space:]]*\/.*\/lfs[[:space:]]*$/ {
-      print "PATH = " root "/data/lfs"
       next
     }
     /^[[:space:]]*ROOT_PATH[[:space:]]*=/ {
@@ -177,8 +184,22 @@ write_restore_config() {
       print "ROOT_URL = http://127.0.0.1:" port "/"
       next
     }
+    /^[[:space:]]*[A-Za-z0-9_.-]+[[:space:]]*=/ {
+      key = substr($0, 1, index($0, "=") - 1)
+      value = substr($0, index($0, "=") + 1)
+      print key "= " rewrite_value(value)
+      next
+    }
     { print }
   ' "$source_config" | tee "$target_config" >/dev/null
+}
+
+prepare_working_copy() {
+  working_copy_dir="${scratch_dir}/copy"
+  mkdir -p "$working_copy_dir"
+  sudo cp -a "${copy_dir_real}/." "$working_copy_dir/"
+  sudo chown -R "$(id -u):$(id -g)" "$working_copy_dir"
+  working_copy_real="$(realpath "$working_copy_dir")"
 }
 
 wait_for_http() {
@@ -251,16 +272,18 @@ verify_package_data() {
     data/packages \
     gitea/packages \
     forgejo/packages \
+    gitea/data/packages \
+    forgejo/data/packages \
     data/gitea/packages \
     data/forgejo/packages
   do
-    if sudo_test -e "${copy_dir_real}/${candidate}"; then
-      printf 'verified package data path: %s/%s\n' "$copy_dir_real" "$candidate"
+    if [[ -e "${working_copy_real}/${candidate}" ]]; then
+      printf 'verified package data path: %s/%s\n' "$working_copy_real" "$candidate"
       return 0
     fi
   done
 
-  printf 'package data was not found under copied Forgejo data: %s\n' "$copy_dir_real" >&2
+  printf 'package data was not found under copied Forgejo data: %s\n' "$working_copy_real" >&2
   return 1
 }
 
@@ -299,33 +322,36 @@ if [[ "$copy_dir_real" == "$state_dir_real" ]]; then
   exit 1
 fi
 
+rm -rf "$scratch_dir"
+mkdir -p "$scratch_dir"
+prepare_working_copy
+
 repo_root="$(
-  first_existing_path "$copy_dir_real" \
+  first_existing_path "$working_copy_real" \
     repositories \
     repos \
     gitea-repositories \
     git/repositories
 )"
 
-sudo chown -R "$(id -u):$(id -g)" "$copy_dir_real"
-mkdir -p "${copy_dir_real}/log"
-mkdir -p "${copy_dir_real}/.ssh"
-touch "${copy_dir_real}/.ssh/authorized_keys"
+mkdir -p "${working_copy_real}/log"
+mkdir -p "${working_copy_real}/.ssh"
+touch "${working_copy_real}/.ssh/authorized_keys"
 
 source_config="$(
-  check_candidate_exists "$copy_dir_real" \
+  check_candidate_exists "$working_copy_real" \
     custom/conf/app.ini \
     gitea/conf/app.ini \
     app.ini
 )"
-check_candidate_exists "$copy_dir_real" \
+check_candidate_exists "$working_copy_real" \
+  forgejo.db \
   data/forgejo.db \
   gitea/gitea.db \
+  gitea/data/gitea.db \
   gitea.db \
   >/dev/null
 
-rm -rf "$scratch_dir"
-mkdir -p "$scratch_dir"
 config="${scratch_dir}/app.ini"
 pid_file="${scratch_dir}/forgejo.pid"
 web_log="${scratch_dir}/forgejo-web.log"
@@ -350,23 +376,23 @@ cleanup() {
 }
 trap cleanup EXIT
 
-printf 'running forgejo doctor check against copy %s...\n' "$copy_dir_real"
-HOME="$copy_dir_real" \
-FORGEJO_WORK_DIR="$copy_dir_real" \
-FORGEJO_CUSTOM="${copy_dir_real}/custom" \
+printf 'running forgejo doctor check against working copy %s from artifact %s...\n' "$working_copy_real" "$copy_dir_real"
+HOME="$working_copy_real" \
+FORGEJO_WORK_DIR="$working_copy_real" \
+FORGEJO_CUSTOM="${working_copy_real}/custom" \
 gitea \
-  --work-path "$copy_dir_real" \
-  --custom-path "${copy_dir_real}/custom" \
+  --work-path "$working_copy_real" \
+  --custom-path "${working_copy_real}/custom" \
   --config "$config" \
   doctor check --all --log-file "$doctor_log"
 
 printf 'starting temporary Forgejo restore smoke on 127.0.0.1:%s...\n' "$port"
-HOME="$copy_dir_real" \
-FORGEJO_WORK_DIR="$copy_dir_real" \
-FORGEJO_CUSTOM="${copy_dir_real}/custom" \
+HOME="$working_copy_real" \
+FORGEJO_WORK_DIR="$working_copy_real" \
+FORGEJO_CUSTOM="${working_copy_real}/custom" \
 gitea \
-  --work-path "$copy_dir_real" \
-  --custom-path "${copy_dir_real}/custom" \
+  --work-path "$working_copy_real" \
+  --custom-path "${working_copy_real}/custom" \
   --config "$config" \
   web --port "$port" --pid "$pid_file" \
   >"$web_log" 2>&1 &
@@ -391,4 +417,4 @@ for clone_repo in "${clone_repos[@]}"; do
   verify_clone_repo "$clone_repo"
 done
 
-printf 'Forgejo restore smoke passed for %s on temporary port %s\n' "$copy_dir_real" "$port"
+printf 'Forgejo restore smoke passed for artifact %s using working copy %s on temporary port %s\n' "$copy_dir_real" "$working_copy_real" "$port"
