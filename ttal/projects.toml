@@ -186,6 +186,7 @@
 [sf]
   name = "Seafarer"
   path = "/home/neil/code/projects/GuionAI/seafarer"
+  remote = "https://git.guion.io/GuionAI/seafarer.git"
 
 [sustech]
   name = "SUSTech Mar Slides"
