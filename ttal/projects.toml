@@ -183,6 +183,10 @@
   path = "/home/neil/code/projects/tta-lab/sh"
   remote = "https://github.com/tta-lab/sh.git"
 
+[sf]
+  name = "Seafarer"
+  path = "/home/neil/code/projects/GuionAI/seafarer"
+
 [sustech]
   name = "SUSTech Mar Slides"
   path = "/home/neil/code/projects/neil/sustech-mar-slides"
