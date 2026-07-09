@@ -16,7 +16,10 @@
         ;
     };
 
-    registries.${cfg.internalRegistryHost}.http = true;
+    registries = {
+      ${cfg.internalRegistryHost}.http = true;
+      "docker.io".mirrors = cfg.dockerHubMirrors;
+    };
   });
   daggerWrapper = pkgs.writeShellApplication {
     name = "dagger";
@@ -76,6 +79,29 @@ in {
       description = "Forgejo Packages host as seen from the Dagger engine container for WSL-local HTTP publishes.";
     };
 
+    dockerHubMirrors = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [
+        "mirror.gcr.io"
+      ];
+      description = "Registry mirrors used by Dagger for Docker Hub image pulls.";
+    };
+
+    dnsBridgeAddress = lib.mkOption {
+      type = lib.types.str;
+      default = "10.88.0.1";
+      description = "Podman bridge gateway address exposed to the Dagger engine as a DNS server.";
+    };
+
+    dnsUpstreams = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [
+        "https://1.1.1.1/dns-query"
+        "https://1.0.0.1/dns-query"
+      ];
+      description = "DNS-over-HTTPS upstreams used only by the Dagger engine resolver.";
+    };
+
     gc = {
       maxUsedSpace = lib.mkOption {
         type = lib.types.str;
@@ -127,6 +153,7 @@ in {
         ];
         extraOptions = [
           "--pids-limit=-1"
+          "--dns=${cfg.dnsBridgeAddress}"
         ];
       };
     };
@@ -137,13 +164,71 @@ in {
 
     environment.etc."dagger/engine.json".source = engineConfig;
 
-    systemd.tmpfiles.rules = [
-      "d '${cfg.stateDir}' 0775 root users - -"
-      "d '${cfg.stateDir}/config' 0775 root users - -"
-      "d '${cfg.stateDir}/config/dagger' 0775 root users - -"
-      "d '${cfg.stateDir}/cache' 0775 root users - -"
-      "d '/run/dagger' 0775 root users - -"
-      "L+ '${cfg.stateDir}/config/dagger/engine.json' - - - - /etc/dagger/engine.json"
-    ];
+    systemd = {
+      services = {
+        dagger-dnsproxy = {
+          description = "Dagger-only DNS proxy on the Podman bridge";
+          after = [
+            "network-online.target"
+          ];
+          wants = [
+            "network-online.target"
+          ];
+          wantedBy = [
+            "multi-user.target"
+          ];
+          path = with pkgs; [
+            bash
+            coreutils
+            gnugrep
+            iproute2
+            dnsproxy
+          ];
+          script = ''
+            set -euo pipefail
+
+            for _ in $(seq 1 30); do
+              if ip -o addr show | grep -q ' ${cfg.dnsBridgeAddress}/'; then
+                break
+              fi
+              sleep 1
+            done
+
+            if ! ip -o addr show | grep -q ' ${cfg.dnsBridgeAddress}/'; then
+              echo "timed out waiting for ${cfg.dnsBridgeAddress}" >&2
+              exit 1
+            fi
+
+            exec dnsproxy \
+              --listen=${cfg.dnsBridgeAddress} \
+              --port=53 \
+              --cache \
+              ${lib.concatMapStringsSep " \\\n              " (upstream: "--upstream=${lib.escapeShellArg upstream}") cfg.dnsUpstreams}
+          '';
+          serviceConfig = {
+            Restart = "always";
+            RestartSec = "5s";
+          };
+        };
+
+        podman-dagger-engine = {
+          after = [
+            "dagger-dnsproxy.service"
+          ];
+          wants = [
+            "dagger-dnsproxy.service"
+          ];
+        };
+      };
+
+      tmpfiles.rules = [
+        "d '${cfg.stateDir}' 0775 root users - -"
+        "d '${cfg.stateDir}/config' 0775 root users - -"
+        "d '${cfg.stateDir}/config/dagger' 0775 root users - -"
+        "d '${cfg.stateDir}/cache' 0775 root users - -"
+        "d '/run/dagger' 0775 root users - -"
+        "L+ '${cfg.stateDir}/config/dagger/engine.json' - - - - /etc/dagger/engine.json"
+      ];
+    };
   };
 }

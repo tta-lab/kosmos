@@ -114,19 +114,27 @@
         };
         cfg = eval.config;
         agent = cfg.services.woodpecker-agents.agents.wsl-podman;
+        agent2 = cfg.services.woodpecker-agents.agents.wsl-podman-2;
         agentUnit = cfg.systemd.services.woodpecker-agent-wsl-podman;
+        agentUnit2 = cfg.systemd.services.woodpecker-agent-wsl-podman-2;
         server = cfg.services.woodpecker-server;
         has = value: list: builtins.elem value list;
       in
         assert server.enable;
         assert server.environment.WOODPECKER_ENVIRONMENT == "_EXPERIMENTAL_DAGGER_RUNNER_HOST:unix:///run/dagger/engine.sock";
         assert agent.enable;
+        assert agent2.enable;
         assert agent.environment.DOCKER_HOST == "unix:///run/podman/podman.sock";
+        assert agent2.environment.DOCKER_HOST == "unix:///run/podman/podman.sock";
         assert agent.environment.WOODPECKER_BACKEND_DOCKER_VOLUMES == "/run/dagger:/run/dagger";
         assert has "podman.socket" agentUnit.after;
         assert has "podman-dagger-engine.service" agentUnit.after;
         assert has "forgejo-internal-registry-proxy.service" agentUnit.after;
         assert has "forgejo-internal-registry-proxy.service" agentUnit.wants;
+        assert has "podman.socket" agentUnit2.after;
+        assert has "podman-dagger-engine.service" agentUnit2.after;
+        assert has "forgejo-internal-registry-proxy.service" agentUnit2.after;
+        assert has "forgejo-internal-registry-proxy.service" agentUnit2.wants;
           pkgs.runCommand "kosmos-woodpecker-module-check" {} ''
             touch $out
           '';
@@ -177,6 +185,8 @@
         };
         cfg = eval.config;
         container = cfg.virtualisation.oci-containers.containers.dagger-engine;
+        daggerUnit = cfg.systemd.services.podman-dagger-engine;
+        dnsProxyUnit = cfg.systemd.services.dagger-dnsproxy;
         has = value: list: builtins.elem value list;
       in
         assert cfg.virtualisation.oci-containers.backend == "podman";
@@ -190,6 +200,11 @@
         assert has "/run/dagger:/run/dagger" container.volumes;
         assert has "tcp://0.0.0.0:8080" container.cmd;
         assert has "unix:///run/dagger/engine.sock" container.cmd;
+        assert has "--dns=10.88.0.1" container.extraOptions;
+        assert cfg.kosmos.wsl.dagger.dockerHubMirrors == ["mirror.gcr.io"];
+        assert has "dagger-dnsproxy.service" daggerUnit.after;
+        assert has "dagger-dnsproxy.service" daggerUnit.wants;
+        assert has "multi-user.target" dnsProxyUnit.wantedBy;
         assert has "L+ '/var/lib/dagger/config/dagger/engine.json' - - - - /etc/dagger/engine.json" cfg.systemd.tmpfiles.rules;
           pkgs.runCommand "kosmos-dagger-module-check" {} ''
             touch $out

@@ -26,6 +26,49 @@
     then defaultAgentEnvironmentFile
     else null;
   haveSecrets = effectiveServerEnvironmentFile != null && effectiveAgentEnvironmentFile != null;
+  agentNames =
+    [
+      "wsl-podman"
+    ]
+    ++ map (index: "wsl-podman-${toString index}") (lib.range 2 cfg.agentCount);
+  mkAgent = index: {
+    enable = true;
+    package = pkgsUnstable.woodpecker-agent;
+    environment = {
+      WOODPECKER_SERVER = "127.0.0.1:${toString cfg.grpcPort}";
+      WOODPECKER_BACKEND = "docker";
+      WOODPECKER_AGENT_CONFIG_FILE = "";
+      WOODPECKER_CONNECT_RETRY_COUNT = "1";
+      WOODPECKER_HEALTHCHECK_ADDR = "127.0.0.1:${toString (9000 + index)}";
+      WOODPECKER_BACKEND_DOCKER_VOLUMES = "/run/dagger:/run/dagger";
+      DOCKER_HOST = "unix:///run/podman/podman.sock";
+    };
+    environmentFile = [
+      effectiveAgentEnvironmentFile
+    ];
+    extraGroups = [
+      "podman"
+    ];
+    path = with pkgs; [
+      bash
+      coreutils
+      git
+      git-lfs
+      woodpecker-plugin-git
+    ];
+  };
+  agentServiceDependencies = {
+    after = [
+      "podman.socket"
+      "podman-dagger-engine.service"
+      "forgejo-internal-registry-proxy.service"
+    ];
+    wants = [
+      "podman.socket"
+      "podman-dagger-engine.service"
+      "forgejo-internal-registry-proxy.service"
+    ];
+  };
 in {
   options.kosmos.wsl.woodpecker = {
     enable = lib.mkEnableOption "Woodpecker CI server and local WSL agent";
@@ -64,6 +107,12 @@ in {
       type = lib.types.nullOr lib.types.path;
       default = null;
       description = "Environment file containing WOODPECKER_AGENT_SECRET for the local agent. Null uses secrets/woodpecker-agent-env.age when present.";
+    };
+
+    agentCount = lib.mkOption {
+      type = lib.types.ints.positive;
+      default = 3;
+      description = "Number of local WSL Woodpecker agents to run in parallel.";
     };
 
     enableCloudflared = lib.mkOption {
@@ -120,45 +169,13 @@ in {
         ];
       };
 
-      services.woodpecker-agents.agents.wsl-podman = {
-        enable = true;
-        package = pkgsUnstable.woodpecker-agent;
-        environment = {
-          WOODPECKER_SERVER = "127.0.0.1:${toString cfg.grpcPort}";
-          WOODPECKER_BACKEND = "docker";
-          WOODPECKER_AGENT_CONFIG_FILE = "";
-          WOODPECKER_CONNECT_RETRY_COUNT = "1";
-          WOODPECKER_HEALTHCHECK_ADDR = "127.0.0.1:9001";
-          WOODPECKER_BACKEND_DOCKER_VOLUMES = "/run/dagger:/run/dagger";
-          DOCKER_HOST = "unix:///run/podman/podman.sock";
-        };
-        environmentFile = [
-          effectiveAgentEnvironmentFile
-        ];
-        extraGroups = [
-          "podman"
-        ];
-        path = with pkgs; [
-          bash
-          coreutils
-          git
-          git-lfs
-          woodpecker-plugin-git
-        ];
-      };
+      services.woodpecker-agents.agents = lib.listToAttrs (
+        lib.imap1 (index: name: lib.nameValuePair name (mkAgent index)) agentNames
+      );
 
-      systemd.services.woodpecker-agent-wsl-podman = {
-        after = [
-          "podman.socket"
-          "podman-dagger-engine.service"
-          "forgejo-internal-registry-proxy.service"
-        ];
-        wants = [
-          "podman.socket"
-          "podman-dagger-engine.service"
-          "forgejo-internal-registry-proxy.service"
-        ];
-      };
+      systemd.services = lib.listToAttrs (
+        map (name: lib.nameValuePair "woodpecker-agent-${name}" agentServiceDependencies) agentNames
+      );
     })
 
     (lib.mkIf (haveSecrets && cfg.enableCloudflared) {
