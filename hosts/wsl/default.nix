@@ -36,6 +36,7 @@ _: {
       port = 22;
     }
   ];
+  services.cloudflared.tunnels.kepos.ingress."ssh-wsl.guion.io" = "ssh://127.0.0.1:22";
   kosmos.wsl = {
     frpcSsh.enable = true;
     keposMatrix.enable = true;

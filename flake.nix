@@ -65,6 +65,7 @@
             ${./tests/temenos-env-test} \
             ${./tests/ttal-tmux-project-picker-test} \
             ${./tests/temenos-ca-test} \
+            ${./tests/cloudflared-ssh-config-test} \
             ${./tests/cloudflared-ingress-smoke-test} \
             ${./tests/dagger-large-registry-smoke-test} \
             ${./tests/dagger-engine-config-smoke-test} \
@@ -77,6 +78,7 @@
           WOODPECKER_DISABLE_UPDATE_CHECK=true woodpecker-cli lint --strict ${./fixtures/woodpecker/dagger-unix-socket-smoke.yml}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudflared-ssh-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudflared-ingress-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-large-registry-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-engine-config-smoke-test}
