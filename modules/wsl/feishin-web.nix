@@ -44,13 +44,32 @@
     host = "127.0.0.1"
     port = ${toString cfg.port}
     root = "${webRoot}"
-    page-fallback = "${webRoot}/index.html"
     cache-control-headers = false
 
     [advanced]
 
     [[advanced.headers]]
+    source = "/assets/*-*.{js,css,map,woff,woff2,png,svg,webp}"
+    [advanced.headers.headers]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+    [[advanced.headers]]
+    source = "/index.html"
+    [advanced.headers.headers]
+    Cache-Control = "no-store"
+
+    [[advanced.headers]]
     source = "/settings.js"
+    [advanced.headers.headers]
+    Cache-Control = "no-store"
+
+    [[advanced.headers]]
+    source = "/assets/sw.js"
+    [advanced.headers.headers]
+    Cache-Control = "no-store"
+
+    [[advanced.headers]]
+    source = "/assets/manifest.webmanifest"
     [advanced.headers.headers]
     Cache-Control = "no-store"
   '';
