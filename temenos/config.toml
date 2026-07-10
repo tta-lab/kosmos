@@ -5,7 +5,6 @@ allow_env = [
   "TMUX",
   "TMUX_*",
   "KUBECONFIG",
-  "GOROOT",
   "GOPATH",
   "GOBIN",
   "GOMODCACHE",
