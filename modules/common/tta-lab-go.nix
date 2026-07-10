@@ -36,7 +36,6 @@
       export NO_PROXY=localhost,127.0.0.1,::1
     '';
   goEnv = [
-    "GOROOT=${pkgsUnstable.go}/share/go"
     "GOPATH=${goPath}"
     "GOBIN=${goBin}"
     "GOMODCACHE=${goModCache}"
@@ -59,7 +58,6 @@
   installScript = pkgs.writeShellScript "tta-lab-go-install" ''
     set -eu
 
-    export GOROOT=${pkgsUnstable.go}/share/go
     export GOPATH=${goPath}
     export GOBIN=${goBin}
     export GOMODCACHE=${goModCache}
@@ -116,7 +114,6 @@
 in {
   environment = {
     sessionVariables = {
-      GOROOT = "${pkgsUnstable.go}/share/go";
       GOPATH = goPath;
       GOBIN = goBin;
       GOMODCACHE = goModCache;
