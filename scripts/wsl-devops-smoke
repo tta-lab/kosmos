@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+failures=0
+
+check() {
+  local name="$1"
+  shift
+
+  if "$@"; then
+    printf 'ok: %s\n' "$name"
+  else
+    printf 'fail: %s\n' "$name" >&2
+    failures=$((failures + 1))
+  fi
+}
+
+systemd_is_active() {
+  systemctl is-active --quiet "$1"
+}
+
+http_ok() {
+  curl --fail --silent --show-error --head "$1" >/dev/null
+}
+
+registry_endpoint_ok() {
+  local status
+
+  status="$(
+    curl \
+      --silent \
+      --output /dev/null \
+      --write-out '%{http_code}' \
+      https://git.guion.io/v2/
+  )"
+
+  case "$status" in
+    200|401)
+      return 0
+      ;;
+    *)
+      printf 'unexpected /v2/ status: %s\n' "$status" >&2
+      return 1
+      ;;
+  esac
+}
+
+internal_registry_endpoint_ok() {
+  local status
+
+  status="$(
+    curl \
+      --silent \
+      --output /dev/null \
+      --write-out '%{http_code}' \
+      http://10.88.0.1:3000/v2/
+  )"
+
+  case "$status" in
+    200|401)
+      return 0
+      ;;
+    *)
+      printf 'unexpected internal /v2/ status: %s\n' "$status" >&2
+      return 1
+      ;;
+  esac
+}
+
+dagger_reaches_engine() {
+  dagger version >/dev/null
+}
+
+check "forgejo service active" systemd_is_active forgejo.service
+check "dagger engine service active" systemd_is_active podman-dagger-engine.service
+check "internal Forgejo registry proxy active" systemd_is_active forgejo-internal-registry-proxy.service
+check "local Forgejo HTTP responds" http_ok http://127.0.0.1:3000/
+check "public Forgejo registry endpoint responds" registry_endpoint_ok
+check "internal Forgejo registry endpoint responds" internal_registry_endpoint_ok
+check "Dagger CLI reaches local engine" dagger_reaches_engine
+
+if [[ "$failures" -gt 0 ]]; then
+  printf '%s smoke check(s) failed\n' "$failures" >&2
+  exit 1
+fi

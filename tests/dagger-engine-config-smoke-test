@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+
+bash "${repo_root}/scripts/dagger-engine-config-smoke" --help | grep -q 'usage: dagger-engine-config-smoke'
+bash "${repo_root}/scripts/dagger-engine-config-smoke" --help | grep -q '/etc/dagger/engine.json'
+bash "${repo_root}/scripts/dagger-engine-config-smoke" --help | grep -q 'host.containers.internal:3000'
+grep -q 'maxUsedSpace' "${repo_root}/scripts/dagger-engine-config-smoke"
+grep -q '100GB' "${repo_root}/scripts/dagger-engine-config-smoke"

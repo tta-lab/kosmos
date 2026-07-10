@@ -1,4 +1,8 @@
-{pkgs, ...}: let
+{
+  pkgs,
+  pkgsUnstable,
+  ...
+}: let
   proxyEnv = pkgs.writeShellApplication {
     name = "kosmos-wsl-proxy-env";
     runtimeInputs = with pkgs; [
@@ -71,6 +75,18 @@
       esac
     '';
   };
+  cloudflaredIngressSmoke = pkgs.writeScriptBin "kosmos-cloudflared-ingress-smoke" (builtins.readFile ../../scripts/cloudflared-ingress-smoke);
+  daggerEngineIsolationSmoke = pkgs.writeScriptBin "kosmos-dagger-engine-isolation-smoke" (builtins.readFile ../../scripts/dagger-engine-isolation-smoke);
+  daggerEngineConfigSmoke = pkgs.writeScriptBin "kosmos-dagger-engine-config-smoke" (builtins.readFile ../../scripts/dagger-engine-config-smoke);
+  daggerLocalRegistrySmoke = pkgs.writeScriptBin "kosmos-dagger-local-registry-smoke" (builtins.readFile ../../scripts/dagger-local-registry-smoke);
+  daggerLargeRegistrySmoke = pkgs.writeScriptBin "kosmos-dagger-large-registry-smoke" (builtins.readFile ../../scripts/dagger-large-registry-smoke);
+  daggerUnixSocketSmoke = pkgs.writeScriptBin "kosmos-dagger-unix-socket-smoke" (builtins.readFile ../../scripts/dagger-unix-socket-smoke);
+  devopsGateStatus = pkgs.writeScriptBin "kosmos-devops-gate-status" (builtins.readFile ../../scripts/devops-gate-status);
+  devopsSmoke = pkgs.writeScriptBin "kosmos-wsl-devops-smoke" (builtins.readFile ../../scripts/wsl-devops-smoke);
+  forgejoHttpsGitSmoke = pkgs.writeScriptBin "kosmos-forgejo-https-git-smoke" (builtins.readFile ../../scripts/forgejo-https-git-smoke);
+  forgejoK8sPullSecretSmoke = pkgs.writeScriptBin "kosmos-forgejo-k8s-pull-secret-smoke" (builtins.readFile ../../scripts/forgejo-k8s-pull-secret-smoke);
+  woodpeckerDaggerJobSmoke = pkgs.writeScriptBin "kosmos-woodpecker-dagger-job-smoke" (builtins.readFile ../../scripts/woodpecker-dagger-job-smoke);
+  woodpeckerPreflight = pkgs.writeScriptBin "kosmos-woodpecker-preflight" (builtins.readFile ../../scripts/woodpecker-preflight);
 in {
   wsl = {
     enable = true;
@@ -87,9 +103,23 @@ in {
 
   environment = {
     systemPackages = with pkgs; [
+      cloudflaredIngressSmoke
+      daggerLocalRegistrySmoke
+      daggerEngineIsolationSmoke
+      daggerEngineConfigSmoke
+      daggerLargeRegistrySmoke
+      daggerUnixSocketSmoke
+      devopsGateStatus
       docker-compose
+      devopsSmoke
+      forgejo
+      forgejoHttpsGitSmoke
+      forgejoK8sPullSecretSmoke
       k3d
       proxyEnv
+      pkgsUnstable.woodpecker-cli
+      woodpeckerDaggerJobSmoke
+      woodpeckerPreflight
     ];
   };
 
@@ -98,6 +128,12 @@ in {
     dockerCompat = true;
     dockerSocket.enable = true;
   };
+
+  virtualisation.containers.registries.insecure = [
+    "127.0.0.1:3000"
+    "10.88.0.1:3000"
+    "host.containers.internal:3000"
+  ];
 
   programs.nix-ld = {
     enable = true;

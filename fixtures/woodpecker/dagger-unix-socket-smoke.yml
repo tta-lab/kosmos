@@ -1,0 +1,9 @@
+when:
+  - event: manual
+
+steps:
+  dagger-unix-socket:
+    image: registry.dagger.io/engine:v0.21.7
+    commands:
+      - test -S /run/dagger/engine.sock
+      - _EXPERIMENTAL_DAGGER_RUNNER_HOST=unix:///run/dagger/engine.sock dagger version

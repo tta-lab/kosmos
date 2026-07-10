@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dagger_registry="${DAGGER_LOCAL_REGISTRY:-host.containers.internal:3000}"
+docker_registry="${DOCKER_LOCAL_REGISTRY:-127.0.0.1:3000}"
+owner="${FORGEJO_SMOKE_OWNER:-guionai}"
+image="${FORGEJO_SMOKE_IMAGE:-local-dagger-smoke}"
+tag="${FORGEJO_SMOKE_TAG:-latest}"
+user="${FORGEJO_SMOKE_USER:-neil}"
+admin_file="${FORGEJO_SMOKE_ADMIN_FILE:-/root/kosmos-forgejo-admin-init.txt}"
+token="${FORGEJO_SMOKE_TOKEN:-}"
+token_file_explicit="${FORGEJO_SMOKE_TOKEN_FILE+x}"
+token_file="${FORGEJO_SMOKE_TOKEN_FILE:-/home/neil/.config/kosmos/forgejo-smoke-token}"
+use_admin_bootstrap="${FORGEJO_SMOKE_USE_ADMIN_BOOTSTRAP:-}"
+
+require() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    printf 'missing required command: %s\n' "$1" >&2
+    exit 1
+  fi
+}
+
+require awk
+require dagger
+require docker
+
+read_credential() {
+  if [[ -n "$token" ]]; then
+    printf '%s' "$token"
+    return
+  fi
+
+  if [[ -r "$token_file" ]]; then
+    tr -d '\r\n' < "$token_file"
+    return
+  fi
+
+  if [[ -n "$token_file_explicit" ]]; then
+    printf 'missing readable Forgejo token file: %s\n' "$token_file" >&2
+    exit 1
+  fi
+
+  if [[ "$use_admin_bootstrap" == "1" ]]; then
+    require sudo
+    if ! sudo test -r "$admin_file"; then
+      printf 'missing readable Forgejo admin bootstrap file: %s\n' "$admin_file" >&2
+      exit 1
+    fi
+
+    sudo awk -F': ' '$1 == "Password" { print $2; exit }' "$admin_file"
+    return
+  fi
+
+  printf 'provide FORGEJO_SMOKE_TOKEN or FORGEJO_SMOKE_TOKEN_FILE; set FORGEJO_SMOKE_USE_ADMIN_BOOTSTRAP=1 only for bootstrap fallback\n' >&2
+  exit 1
+}
+
+credential="$(read_credential)"
+
+if [[ -z "$credential" ]]; then
+  printf 'Forgejo smoke credential is empty\n' >&2
+  exit 1
+fi
+
+export FORGEJO_PASSWORD="$credential"
+export DAGGER_NO_NAG=1
+
+dagger_ref="${dagger_registry}/${owner}/${image}:${tag}"
+docker_ref="${docker_registry}/${owner}/${image}:${tag}"
+
+printf 'publishing to internal Dagger registry address %s...\n' "$dagger_ref"
+dagger -M call container \
+  with-new-file --path /smoke.txt --contents "kosmos local registry smoke" \
+  with-registry-auth --address "$dagger_registry" --username "$user" --secret env://FORGEJO_PASSWORD \
+  publish --address "$dagger_ref" \
+  >/dev/null
+
+unset FORGEJO_PASSWORD
+
+printf 'pulling the same repository through local Docker address %s...\n' "$docker_ref"
+printf '%s\n' "$credential" | docker login "$docker_registry" --username "$user" --password-stdin >/dev/null
+docker pull "$docker_ref" >/dev/null
+
+printf 'Dagger local registry smoke passed: published %s and pulled %s\n' "$dagger_ref" "$docker_ref"

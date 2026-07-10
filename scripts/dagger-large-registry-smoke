@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dagger_registry="${DAGGER_LOCAL_REGISTRY:-host.containers.internal:3000}"
+docker_registry="${DOCKER_LOCAL_REGISTRY:-127.0.0.1:3000}"
+owner="${FORGEJO_SMOKE_OWNER:-guionai}"
+image="${FORGEJO_SMOKE_IMAGE:-large-dagger-smoke}"
+payload_mib="${DAGGER_LARGE_SMOKE_SIZE_MIB:-128}"
+tag="${FORGEJO_SMOKE_TAG:-large-${payload_mib}m}"
+user="${FORGEJO_SMOKE_USER:-neil}"
+base_image="${DAGGER_LARGE_SMOKE_BASE_IMAGE:-alpine:3.20}"
+admin_file="${FORGEJO_SMOKE_ADMIN_FILE:-/root/kosmos-forgejo-admin-init.txt}"
+token="${FORGEJO_SMOKE_TOKEN:-}"
+token_file_explicit="${FORGEJO_SMOKE_TOKEN_FILE+x}"
+token_file="${FORGEJO_SMOKE_TOKEN_FILE:-/home/neil/.config/kosmos/forgejo-smoke-token}"
+use_admin_bootstrap="${FORGEJO_SMOKE_USE_ADMIN_BOOTSTRAP:-}"
+
+usage() {
+  cat <<'EOF'
+usage: dagger-large-registry-smoke
+
+Publishes a size-controlled image through the WSL-local Dagger registry path,
+then pulls the same tag through the local Docker/Podman registry path.
+
+Environment:
+  DAGGER_LARGE_SMOKE_SIZE_MIB   Payload size in MiB. Default: 128
+  DAGGER_LARGE_SMOKE_BASE_IMAGE Base image used to create the payload. Default: alpine:3.20
+  DAGGER_LOCAL_REGISTRY         Registry address seen by the Dagger engine. Default: host.containers.internal:3000
+  DOCKER_LOCAL_REGISTRY         Registry address seen by local Docker/Podman. Default: 127.0.0.1:3000
+  FORGEJO_SMOKE_TOKEN           Forgejo token with package write/read access
+  FORGEJO_SMOKE_TOKEN_FILE      File containing the Forgejo token. Default: /home/neil/.config/kosmos/forgejo-smoke-token
+  FORGEJO_SMOKE_USER            Forgejo username. Default: neil
+  FORGEJO_SMOKE_OWNER           Forgejo package owner. Default: guionai
+  FORGEJO_SMOKE_IMAGE           Image name. Default: large-dagger-smoke
+  FORGEJO_SMOKE_TAG             Image tag. Default: large-<size>m
+EOF
+}
+
+if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+  usage
+  exit 0
+fi
+
+if [[ "$#" -gt 0 ]]; then
+  usage >&2
+  exit 2
+fi
+
+if [[ ! "$payload_mib" =~ ^[1-9][0-9]*$ ]]; then
+  printf 'DAGGER_LARGE_SMOKE_SIZE_MIB must be a positive integer, got: %s\n' "$payload_mib" >&2
+  exit 2
+fi
+
+require() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    printf 'missing required command: %s\n' "$1" >&2
+    exit 1
+  fi
+}
+
+require dagger
+require docker
+
+read_credential() {
+  if [[ -n "$token" ]]; then
+    printf '%s' "$token"
+    return
+  fi
+
+  if [[ -r "$token_file" ]]; then
+    tr -d '\r\n' < "$token_file"
+    return
+  fi
+
+  if [[ -n "$token_file_explicit" ]]; then
+      printf 'missing readable Forgejo token file: %s\n' "$token_file" >&2
+      exit 1
+  fi
+
+  if [[ "$use_admin_bootstrap" == "1" ]]; then
+    require sudo
+    if ! sudo test -r "$admin_file"; then
+      printf 'missing readable Forgejo admin bootstrap file: %s\n' "$admin_file" >&2
+      exit 1
+    fi
+
+    sudo awk -F': ' '$1 == "Password" { print $2; exit }' "$admin_file"
+    return
+  fi
+
+  printf 'provide FORGEJO_SMOKE_TOKEN or FORGEJO_SMOKE_TOKEN_FILE; set FORGEJO_SMOKE_USE_ADMIN_BOOTSTRAP=1 only for bootstrap fallback\n' >&2
+  exit 1
+}
+
+credential="$(read_credential)"
+
+if [[ -z "$credential" ]]; then
+  printf 'Forgejo smoke credential is empty\n' >&2
+  exit 1
+fi
+
+export FORGEJO_PASSWORD="$credential"
+export DAGGER_NO_NAG=1
+
+dagger_ref="${dagger_registry}/${owner}/${image}:${tag}"
+docker_ref="${docker_registry}/${owner}/${image}:${tag}"
+
+printf 'publishing %s MiB random payload to internal Dagger registry address %s...\n' "$payload_mib" "$dagger_ref"
+dagger -M call container \
+  from --address "$base_image" \
+  with-exec --args sh --args -c --args "dd if=/dev/urandom of=/payload.bin bs=1M count=${payload_mib} status=none && test -s /payload.bin" \
+  with-registry-auth --address "$dagger_registry" --username "$user" --secret env://FORGEJO_PASSWORD \
+  publish --address "$dagger_ref" \
+  >/dev/null
+
+unset FORGEJO_PASSWORD
+
+printf 'pulling the same repository through local Docker address %s...\n' "$docker_ref"
+printf '%s\n' "$credential" | docker login "$docker_registry" --username "$user" --password-stdin >/dev/null
+docker pull "$docker_ref" >/dev/null
+docker image inspect "$docker_ref" >/dev/null
+
+printf 'Dagger large registry smoke passed: published %s MiB to %s and pulled %s\n' "$payload_mib" "$dagger_ref" "$docker_ref"

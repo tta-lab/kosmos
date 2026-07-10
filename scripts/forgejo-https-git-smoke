@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+hostname="${FORGEJO_SMOKE_HOSTNAME:-git.guion.io}"
+user="${FORGEJO_SMOKE_USER:-neil}"
+admin_file="${FORGEJO_SMOKE_ADMIN_FILE:-/root/kosmos-forgejo-admin-init.txt}"
+token="${FORGEJO_SMOKE_TOKEN:-}"
+token_file_explicit="${FORGEJO_SMOKE_TOKEN_FILE+x}"
+token_file="${FORGEJO_SMOKE_TOKEN_FILE:-/home/neil/.config/kosmos/forgejo-smoke-token}"
+use_admin_bootstrap="${FORGEJO_SMOKE_USE_ADMIN_BOOTSTRAP:-}"
+
+require() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    printf 'missing required command: %s\n' "$1" >&2
+    exit 1
+  fi
+}
+
+require curl
+require date
+require git
+require mktemp
+require rm
+
+read_credential() {
+  if [[ -n "$token" ]]; then
+    printf '%s' "$token"
+    return
+  fi
+
+  if [[ -r "$token_file" ]]; then
+    tr -d '\r\n' < "$token_file"
+    return
+  fi
+
+  if [[ -n "$token_file_explicit" ]]; then
+    printf 'missing readable Forgejo token file: %s\n' "$token_file" >&2
+    exit 1
+  fi
+
+  if [[ "$use_admin_bootstrap" == "1" ]]; then
+    require sudo
+    if ! sudo test -r "$admin_file"; then
+      printf 'missing readable Forgejo admin bootstrap file: %s\n' "$admin_file" >&2
+      exit 1
+    fi
+
+    sudo awk -F': ' '$1 == "Password" { print $2; exit }' "$admin_file"
+    return
+  fi
+
+  printf 'provide FORGEJO_SMOKE_TOKEN or FORGEJO_SMOKE_TOKEN_FILE; set FORGEJO_SMOKE_USE_ADMIN_BOOTSTRAP=1 only for bootstrap fallback\n' >&2
+  exit 1
+}
+
+export FORGEJO_USER="$user"
+FORGEJO_PASS="$(read_credential)"
+export FORGEJO_PASS
+
+if [[ -z "$FORGEJO_PASS" ]]; then
+  printf 'Forgejo smoke credential is empty\n' >&2
+  exit 1
+fi
+
+repo="kosmos-https-git-smoke-$(date -u +%Y%m%d%H%M%S)"
+workdir="$(mktemp -d)"
+cred_helper="$workdir/git-credential-helper.sh"
+
+cleanup() {
+  curl -fsS \
+    -u "$FORGEJO_USER:$FORGEJO_PASS" \
+    -X DELETE "https://${hostname}/api/v1/repos/${FORGEJO_USER}/${repo}" \
+    >/dev/null 2>&1 || true
+  rm -rf "$workdir"
+}
+trap cleanup EXIT
+
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  "while IFS= read -r line; do" \
+  "  [ -z \"\$line\" ] && break" \
+  "done" \
+  "case \"\$1\" in" \
+  "  get)" \
+  "    printf \"username=%s\\n\" \"\$FORGEJO_USER\"" \
+  "    printf \"password=%s\\n\" \"\$FORGEJO_PASS\"" \
+  "    ;;" \
+  "esac" \
+  > "$cred_helper"
+chmod 700 "$cred_helper"
+
+printf 'creating temporary Forgejo repo %s/%s on %s\n' "$FORGEJO_USER" "$repo" "$hostname"
+create_payload="{\"name\":\"${repo}\",\"private\":true,\"auto_init\":true,\"default_branch\":\"main\"}"
+curl -fsS \
+  -u "$FORGEJO_USER:$FORGEJO_PASS" \
+  -H 'Content-Type: application/json' \
+  -d "$create_payload" \
+  "https://${hostname}/api/v1/user/repos" \
+  >/dev/null
+
+printf 'cloning over HTTPS...\n'
+GIT_TERMINAL_PROMPT=0 git \
+  -c credential.helper="$cred_helper" \
+  clone "https://${hostname}/${FORGEJO_USER}/${repo}.git" "$workdir/repo" \
+  >/dev/null 2>&1
+
+cd "$workdir/repo"
+printf 'https git smoke %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > smoke.txt
+git add smoke.txt
+git \
+  -c user.name='Kosmos Smoke' \
+  -c user.email="kosmos-smoke@${hostname}" \
+  commit -m 'test: verify https git push' \
+  >/dev/null
+
+printf 'pushing over HTTPS...\n'
+GIT_TERMINAL_PROMPT=0 git \
+  -c credential.helper="$cred_helper" \
+  push origin main \
+  >/dev/null 2>&1
+
+printf 'https git clone/push smoke passed for %s/%s at %s\n' \
+  "$FORGEJO_USER" \
+  "$repo" \
+  "$(git rev-parse --short HEAD)"

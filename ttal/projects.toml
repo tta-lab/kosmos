@@ -74,6 +74,11 @@
   path = "/home/neil/code/references/forgejo/forgejo"
   remote = "https://codeberg.org/forgejo/forgejo.git"
 
+[fs]
+  name = "Feishin"
+  path = "/home/neil/code/projects/tta-lab/feishin"
+  remote = "https://github.com/tta-lab/feishin.git"
+
 [fse]
   name = "flicknote-services"
   path = "/home/neil/code/projects/GuionAI/flicknote-services"
@@ -177,6 +182,11 @@
   name = "lensh - bash for lenos"
   path = "/home/neil/code/projects/tta-lab/sh"
   remote = "https://github.com/tta-lab/sh.git"
+
+[sf]
+  name = "Seafarer"
+  path = "/home/neil/code/projects/GuionAI/seafarer"
+  remote = "https://git.guion.io/GuionAI/seafarer.git"
 
 [sustech]
   name = "SUSTech Mar Slides"
