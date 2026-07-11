@@ -205,10 +205,15 @@
         assert has "tcp://0.0.0.0:8080" container.cmd;
         assert has "unix:///run/dagger/engine.sock" container.cmd;
         assert has "--dns=10.88.0.1" container.extraOptions;
+        assert container.environment.HTTPS_PROXY == "http://host.containers.internal:7890";
+        assert container.environment.NO_PROXY == "localhost,127.0.0.1,::1,host.containers.internal,10.87.0.0/16,10.88.0.0/16";
         assert cfg.kosmos.wsl.dagger.dockerHubMirrors == ["mirror.gcr.io"];
+        assert cfg.kosmos.wsl.dagger.dnsUpstreams == ["127.0.0.1:1053"];
         assert has "dagger-dnsproxy.service" daggerUnit.after;
         assert has "dagger-dnsproxy.service" daggerUnit.wants;
         assert has "multi-user.target" dnsProxyUnit.wantedBy;
+        assert has "mihomo.service" dnsProxyUnit.after;
+        assert has "mihomo.service" dnsProxyUnit.wants;
         assert has "L+ '/var/lib/dagger/config/dagger/engine.json' - - - - /etc/dagger/engine.json" cfg.systemd.tmpfiles.rules;
           pkgs.runCommand "kosmos-dagger-module-check" {} ''
             touch $out

@@ -75,18 +75,18 @@ As of 2026-07-11, the CLI can connect to Dagger Engine v0.21.7 and upload a
 build context, but builds that need a public base image stall during image
 resolution. `dagger version` is therefore not a sufficient health check.
 
-The failure has two observed layers:
+The failure crosses two DNS layers:
 
-1. `modules/wsl/dagger.nix` declares `--dns=10.88.0.1`, and root Podman reports
-   that address in the container's `HostConfig.Dns`. Before the Engine was
-   recreated, its `/etc/resolv.conf` instead contained `nameserver 10.87.0.1`.
-   Restarting `podman-dagger-engine.service` recreated the outer container and
-   corrected that file to `10.88.0.1`, but Dagger build vertices still sent
-   registry lookups to `10.87.0.1`. The stale resolver therefore also exists in
-   Dagger/BuildKit's internal execution network, outside the outer container's
-   visible `/etc/resolv.conf`.
+1. Root Podman attaches the Engine to `10.88.0.0/16`; its bridge gateway and
+   configured DNS endpoint are `10.88.0.1`. Inside the privileged Engine,
+   Dagger creates its own `dagger0` bridge on `10.87.0.0/16` and runs dnsmasq
+   at `10.87.0.1` for build containers. Seeing `10.87.0.1` in a build lookup or
+   the Engine's rewritten `/etc/resolv.conf` is expected, not stale state.
 2. `dagger-dnsproxy.service` is listening on `10.88.0.1:53`, but its requests to
-   both configured DNS-over-HTTPS upstreams (`1.1.1.1` and `1.0.0.1`) time out.
+   the configured public DNS-over-HTTPS upstreams (`1.1.1.1` and `1.0.0.1`)
+   timed out when sent directly. Mihomo already provides a local DNS listener
+   at `127.0.0.1:1053`, so Dagger's DNS proxy now uses that listener instead of
+   trying to send DoH traffic outside Mihomo.
 
 The result is repeatable lookup failure for both the configured Docker Hub
 mirror and the upstream registry:
@@ -100,6 +100,11 @@ This is an Engine/Podman/DNS-path fault, not a project Dockerfile or CPU
 architecture problem. Local Docker/Compose builds can still work because they
 do not use the Engine's resolver path.
 
+After DNS resolution is restored, the Engine also needs its HTTP and HTTPS
+proxy set to `host.containers.internal:7890`. The host's `127.0.0.1` address is
+not the Engine container's loopback address. Private Dagger and Podman networks
+remain in `NO_PROXY` so local registry traffic does not leave the host.
+
 Inspect all three layers before changing configuration:
 
 ```bash
@@ -111,9 +116,9 @@ journalctl -u dagger-dnsproxy -u podman-dagger-engine --since today
 ```
 
 The incident is resolved only when a Dagger operation can pull a small public
-image, not merely when the Engine socket responds. Recreating the Engine is not
-sufficient: the 2026-07-11 restart corrected the outer container resolver, but
-this functional check still failed through `10.87.0.1`:
+image, not merely when the Engine socket responds. Restarting the Engine alone
+does not fix an unreachable upstream in `dagger-dnsproxy`. Use this functional
+check:
 
 ```bash
 DAGGER_NO_NAG=1 dagger -M call container \
@@ -122,9 +127,9 @@ DAGGER_NO_NAG=1 dagger -M call container \
   stdout
 ```
 
-Verify Dagger/BuildKit's internal network resolver as well as the outer Podman
-container. Also verify the DNS proxy can reach at least one upstream before
-testing Dagger.
+Verify both DNS hops: Dagger dnsmasq at `10.87.0.1`, then the DNS proxy at
+`10.88.0.1`. Also verify Mihomo answers on `127.0.0.1:1053` before testing
+Dagger.
 
 The configuration sources for this path are:
 
