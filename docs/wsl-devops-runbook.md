@@ -78,8 +78,13 @@ resolution. `dagger version` is therefore not a sufficient health check.
 The failure has two observed layers:
 
 1. `modules/wsl/dagger.nix` declares `--dns=10.88.0.1`, and root Podman reports
-   that address in the container's `HostConfig.Dns`. Inside the running Engine
-   container, `/etc/resolv.conf` instead contains `nameserver 10.87.0.1`.
+   that address in the container's `HostConfig.Dns`. Before the Engine was
+   recreated, its `/etc/resolv.conf` instead contained `nameserver 10.87.0.1`.
+   Restarting `podman-dagger-engine.service` recreated the outer container and
+   corrected that file to `10.88.0.1`, but Dagger build vertices still sent
+   registry lookups to `10.87.0.1`. The stale resolver therefore also exists in
+   Dagger/BuildKit's internal execution network, outside the outer container's
+   visible `/etc/resolv.conf`.
 2. `dagger-dnsproxy.service` is listening on `10.88.0.1:53`, but its requests to
    both configured DNS-over-HTTPS upstreams (`1.1.1.1` and `1.0.0.1`) time out.
 
@@ -106,10 +111,20 @@ journalctl -u dagger-dnsproxy -u podman-dagger-engine --since today
 ```
 
 The incident is resolved only when a Dagger operation can pull a small public
-image, not merely when the Engine socket responds. Recreate the Engine after
-changing its Podman DNS settings; a service restart that leaves the old
-container or resolver state in place is not proof of recovery. Also verify the
-DNS proxy can reach at least one upstream before testing Dagger.
+image, not merely when the Engine socket responds. Recreating the Engine is not
+sufficient: the 2026-07-11 restart corrected the outer container resolver, but
+this functional check still failed through `10.87.0.1`:
+
+```bash
+DAGGER_NO_NAG=1 dagger -M call container \
+  from --address alpine:3.20 \
+  with-exec --args=echo --args=dagger-pull-ok \
+  stdout
+```
+
+Verify Dagger/BuildKit's internal network resolver as well as the outer Podman
+container. Also verify the DNS proxy can reach at least one upstream before
+testing Dagger.
 
 The configuration sources for this path are:
 
