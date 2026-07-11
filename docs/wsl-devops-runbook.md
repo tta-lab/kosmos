@@ -69,6 +69,56 @@ After changing the engine config:
 sudo systemctl restart podman-dagger-engine
 ```
 
+### Current DNS failure
+
+As of 2026-07-11, the CLI can connect to Dagger Engine v0.21.7 and upload a
+build context, but builds that need a public base image stall during image
+resolution. `dagger version` is therefore not a sufficient health check.
+
+The failure has two observed layers:
+
+1. `modules/wsl/dagger.nix` declares `--dns=10.88.0.1`, and root Podman reports
+   that address in the container's `HostConfig.Dns`. Inside the running Engine
+   container, `/etc/resolv.conf` instead contains `nameserver 10.87.0.1`.
+2. `dagger-dnsproxy.service` is listening on `10.88.0.1:53`, but its requests to
+   both configured DNS-over-HTTPS upstreams (`1.1.1.1` and `1.0.0.1`) time out.
+
+The result is repeatable lookup failure for both the configured Docker Hub
+mirror and the upstream registry:
+
+```text
+lookup mirror.gcr.io on 10.87.0.1:53: i/o timeout
+lookup registry-1.docker.io on 10.87.0.1:53: i/o timeout
+```
+
+This is an Engine/Podman/DNS-path fault, not a project Dockerfile or CPU
+architecture problem. Local Docker/Compose builds can still work because they
+do not use the Engine's resolver path.
+
+Inspect all three layers before changing configuration:
+
+```bash
+dagger version
+sudo podman inspect dagger-engine | jq '.[0].HostConfig.Dns'
+sudo podman exec dagger-engine cat /etc/resolv.conf
+systemctl status dagger-dnsproxy podman-dagger-engine
+journalctl -u dagger-dnsproxy -u podman-dagger-engine --since today
+```
+
+The incident is resolved only when a Dagger operation can pull a small public
+image, not merely when the Engine socket responds. Recreate the Engine after
+changing its Podman DNS settings; a service restart that leaves the old
+container or resolver state in place is not proof of recovery. Also verify the
+DNS proxy can reach at least one upstream before testing Dagger.
+
+The configuration sources for this path are:
+
+- `modules/wsl/dagger.nix`: Engine container, resolver, and DoH upstreams.
+- `scripts/dagger-engine-config-smoke`: installed Engine JSON and cache policy.
+- `scripts/dagger-unix-socket-smoke`: socket connectivity only.
+- `scripts/dagger-local-registry-smoke` and
+  `scripts/dagger-large-registry-smoke`: functional Dagger build/publish paths.
+
 Do not expose the Dagger engine through Cloudflare. Woodpecker receives the Unix
 socket mount and talks to it locally.
 
