@@ -5,6 +5,11 @@
   ...
 }: let
   cfg = config.kosmos.wsl.dagger;
+  engineProxyUrl =
+    lib.replaceStrings
+    ["127.0.0.1"]
+    ["host.containers.internal"]
+    (config.kosmos.wsl.mihomoProxyUrl or "http://127.0.0.1:7890");
   engineConfig = pkgs.writeText "dagger-engine.json" (builtins.toJSON {
     gc = {
       inherit
@@ -96,10 +101,9 @@ in {
     dnsUpstreams = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [
-        "https://1.1.1.1/dns-query"
-        "https://1.0.0.1/dns-query"
+        "127.0.0.1:1053"
       ];
-      description = "DNS-over-HTTPS upstreams used only by the Dagger engine resolver.";
+      description = "DNS upstreams used only by the Dagger engine resolver.";
     };
 
     gc = {
@@ -137,6 +141,11 @@ in {
         image = cfg.engineImage;
         pull = "missing";
         privileged = true;
+        environment = {
+          HTTP_PROXY = engineProxyUrl;
+          HTTPS_PROXY = engineProxyUrl;
+          NO_PROXY = "localhost,127.0.0.1,::1,host.containers.internal,10.87.0.0/16,10.88.0.0/16";
+        };
         ports = [
           "${cfg.listenAddress}:${toString cfg.port}:8080"
         ];
@@ -169,9 +178,11 @@ in {
         dagger-dnsproxy = {
           description = "Dagger-only DNS proxy on the Podman bridge";
           after = [
+            "mihomo.service"
             "network-online.target"
           ];
           wants = [
+            "mihomo.service"
             "network-online.target"
           ];
           wantedBy = [
