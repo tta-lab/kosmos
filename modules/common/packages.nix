@@ -138,6 +138,9 @@ in {
     pkgsUnstable.asciinema
     pkgsUnstable.asciinema-agg
 
+    # Storage
+    mdadm
+
     # System inspection
     btop
     eza
