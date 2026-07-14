@@ -94,6 +94,45 @@
           touch $out
         '';
 
+      seafarer-edge-module = let
+        eval = nixpkgs.lib.nixosSystem {
+          inherit system;
+          modules = [
+            ./modules/wsl/seafarer-edge.nix
+            ({
+              lib,
+              pkgs,
+              ...
+            }: {
+              options.kosmos.wsl.keposMatrix.enable = lib.mkEnableOption "test Kepos tunnel";
+              config = {
+                system.stateVersion = "25.05";
+                kosmos.wsl = {
+                  keposMatrix.enable = true;
+                  seafarerEdge.enable = true;
+                };
+                services.cloudflared.tunnels.kepos = {
+                  credentialsFile = pkgs.writeText "credentials.json" "{}";
+                  default = "http_status:404";
+                };
+              };
+            })
+          ];
+        };
+        cfg = eval.config;
+        edge = cfg.kosmos.wsl.seafarerEdge;
+        virtualHost = cfg.services.nginx.virtualHosts.seafarer-edge;
+        listener = builtins.head virtualHost.listen;
+      in
+        assert cfg.services.nginx.enable;
+        assert listener.addr == "127.0.0.1";
+        assert listener.port == edge.proxyPort;
+        assert virtualHost.locations."/".proxyPass == "http://127.0.0.1:${toString edge.seafilePort}";
+        assert virtualHost.locations."~ ^/(sdoc-server(?:/|$)|socket\\.io(?:/|$))".proxyPass == "http://127.0.0.1:${toString edge.seadocPort}";
+        assert cfg.services.cloudflared.tunnels.kepos.ingress.${edge.seafileHostname} == "http://127.0.0.1:${toString edge.proxyPort}";
+        assert cfg.services.cloudflared.tunnels.kepos.ingress.${edge.onlyofficeHostname} == "http://127.0.0.1:${toString edge.onlyofficePort}";
+          pkgs.runCommand "seafarer-edge-module-check" {} "touch $out";
+
       woodpecker-module = let
         eval = nixpkgs.lib.nixosSystem {
           inherit system;
