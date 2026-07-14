@@ -94,6 +94,45 @@
           touch $out
         '';
 
+      seafarer-edge-module = let
+        eval = nixpkgs.lib.nixosSystem {
+          inherit system;
+          modules = [
+            ./modules/wsl/seafarer-edge.nix
+            ({
+              lib,
+              pkgs,
+              ...
+            }: {
+              options.kosmos.wsl.keposMatrix.enable = lib.mkEnableOption "test Kepos tunnel";
+              config = {
+                system.stateVersion = "25.05";
+                kosmos.wsl = {
+                  keposMatrix.enable = true;
+                  seafarerEdge.enable = true;
+                };
+                services.cloudflared.tunnels.kepos = {
+                  credentialsFile = pkgs.writeText "credentials.json" "{}";
+                  default = "http_status:404";
+                };
+              };
+            })
+          ];
+        };
+        cfg = eval.config;
+        edge = cfg.kosmos.wsl.seafarerEdge;
+        caddyHost = cfg.services.caddy.virtualHosts."http://127.0.0.1:${toString edge.proxyPort}";
+      in
+        assert cfg.services.caddy.enable;
+        assert !cfg.services.nginx.enable;
+        assert nixpkgs.lib.hasInfix "output discard" caddyHost.logFormat;
+        assert nixpkgs.lib.hasInfix "@seadoc path /sdoc-server /sdoc-server/* /socket.io /socket.io/*" caddyHost.extraConfig;
+        assert nixpkgs.lib.hasInfix "reverse_proxy 127.0.0.1:${toString edge.seadocPort}" caddyHost.extraConfig;
+        assert nixpkgs.lib.hasInfix "reverse_proxy 127.0.0.1:${toString edge.seafilePort}" caddyHost.extraConfig;
+        assert cfg.services.cloudflared.tunnels.kepos.ingress.${edge.seafileHostname} == "http://127.0.0.1:${toString edge.proxyPort}";
+        assert cfg.services.cloudflared.tunnels.kepos.ingress.${edge.onlyofficeHostname} == "http://127.0.0.1:${toString edge.onlyofficePort}";
+          pkgs.runCommand "seafarer-edge-module-check" {} "touch $out";
+
       woodpecker-module = let
         eval = nixpkgs.lib.nixosSystem {
           inherit system;
