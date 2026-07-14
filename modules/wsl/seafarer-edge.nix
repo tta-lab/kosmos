@@ -65,29 +65,20 @@ in {
         ''
       ];
 
-      services.nginx = {
+      services.caddy = {
         enable = true;
-        recommendedProxySettings = true;
-
-        virtualHosts.seafarer-edge = {
-          listen = [
-            {
-              addr = "127.0.0.1";
-              port = cfg.proxyPort;
+        virtualHosts."http://127.0.0.1:${toString cfg.proxyPort}" = {
+          logFormat = "output discard";
+          extraConfig = ''
+            @seadoc path /sdoc-server /sdoc-server/* /socket.io /socket.io/*
+            handle @seadoc {
+              reverse_proxy 127.0.0.1:${toString cfg.seadocPort}
             }
-          ];
 
-          locations = {
-            "~ ^/(sdoc-server(?:/|$)|socket\\.io(?:/|$))" = {
-              proxyPass = "http://127.0.0.1:${toString cfg.seadocPort}";
-              proxyWebsockets = true;
-            };
-
-            "/" = {
-              proxyPass = "http://127.0.0.1:${toString cfg.seafilePort}";
-              proxyWebsockets = true;
-            };
-          };
+            handle {
+              reverse_proxy 127.0.0.1:${toString cfg.seafilePort}
+            }
+          '';
         };
       };
     }

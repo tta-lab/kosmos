@@ -8,9 +8,9 @@ The host-side contract is:
 - `127.0.0.1:18080` — Seafile
 - `127.0.0.1:18081` — SeaDoc
 - `127.0.0.1:18082` — OnlyOffice
-- `127.0.0.1:18083` — Nginx path router for `seafile.guion.io`
+- `127.0.0.1:18083` — Caddy path router for `seafile.guion.io`
 
-Nginx sends `/sdoc-server` and `/socket.io` requests to SeaDoc. All other
+Caddy sends `/sdoc-server` and `/socket.io` requests to SeaDoc. All other
 requests for `seafile.guion.io` go to Seafile. The tunnel sends
 `onlyoffice.guion.io` straight to the OnlyOffice loopback port.
 
