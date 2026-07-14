@@ -188,6 +188,11 @@
   path = "/home/neil/code/projects/GuionAI/seafarer"
   remote = "https://git.guion.io/GuionAI/seafarer.git"
 
+[sfd]
+  name = "Seafarer Deploy"
+  path = "/home/neil/code/projects/GuionAI/sf-deploy"
+  remote = "https://git.guion.io/GuionAI/sf-deploy.git"
+
 [sustech]
   name = "SUSTech Mar Slides"
   path = "/home/neil/code/projects/neil/sustech-mar-slides"
