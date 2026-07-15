@@ -8,11 +8,13 @@ The host-side contract is:
 - `127.0.0.1:18080` — Seafile
 - `127.0.0.1:18081` — SeaDoc
 - `127.0.0.1:18082` — OnlyOffice
-- `127.0.0.1:18083` — Caddy path router for `seafile.guion.io`
+- `127.0.0.1:18083` — PDF classifier
+- `127.0.0.1:18084` — Caddy path router for `seafile.guion.io`
 
-Caddy sends `/sdoc-server` and `/socket.io` requests to SeaDoc. All other
-requests for `seafile.guion.io` go to Seafile. The tunnel sends
-`onlyoffice.guion.io` straight to the OnlyOffice loopback port.
+Caddy sends `/sdoc-server` and `/socket.io` requests to SeaDoc, and `/upload`
+and `/upload/*` to the classifier. All other requests for `seafile.guion.io`
+go to Seafile. The tunnel sends `onlyoffice.guion.io` straight to the OnlyOffice
+loopback port.
 
 Do not move the Cloudflare DNS records until the Seafarer Compose deployment
 publishes the three upstream ports on loopback. After both sides are deployed,
