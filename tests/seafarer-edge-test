@@ -4,7 +4,7 @@ set -euo pipefail
 repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
 module="$repo_root/modules/wsl/seafarer-edge.nix"
 
-grep -q 'default = 18084;' "$module"
+grep -q 'default = 8081;' "$module"
 grep -q 'classifierPort = lib.mkOption' "$module"
 grep -q 'default = 18083;' "$module"
 grep -q '@classifier path /upload /upload/\*' "$module"

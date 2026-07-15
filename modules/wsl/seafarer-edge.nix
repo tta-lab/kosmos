@@ -51,7 +51,7 @@ in {
 
     proxyPort = lib.mkOption {
       type = lib.types.port;
-      default = 18084;
+      default = 8081;
       description = "Loopback port used by the Seafile path-routing proxy.";
     };
 
