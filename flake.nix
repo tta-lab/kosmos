@@ -121,14 +121,18 @@
         };
         cfg = eval.config;
         edge = cfg.kosmos.wsl.seafarerEdge;
-        caddyHost = cfg.services.caddy.virtualHosts."http://127.0.0.1:${toString edge.proxyPort}";
+        caddyHost = cfg.services.caddy.virtualHosts."http://:${toString edge.proxyPort}";
       in
         assert cfg.services.caddy.enable;
         assert !cfg.services.nginx.enable;
         assert nixpkgs.lib.hasInfix "output discard" caddyHost.logFormat;
-        assert nixpkgs.lib.hasInfix "@seadoc path /sdoc-server /sdoc-server/* /socket.io /socket.io/*" caddyHost.extraConfig;
+        assert nixpkgs.lib.hasInfix "bind 127.0.0.1" caddyHost.extraConfig;
+        assert nixpkgs.lib.hasInfix "host ${edge.seafileHostname}" caddyHost.extraConfig;
+        assert nixpkgs.lib.hasInfix "path /sdoc-server /sdoc-server/* /socket.io /socket.io/*" caddyHost.extraConfig;
         assert nixpkgs.lib.hasInfix "reverse_proxy 127.0.0.1:${toString edge.seadocPort}" caddyHost.extraConfig;
+        assert nixpkgs.lib.hasInfix "header_up X-Forwarded-Proto https" caddyHost.extraConfig;
         assert nixpkgs.lib.hasInfix "reverse_proxy 127.0.0.1:${toString edge.seafilePort}" caddyHost.extraConfig;
+        assert nixpkgs.lib.hasInfix "respond \"\" 404" caddyHost.extraConfig;
         assert cfg.services.cloudflared.tunnels.kepos.ingress.${edge.seafileHostname} == "http://127.0.0.1:${toString edge.proxyPort}";
         assert cfg.services.cloudflared.tunnels.kepos.ingress.${edge.onlyofficeHostname} == "http://127.0.0.1:${toString edge.onlyofficePort}";
           pkgs.runCommand "seafarer-edge-module-check" {} "touch $out";
