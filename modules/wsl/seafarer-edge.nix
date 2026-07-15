@@ -73,21 +73,40 @@ in {
 
       services.caddy = {
         enable = true;
-        virtualHosts."http://127.0.0.1:${toString cfg.proxyPort}" = {
+        virtualHosts."http://:${toString cfg.proxyPort}" = {
           logFormat = "output discard";
           extraConfig = ''
-            @seadoc path /sdoc-server /sdoc-server/* /socket.io /socket.io/*
+            bind 127.0.0.1
+
+            @seadoc {
+              host ${cfg.seafileHostname}
+              path /sdoc-server /sdoc-server/* /socket.io /socket.io/*
+            }
             handle @seadoc {
-              reverse_proxy 127.0.0.1:${toString cfg.seadocPort}
+              reverse_proxy 127.0.0.1:${toString cfg.seadocPort} {
+                header_up X-Forwarded-Proto https
+              }
             }
 
-            @classifier path /upload /upload/*
+            @classifier {
+              host ${cfg.seafileHostname}
+              path /upload /upload/*
+            }
             handle @classifier {
-              reverse_proxy 127.0.0.1:${toString cfg.classifierPort}
+              reverse_proxy 127.0.0.1:${toString cfg.classifierPort} {
+                header_up X-Forwarded-Proto https
+              }
+            }
+
+            @seafile host ${cfg.seafileHostname}
+            handle @seafile {
+              reverse_proxy 127.0.0.1:${toString cfg.seafilePort} {
+                header_up X-Forwarded-Proto https
+              }
             }
 
             handle {
-              reverse_proxy 127.0.0.1:${toString cfg.seafilePort}
+              respond "" 404
             }
           '';
         };
