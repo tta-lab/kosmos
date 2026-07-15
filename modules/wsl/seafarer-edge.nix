@@ -51,8 +51,14 @@ in {
 
     proxyPort = lib.mkOption {
       type = lib.types.port;
-      default = 18083;
+      default = 8081;
       description = "Loopback port used by the Seafile path-routing proxy.";
+    };
+
+    classifierPort = lib.mkOption {
+      type = lib.types.port;
+      default = 18083;
+      description = "Loopback port published by the PDF classifier.";
     };
   };
 
@@ -73,6 +79,11 @@ in {
             @seadoc path /sdoc-server /sdoc-server/* /socket.io /socket.io/*
             handle @seadoc {
               reverse_proxy 127.0.0.1:${toString cfg.seadocPort}
+            }
+
+            @classifier path /upload /upload/*
+            handle @classifier {
+              reverse_proxy 127.0.0.1:${toString cfg.classifierPort}
             }
 
             handle {
