@@ -163,7 +163,8 @@
         cfg = eval.config;
         inherit (cfg.kosmos.wsl) gatus;
         inherit (cfg.services.gatus.settings) endpoints;
-        endpoint = name: nixpkgs.lib.findFirst (item: item.name == name) null endpoints;
+        endpoint = name: nixpkgs.lib.findFirst (item: item.name == name) (throw "gatus check: endpoint '${name}' not found") endpoints;
+        missingEndpoint = builtins.tryEval (endpoint "missing");
         fileEndpoint = endpoint "盛伟-网盘";
         officeEndpoint = endpoint "盛伟-office";
         expectedConditions = [
@@ -173,6 +174,7 @@
         ];
       in
         assert cfg.services.gatus.enable;
+        assert !missingEndpoint.success;
         assert gatus.port == 8082;
         assert gatus.port != cfg.kosmos.wsl.seafarerEdge.proxyPort;
         assert cfg.services.gatus.settings.web.address == "127.0.0.1";
