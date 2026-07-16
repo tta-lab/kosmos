@@ -22,6 +22,7 @@ _: {
     ../../modules/wsl/listen-together.nix
     ../../modules/wsl/feishin-web.nix
     ../../modules/wsl/seafarer-edge.nix
+    ../../modules/wsl/gatus.nix
     ../../modules/wsl/apt-cacher-ng.nix
     ../../modules/configs.nix
   ];
@@ -51,6 +52,7 @@ _: {
     feishinWeb.enable = true;
     navidrome.enable = true;
     seafarerEdge.enable = true;
+    gatus.enable = true;
   };
   system.stateVersion = "25.05";
 }
