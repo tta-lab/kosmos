@@ -140,6 +140,7 @@
       gatus-module = let
         eval = nixpkgs.lib.nixosSystem {
           inherit system;
+          specialArgs = {inherit pkgsUnstable;};
           modules = [
             ./modules/wsl/gatus.nix
             ./modules/wsl/seafarer-edge.nix
@@ -174,6 +175,7 @@
         ];
       in
         assert cfg.services.gatus.enable;
+        assert cfg.services.gatus.package.version == pkgsUnstable.gatus.version;
         assert !missingEndpoint.success;
         assert gatus.port == 8082;
         assert gatus.port != cfg.kosmos.wsl.seafarerEdge.proxyPort;
