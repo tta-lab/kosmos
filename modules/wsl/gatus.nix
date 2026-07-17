@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  pkgsUnstable,
   ...
 }: let
   cfg = config.kosmos.wsl.gatus;
@@ -42,6 +43,7 @@ in {
 
       services.gatus = {
         enable = true;
+        package = pkgsUnstable.gatus;
         settings = {
           web = {
             address = "127.0.0.1";
