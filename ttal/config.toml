@@ -2,18 +2,12 @@ shell = "fish"
 
 references_path = "~/code/references"
 
-[flicknote]
-  # "plan" and "fix" kept for backward compat with existing annotated tasks
-  inline_projects = ["plan", "fix", "orientation"]
-
 [sync]
   worker_agent_paths = ["/home/neil/code/projects/tta-lab/ttal-cli/agents"]
   global_prompt_path = "/home/neil/code/projects/tta-lab/ttal-cli/templates/ttal/CLAUDE.user.md"
   rules_paths = []
   skills_paths = [
     "~/code/projects/tta-lab/ttal-cli/skills",
-    "~/code/projects/tta-lab/organon/skills",
-    "~/code/projects/tta-lab/einai/skills",
     "~/code/projects/tta-lab/diary/skills",
     "~/code/projects/GuionAI/flicknote-cli/skills"
   ]
