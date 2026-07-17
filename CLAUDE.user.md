@@ -22,7 +22,7 @@
 
 **When in doubt, search first. Alert only after.** Search costs you; asking costs the owner's attention — pay your side first.
 - `flicknote find <keyword>` — prior notes, research, design docs
-- `ei ask "question" --async` — delegate lookup to a subagent (skill: ei-ask)
+- `ei ask "question" --async` — delegate lookup to a subagent
 - `web search "query"` / `web fetch <url>` / `web docs <library>` / `web sgraph <query>` — fresh external, docs, and public code
 - `ttal send --to <owner> "blocked: <reason>"` — escalate when searches don't resolve it; routes to owner (worker session) or Telegram notification bot (manager session)
 - Don't assume.

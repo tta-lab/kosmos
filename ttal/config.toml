@@ -8,7 +8,6 @@ references_path = "~/code/references"
   rules_paths = []
   skills_paths = [
     "~/code/projects/tta-lab/ttal-cli/skills",
-    "~/code/projects/tta-lab/einai/skills",
     "~/code/projects/tta-lab/diary/skills",
     "~/code/projects/GuionAI/flicknote-cli/skills"
   ]
