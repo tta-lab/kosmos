@@ -6,6 +6,8 @@
   ...
 }: let
   cfg = config.kosmos.wsl.woodpecker;
+  hostProxyUrl = config.kosmos.wsl.mihomoProxyUrl or "http://127.0.0.1:7890";
+  jobProxyUrl = lib.replaceStrings ["127.0.0.1"] ["host.containers.internal"] hostProxyUrl;
   serverEnvironmentAgeFile = ../../secrets/woodpecker-server-env.age;
   agentEnvironmentAgeFile = ../../secrets/woodpecker-agent-env.age;
   defaultServerEnvironmentFile = "/run/agenix/woodpecker-server-env";
@@ -42,6 +44,10 @@
       WOODPECKER_HEALTHCHECK_ADDR = "127.0.0.1:${toString (9000 + index)}";
       WOODPECKER_BACKEND_DOCKER_VOLUMES = "/run/dagger:/run/dagger";
       DOCKER_HOST = "unix:///run/podman/podman.sock";
+      HTTP_PROXY = hostProxyUrl;
+      HTTPS_PROXY = hostProxyUrl;
+      ALL_PROXY = hostProxyUrl;
+      NO_PROXY = "localhost,127.0.0.1,::1";
     };
     environmentFile = [
       effectiveAgentEnvironmentFile
@@ -162,7 +168,12 @@ in {
           WOODPECKER_FORGEJO_URL = cfg.forgejoUrl;
           WOODPECKER_OPEN = "false";
           WOODPECKER_ADMIN = "neil";
-          WOODPECKER_ENVIRONMENT = "_EXPERIMENTAL_DAGGER_RUNNER_HOST:unix:///run/dagger/engine.sock";
+          WOODPECKER_ENVIRONMENT = lib.concatStringsSep "," [
+            "_EXPERIMENTAL_DAGGER_RUNNER_HOST:unix:///run/dagger/engine.sock"
+            "HTTP_PROXY:${jobProxyUrl}"
+            "HTTPS_PROXY:${jobProxyUrl}"
+            "ALL_PROXY:${jobProxyUrl}"
+          ];
         };
         environmentFile = [
           effectiveServerEnvironmentFile
