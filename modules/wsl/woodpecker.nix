@@ -168,12 +168,10 @@ in {
           WOODPECKER_FORGEJO_URL = cfg.forgejoUrl;
           WOODPECKER_OPEN = "false";
           WOODPECKER_ADMIN = "neil";
-          WOODPECKER_ENVIRONMENT = lib.concatStringsSep "," [
-            "_EXPERIMENTAL_DAGGER_RUNNER_HOST:unix:///run/dagger/engine.sock"
-            "HTTP_PROXY:${jobProxyUrl}"
-            "HTTPS_PROXY:${jobProxyUrl}"
-            "ALL_PROXY:${jobProxyUrl}"
-          ];
+          WOODPECKER_ENVIRONMENT = "_EXPERIMENTAL_DAGGER_RUNNER_HOST:unix:///run/dagger/engine.sock";
+          WOODPECKER_BACKEND_HTTP_PROXY = jobProxyUrl;
+          WOODPECKER_BACKEND_HTTPS_PROXY = jobProxyUrl;
+          WOODPECKER_BACKEND_NO_PROXY = "localhost,127.0.0.1,::1,host.containers.internal";
         };
         environmentFile = [
           effectiveServerEnvironmentFile
