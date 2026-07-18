@@ -167,6 +167,7 @@ in {
     kubectx
     kubelogin
     kubernetes-helm
+    skopeo
     helm-ls
     k9s
     pkgsUnstable.lazygit
