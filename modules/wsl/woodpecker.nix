@@ -99,8 +99,8 @@ in {
 
     forgejoUrl = lib.mkOption {
       type = lib.types.str;
-      default = "https://git.guion.io";
-      description = "Forgejo URL used by Woodpecker's Forgejo/Gitea integration.";
+      default = "http://127.0.0.1:3000";
+      description = "Local Forgejo API URL used by Woodpecker's Forgejo/Gitea integration.";
     };
 
     serverEnvironmentFile = lib.mkOption {

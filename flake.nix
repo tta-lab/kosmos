@@ -221,6 +221,7 @@
         has = value: list: builtins.elem value list;
       in
         assert server.enable;
+        assert server.environment.WOODPECKER_FORGEJO_URL == "http://127.0.0.1:3000";
         assert server.environment.WOODPECKER_ENVIRONMENT == "_EXPERIMENTAL_DAGGER_RUNNER_HOST:unix:///run/dagger/engine.sock,HTTP_PROXY:http://host.containers.internal:7890,HTTPS_PROXY:http://host.containers.internal:7890,ALL_PROXY:http://host.containers.internal:7890";
         assert agent.enable;
         assert agent2.enable;
