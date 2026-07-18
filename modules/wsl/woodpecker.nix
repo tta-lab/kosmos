@@ -6,6 +6,8 @@
   ...
 }: let
   cfg = config.kosmos.wsl.woodpecker;
+  hostProxyUrl = config.kosmos.wsl.mihomoProxyUrl or "http://127.0.0.1:7890";
+  jobProxyUrl = lib.replaceStrings ["127.0.0.1"] ["host.containers.internal"] hostProxyUrl;
   serverEnvironmentAgeFile = ../../secrets/woodpecker-server-env.age;
   agentEnvironmentAgeFile = ../../secrets/woodpecker-agent-env.age;
   defaultServerEnvironmentFile = "/run/agenix/woodpecker-server-env";
@@ -42,6 +44,10 @@
       WOODPECKER_HEALTHCHECK_ADDR = "127.0.0.1:${toString (9000 + index)}";
       WOODPECKER_BACKEND_DOCKER_VOLUMES = "/run/dagger:/run/dagger";
       DOCKER_HOST = "unix:///run/podman/podman.sock";
+      HTTP_PROXY = hostProxyUrl;
+      HTTPS_PROXY = hostProxyUrl;
+      ALL_PROXY = hostProxyUrl;
+      NO_PROXY = "localhost,127.0.0.1,::1";
     };
     environmentFile = [
       effectiveAgentEnvironmentFile
@@ -93,8 +99,8 @@ in {
 
     forgejoUrl = lib.mkOption {
       type = lib.types.str;
-      default = "https://git.guion.io";
-      description = "Forgejo URL used by Woodpecker's Forgejo/Gitea integration.";
+      default = "http://127.0.0.1:3000";
+      description = "Local Forgejo API URL used by Woodpecker's Forgejo/Gitea integration.";
     };
 
     serverEnvironmentFile = lib.mkOption {
@@ -163,6 +169,9 @@ in {
           WOODPECKER_OPEN = "false";
           WOODPECKER_ADMIN = "neil";
           WOODPECKER_ENVIRONMENT = "_EXPERIMENTAL_DAGGER_RUNNER_HOST:unix:///run/dagger/engine.sock";
+          WOODPECKER_BACKEND_HTTP_PROXY = jobProxyUrl;
+          WOODPECKER_BACKEND_HTTPS_PROXY = jobProxyUrl;
+          WOODPECKER_BACKEND_NO_PROXY = "localhost,127.0.0.1,::1,host.containers.internal";
         };
         environmentFile = [
           effectiveServerEnvironmentFile
