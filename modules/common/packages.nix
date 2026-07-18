@@ -167,8 +167,11 @@ in {
     kubectx
     kubelogin
     kubernetes-helm
+    kubeconform
+    skopeo
     helm-ls
     k9s
+    stern
     pkgsUnstable.lazygit
 
     # GNU and Nix tooling

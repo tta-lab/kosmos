@@ -73,7 +73,6 @@ Agents must not read, decrypt, or inspect plaintext secrets. If a task needs one
 
 - Branch + PR for everything. Never push to main.
 - Conventional commits: `feat(wsl):`, `fix(proxy):`, `chore:`, `refactor:`
-- Use `ttal push` (not `git push`). Use `ttal pr create` for PRs.
 - Commit `flake.lock` when flake inputs change.
 
 After merging config/package changes, deploy on WSL:
