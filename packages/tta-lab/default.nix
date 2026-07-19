@@ -68,18 +68,4 @@
       exec ${bash}/bin/bash ${../../scripts/ttal-tmux-project-picker} "$@"
     '';
   };
-
-  ttalWeztermProjects = writeShellApplication {
-    name = "ttal-wezterm-projects";
-    runtimeInputs = [
-      bash
-      jq
-    ];
-    text = ''
-      ${lib.optionalString (ttalBinDir != null) ''
-        export PATH=${lib.escapeShellArg ttalBinDir}:$PATH
-      ''}
-      exec ${bash}/bin/bash ${../../scripts/ttal-wezterm-projects} "$@"
-    '';
-  };
 }

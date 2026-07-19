@@ -55,7 +55,6 @@ in {
 
     # Terminfo for SSH clients using modern terminal emulators.
     kitty.terminfo
-    wezterm.terminfo
     ghostty.terminfo
 
     gnumake
@@ -107,7 +106,6 @@ in {
     syncProjects
     syncTtaLabProjects
     ttaLab.ttalTmuxProjectPicker
-    ttaLab.ttalWeztermProjects
     ttaLab.flicknote
     ttaLab.taskwarrior
 

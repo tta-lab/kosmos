@@ -58,7 +58,6 @@
             ${./scripts/forgejo-https-git-smoke} \
             ${./scripts/forgejo-k8s-pull-secret-smoke} \
             ${./scripts/ttal-tmux-project-picker} \
-            ${./scripts/ttal-wezterm-projects} \
             ${./scripts/woodpecker-dagger-job-smoke} \
             ${./scripts/woodpecker-preflight} \
             ${./scripts/wsl-devops-smoke} \
@@ -74,8 +73,7 @@
             ${./tests/tmux-tmpdir-test} \
             ${./tests/tmux-copy-mode-test} \
             ${./tests/devops-gate-status-test} \
-            ${./tests/orga-cli-service-test} \
-            ${./tests/ttal-wezterm-projects-test}
+            ${./tests/orga-cli-service-test}
           WOODPECKER_DISABLE_UPDATE_CHECK=true woodpecker-cli lint --strict ${./fixtures/woodpecker/dagger-unix-socket-smoke.yml}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
@@ -90,7 +88,6 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-copy-mode-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/devops-gate-status-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-wezterm-projects-test}
           touch $out
         '';
 
