@@ -75,6 +75,7 @@
             ${./tests/tmux-copy-mode-test} \
             ${./tests/devops-gate-status-test} \
             ${./tests/orga-cli-service-test} \
+            ${./tests/openssl-package-test} \
             ${./tests/ttal-wezterm-projects-test}
           WOODPECKER_DISABLE_UPDATE_CHECK=true woodpecker-cli lint --strict ${./fixtures/woodpecker/dagger-unix-socket-smoke.yml}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
@@ -90,6 +91,7 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-copy-mode-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/devops-gate-status-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/openssl-package-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-wezterm-projects-test}
           touch $out
         '';

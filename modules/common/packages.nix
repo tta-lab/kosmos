@@ -101,6 +101,7 @@ in {
 
     # Secrets and task helpers
     age
+    openssl
     sops
     just
     syncProjects
