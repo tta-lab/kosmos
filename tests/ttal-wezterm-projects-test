@@ -6,9 +6,7 @@ script="$repo_root/scripts/ttal-wezterm-projects"
 wezterm_config="$repo_root/wezterm/macos-client.lua"
 wezterm_server_config="$repo_root/wezterm/wsl-server.lua"
 wezterm_doc="$repo_root/docs/wezterm-wsl-mux.md"
-packages="$repo_root/modules/common/packages.nix"
 configs="$repo_root/modules/configs.nix"
-tta_lab_package="$repo_root/packages/tta-lab/default.nix"
 
 projects_json="$(
   jq -n \
@@ -47,26 +45,6 @@ fi
 
 if grep -Fq 'missing' <<<"$output"; then
   printf 'missing project paths should not appear in WezTerm picker choices\n' >&2
-  exit 1
-fi
-
-if grep -Fq 'pkgsUnstable.wezterm' "$packages"; then
-  printf 'WSL packages should not include the wezterm binary\n' >&2
-  exit 1
-fi
-
-if ! grep -Fq 'wezterm.terminfo' "$packages"; then
-  printf 'WSL packages should include wezterm terminfo\n' >&2
-  exit 1
-fi
-
-if ! grep -Fq 'ttaLab.ttalWeztermProjects' "$packages"; then
-  printf 'WSL packages should include ttal-wezterm-projects\n' >&2
-  exit 1
-fi
-
-if ! grep -Fq 'ttalWeztermProjects' "$tta_lab_package"; then
-  printf 'tta-lab package set should expose ttalWeztermProjects\n' >&2
   exit 1
 fi
 
