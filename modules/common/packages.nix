@@ -101,12 +101,12 @@ in {
 
     # Secrets and task helpers
     age
+    openssl
     sops
     just
     syncProjects
     syncTtaLabProjects
     ttaLab.ttalTmuxProjectPicker
-    ttaLab.ttalWeztermProjects
     ttaLab.flicknote
     ttaLab.taskwarrior
 
