@@ -43,6 +43,8 @@ nix develop                                  # enter dev shell
 Run `nix-instantiate --parse` + `statix check .` + `nix flake check` before committing.
 Run the full WSL build before changes to packages, users, services, networking, or agenix.
 Build `.#nixosConfigurations.kosmos...` only when touching shared or bare-metal modules.
+For simple package selection changes, rely on Nix evaluation and the system build.
+Do not add tests that only grep source files for the selected package expression.
 
 ## Editing Rules
 
