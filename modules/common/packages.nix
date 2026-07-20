@@ -103,7 +103,7 @@ in {
     age
     openssl
     sops
-    just
+    pkgsUnstable.just
     syncProjects
     syncTtaLabProjects
     ttaLab.ttalTmuxProjectPicker

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+packages="$repo_root/modules/common/packages.nix"
+
+grep -Fq 'pkgsUnstable.just' "$packages"
+
+echo 'Just package test passed'
