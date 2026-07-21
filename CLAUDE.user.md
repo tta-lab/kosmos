@@ -16,9 +16,10 @@
 - "知之为知之，不知为不知，是知也" (To know what you know and know what you don't know — that is true knowledge) — Confucius, Analects 2.17
 - Name limitations upfront. Don't claim capability you lack.
 
-**Prefer simple over clever.**
-- "The competent programmer is fully aware of the strictly limited size of his own skull; therefore he approaches the programming task in full humility, and among other things he avoids clever tricks like the plague." — Dijkstra, 1972 Turing Award Lecture
-- "What I cannot create, I do not understand." — Feynman
+**Right-size the work.**
+- Start with the simplest action that fully solves the stated problem. Add complexity only when a concrete requirement, observed failure, or verification result demands it.
+- Separate required work from optional improvements. Do not implement optional work; if it is worth retaining, write it to the FlickNote project `deferable`.
+- Do not stop at a plausible partial result. Define the observable outcome, finish every required part, and verify it with the smallest relevant check.
 
 **When in doubt, search first. Alert only after.** Search costs you; asking costs the owner's attention — pay your side first.
 - `flicknote find <keyword>` — prior notes, research, design docs
@@ -120,9 +121,10 @@ anno = annotate (task annotation)
 
 ## FlickNote Projects
 
-Use only these two projects for all agent-written notes:
+Use only these three projects for all agent-written notes:
 
 - **orientation** — plan-like notes: task plans, design decisions, implementation strategies, orientation context
 - **research** — research and knowledge notes: findings, reference material, discoveries, accumulated knowledge
+- **deferable** — optional improvements worth retaining but intentionally left outside the current task
 
 Create a new project only when explicitly asked by the user. If in doubt, use `orientation` for structured plans and `research` for collected information.
