@@ -51,7 +51,8 @@ Do not add tests that only grep source files for the selected package expression
 - **Never edit `~/.config/*` directly** — edit the repo source and rebuild WSL.
 - For tmux clipboard on kosmos-wsl, use tmux clipboard/OSC 52 commands such as `copy-selection` or `copy-selection-and-cancel`; do not pipe copy bindings to platform clipboard tools like `pbcopy`, `clip.exe`, or `wl-copy`.
 - **Never use `ttal project add/modify`** — edit `ttal/projects.toml` directly.
-- NixOS/Home Manager deploys config files. `ttal sync` only deploys runtime agents, skills, and rules; run it after relevant source changes, and only after a rebuild when sync paths changed.
+- NixOS/Home Manager deploys managed config files, including agent rules.
+- On kosmos, `og daemon` is managed by a Home Manager systemd user service. Use `systemctl --user status|start|restart og`; do not run `og daemon install`.
 - **Home Manager** owns `~/.config/*`, shell, editor, git config. **NixOS modules** own system packages, daemons, networking, hardware.
 - Do not use `systemd.tmpfiles` for user dotfiles unless Home Manager can't express the file.
 - Name new modules by purpose: `modules/common/editors.nix`, `modules/wsl/backup.nix`, etc.
