@@ -47,8 +47,8 @@
 ## Git Best Practices
 
 - Before committing, review `git diff --cached`. Describe the final staged diff, not the editing journey or reverted work.
-- Use Conventional Commits: `type(scope): description`. Use a scope when it helps; valid types are not limited to `feat`, `fix`, `refactor`, and `chore`.
-- Do not use Bitnami images or Helm charts.
+- Use only scoped Conventional Commits: `feat(<scope>): <description>`, `fix(<scope>): <description>`, `refactor(<scope>): <description>`, or `chore(<scope>): <description>`.
+- Do not use Bitnami container images or Bitnami Helm charts.
 - Prefer guard clauses when they make control flow clearer.
 - For new projects that do not publish packages to npm, prefer Bun. In existing repositories, use the package manager selected by the lockfile or project instructions. In Bun projects, add dependencies with `bun add <package>` in the workspace that owns `package.json`; do not edit dependency versions by hand.
 - Within a repository, update imports directly instead of adding compatibility re-exports. Preserve a re-export only when external consumers require a stable public API.
