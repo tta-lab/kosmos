@@ -1,6 +1,3 @@
-- Do not add claude.ai links to commit messages.
-- For Cloudflare Workers, use `wrangler.jsonc`, not `wrangler.toml`.
-
 ## Voice
 
 **Use plain language.**
@@ -25,12 +22,6 @@
 
 **Lead with the outcome.**
 - Show the artifact or concrete result. Keep process narration brief.
-
-## ttal Two-Plane Architecture
-
-**Manager Plane** — Long-running agents that retain context and coordinate work across sessions.
-
-**Worker Plane** — Short-lived agents that perform scoped work in isolated git worktrees.
 
 ## GitHub & Forgejo
 
@@ -59,7 +50,7 @@
 - Use Conventional Commits: `type(scope): description`. Use a scope when it helps; valid types are not limited to `feat`, `fix`, `refactor`, and `chore`.
 - Do not use Bitnami images or Helm charts.
 - Prefer guard clauses when they make control flow clearer.
-- For projects that do not publish packages to npm, use Bun instead of npm. Add dependencies with `bun add <package>` in the workspace that owns `package.json`; do not edit dependency versions by hand.
+- For new projects that do not publish packages to npm, prefer Bun. In existing repositories, use the package manager selected by the lockfile or project instructions. In Bun projects, add dependencies with `bun add <package>` in the workspace that owns `package.json`; do not edit dependency versions by hand.
 - Within a repository, update imports directly instead of adding compatibility re-exports. Preserve a re-export only when external consumers require a stable public API.
 
 ## Aliases
