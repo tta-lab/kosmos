@@ -30,11 +30,11 @@ _: {
   networking.hostName = "kosmos-wsl";
   services.openssh.listenAddresses = [
     {
-      addr = "127.0.0.1";
+      addr = "0.0.0.0";
       port = 22;
     }
     {
-      addr = "::1";
+      addr = "[::]";
       port = 22;
     }
   ];
