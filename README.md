@@ -85,6 +85,11 @@ kosmos-sync-projects
 
 Use `remote = "https://host/org/repo.git"` in `ttal/projects.toml` when a repo is not on GitHub. Entries without `remote` default to `https://github.com/<org>/<repo>.git`.
 
+For HTTPS remotes, `kosmos-sync-projects` reads only the required token from
+`~/.config/ttal/.env`. Forgejo uses `FORGEJO_TOKEN`; GitHub uses the project's
+`github_token_env`, then the mapping in `~/.config/ttal/orgs.toml`, then
+`GITHUB_TOKEN` or `GH_TOKEN`.
+
 To sync only the runtime repos needed by `tta-lab-go-install`:
 
 ```bash
