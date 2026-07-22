@@ -118,6 +118,7 @@ in {
             k = "command kubectl $argv";
             grep = "command rg $argv";
             fn = "command flicknote $argv";
+            ogv = "command og pr view $argv";
             ogp = "command og git push $argv";
             ogl = "command og git pull $argv";
           };
