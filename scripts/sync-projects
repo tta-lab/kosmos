@@ -80,6 +80,11 @@ def git_env(remote, entry, org, orgs, env_file):
     if not token:
         return None
 
+    parsed = urlsplit(remote)
+    credential_host = parsed.hostname
+    if parsed.port is not None:
+        credential_host = f"{credential_host}:{parsed.port}"
+
     env = os.environ.copy()
     env.update(
         {
@@ -89,9 +94,19 @@ def git_env(remote, entry, org, orgs, env_file):
             "GIT_CONFIG_VALUE_0": "",
             "GIT_CONFIG_KEY_1": "credential.helper",
             "GIT_CONFIG_VALUE_1": (
-                "!f(){ echo username=x-access-token; "
+                "!f(){ requested_protocol=; requested_host=; "
+                "while IFS='=' read -r key value; do "
+                '[ "$key" = protocol ] && requested_protocol="$value"; '
+                '[ "$key" = host ] && requested_host="$value"; '
+                "done; "
+                '[ "$requested_protocol" = "$GIT_CREDENTIAL_PROTOCOL" ] || '
+                "return 0; "
+                '[ "$requested_host" = "$GIT_CREDENTIAL_HOST" ] || return 0; '
+                "echo username=x-access-token; "
                 "echo password=$GIT_TOKEN_INJECT; }; f"
             ),
+            "GIT_CREDENTIAL_PROTOCOL": parsed.scheme,
+            "GIT_CREDENTIAL_HOST": credential_host,
             "GIT_TOKEN_INJECT": token,
         }
     )
@@ -103,6 +118,19 @@ def run(cmd, dry_run, env=None):
     if dry_run:
         return 0
     return subprocess.run(cmd, check=False, env=env).returncode
+
+
+def remote_url(repo_path, remote_name):
+    probe = subprocess.run(
+        ["git", "-C", str(repo_path), "remote", "get-url", remote_name],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    if probe.returncode != 0:
+        return None
+    remote = probe.stdout.strip()
+    return remote or None
 
 
 def expand(path):
@@ -177,10 +205,17 @@ def sync_project(alias, entry, path, args, collections, orgs, seen):
             return 1
 
         if not args.no_fetch:
+            origin = remote_url(repo_path, "origin")
+            if origin is None:
+                print(
+                    f"skip {alias}: could not resolve origin remote in {repo_path}",
+                    file=sys.stderr,
+                )
+                return 1
             return run(
-                ["git", "-C", str(repo_path), "fetch", "--prune"],
+                ["git", "-C", str(repo_path), "fetch", "--prune", "origin"],
                 args.dry_run,
-                git_env(remote, entry, org, orgs, args.env_file),
+                git_env(origin, entry, org, orgs, args.env_file),
             )
 
         print(f"exists {alias}: {repo_path}")
