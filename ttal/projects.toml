@@ -152,6 +152,11 @@
   path = "/home/neil/code/projects/GuionAI/metadata-worker"
   remote = "https://git.guion.io/GuionAI/metadata-worker.git"
 
+[na]
+  name = "Navic"
+  path = "/home/neil/code/projects/tta-lab/Navic"
+  remote = "https://github.com/tta-lab/Navic.git"
+
 [orga]
   name = "Organon"
   path = "/home/neil/code/projects/tta-lab/organon"
@@ -182,6 +187,16 @@
   name = "lensh - bash for lenos"
   path = "/home/neil/code/projects/tta-lab/sh"
   remote = "https://github.com/tta-lab/sh.git"
+
+[sld]
+  name = "Sliqs Deploy"
+  path = "/home/neil/code/projects/GuionAI/sliqs-deploy"
+  remote = "https://git.guion.io/GuionAI/sliqs-deploy.git"
+
+[slse]
+  name = "Sliqs Services"
+  path = "/home/neil/code/projects/GuionAI/sliqs-services"
+  remote = "https://git.guion.io/GuionAI/sliqs-services.git"
 
 [sf]
   name = "Seafarer"
