@@ -188,7 +188,12 @@
   path = "/home/neil/code/projects/tta-lab/sh"
   remote = "https://github.com/tta-lab/sh.git"
 
-[sse]
+[sld]
+  name = "Sliqs Deploy"
+  path = "/home/neil/code/projects/GuionAI/sliqs-deploy"
+  remote = "https://git.guion.io/GuionAI/sliqs-deploy.git"
+
+[slse]
   name = "Sliqs Services"
   path = "/home/neil/code/projects/GuionAI/sliqs-services"
   remote = "https://git.guion.io/GuionAI/sliqs-services.git"
