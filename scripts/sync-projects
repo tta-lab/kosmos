@@ -5,13 +5,132 @@ import subprocess
 import sys
 import tomllib
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
-def run(cmd, dry_run):
+FORGEJO_TOKEN_NAMES = (
+    "FORGEJO_TOKEN",
+    "FORGEJO_ACCESS_TOKEN",
+    "GITEA_TOKEN",
+)
+
+
+def parse_env_value(value):
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+        return value[1:-1]
+    return value
+
+
+def token_from_env(names, env_file):
+    for name in names:
+        if os.environ.get(name):
+            return os.environ[name]
+
+    try:
+        lines = env_file.read_text().splitlines()
+    except FileNotFoundError:
+        return None
+
+    values = {}
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line.removeprefix("export ").lstrip()
+        name, separator, value = line.partition("=")
+        name = name.strip()
+        if separator and name in names:
+            values[name] = parse_env_value(value)
+
+    for name in names:
+        if values.get(name):
+            return values[name]
+    return None
+
+
+def token_env_names(remote, entry, org, orgs):
+    parsed = urlsplit(remote)
+    if parsed.scheme not in ("http", "https"):
+        return ()
+
+    if parsed.hostname == "git.guion.io":
+        return FORGEJO_TOKEN_NAMES
+
+    if parsed.hostname != "github.com":
+        return ()
+
+    token_env = entry.get("github_token_env")
+    if not isinstance(token_env, str) or not token_env:
+        org_entry = orgs.get(org, {})
+        if isinstance(org_entry, dict):
+            token_env = org_entry.get("github_token_env")
+    if isinstance(token_env, str) and token_env:
+        return (token_env,)
+    return ("GITHUB_TOKEN", "GH_TOKEN")
+
+
+def git_env(remote, entry, org, orgs, env_file):
+    names = token_env_names(remote, entry, org, orgs)
+    if not names:
+        return None
+
+    token = token_from_env(names, env_file)
+    if not token:
+        return None
+
+    parsed = urlsplit(remote)
+    credential_host = parsed.hostname
+    if parsed.port is not None:
+        credential_host = f"{credential_host}:{parsed.port}"
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "GIT_TERMINAL_PROMPT": "0",
+            "GIT_CONFIG_COUNT": "2",
+            "GIT_CONFIG_KEY_0": "credential.helper",
+            "GIT_CONFIG_VALUE_0": "",
+            "GIT_CONFIG_KEY_1": "credential.helper",
+            "GIT_CONFIG_VALUE_1": (
+                "!f(){ requested_protocol=; requested_host=; "
+                "while IFS='=' read -r key value; do "
+                '[ "$key" = protocol ] && requested_protocol="$value"; '
+                '[ "$key" = host ] && requested_host="$value"; '
+                "done; "
+                '[ "$requested_protocol" = "$GIT_CREDENTIAL_PROTOCOL" ] || '
+                "return 0; "
+                '[ "$requested_host" = "$GIT_CREDENTIAL_HOST" ] || return 0; '
+                "echo username=x-access-token; "
+                "echo password=$GIT_TOKEN_INJECT; }; f"
+            ),
+            "GIT_CREDENTIAL_PROTOCOL": parsed.scheme,
+            "GIT_CREDENTIAL_HOST": credential_host,
+            "GIT_TOKEN_INJECT": token,
+        }
+    )
+    return env
+
+
+def run(cmd, dry_run, env=None):
     print("+ " + " ".join(str(part) for part in cmd))
     if dry_run:
         return 0
-    return subprocess.run(cmd, check=False).returncode
+    return subprocess.run(cmd, check=False, env=env).returncode
+
+
+def remote_url(repo_path, remote_name):
+    probe = subprocess.run(
+        ["git", "-C", str(repo_path), "remote", "get-url", remote_name],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    if probe.returncode != 0:
+        return None
+    remote = probe.stdout.strip()
+    return remote or None
 
 
 def expand(path):
@@ -50,7 +169,7 @@ def project_entries(projects):
         yield alias, entry, expand(path)
 
 
-def sync_project(alias, entry, path, args, collections, seen):
+def sync_project(alias, entry, path, args, collections, orgs, seen):
     if args.alias and alias not in args.alias:
         return 0
 
@@ -86,7 +205,18 @@ def sync_project(alias, entry, path, args, collections, seen):
             return 1
 
         if not args.no_fetch:
-            return run(["git", "-C", str(repo_path), "fetch", "--prune"], args.dry_run)
+            origin = remote_url(repo_path, "origin")
+            if origin is None:
+                print(
+                    f"skip {alias}: could not resolve origin remote in {repo_path}",
+                    file=sys.stderr,
+                )
+                return 1
+            return run(
+                ["git", "-C", str(repo_path), "fetch", "--prune", "origin"],
+                args.dry_run,
+                git_env(origin, entry, org, orgs, args.env_file),
+            )
 
         print(f"exists {alias}: {repo_path}")
         return 0
@@ -97,7 +227,11 @@ def sync_project(alias, entry, path, args, collections, seen):
     else:
         print(f"+ mkdir -p {parent}")
 
-    return run(["git", "clone", remote, str(repo_path)], args.dry_run)
+    return run(
+        ["git", "clone", remote, str(repo_path)],
+        args.dry_run,
+        git_env(remote, entry, org, orgs, args.env_file),
+    )
 
 
 def main():
@@ -108,6 +242,11 @@ def main():
         "--projects-file",
         default="~/.config/ttal/projects.toml",
         help="Path to projects.toml. Default: ~/.config/ttal/projects.toml",
+    )
+    parser.add_argument(
+        "--env-file",
+        default="~/.config/ttal/.env",
+        help="Path containing Git credentials. Default: ~/.config/ttal/.env",
     )
     parser.add_argument(
         "--collection",
@@ -141,10 +280,17 @@ def main():
         help="Only sync this project alias from projects.toml. Can be repeated.",
     )
     args = parser.parse_args()
+    args.env_file = expand(args.env_file)
 
     projects_file = expand(args.projects_file)
     with projects_file.open("rb") as handle:
         projects = tomllib.load(handle)
+    orgs_file = projects_file.with_name("orgs.toml")
+    try:
+        with orgs_file.open("rb") as handle:
+            orgs = tomllib.load(handle)
+    except FileNotFoundError:
+        orgs = {}
 
     code_root = expand(args.code_root)
     collections = {
@@ -155,7 +301,7 @@ def main():
     failed = 0
     seen = set()
     for alias, entry, path in project_entries(projects):
-        if sync_project(alias, entry, path, args, collections, seen) != 0:
+        if sync_project(alias, entry, path, args, collections, orgs, seen) != 0:
             failed += 1
 
     return 1 if failed else 0

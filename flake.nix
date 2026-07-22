@@ -76,6 +76,7 @@
             ${./tests/orga-cli-service-test}
           WOODPECKER_DISABLE_UPDATE_CHECK=true woodpecker-cli lint --strict ${./fixtures/woodpecker/dagger-unix-socket-smoke.yml}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
+          KOSMOS_REPO_ROOT=${./.} ${pkgs.python3}/bin/python3 ${./tests/test_sync_projects_auth.py}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/feishin-web-cache-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudflared-ssh-config-test}
