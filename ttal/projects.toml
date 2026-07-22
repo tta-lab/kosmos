@@ -152,6 +152,11 @@
   path = "/home/neil/code/projects/GuionAI/metadata-worker"
   remote = "https://git.guion.io/GuionAI/metadata-worker.git"
 
+[na]
+  name = "Navic"
+  path = "/home/neil/code/projects/tta-lab/Navic"
+  remote = "https://github.com/tta-lab/Navic.git"
+
 [orga]
   name = "Organon"
   path = "/home/neil/code/projects/tta-lab/organon"
