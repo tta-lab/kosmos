@@ -14,7 +14,7 @@ _: {
     ../../modules/wsl/frpc-ssh.nix
     ../../modules/wsl/secrets.nix
     ../../modules/wsl/mihomo.nix
-    ../../modules/wsl/kepos-matrix.nix
+    ../../modules/wsl/kepos-tunnel.nix
     ../../modules/wsl/forgejo.nix
     ../../modules/wsl/dagger.nix
     ../../modules/wsl/woodpecker.nix
@@ -41,7 +41,7 @@ _: {
   services.cloudflared.tunnels.kepos.ingress."ssh-wsl.guion.io" = "ssh://127.0.0.1:22";
   kosmos.wsl = {
     frpcSsh.enable = true;
-    keposMatrix.enable = true;
+    keposTunnel.enable = true;
     forgejo.enable = true;
     dagger.enable = true;
     woodpecker = {

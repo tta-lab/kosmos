@@ -43,6 +43,7 @@
             gnused
             jq
             python3
+            ripgrep
             shellcheck
             woodpecker-cli
           ];
@@ -73,7 +74,8 @@
             ${./tests/tmux-tmpdir-test} \
             ${./tests/tmux-copy-mode-test} \
             ${./tests/devops-gate-status-test} \
-            ${./tests/orga-cli-service-test}
+            ${./tests/orga-cli-service-test} \
+            ${./tests/wsl-matrix-removal-test}
           WOODPECKER_DISABLE_UPDATE_CHECK=true woodpecker-cli lint --strict ${./fixtures/woodpecker/dagger-unix-socket-smoke.yml}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
           KOSMOS_REPO_ROOT=${./.} ${pkgs.python3}/bin/python3 ${./tests/test_sync_projects_auth.py}
@@ -89,8 +91,34 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-copy-mode-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/devops-gate-status-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/wsl-matrix-removal-test}
           touch $out
         '';
+
+      kepos-tunnel-module = let
+        eval = nixpkgs.lib.nixosSystem {
+          inherit system;
+          modules = [
+            agenix.nixosModules.default
+            ./modules/wsl/kepos-tunnel.nix
+            (_: {
+              system.stateVersion = "25.05";
+              kosmos.wsl.keposTunnel.enable = true;
+              services.cloudflared.tunnels.kepos.ingress."test.guion.io" = "http://127.0.0.1:8080";
+            })
+          ];
+        };
+        cfg = eval.config;
+        tunnel = cfg.services.cloudflared.tunnels.kepos;
+      in
+        assert cfg.services.cloudflared.enable;
+        assert tunnel.default == "http_status:404";
+        assert tunnel.credentialsFile == cfg.age.secrets.cloudflared-kepos-credentials.path;
+        assert tunnel.ingress."test.guion.io" == "http://127.0.0.1:8080";
+        assert cfg.systemd.services.cloudflared-tunnel-kepos.environment.TUNNEL_TRANSPORT_PROTOCOL == "http2";
+        assert !(builtins.hasAttr "matrix-tuwunel" cfg.services);
+        assert !(builtins.hasAttr "tuwunel" cfg.systemd.services);
+          pkgs.runCommand "kepos-tunnel-module-check" {} "touch $out";
 
       seafarer-edge-module = let
         eval = nixpkgs.lib.nixosSystem {
@@ -102,11 +130,11 @@
               pkgs,
               ...
             }: {
-              options.kosmos.wsl.keposMatrix.enable = lib.mkEnableOption "test Kepos tunnel";
+              options.kosmos.wsl.keposTunnel.enable = lib.mkEnableOption "test Kepos tunnel";
               config = {
                 system.stateVersion = "25.05";
                 kosmos.wsl = {
-                  keposMatrix.enable = true;
+                  keposTunnel.enable = true;
                   seafarerEdge.enable = true;
                 };
                 services.cloudflared.tunnels.kepos = {
@@ -143,11 +171,11 @@
             ./modules/wsl/gatus.nix
             ./modules/wsl/seafarer-edge.nix
             ({lib, pkgs, ...}: {
-              options.kosmos.wsl.keposMatrix.enable = lib.mkEnableOption "test Kepos tunnel";
+              options.kosmos.wsl.keposTunnel.enable = lib.mkEnableOption "test Kepos tunnel";
               config = {
                 system.stateVersion = "25.05";
                 kosmos.wsl = {
-                  keposMatrix.enable = true;
+                  keposTunnel.enable = true;
                   gatus.enable = true;
                   seafarerEdge.enable = true;
                 };

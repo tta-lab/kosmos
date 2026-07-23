@@ -6,8 +6,8 @@
   cfg = config.kosmos.wsl.seafarerEdge;
   keposCloudflaredCredentialsFile = ../../secrets/cloudflared-kepos-credentials.age;
   haveKeposTunnel =
-    config.kosmos.wsl ? keposMatrix
-    && config.kosmos.wsl.keposMatrix.enable
+    config.kosmos.wsl ? keposTunnel
+    && config.kosmos.wsl.keposTunnel.enable
     && builtins.pathExists keposCloudflaredCredentialsFile;
 in {
   options.kosmos.wsl.seafarerEdge = {

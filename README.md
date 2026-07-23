@@ -42,7 +42,7 @@ Both hosts import `modules/common/tunnel-rathole-client.nix`, but the service is
 2. Change `services.rathole.enable` to `true`.
 3. Put service tokens in `/var/lib/secrets/rathole/client.toml`, not in git.
 
-The initial tunnel maps remote traffic to local SSH on `127.0.0.1:22`. Add another service for Matrix/Tuwunel when needed.
+The initial tunnel maps remote traffic to local SSH on `127.0.0.1:22`.
 
 ## Proxy
 

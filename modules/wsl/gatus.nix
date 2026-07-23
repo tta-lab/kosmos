@@ -7,8 +7,8 @@
   cfg = config.kosmos.wsl.gatus;
   keposCloudflaredCredentialsFile = ../../secrets/cloudflared-kepos-credentials.age;
   haveKeposTunnel =
-    config.kosmos.wsl ? keposMatrix
-    && config.kosmos.wsl.keposMatrix.enable
+    config.kosmos.wsl ? keposTunnel
+    && config.kosmos.wsl.keposTunnel.enable
     && builtins.pathExists keposCloudflaredCredentialsFile;
   conditions = [
     "[STATUS] >= 200"

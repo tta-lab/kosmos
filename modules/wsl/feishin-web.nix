@@ -8,8 +8,8 @@
   cfg = config.kosmos.wsl.feishinWeb;
   keposCloudflaredCredentialsFile = ../../secrets/cloudflared-kepos-credentials.age;
   haveKeposTunnel =
-    config.kosmos.wsl ? keposMatrix
-    && config.kosmos.wsl.keposMatrix.enable
+    config.kosmos.wsl ? keposTunnel
+    && config.kosmos.wsl.keposTunnel.enable
     && builtins.pathExists keposCloudflaredCredentialsFile;
 
   settingsJs = pkgs.writeText "feishin-settings.js" ''
@@ -125,7 +125,7 @@ in {
       warnings = lib.mkIf (!haveKeposTunnel) [
         ''
           Feishin Web is enabled without the kepos Cloudflare tunnel.
-          It will listen locally only until kosmos.wsl.keposMatrix is enabled and secrets/cloudflared-kepos-credentials.age exists.
+          It will listen locally only until kosmos.wsl.keposTunnel is enabled and secrets/cloudflared-kepos-credentials.age exists.
         ''
       ];
 
