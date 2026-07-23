@@ -64,7 +64,6 @@
             ${./tests/temenos-env-test} \
             ${./tests/ttal-tmux-project-picker-test} \
             ${./tests/temenos-ca-test} \
-            ${./tests/feishin-web-cache-config-test} \
             ${./tests/cloudflared-ingress-smoke-test} \
             ${./tests/dagger-large-registry-smoke-test} \
             ${./tests/dagger-engine-config-smoke-test} \
@@ -77,7 +76,6 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
           KOSMOS_REPO_ROOT=${./.} ${pkgs.python3}/bin/python3 ${./tests/test_sync_projects_auth.py}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/feishin-web-cache-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudflared-ingress-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-large-registry-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-engine-config-smoke-test}

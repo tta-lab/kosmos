@@ -26,8 +26,8 @@ browser from the host:
 http://127.0.0.1:4533
 ```
 
-Then add friend accounts from the Navidrome admin UI. Friends can use the web UI
-or any Subsonic-compatible client.
+Add any local client accounts from the Navidrome admin UI. Remote access is not
+configured by this module.
 
 Check the service:
 

@@ -19,8 +19,6 @@ _: {
     ../../modules/wsl/dagger.nix
     ../../modules/wsl/woodpecker.nix
     ../../modules/wsl/navidrome.nix
-    ../../modules/wsl/listen-together.nix
-    ../../modules/wsl/feishin-web.nix
     ../../modules/wsl/seafarer-edge.nix
     ../../modules/wsl/apt-cacher-ng.nix
     ../../modules/configs.nix
@@ -46,8 +44,6 @@ _: {
       enable = true;
       enableCloudflared = true;
     };
-    listenTogether.enable = true;
-    feishinWeb.enable = true;
     navidrome.enable = true;
     seafarerEdge.enable = true;
   };

@@ -74,11 +74,6 @@
   path = "/home/neil/code/references/forgejo/forgejo"
   remote = "https://codeberg.org/forgejo/forgejo.git"
 
-[fs]
-  name = "Feishin"
-  path = "/home/neil/code/projects/tta-lab/feishin"
-  remote = "https://github.com/tta-lab/feishin.git"
-
 [fse]
   name = "flicknote-services"
   path = "/home/neil/code/projects/GuionAI/flicknote-services"

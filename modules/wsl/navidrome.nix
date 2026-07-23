@@ -25,7 +25,6 @@ in {
         Address = "127.0.0.1";
         Port = 4533;
         MusicFolder = "/music";
-        BaseUrl = "https://music.guion.io";
         EnableDownloads = false;
         EnableSharing = false;
         EnableInsightsCollector = false;
