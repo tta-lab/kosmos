@@ -5,11 +5,6 @@
   ...
 }: let
   cfg = config.kosmos.wsl.listenTogether;
-  keposCloudflaredCredentialsFile = ../../secrets/cloudflared-kepos-credentials.age;
-  haveKeposTunnel =
-    config.kosmos.wsl ? keposTunnel
-    && config.kosmos.wsl.keposTunnel.enable
-    && builtins.pathExists keposCloudflaredCredentialsFile;
   effectiveAllowedOrigins =
     if cfg.allowedOrigins == []
     then [
@@ -64,44 +59,31 @@ in {
     };
   };
 
-  config = lib.mkIf cfg.enable (lib.mkMerge [
-    {
-      warnings = lib.mkIf (!haveKeposTunnel) [
-        ''
-          Listen Together is enabled without the kepos Cloudflare tunnel.
-          It will listen locally only until kosmos.wsl.keposTunnel is enabled and secrets/cloudflared-kepos-credentials.age exists.
-        ''
-      ];
+  config = lib.mkIf cfg.enable {
+    systemd.services.listen-together = {
+      description = "Listen Together sync service";
+      after = ["network-online.target"];
+      wants = ["network-online.target"];
+      wantedBy = ["multi-user.target"];
 
-      systemd.services.listen-together = {
-        description = "Listen Together sync service";
-        after = ["network-online.target"];
-        wants = ["network-online.target"];
-        wantedBy = ["multi-user.target"];
-
-        environment = {
-          LT_PORT = toString cfg.port;
-          LT_ALLOWED_SERVERS = lib.concatStringsSep "," cfg.allowedServers;
-          LT_ALLOWED_ORIGINS = lib.concatStringsSep "," effectiveAllowedOrigins;
-          LT_MAX_ROOMS = toString cfg.maxRooms;
-          LT_MAX_MEMBERS_PER_ROOM = toString cfg.maxMembersPerRoom;
-        };
-
-        serviceConfig = {
-          ExecStart = lib.getExe cfg.package;
-          DynamicUser = true;
-          Restart = "on-failure";
-          RestartSec = "5s";
-          NoNewPrivileges = true;
-          PrivateTmp = true;
-          ProtectHome = true;
-          ProtectSystem = "strict";
-        };
+      environment = {
+        LT_PORT = toString cfg.port;
+        LT_ALLOWED_SERVERS = lib.concatStringsSep "," cfg.allowedServers;
+        LT_ALLOWED_ORIGINS = lib.concatStringsSep "," effectiveAllowedOrigins;
+        LT_MAX_ROOMS = toString cfg.maxRooms;
+        LT_MAX_MEMBERS_PER_ROOM = toString cfg.maxMembersPerRoom;
       };
-    }
 
-    (lib.mkIf haveKeposTunnel {
-      services.cloudflared.tunnels.kepos.ingress.${cfg.publicHostname} = "http://127.0.0.1:${toString cfg.port}";
-    })
-  ]);
+      serviceConfig = {
+        ExecStart = lib.getExe cfg.package;
+        DynamicUser = true;
+        Restart = "on-failure";
+        RestartSec = "5s";
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        ProtectHome = true;
+        ProtectSystem = "strict";
+      };
+    };
+  };
 }

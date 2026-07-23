@@ -10,8 +10,8 @@ The WSL module is `modules/wsl/listen-together.nix`.
 
 Current settings:
 
-- Local service: `127.0.0.1:4040` through cloudflared
-- Public route: `https://party.guion.io`
+- Local service: `127.0.0.1:4040`
+- Public route: none
 - Allowed music server: `https://music.guion.io`
 - Browser origins: `https://party.guion.io`, `https://music.guion.io`
 - Room cap: 20 rooms
@@ -23,11 +23,7 @@ service rather than Docker. It has no database and no disk state. Rooms are kept
 in memory, so a restart clears active rooms but does not affect Navidrome users,
 music, playlists, or playback history.
 
-The Cloudflare route is:
-
-```text
-https://party.guion.io -> cloudflared kepos tunnel -> http://127.0.0.1:4040
-```
+The service has no `kepos` Cloudflare Tunnel ingress.
 
 The service only validates credentials against the Kepos Navidrome instance:
 
@@ -42,13 +38,6 @@ After switching the NixOS configuration, check the service:
 ```bash
 systemctl status listen-together
 curl http://127.0.0.1:4040/healthz
-systemctl status cloudflared-tunnel-kepos
-```
-
-Create the Cloudflare DNS route once:
-
-```bash
-cloudflared tunnel route dns nuc-wsl party.guion.io
 ```
 
 Desktop clients can use the listen-together author's Feishin fork first. Mobile
@@ -91,19 +80,11 @@ contract.
 
 ## Next Steps
 
-After deploying the WSL configuration, verify the local service and public route:
+After deploying the WSL configuration, verify the local service:
 
 ```bash
 systemctl status listen-together
 curl http://127.0.0.1:4040/healthz
-systemctl status cloudflared-tunnel-kepos
-curl https://party.guion.io/healthz
-```
-
-If the public route fails but the local health check works, restart the tunnel:
-
-```bash
-sudo systemctl restart cloudflared-tunnel-kepos
 ```
 
 Then test the desktop client path with the listen-together Feishin fork:

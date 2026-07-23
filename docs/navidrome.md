@@ -1,6 +1,7 @@
 # Navidrome
 
-Navidrome serves Neil's local music library at `https://music.guion.io`.
+Navidrome serves Neil's local music library on the WSL host. It is not exposed
+through the `kepos` Cloudflare Tunnel.
 
 The WSL module is `modules/wsl/navidrome.nix`.
 
@@ -8,7 +9,7 @@ Current settings:
 
 - Music library: `/home/neil/music`
 - Local bind: `127.0.0.1:4533`
-- Public route: `music.guion.io` through the existing `nuc-wsl` Cloudflare Tunnel
+- Public route: none
 - Downloads: disabled
 - Public shares: disabled
 
@@ -19,20 +20,14 @@ mkdir -p /home/neil/music
 ```
 
 After switching the NixOS configuration, create the first admin user in the
-browser:
+browser from the host:
 
 ```text
-https://music.guion.io
+http://127.0.0.1:4533
 ```
 
 Then add friend accounts from the Navidrome admin UI. Friends can use the web UI
 or any Subsonic-compatible client.
-
-The Cloudflare DNS route is external state. Create it once:
-
-```bash
-cloudflared tunnel route dns nuc-wsl music.guion.io
-```
 
 Check the service:
 

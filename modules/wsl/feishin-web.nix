@@ -6,11 +6,6 @@
   ...
 }: let
   cfg = config.kosmos.wsl.feishinWeb;
-  keposCloudflaredCredentialsFile = ../../secrets/cloudflared-kepos-credentials.age;
-  haveKeposTunnel =
-    config.kosmos.wsl ? keposTunnel
-    && config.kosmos.wsl.keposTunnel.enable
-    && builtins.pathExists keposCloudflaredCredentialsFile;
 
   settingsJs = pkgs.writeText "feishin-settings.js" ''
     "use strict";
@@ -120,36 +115,23 @@ in {
     };
   };
 
-  config = lib.mkIf cfg.enable (lib.mkMerge [
-    {
-      warnings = lib.mkIf (!haveKeposTunnel) [
-        ''
-          Feishin Web is enabled without the kepos Cloudflare tunnel.
-          It will listen locally only until kosmos.wsl.keposTunnel is enabled and secrets/cloudflared-kepos-credentials.age exists.
-        ''
-      ];
+  config = lib.mkIf cfg.enable {
+    systemd.services.feishin-web = {
+      description = "Feishin web client";
+      after = ["network-online.target"];
+      wants = ["network-online.target"];
+      wantedBy = ["multi-user.target"];
 
-      systemd.services.feishin-web = {
-        description = "Feishin web client";
-        after = ["network-online.target"];
-        wants = ["network-online.target"];
-        wantedBy = ["multi-user.target"];
-
-        serviceConfig = {
-          DynamicUser = true;
-          ExecStart = "${lib.getExe pkgs.static-web-server} --config-file ${serverConfig}";
-          Restart = "on-failure";
-          RestartSec = "5s";
-          NoNewPrivileges = true;
-          PrivateTmp = true;
-          ProtectHome = true;
-          ProtectSystem = "strict";
-        };
+      serviceConfig = {
+        DynamicUser = true;
+        ExecStart = "${lib.getExe pkgs.static-web-server} --config-file ${serverConfig}";
+        Restart = "on-failure";
+        RestartSec = "5s";
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        ProtectHome = true;
+        ProtectSystem = "strict";
       };
-    }
-
-    (lib.mkIf haveKeposTunnel {
-      services.cloudflared.tunnels.kepos.ingress.${cfg.publicHostname} = "http://127.0.0.1:${toString cfg.port}";
-    })
-  ]);
+    };
+  };
 }

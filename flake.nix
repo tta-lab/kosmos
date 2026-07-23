@@ -66,7 +66,7 @@
             ${./tests/ttal-tmux-project-picker-test} \
             ${./tests/temenos-ca-test} \
             ${./tests/feishin-web-cache-config-test} \
-            ${./tests/cloudflared-ssh-config-test} \
+            ${./tests/kepos-private-ingress-test} \
             ${./tests/cloudflared-ingress-smoke-test} \
             ${./tests/dagger-large-registry-smoke-test} \
             ${./tests/dagger-engine-config-smoke-test} \
@@ -81,7 +81,7 @@
           KOSMOS_REPO_ROOT=${./.} ${pkgs.python3}/bin/python3 ${./tests/test_sync_projects_auth.py}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/feishin-web-cache-config-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudflared-ssh-config-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/kepos-private-ingress-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudflared-ingress-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-large-registry-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-engine-config-smoke-test}
@@ -159,8 +159,8 @@
         assert nixpkgs.lib.hasInfix "header_up X-Forwarded-Proto https" caddyHost.extraConfig;
         assert nixpkgs.lib.hasInfix "reverse_proxy 127.0.0.1:${toString edge.seafilePort}" caddyHost.extraConfig;
         assert nixpkgs.lib.hasInfix "respond \"\" 404" caddyHost.extraConfig;
-        assert cfg.services.cloudflared.tunnels.kepos.ingress.${edge.seafileHostname} == "http://127.0.0.1:${toString edge.proxyPort}";
-        assert cfg.services.cloudflared.tunnels.kepos.ingress.${edge.onlyofficeHostname} == "http://127.0.0.1:${toString edge.onlyofficePort}";
+        assert !(builtins.hasAttr edge.seafileHostname cfg.services.cloudflared.tunnels.kepos.ingress);
+        assert !(builtins.hasAttr edge.onlyofficeHostname cfg.services.cloudflared.tunnels.kepos.ingress);
           pkgs.runCommand "seafarer-edge-module-check" {} "touch $out";
 
       gatus-module = let

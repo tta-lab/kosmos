@@ -2,7 +2,7 @@
 
 Feishin Web is a prettier browser client for the existing Navidrome server.
 
-- Public URL: `https://player.guion.io`
+- Public URL: none
 - Local service: `127.0.0.1:9180`
 - Music server: `https://music.guion.io`
 - Listen Together server: `https://party.guion.io`
@@ -12,11 +12,7 @@ Feishin Web is a prettier browser client for the existing Navidrome server.
 The service is built as static web assets with Nix and served by
 `static-web-server`. It does not use Docker or Podman.
 
-`player.guion.io` goes through the existing `nuc-wsl` Cloudflare tunnel:
-
-```text
-https://player.guion.io -> cloudflared kepos tunnel -> http://127.0.0.1:9180
-```
+The service is local-only and has no `kepos` Cloudflare Tunnel ingress.
 
 The generated web config locks the default server to Navidrome:
 
@@ -37,18 +33,10 @@ settings; enable it manually in Feishin under Settings -> Playback and set:
 Listen Together server=https://party.guion.io
 ```
 
-After the first deploy, create the Cloudflare DNS route if it does not already
-exist:
-
-```bash
-cloudflared tunnel route dns nuc-wsl player.guion.io
-```
-
 Smoke test:
 
 ```bash
 systemctl status feishin-web
 curl -I http://127.0.0.1:9180
 curl -fsS http://127.0.0.1:9180/settings.js
-systemctl status cloudflared-tunnel-kepos
 ```
