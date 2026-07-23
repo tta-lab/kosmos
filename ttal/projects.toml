@@ -10,7 +10,7 @@
 [devops]
   name = "Guion DevOps"
   path = "/home/neil/code/projects/GuionAI/guion-devops"
-  remote = "https://git.guion.io/GuionAI/guion-devops.git"
+  remote = "http://forgejo.localhost:17480/GuionAI/guion-devops.git"
 
 [diary]
   name = "Diary CLI"
@@ -27,7 +27,7 @@
 [fai]
   name = "FlickNote AI Config"
   path = "/home/neil/code/projects/GuionAI/flicknote-ai-config"
-  remote = "https://git.guion.io/GuionAI/flicknote-ai-config.git"
+  remote = "http://forgejo.localhost:17480/GuionAI/flicknote-ai-config.git"
 
 [fan]
   name = "Fantasy"
@@ -36,7 +36,7 @@
 [fb]
   name = "FlickNote Backend"
   path = "/home/neil/code/projects/GuionAI/flick-backend"
-  remote = "https://git.guion.io/GuionAI/flick-backend.git"
+  remote = "http://forgejo.localhost:17480/GuionAI/flick-backend.git"
 
 ["fb.ai"]
   k8s_app = "ai-processor"
@@ -63,7 +63,7 @@
 [fd]
   name = "FlickNote Deploy(legacy flux, new service will use self contained tanka)"
   path = "/home/neil/code/projects/neil/flick-deploy"
-  remote = "https://git.guion.io/neil/flick-deploy.git"
+  remote = "http://forgejo.localhost:17480/neil/flick-deploy.git"
 
 [fn-cli]
   name = "FlickNote CLI"
@@ -77,7 +77,7 @@
 [fse]
   name = "flicknote-services"
   path = "/home/neil/code/projects/GuionAI/flicknote-services"
-  remote = "https://git.guion.io/GuionAI/flicknote-services.git"
+  remote = "http://forgejo.localhost:17480/GuionAI/flicknote-services.git"
 
 ["fse.agent"]
   k8s_app = "flicknote-agent-server"
@@ -110,7 +110,7 @@
 [gi]
   name = "Guion Infrastructure"
   path = "/home/neil/code/projects/GuionAI/guion-infra"
-  remote = "https://git.guion.io/GuionAI/guion-infra.git"
+  remote = "http://forgejo.localhost:17480/GuionAI/guion-infra.git"
 
 [ghbt]
   name = "GuionAI Homebrew Tap"
@@ -136,7 +136,7 @@
 [logos]
   name = "Logos"
   path = "/home/neil/code/projects/GuionAI/logos"
-  remote = "https://git.guion.io/GuionAI/logos.git"
+  remote = "http://forgejo.localhost:17480/GuionAI/logos.git"
 
 [lw]
   name = "Lenos Website"
@@ -145,7 +145,7 @@
 [metadata]
   name = "Guion Metadata Worker"
   path = "/home/neil/code/projects/GuionAI/metadata-worker"
-  remote = "https://git.guion.io/GuionAI/metadata-worker.git"
+  remote = "http://forgejo.localhost:17480/GuionAI/metadata-worker.git"
 
 [na]
   name = "Navic"
@@ -186,27 +186,27 @@
 [sld]
   name = "Sliqs Deploy"
   path = "/home/neil/code/projects/GuionAI/sliqs-deploy"
-  remote = "https://git.guion.io/GuionAI/sliqs-deploy.git"
+  remote = "http://forgejo.localhost:17480/GuionAI/sliqs-deploy.git"
 
 [slse]
   name = "Sliqs Services"
   path = "/home/neil/code/projects/GuionAI/sliqs-services"
-  remote = "https://git.guion.io/GuionAI/sliqs-services.git"
+  remote = "http://forgejo.localhost:17480/GuionAI/sliqs-services.git"
 
 [sf]
   name = "Seafarer"
   path = "/home/neil/code/projects/GuionAI/seafarer"
-  remote = "https://git.guion.io/GuionAI/seafarer.git"
+  remote = "http://forgejo.localhost:17480/GuionAI/seafarer.git"
 
 [sfd]
   name = "Seafarer Deploy"
   path = "/home/neil/code/projects/GuionAI/sf-deploy"
-  remote = "https://git.guion.io/GuionAI/sf-deploy.git"
+  remote = "http://forgejo.localhost:17480/GuionAI/sf-deploy.git"
 
 [sustech]
   name = "SUSTech Mar Slides"
   path = "/home/neil/code/projects/neil/sustech-mar-slides"
-  remote = "https://git.guion.io/neil/sustech-mar-slides.git"
+  remote = "http://forgejo.localhost:17480/neil/sustech-mar-slides.git"
 
 [tch]
   name = "TaskChampion"
@@ -221,7 +221,7 @@
 [tl]
   name = "TTAL License"
   path = "/home/neil/code/projects/neil/ttal-license"
-  remote = "https://git.guion.io/neil/ttal-license.git"
+  remote = "http://forgejo.localhost:17480/neil/ttal-license.git"
 
 [ttal]
   name = "TTAL"
@@ -230,11 +230,6 @@
 [tw]
   name = "Taskwarrior"
   path = "/home/neil/code/projects/GuionAI/taskwarrior"
-
-[voice-cli]
-  name = "Voice CLI"
-  path = "/home/neil/code/projects/taskclaw/voice-cli"
-  remote = "https://git.guion.io/taskclaw/voice-cli.git"
 
 [bo]
   name = "Boule — ttal communication bridge"
