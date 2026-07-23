@@ -44,6 +44,14 @@
 
 - Merging a PR does not deploy it. If the task includes deployment, run and verify the repository's documented deploy step.
 
+## Kubernetes Targets
+
+- Remote Guion k3s uses `~/.kube/config` with context `guion-tunnel`.
+- Local NUC/WSL k3s uses `/etc/rancher/k3s/k3s.yaml` with context `default` and API server `https://127.0.0.1:26443`.
+- Set `KUBECONFIG` explicitly for direct commands so remote and local clusters cannot be confused. Use the repository's `just status`, `just diff`, and `just apply` commands for local DevOps workloads; they reject non-local API servers.
+- Do not use `sudo kubectl` or `sudo kubectx`. A newly added `k3s` group membership requires a new login shell before the local kubeconfig is readable.
+- The agenix-managed `~/.kube/config` is read-only. `kubectl` can use it, but `kubectx` cannot modify it directly. Do not replace or edit the managed kubeconfig.
+
 ## Testing
 
 - Test observable behavior and stable contracts, not source shape. Do not write tests that grep source files, assert that a file or string is absent, or pin incidental implementation details.
