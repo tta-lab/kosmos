@@ -15,12 +15,13 @@ _: {
     ../../modules/wsl/secrets.nix
     ../../modules/wsl/hermes-agent.nix
     ../../modules/wsl/mihomo.nix
+    ../../modules/wsl/k3s.nix
+    ../../modules/wsl/kepos-neo.nix
     ../../modules/wsl/kepos-tunnel.nix
     ../../modules/wsl/forgejo.nix
     ../../modules/wsl/dagger.nix
     ../../modules/wsl/woodpecker.nix
     ../../modules/wsl/navidrome.nix
-    ../../modules/wsl/seafarer-edge.nix
     ../../modules/wsl/apt-cacher-ng.nix
     ../../modules/configs.nix
   ];
@@ -46,7 +47,6 @@ _: {
       enableCloudflared = true;
     };
     navidrome.enable = true;
-    seafarerEdge.enable = true;
   };
   system.stateVersion = "25.05";
 }

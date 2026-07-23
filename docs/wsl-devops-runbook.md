@@ -1,211 +1,124 @@
 # WSL DevOps Runbook
 
-This is the current operating note for the WSL DevOps control plane.
-Historical k3s migration, restore-smoke, and backup helper scripts were removed
-after cutover.
+The WSL DevOps stack runs in the single-node NixOS k3s cluster. Nix manages
+k3s and the Kepos publisher; Tanka manages the Kubernetes objects. A NixOS
+switch never applies Tanka.
 
-## Services
+## Endpoints
 
-- Forgejo: `https://git.guion.io`
-- Woodpecker: `https://ci.guion.io`
-- Dagger engine: local only, `tcp://127.0.0.1:8080` and
-  `unix:///run/dagger/engine.sock`
+- Forgejo: `http://forgejo.localhost:17480`
+- Woodpecker: `http://woodpecker.localhost:17480`
+- Dagger: `tcp://dagger.devops.svc.cluster.local:8080` in-cluster and
+  `tcp://127.0.0.1:8080` for the local CLI
+- k3s API: `https://127.0.0.1:26443`
 
-Forgejo, Dagger, and Woodpecker are enabled from `hosts/wsl/default.nix`.
-Cloudflare routes for `git.guion.io` and `ci.guion.io` are served by the WSL
-`nuc-wsl` tunnel, not by the production k3s cluster.
+Caddy binds the host gateway only on `127.0.0.1:17480`. CoreDNS rewrites the
+two canonical `.localhost` names to that same gateway inside the cluster. This
+keeps browser, Git, Woodpecker OAuth, webhooks, and container-registry URLs
+consistent.
 
-## Health Checks
+Kepos publishes four service IDs:
 
-Use the gate command for normal checks:
+- `forgejo` and `woodpecker` both target port `17480`; the preserved HTTP Host
+  header selects the Caddy route.
+- `navidrome` targets port `4533`.
+- `ssh` targets port `22`.
 
-```bash
-kosmos-devops-gate-status --strict
-```
+Local WSL clients connect directly to the loopback Caddy endpoint. They do not
+traverse Kepos.
 
-Use the smoke command when checking all local services after a deploy:
+## Configuration checks
 
-```bash
-kosmos-wsl-devops-smoke
-```
-
-Check public ingress:
-
-```bash
-kosmos-cloudflared-ingress-smoke
-curl -I https://git.guion.io/v2/
-curl -I https://ci.guion.io/
-```
-
-The `/v2/` response should be a container-registry response, not the Forgejo
-HTML app shell.
-
-Use `--deep` only when you want the Kubernetes private-image pull smoke:
+These commands do not change the cluster:
 
 ```bash
-kosmos-devops-gate-status --deep --strict
+just show
+just diff
+just status
 ```
 
-## Dagger
+`just apply` is the explicit normal apply command. It refuses any kubeconfig
+whose active API server is not `https://127.0.0.1:26443`.
 
-Nix installs the Dagger CLI wrapper. The engine is a systemd-managed rootful
-Podman container running the official Dagger engine image.
+## First cutover
+
+Deploy the NixOS generation first so k3s, its directories, the packaged Kepos
+CLI, and the user service exist:
 
 ```bash
-systemctl status podman-dagger-engine
-dagger version
-kosmos-dagger-unix-socket-smoke
+sudo env NIX_CONFIG="$(cat ~/.config/nix/nix.conf)" \
+  nixos-rebuild switch --flake .#wsl
 ```
 
-Dagger cache policy is written to:
+Open a new WSL shell after the switch so the session picks up membership in
+the `k3s` group.
 
-```text
-/etc/dagger/engine.json
-```
-
-After changing the engine config:
+Initialize the multiplex Kepos state once. The command preserves the seed and
+allowlist from the current Navidrome multiplex publisher, and only replaces
+the declared service list. It does not print either secret:
 
 ```bash
-sudo systemctl restart podman-dagger-engine
+just kepos-init
 ```
 
-### Current DNS failure
-
-As of 2026-07-11, the CLI can connect to Dagger Engine v0.21.7 and upload a
-build context, but builds that need a public base image stall during image
-resolution. `dagger version` is therefore not a sufficient health check.
-
-The failure crosses two DNS layers:
-
-1. Root Podman attaches the Engine to `10.88.0.0/16`; its bridge gateway and
-   configured DNS endpoint are `10.88.0.1`. Inside the privileged Engine,
-   Dagger creates its own `dagger0` bridge on `10.87.0.0/16` and runs dnsmasq
-   at `10.87.0.1` for build containers. Seeing `10.87.0.1` in a build lookup or
-   the Engine's rewritten `/etc/resolv.conf` is expected, not stale state.
-2. `dagger-dnsproxy.service` is listening on `10.88.0.1:53`, but its requests to
-   the configured public DNS-over-HTTPS upstreams (`1.1.1.1` and `1.0.0.1`)
-   timed out when sent directly. Mihomo already provides a local DNS listener
-   at `127.0.0.1:1053`, so Dagger's DNS proxy now uses that listener instead of
-   trying to send DoH traffic outside Mihomo.
-
-The result is repeatable lookup failure for both the configured Docker Hub
-mirror and the upstream registry:
-
-```text
-lookup mirror.gcr.io on 10.87.0.1:53: i/o timeout
-lookup registry-1.docker.io on 10.87.0.1:53: i/o timeout
-```
-
-This is an Engine/Podman/DNS-path fault, not a project Dockerfile or CPU
-architecture problem. Local Docker/Compose builds can still work because they
-do not use the Engine's resolver path.
-
-After DNS resolution is restored, the Engine also needs its HTTP and HTTPS
-proxy set to `host.containers.internal:7890`. The host's `127.0.0.1` address is
-not the Engine container's loopback address. Private Dagger and Podman networks
-remain in `NO_PROXY` so local registry traffic does not leave the host.
-
-Inspect all three layers before changing configuration:
+Then perform the DevOps cutover:
 
 ```bash
-dagger version
-sudo podman inspect dagger-engine | jq '.[0].HostConfig.Dns'
-sudo podman exec dagger-engine cat /etc/resolv.conf
-systemctl status dagger-dnsproxy podman-dagger-engine
-journalctl -u dagger-dnsproxy -u podman-dagger-engine --since today
+just cutover
 ```
 
-The incident is resolved only when a Dagger operation can pull a small public
-image, not merely when the Engine socket responds. Restarting the Engine alone
-does not fix an unreachable upstream in `dagger-dnsproxy`. Use this functional
-check:
+The cutover command:
+
+1. stops the legacy Forgejo, Woodpecker, and Dagger systemd services;
+2. copies Forgejo and Woodpecker data to `/var/lib/kosmos-k3s` while SQLite is
+   stopped, then changes the copied Woodpecker OAuth callback to
+   `http://woodpecker.localhost:17480/authorize`;
+3. creates the Kubernetes Woodpecker secret from the existing agenix runtime
+   file without printing it;
+4. applies Tanka, waits for every workload, checks both HTTP health paths, and
+   verifies that Dagger can pull and run a public image;
+5. writes a cutover marker that keeps the legacy services and Cloudflare
+   tunnel disabled across reboots.
+
+The command restarts the legacy services automatically if prepare, apply,
+rollout, health checks, or the Dagger pull fail. The migration writes a
+`migration-prepared` marker only after both copied databases and the Kubernetes
+secret are ready. Rollback refuses to overwrite the legacy data unless that
+marker exists and both copied SQLite databases pass an integrity check.
+
+Forgejo and Woodpecker use static local PVs with a `Retain` reclaim policy.
+Dagger starts with a fresh cache at `/var/lib/kosmos-k3s/dagger`.
+
+## Rollback
 
 ```bash
-DAGGER_NO_NAG=1 dagger -M call container \
-  from --address alpine:3.20 \
-  with-exec --args=echo --args=dagger-pull-ok \
-  stdout
+just rollback
 ```
 
-Verify both DNS hops: Dagger dnsmasq at `10.87.0.1`, then the DNS proxy at
-`10.88.0.1`. Also verify Mihomo answers on `127.0.0.1:1053` before testing
-Dagger.
+Rollback deletes the k3s workloads but retains their PVs, copies Forgejo and
+Woodpecker data back to the legacy directories while the pods are stopped,
+restores the old OAuth callback, and restarts the legacy systemd services.
+This preserves writes made after cutover instead of silently returning to the
+pre-cutover SQLite snapshot.
 
-The configuration sources for this path are:
-
-- `modules/wsl/dagger.nix`: Engine container, resolver, and DoH upstreams.
-- `scripts/dagger-engine-config-smoke`: installed Engine JSON and cache policy.
-- `scripts/dagger-unix-socket-smoke`: socket connectivity only.
-- `scripts/dagger-local-registry-smoke` and
-  `scripts/dagger-large-registry-smoke`: functional Dagger build/publish paths.
-
-Do not expose the Dagger engine through Cloudflare. Woodpecker receives the Unix
-socket mount and talks to it locally.
-
-## Forgejo
-
-Local checks:
+## Runtime checks
 
 ```bash
-systemctl status forgejo
-curl -I http://127.0.0.1:3000/
-curl -I https://git.guion.io/v2/
+just status
+just kepos-status
+curl --fail http://forgejo.localhost:17480/api/healthz
+curl --fail http://woodpecker.localhost:17480/healthz
 ```
 
-The admin bootstrap credentials are stored outside git:
-
-```text
-/root/kosmos-forgejo-admin-init.txt
-```
-
-Read them only when initial login or recovery needs it:
+`just cutover` includes a public-image pull because socket reachability is not
+enough. To repeat that check manually:
 
 ```bash
-sudo cat /root/kosmos-forgejo-admin-init.txt
+_EXPERIMENTAL_DAGGER_RUNNER_HOST=tcp://127.0.0.1:8080 \
+  dagger -M call container from --address alpine:3.20 \
+  with-exec --args=echo --args=dagger-pull-ok stdout
 ```
 
-The WSL-local registry publish path is:
-
-```text
-host.containers.internal:3000/guionai/<image>:<tag>
-```
-
-`forgejo-internal-registry-proxy.service` binds only on the Podman bridge
-gateway and forwards to Forgejo's loopback listener. This lets Dagger publish
-packages without sending registry writes through Cloudflare.
-
-Package and Git smoke tests use the agenix-backed Forgejo smoke token:
-
-```bash
-kosmos-forgejo-https-git-smoke
-kosmos-dagger-local-registry-smoke
-kosmos-dagger-large-registry-smoke
-```
-
-## Woodpecker
-
-Check service state:
-
-```bash
-systemctl status woodpecker-server
-systemctl status woodpecker-agent-wsl-podman
-kosmos-woodpecker-preflight
-```
-
-Run the Dagger job smoke when validating CI end to end:
-
-```bash
-kosmos-woodpecker-dagger-job-smoke
-```
-
-Woodpecker data from the old cluster was not migrated. Re-enable repos and
-secrets in the WSL instance as needed.
-
-## Backup
-
-No Forgejo or Woodpecker backup automation is part of the current WSL DevOps
-setup. The old migration-time dump, restore-smoke, data-disk, and replication
-helpers were removed to keep the live system small.
-
-If backup becomes important, design it as a new change with a clear restore
-test. Do not revive the old cutover scripts as routine backup tooling.
+Cloudflare is not part of the new request path. Keep the legacy units only
+through first-cutover acceptance; remove them and their Cloudflare module in a
+follow-up cleanup after rollback is no longer needed.
