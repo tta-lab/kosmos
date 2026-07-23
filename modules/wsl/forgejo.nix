@@ -8,8 +8,8 @@
   cfg = config.kosmos.wsl.forgejo;
   keposCloudflaredCredentialsFile = ../../secrets/cloudflared-kepos-credentials.age;
   haveKeposTunnel =
-    config.kosmos.wsl ? keposMatrix
-    && config.kosmos.wsl.keposMatrix.enable
+    config.kosmos.wsl ? keposTunnel
+    && config.kosmos.wsl.keposTunnel.enable
     && builtins.pathExists keposCloudflaredCredentialsFile;
 in {
   options.kosmos.wsl.forgejo = {
@@ -69,7 +69,7 @@ in {
       warnings = lib.mkIf (cfg.enableCloudflared && !haveKeposTunnel) [
         ''
           WSL Forgejo is enabled without the kepos Cloudflare tunnel.
-          It will listen on 127.0.0.1:${toString cfg.port} until kosmos.wsl.keposMatrix is enabled and secrets/cloudflared-kepos-credentials.age exists.
+          It will listen on 127.0.0.1:${toString cfg.port} until kosmos.wsl.keposTunnel is enabled and secrets/cloudflared-kepos-credentials.age exists.
         ''
       ];
 

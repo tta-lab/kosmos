@@ -161,13 +161,3 @@ Client secret file:
 [client.services.ssh]
 token = "same-token-as-vps"
 ```
-
-For a future Matrix/Tuwunel tunnel, add a second service:
-
-```nix
-client.services.matrix = {
-  local_addr = "127.0.0.1:8008";
-};
-```
-
-and put its token in the secret TOML file.

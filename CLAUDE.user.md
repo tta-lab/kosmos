@@ -44,6 +44,14 @@
 
 - Merging a PR does not deploy it. If the task includes deployment, run and verify the repository's documented deploy step.
 
+## Testing
+
+- Test observable behavior and stable contracts, not source shape. Do not write tests that grep source files, assert that a file or string is absent, or pin incidental implementation details.
+- Avoid over-testing. Use the smallest check that can catch a plausible regression; do not add multiple test layers for a simple configuration change without a concrete failure mode.
+- Pure deletion and stale cleanup do not need regression tests whose only purpose is to prevent removed code, configuration, documentation, or assets from being added again. Remove tests that only covered the deleted feature.
+- Documentation, prompts, and human-facing text are data, not code. Do not add grep, snapshot, or exact-string tests for their wording or existence. Review the rendered or generated result when that materially affects users.
+- Add a test only when failure would break runtime behavior, parsing or schema validity, a machine-consumed generated artifact, or an externally promised contract.
+
 ## Git Best Practices
 
 - Before committing, review `git diff --cached`. Describe the final staged diff, not the editing journey or reverted work.

@@ -64,8 +64,6 @@
             ${./tests/temenos-env-test} \
             ${./tests/ttal-tmux-project-picker-test} \
             ${./tests/temenos-ca-test} \
-            ${./tests/feishin-web-cache-config-test} \
-            ${./tests/cloudflared-ssh-config-test} \
             ${./tests/cloudflared-ingress-smoke-test} \
             ${./tests/dagger-large-registry-smoke-test} \
             ${./tests/dagger-engine-config-smoke-test} \
@@ -78,8 +76,6 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
           KOSMOS_REPO_ROOT=${./.} ${pkgs.python3}/bin/python3 ${./tests/test_sync_projects_auth.py}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/feishin-web-cache-config-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudflared-ssh-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudflared-ingress-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-large-registry-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-engine-config-smoke-test}
@@ -92,6 +88,29 @@
           touch $out
         '';
 
+      kepos-tunnel-module = let
+        eval = nixpkgs.lib.nixosSystem {
+          inherit system;
+          modules = [
+            agenix.nixosModules.default
+            ./modules/wsl/kepos-tunnel.nix
+            (_: {
+              system.stateVersion = "25.05";
+              kosmos.wsl.keposTunnel.enable = true;
+              services.cloudflared.tunnels.kepos.ingress."test.guion.io" = "http://127.0.0.1:8080";
+            })
+          ];
+        };
+        cfg = eval.config;
+        tunnel = cfg.services.cloudflared.tunnels.kepos;
+      in
+        assert cfg.services.cloudflared.enable;
+        assert tunnel.default == "http_status:404";
+        assert tunnel.credentialsFile == cfg.age.secrets.cloudflared-kepos-credentials.path;
+        assert tunnel.ingress."test.guion.io" == "http://127.0.0.1:8080";
+        assert cfg.systemd.services.cloudflared-tunnel-kepos.environment.TUNNEL_TRANSPORT_PROTOCOL == "http2";
+          pkgs.runCommand "kepos-tunnel-module-check" {} "touch $out";
+
       seafarer-edge-module = let
         eval = nixpkgs.lib.nixosSystem {
           inherit system;
@@ -102,11 +121,11 @@
               pkgs,
               ...
             }: {
-              options.kosmos.wsl.keposMatrix.enable = lib.mkEnableOption "test Kepos tunnel";
+              options.kosmos.wsl.keposTunnel.enable = lib.mkEnableOption "test Kepos tunnel";
               config = {
                 system.stateVersion = "25.05";
                 kosmos.wsl = {
-                  keposMatrix.enable = true;
+                  keposTunnel.enable = true;
                   seafarerEdge.enable = true;
                 };
                 services.cloudflared.tunnels.kepos = {
@@ -131,62 +150,7 @@
         assert nixpkgs.lib.hasInfix "header_up X-Forwarded-Proto https" caddyHost.extraConfig;
         assert nixpkgs.lib.hasInfix "reverse_proxy 127.0.0.1:${toString edge.seafilePort}" caddyHost.extraConfig;
         assert nixpkgs.lib.hasInfix "respond \"\" 404" caddyHost.extraConfig;
-        assert cfg.services.cloudflared.tunnels.kepos.ingress.${edge.seafileHostname} == "http://127.0.0.1:${toString edge.proxyPort}";
-        assert cfg.services.cloudflared.tunnels.kepos.ingress.${edge.onlyofficeHostname} == "http://127.0.0.1:${toString edge.onlyofficePort}";
           pkgs.runCommand "seafarer-edge-module-check" {} "touch $out";
-
-      gatus-module = let
-        eval = nixpkgs.lib.nixosSystem {
-          inherit system;
-          specialArgs = {inherit pkgsUnstable;};
-          modules = [
-            ./modules/wsl/gatus.nix
-            ./modules/wsl/seafarer-edge.nix
-            ({lib, pkgs, ...}: {
-              options.kosmos.wsl.keposMatrix.enable = lib.mkEnableOption "test Kepos tunnel";
-              config = {
-                system.stateVersion = "25.05";
-                kosmos.wsl = {
-                  keposMatrix.enable = true;
-                  gatus.enable = true;
-                  seafarerEdge.enable = true;
-                };
-                services.cloudflared.tunnels.kepos = {
-                  credentialsFile = pkgs.writeText "credentials.json" "{}";
-                  default = "http_status:404";
-                };
-              };
-            })
-          ];
-        };
-        cfg = eval.config;
-        inherit (cfg.kosmos.wsl) gatus;
-        inherit (cfg.services.gatus.settings) endpoints;
-        endpoint = name: nixpkgs.lib.findFirst (item: item.name == name) (throw "gatus check: endpoint '${name}' not found") endpoints;
-        missingEndpoint = builtins.tryEval (endpoint "missing");
-        fileEndpoint = endpoint "盛伟-网盘";
-        officeEndpoint = endpoint "盛伟-office";
-        expectedConditions = [
-          "[STATUS] >= 200"
-          "[STATUS] < 400"
-          "[RESPONSE_TIME] < 10000"
-        ];
-      in
-        assert cfg.services.gatus.enable;
-        assert cfg.services.gatus.package.version == pkgsUnstable.gatus.version;
-        assert !missingEndpoint.success;
-        assert gatus.port == 8082;
-        assert gatus.port != cfg.kosmos.wsl.seafarerEdge.proxyPort;
-        assert cfg.services.gatus.settings.web.address == "127.0.0.1";
-        assert cfg.services.gatus.settings.web.port == gatus.port;
-        assert fileEndpoint.url == "https://sw-file.guion.io";
-        assert fileEndpoint.interval == "60s";
-        assert fileEndpoint.conditions == expectedConditions;
-        assert officeEndpoint.url == "https://sw-office.guion.io";
-        assert officeEndpoint.interval == "60s";
-        assert officeEndpoint.conditions == expectedConditions;
-        assert cfg.services.cloudflared.tunnels.kepos.ingress.${gatus.publicHostname} == "http://127.0.0.1:${toString gatus.port}";
-          pkgs.runCommand "gatus-module-check" {} "touch $out";
 
       woodpecker-module = let
         eval = nixpkgs.lib.nixosSystem {

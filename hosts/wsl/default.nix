@@ -14,15 +14,12 @@ _: {
     ../../modules/wsl/frpc-ssh.nix
     ../../modules/wsl/secrets.nix
     ../../modules/wsl/mihomo.nix
-    ../../modules/wsl/kepos-matrix.nix
+    ../../modules/wsl/kepos-tunnel.nix
     ../../modules/wsl/forgejo.nix
     ../../modules/wsl/dagger.nix
     ../../modules/wsl/woodpecker.nix
     ../../modules/wsl/navidrome.nix
-    ../../modules/wsl/listen-together.nix
-    ../../modules/wsl/feishin-web.nix
     ../../modules/wsl/seafarer-edge.nix
-    ../../modules/wsl/gatus.nix
     ../../modules/wsl/apt-cacher-ng.nix
     ../../modules/configs.nix
   ];
@@ -38,21 +35,17 @@ _: {
       port = 22;
     }
   ];
-  services.cloudflared.tunnels.kepos.ingress."ssh-wsl.guion.io" = "ssh://127.0.0.1:22";
   kosmos.wsl = {
     frpcSsh.enable = true;
-    keposMatrix.enable = true;
+    keposTunnel.enable = true;
     forgejo.enable = true;
     dagger.enable = true;
     woodpecker = {
       enable = true;
       enableCloudflared = true;
     };
-    listenTogether.enable = true;
-    feishinWeb.enable = true;
     navidrome.enable = true;
     seafarerEdge.enable = true;
-    gatus.enable = true;
   };
   system.stateVersion = "25.05";
 }
