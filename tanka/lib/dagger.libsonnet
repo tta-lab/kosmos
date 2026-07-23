@@ -63,7 +63,6 @@ local labels = {
               },
             ],
             args: [
-              '--config', '/etc/dagger/engine.json',
               '--network-name', 'dagger',
               '--network-cidr', '10.89.0.0/16',
               '--addr', 'tcp://0.0.0.0:8080',
