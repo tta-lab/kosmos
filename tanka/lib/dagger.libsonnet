@@ -78,6 +78,7 @@ local labels = {
               exec: { command: ['dagger', 'core', 'version'] },
               initialDelaySeconds: 5,
               periodSeconds: 10,
+              timeoutSeconds: 10,
             },
             resources: {
               requests: { cpu: '1', memory: '1Gi' },
