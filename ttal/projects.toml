@@ -125,9 +125,9 @@
   name = "kosmos"
   path = "/home/neil/code/projects/tta-lab/kosmos"
 
-[kp]
-  name = "Kepos -- private garden for friends"
-  path = "/home/neil/code/projects/tta-lab/kepos"
+[kep]
+  name = "Kepos Neo"
+  path = "/home/neil/code/projects/tta-lab/kepos-neo"
 
 [len]
   name = "Lenos agent cli"
