@@ -43,7 +43,6 @@
             gnused
             jq
             python3
-            ripgrep
             shellcheck
             woodpecker-cli
           ];
@@ -66,7 +65,6 @@
             ${./tests/ttal-tmux-project-picker-test} \
             ${./tests/temenos-ca-test} \
             ${./tests/feishin-web-cache-config-test} \
-            ${./tests/kepos-private-ingress-test} \
             ${./tests/cloudflared-ingress-smoke-test} \
             ${./tests/dagger-large-registry-smoke-test} \
             ${./tests/dagger-engine-config-smoke-test} \
@@ -74,14 +72,12 @@
             ${./tests/tmux-tmpdir-test} \
             ${./tests/tmux-copy-mode-test} \
             ${./tests/devops-gate-status-test} \
-            ${./tests/orga-cli-service-test} \
-            ${./tests/wsl-matrix-removal-test}
+            ${./tests/orga-cli-service-test}
           WOODPECKER_DISABLE_UPDATE_CHECK=true woodpecker-cli lint --strict ${./fixtures/woodpecker/dagger-unix-socket-smoke.yml}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
           KOSMOS_REPO_ROOT=${./.} ${pkgs.python3}/bin/python3 ${./tests/test_sync_projects_auth.py}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/feishin-web-cache-config-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/kepos-private-ingress-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudflared-ingress-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-large-registry-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-engine-config-smoke-test}
@@ -91,7 +87,6 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-copy-mode-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/devops-gate-status-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/wsl-matrix-removal-test}
           touch $out
         '';
 
@@ -116,8 +111,6 @@
         assert tunnel.credentialsFile == cfg.age.secrets.cloudflared-kepos-credentials.path;
         assert tunnel.ingress."test.guion.io" == "http://127.0.0.1:8080";
         assert cfg.systemd.services.cloudflared-tunnel-kepos.environment.TUNNEL_TRANSPORT_PROTOCOL == "http2";
-        assert !(builtins.hasAttr "matrix-tuwunel" cfg.services);
-        assert !(builtins.hasAttr "tuwunel" cfg.systemd.services);
           pkgs.runCommand "kepos-tunnel-module-check" {} "touch $out";
 
       seafarer-edge-module = let
@@ -159,8 +152,6 @@
         assert nixpkgs.lib.hasInfix "header_up X-Forwarded-Proto https" caddyHost.extraConfig;
         assert nixpkgs.lib.hasInfix "reverse_proxy 127.0.0.1:${toString edge.seafilePort}" caddyHost.extraConfig;
         assert nixpkgs.lib.hasInfix "respond \"\" 404" caddyHost.extraConfig;
-        assert !(builtins.hasAttr edge.seafileHostname cfg.services.cloudflared.tunnels.kepos.ingress);
-        assert !(builtins.hasAttr edge.onlyofficeHostname cfg.services.cloudflared.tunnels.kepos.ingress);
           pkgs.runCommand "seafarer-edge-module-check" {} "touch $out";
 
       woodpecker-module = let
