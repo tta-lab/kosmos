@@ -59,7 +59,7 @@ local labels = {
               { name: 'HTTPS_PROXY', value: 'http://$(NODE_IP):7890' },
               {
                 name: 'NO_PROXY',
-                value: 'localhost,127.0.0.1,::1,10.42.0.0/16,10.43.0.0/16,.svc,.cluster.local,forgejo.localhost,woodpecker.localhost',
+                value: 'localhost,127.0.0.1,::1,10.42.0.0/16,10.43.0.0/16,10.89.0.0/16,10.90.0.0/16,.svc,.cluster.local,forgejo.localhost,woodpecker.localhost',
               },
             ],
             args: [
