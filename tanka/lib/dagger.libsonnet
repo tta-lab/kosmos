@@ -63,11 +63,9 @@ local labels = {
               },
             ],
             args: [
-              '--config', '/etc/dagger/engine.json',
               '--network-name', 'dagger',
               '--network-cidr', '10.89.0.0/16',
-              '--network-pool', '10.90.0.0/16',
-              '--grpc-address', 'tcp://0.0.0.0:8080',
+              '--addr', 'tcp://0.0.0.0:8080',
             ],
             securityContext: { privileged: true },
             ports: [{
@@ -80,6 +78,7 @@ local labels = {
               exec: { command: ['dagger', 'core', 'version'] },
               initialDelaySeconds: 5,
               periodSeconds: 10,
+              timeoutSeconds: 10,
             },
             resources: {
               requests: { cpu: '1', memory: '1Gi' },
