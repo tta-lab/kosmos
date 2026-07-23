@@ -63,6 +63,12 @@ in {
         VISUAL = "hx";
       };
 
+      home.sessionPath = [
+        "/home/neil/.local/bin"
+        "/home/neil/go/bin"
+        "/home/neil/.local/share/npm-global/bin"
+      ];
+
       systemd.user.services.flicknote-sync = {
         Unit.Description = "FlickNote sync daemon";
         Install.WantedBy = ["default.target"];
@@ -82,8 +88,6 @@ in {
         fish = {
           enable = true;
           shellInit = ''
-            fish_add_path -g /home/neil/go/bin
-            fish_add_path -g /home/neil/.local/share/npm-global/bin
             if test -r "$HOME/.config/env"
               source "$HOME/.config/env"
             end

@@ -27,8 +27,6 @@ in {
   ];
 
   home-manager.users.neil = {
-    home.sessionPath = ["/home/neil/.local/bin"];
-
     systemd.user.services.hermes-dashboard = {
       Unit = {
         Description = "Hermes Agent dashboard";
