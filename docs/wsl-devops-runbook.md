@@ -53,13 +53,9 @@ sudo env NIX_CONFIG="$(cat ~/.config/nix/nix.conf)" \
 Open a new WSL shell after the switch so the session picks up membership in
 the `k3s` group.
 
-Initialize the multiplex Kepos state once. The command preserves the seed and
-allowlist from the current Navidrome multiplex publisher, and only replaces
-the declared service list. It does not print either secret:
-
-```bash
-just kepos-init
-```
+The upstream Kepos Home Manager module reuses the publisher state at
+`~/.local/state/kepos-neo/mux-publisher`. If the state is absent, the module
+initializes it before starting the publisher.
 
 Then perform the DevOps cutover:
 

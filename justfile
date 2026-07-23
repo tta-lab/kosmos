@@ -51,12 +51,6 @@ cutover: _local-k3s
 rollback: _local-k3s
   @sudo ./scripts/k3s-devops-migrate rollback
 
-kepos-init:
-  @./scripts/kepos-publisher-init
-  @systemctl --user stop kepos-publisher.service
-  @systemctl --user daemon-reload
-  @systemctl --user start kepos-publisher.service
-
 kepos-status:
   @systemctl --user status kepos-publisher.service --no-pager
 
