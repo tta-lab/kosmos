@@ -16,8 +16,6 @@
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
     fenix.url = "github:nix-community/fenix";
     fenix.inputs.nixpkgs.follows = "nixpkgs";
-    hermes-agent.url = "github:NousResearch/hermes-agent";
-    hermes-agent.inputs.nixpkgs.follows = "nixpkgs-unstable";
   };
 
   outputs = {
@@ -29,7 +27,6 @@
     nix-index-database,
     home-manager,
     fenix,
-    hermes-agent,
     ...
   }: let
     system = "x86_64-linux";
@@ -303,7 +300,7 @@
     nixosConfigurations.wsl = nixpkgs.lib.nixosSystem {
       inherit system;
       specialArgs = {
-        inherit agenix fenix hermes-agent nixpkgs-unstable pkgsUnstable;
+        inherit agenix fenix nixpkgs-unstable pkgsUnstable;
       };
       modules = [
         nixos-wsl.nixosModules.default

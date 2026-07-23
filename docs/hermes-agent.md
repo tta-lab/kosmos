@@ -1,105 +1,67 @@
 # Hermes Agent on WSL
 
-Hermes Agent is installed only for the WSL host. The NixOS module is
-`modules/wsl/hermes-agent.nix`.
+Hermes Agent is installed with the official upstream installer rather than
+built as a Nix package. Nix manages the command used to install it and the two
+long-running user services.
 
-## Packages
+## Install and update
 
-The repo uses the official upstream flake:
-
-```nix
-hermes-agent.url = "github:NousResearch/hermes-agent";
-hermes-agent.inputs.nixpkgs.follows = "nixpkgs-unstable";
-```
-
-WSL installs two upstream package variants:
-
-- `messaging` for the gateway service and CLI
-- `tui` for interactive terminal use
-
-The gateway service does not use the upstream `messaging` package directly. It
-uses a small patched copy named `hermesGateway`.
-
-## Upstream Nix Issue
-
-Upstream Hermes Agent 0.17.0 has a Nix packaging issue around the bundled cron
-plugin.
-
-Gateway startup eventually imports:
-
-```python
-from cron.scheduler_provider import resolve_cron_scheduler
-```
-
-The Python environment has the real `cron` dependency, and that dependency does
-provide `scheduler_provider`. The failure is caused by import shadowing.
-
-The upstream Nix package also exposes a bundled Hermes plugin named `cron` in
-plugin search paths:
-
-```text
-share/hermes-agent/plugins/cron
-lib/python*/site-packages/plugins/cron
-```
-
-When gateway startup adds those plugin paths to Python's import path, Python may
-resolve `import cron` to the bundled plugin instead of the real Python `cron`
-dependency. The bundled plugin is not the dependency package, so it lacks
-`cron.scheduler_provider` and gateway startup fails with:
-
-```text
-ModuleNotFoundError: No module named 'cron.scheduler_provider'
-```
-
-## Local Workaround
-
-`modules/wsl/hermes-agent.nix` builds a patched copy of the upstream `messaging`
-package:
-
-1. Copy the upstream package into a new Nix output.
-2. Build a filtered bundled plugin directory without
-   `share/hermes-agent/plugins/cron`.
-3. Rewrite the Hermes wrapper scripts so `HERMES_BUNDLED_PLUGINS` points at the
-   filtered plugin directory.
-4. Rewrite the final wrapper `exec` so it starts the upstream Python env, imports
-   the real `cron.scheduler_provider` first, and then enters `hermes_cli.main`.
-
-This puts the real Python `cron` dependency into `sys.modules` before Hermes
-plugin discovery can add the bundled plugin directory to Python import search.
-
-The TUI package is not patched. It is installed separately with
-`hermesPackages.tui`.
-
-## Service
-
-The gateway is managed by systemd:
+Run the installer as `neil` after deploying this configuration:
 
 ```bash
-systemctl status hermes-agent
-sudo systemctl restart hermes-agent
-journalctl -u hermes-agent -f
+hermes-agent-install
 ```
 
-Hermes state and setup files live under:
+The command downloads the official installer, skips the interactive setup, and
+installs into the upstream per-user layout:
 
 ```text
-/var/lib/hermes/.hermes
+code and virtualenv  ~/.hermes/hermes-agent
+CLI symlink          ~/.local/bin/hermes
+state and config     ~/.hermes
 ```
 
-This repo does not manage Telegram, Feishu, or other Hermes platform tokens with
-agenix. They are owned by the Hermes instance and should be written by
-interactive setup or by editing files under `/var/lib/hermes/.hermes` as the
-`hermes` user.
+The official installer uses its locked uv environment with the curated `all`
+extra. That includes the web dashboard and its browser chat dependencies. It
+also installs the Node runtime used to build the dashboard frontend on first
+launch.
 
-## Removing the Workaround
-
-Remove the local patch only after upstream changes its Nix package so the
-bundled `cron` plugin no longer shadows the Python `cron` dependency.
-
-To verify that, run the gateway under the service environment and confirm it
-does not fail with `cron.scheduler_provider`:
+Update Hermes through its own supported update path:
 
 ```bash
-sudo systemctl restart hermes-agent
-journalctl -u hermes-agent -n 120 --no-pager
+hermes update
 ```
+
+## Setup
+
+The non-interactive installer does not choose a model or configure a messaging
+channel. Run setup after the first install:
+
+```bash
+hermes setup
+hermes gateway setup
+```
+
+Hermes owns the credentials and configuration below `~/.hermes`; they are not
+copied into this repository or managed with agenix.
+
+## Services
+
+Home Manager enables two systemd user services:
+
+- `hermes-gateway` runs the messaging gateway.
+- `hermes-dashboard` serves the dashboard at `http://127.0.0.1:9119`.
+
+The dashboard is explicitly bound to IPv4 loopback. It is not reachable from
+the LAN or from the Cloudflare tunnel. Use local port forwarding when accessing
+it from another device.
+
+```bash
+systemctl --user status hermes-gateway hermes-dashboard
+systemctl --user restart hermes-gateway hermes-dashboard
+journalctl --user -u hermes-gateway -u hermes-dashboard -f
+```
+
+Both services start automatically after login and survive logout because the
+`neil` user has lingering enabled. If Hermes has not been installed yet, the
+units stay inactive because their executable condition is not met.

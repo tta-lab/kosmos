@@ -1,48 +1,70 @@
-{
-  hermes-agent,
-  pkgs,
-  ...
-}: let
-  hermesPackages = hermes-agent.packages.${pkgs.stdenv.hostPlatform.system};
-  inherit (hermesPackages.messaging.passthru) hermesVenv;
-  hermesPluginsWithoutCron = pkgs.runCommand "hermes-agent-plugins-without-cron" {} ''
-    mkdir -p "$out"
-    cp -R --no-preserve=mode,ownership ${hermesPackages.messaging}/share/hermes-agent/plugins/. "$out/"
-    rm -rf "$out/cron"
+{pkgs, ...}: let
+  hermesHome = "/home/neil/.hermes";
+  hermesCheckout = "${hermesHome}/hermes-agent";
+  hermesBin = "${hermesCheckout}/venv/bin/hermes";
+  workspace = "${hermesHome}/workspace";
+  installHermes = pkgs.writeShellScript "install-hermes-agent" ''
+    set -eu
+
+    installer="$(mktemp)"
+    trap 'rm -f "$installer"' EXIT
+
+    export HOME=/home/neil
+    export HERMES_HOME=${hermesHome}
+    export PATH=/home/neil/.local/bin:${pkgs.curl}/bin:${pkgs.git}/bin:${pkgs.xz}/bin:/run/current-system/sw/bin:$PATH
+
+    curl -fsSL https://hermes-agent.nousresearch.com/install.sh -o "$installer"
+    ${pkgs.bash}/bin/bash "$installer" --skip-setup
   '';
-  hermesGateway = pkgs.runCommand "hermes-agent-gateway" {} ''
-    cp -R --no-preserve=mode,ownership ${hermesPackages.messaging} "$out"
-    chmod -R u+w "$out/bin"
-    chmod +x "$out/bin/hermes" "$out/bin/hermes-agent" "$out/bin/hermes-acp"
-    substituteInPlace "$out/bin/hermes" "$out/bin/hermes-agent" "$out/bin/hermes-acp" \
-      --replace-fail "export HERMES_BUNDLED_PLUGINS='${hermesPackages.messaging}/share/hermes-agent/plugins'" \
-                     "export HERMES_BUNDLED_PLUGINS='${hermesPluginsWithoutCron}'"
-    substituteInPlace "$out/bin/hermes" \
-      --replace-fail 'exec "${hermesVenv}/bin/hermes"  "$@"' \
-                     'exec "${hermesVenv}/bin/python3" -c "import sys; import cron.scheduler_provider; from hermes_cli.main import main; sys.argv[0] = \"hermes\"; raise SystemExit(main())" "$@"'
-    substituteInPlace "$out/bin/hermes-agent" \
-      --replace-fail 'exec "${hermesVenv}/bin/hermes-agent"  "$@"' \
-                     'exec "${hermesVenv}/bin/python3" -c "import sys; import cron.scheduler_provider; from hermes_cli.main import main; sys.argv[0] = \"hermes-agent\"; raise SystemExit(main())" "$@"'
-    substituteInPlace "$out/bin/hermes-acp" \
-      --replace-fail 'exec "${hermesVenv}/bin/hermes-acp"  "$@"' \
-                     'exec "${hermesVenv}/bin/python3" -c "import sys; import cron.scheduler_provider; from hermes_cli.main import main; sys.argv[0] = \"hermes-acp\"; raise SystemExit(main())" "$@"'
-  '';
+  serviceEnvironment = [
+    "HOME=/home/neil"
+    "HERMES_HOME=${hermesHome}"
+  ];
 in {
-  imports = [
-    hermes-agent.nixosModules.default
-  ];
-
   environment.systemPackages = [
-    hermesGateway
-    hermesPackages.tui
+    (pkgs.writeShellScriptBin "hermes-agent-install" ''
+      exec ${installHermes}
+    '')
   ];
 
-  services.hermes-agent = {
-    enable = true;
-    # Upstream bundles a plugin named "cron"; it shadows the Python cron
-    # dependency during gateway startup. Preload the dependency before plugin
-    # discovery runs, and hide the bundled cron plugin directory.
-    package = hermesGateway;
-    addToSystemPackages = true;
+  home-manager.users.neil = {
+    home.sessionPath = ["/home/neil/.local/bin"];
+
+    systemd.user.services = {
+      hermes-gateway = {
+        Unit = {
+          Description = "Hermes Agent messaging gateway";
+          After = ["network-online.target"];
+          Wants = ["network-online.target"];
+          ConditionPathIsExecutable = hermesBin;
+        };
+        Install.WantedBy = ["default.target"];
+        Service = {
+          ExecStartPre = "${pkgs.coreutils}/bin/mkdir -p ${workspace}";
+          ExecStart = "${hermesBin} gateway run";
+          Restart = "on-failure";
+          RestartSec = 5;
+          Environment = serviceEnvironment;
+          WorkingDirectory = workspace;
+        };
+      };
+
+      hermes-dashboard = {
+        Unit = {
+          Description = "Hermes Agent dashboard";
+          After = ["network-online.target"];
+          Wants = ["network-online.target"];
+          ConditionPathIsExecutable = hermesBin;
+        };
+        Install.WantedBy = ["default.target"];
+        Service = {
+          ExecStart = "${hermesBin} dashboard --host 127.0.0.1 --port 9119 --no-open";
+          Restart = "on-failure";
+          RestartSec = 5;
+          Environment = serviceEnvironment;
+          WorkingDirectory = "/home/neil";
+        };
+      };
+    };
   };
 }
