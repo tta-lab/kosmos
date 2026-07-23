@@ -7,6 +7,7 @@ import tempfile
 import textwrap
 import unittest
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 REPO_ROOT = Path(
@@ -16,7 +17,7 @@ FORGEJO_TOKEN_NAMES = ("FORGEJO_TOKEN", "FORGEJO_ACCESS_TOKEN", "GITEA_TOKEN")
 
 
 class SyncProjectsAuthTest(unittest.TestCase):
-    def test_routes_https_tokens_by_forge_and_org(self):
+    def test_routes_tokens_by_forge_and_org(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             test_root = Path(temporary_directory)
             bin_dir = test_root / "bin"
@@ -43,7 +44,7 @@ class SyncProjectsAuthTest(unittest.TestCase):
                     f"""\
                     [slse]
                     path = "{code_root}/projects/GuionAI/sliqs-services"
-                    remote = "https://git.guion.io/GuionAI/sliqs-services.git"
+                    remote = "http://forgejo.localhost:17480/GuionAI/sliqs-services.git"
 
                     [cnsupa]
                     path = "{code_root}/projects/GuionAI/cloudnative-supabase"
@@ -129,7 +130,7 @@ class SyncProjectsAuthTest(unittest.TestCase):
             self.assertEqual(len(calls), 3)
 
             expected_tokens = {
-                "https://git.guion.io/GuionAI/sliqs-services.git": (
+                "http://forgejo.localhost:17480/GuionAI/sliqs-services.git": (
                     "test-forgejo-token"
                 ),
                 "https://github.com/GuionAI/cloudnative-supabase.git": (
@@ -139,14 +140,15 @@ class SyncProjectsAuthTest(unittest.TestCase):
             }
             for call in calls:
                 remote = call["argv"][1]
+                parsed = urlsplit(remote)
                 self.assertEqual(call["token"], expected_tokens[remote])
                 self.assertEqual(call["config_count"], "2")
                 helper_env = os.environ.copy()
                 helper_env.update(
                     {
                         "GIT_TOKEN_INJECT": call["token"],
-                        "GIT_CREDENTIAL_PROTOCOL": "https",
-                        "GIT_CREDENTIAL_HOST": remote.split("/", 3)[2],
+                        "GIT_CREDENTIAL_PROTOCOL": parsed.scheme,
+                        "GIT_CREDENTIAL_HOST": parsed.netloc,
                     }
                 )
                 attacker_result = subprocess.run(
@@ -154,7 +156,7 @@ class SyncProjectsAuthTest(unittest.TestCase):
                     check=False,
                     capture_output=True,
                     env=helper_env,
-                    input="protocol=https\nhost=attacker.invalid\n\n",
+                    input=f"protocol={parsed.scheme}\nhost=attacker.invalid\n\n",
                     text=True,
                 )
                 self.assertNotIn(call["token"], attacker_result.stdout)
@@ -164,13 +166,13 @@ class SyncProjectsAuthTest(unittest.TestCase):
                     capture_output=True,
                     env=helper_env,
                     input=(
-                        "protocol=https\n"
-                        f'host={remote.split("/", 3)[2]}\n\n'
+                        f"protocol={parsed.scheme}\n"
+                        f"host={parsed.netloc}\n\n"
                     ),
                     text=True,
                 )
                 self.assertIn(call["token"], authorized_result.stdout)
-                self.assertEqual(call["credential_host"], remote.split("/", 3)[2])
+                self.assertEqual(call["credential_host"], parsed.netloc)
                 self.assertIsNone(call["unrelated"])
                 self.assertNotIn(call["token"], call["argv"])
 
