@@ -3,6 +3,14 @@ set -euo pipefail
 
 repo_root="${KOSMOS_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 
+if test -e "${repo_root}/modules/wsl/gatus.nix" \
+  || rg -n 'gatus|status\.guion\.io' \
+    "${repo_root}/hosts/wsl/default.nix" \
+    "${repo_root}/flake.nix"; then
+  echo "Gatus remains configured in the WSL system" >&2
+  exit 1
+fi
+
 if rg -n 'services\.cloudflared\.tunnels\.kepos\.ingress\."ssh-wsl\.guion\.io"' \
   "${repo_root}/hosts/wsl/default.nix"; then
   echo "private WSL services remain exposed through the Kepos tunnel" >&2

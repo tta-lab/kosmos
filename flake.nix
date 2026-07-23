@@ -163,59 +163,6 @@
         assert !(builtins.hasAttr edge.onlyofficeHostname cfg.services.cloudflared.tunnels.kepos.ingress);
           pkgs.runCommand "seafarer-edge-module-check" {} "touch $out";
 
-      gatus-module = let
-        eval = nixpkgs.lib.nixosSystem {
-          inherit system;
-          specialArgs = {inherit pkgsUnstable;};
-          modules = [
-            ./modules/wsl/gatus.nix
-            ./modules/wsl/seafarer-edge.nix
-            ({lib, pkgs, ...}: {
-              options.kosmos.wsl.keposTunnel.enable = lib.mkEnableOption "test Kepos tunnel";
-              config = {
-                system.stateVersion = "25.05";
-                kosmos.wsl = {
-                  keposTunnel.enable = true;
-                  gatus.enable = true;
-                  seafarerEdge.enable = true;
-                };
-                services.cloudflared.tunnels.kepos = {
-                  credentialsFile = pkgs.writeText "credentials.json" "{}";
-                  default = "http_status:404";
-                };
-              };
-            })
-          ];
-        };
-        cfg = eval.config;
-        inherit (cfg.kosmos.wsl) gatus;
-        inherit (cfg.services.gatus.settings) endpoints;
-        endpoint = name: nixpkgs.lib.findFirst (item: item.name == name) (throw "gatus check: endpoint '${name}' not found") endpoints;
-        missingEndpoint = builtins.tryEval (endpoint "missing");
-        fileEndpoint = endpoint "盛伟-网盘";
-        officeEndpoint = endpoint "盛伟-office";
-        expectedConditions = [
-          "[STATUS] >= 200"
-          "[STATUS] < 400"
-          "[RESPONSE_TIME] < 10000"
-        ];
-      in
-        assert cfg.services.gatus.enable;
-        assert cfg.services.gatus.package.version == pkgsUnstable.gatus.version;
-        assert !missingEndpoint.success;
-        assert gatus.port == 8082;
-        assert gatus.port != cfg.kosmos.wsl.seafarerEdge.proxyPort;
-        assert cfg.services.gatus.settings.web.address == "127.0.0.1";
-        assert cfg.services.gatus.settings.web.port == gatus.port;
-        assert fileEndpoint.url == "https://sw-file.guion.io";
-        assert fileEndpoint.interval == "60s";
-        assert fileEndpoint.conditions == expectedConditions;
-        assert officeEndpoint.url == "https://sw-office.guion.io";
-        assert officeEndpoint.interval == "60s";
-        assert officeEndpoint.conditions == expectedConditions;
-        assert cfg.services.cloudflared.tunnels.kepos.ingress.${gatus.publicHostname} == "http://127.0.0.1:${toString gatus.port}";
-          pkgs.runCommand "gatus-module-check" {} "touch $out";
-
       woodpecker-module = let
         eval = nixpkgs.lib.nixosSystem {
           inherit system;
