@@ -65,5 +65,5 @@ k3s-status:
 
 [private]
 _local-k3s:
-  @actual="$$(KUBECONFIG="{{ kubeconfig }}" kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')"; \
-    test "$$actual" = "{{ api_server }}" || { echo "refusing non-local cluster: $$actual" >&2; exit 1; }
+  @actual="$(KUBECONFIG="{{ kubeconfig }}" kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')"; \
+    test "$actual" = "{{ api_server }}" || { echo "refusing non-local cluster: $actual" >&2; exit 1; }
