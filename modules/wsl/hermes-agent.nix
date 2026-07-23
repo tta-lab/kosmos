@@ -2,7 +2,6 @@
   hermesHome = "/home/neil/.hermes";
   hermesCheckout = "${hermesHome}/hermes-agent";
   hermesBin = "${hermesCheckout}/venv/bin/hermes";
-  workspace = "${hermesHome}/workspace";
   installHermes = pkgs.writeShellScript "install-hermes-agent" ''
     set -eu
 
@@ -30,40 +29,20 @@ in {
   home-manager.users.neil = {
     home.sessionPath = ["/home/neil/.local/bin"];
 
-    systemd.user.services = {
-      hermes-gateway = {
-        Unit = {
-          Description = "Hermes Agent messaging gateway";
-          After = ["network-online.target"];
-          Wants = ["network-online.target"];
-          ConditionPathIsExecutable = hermesBin;
-        };
-        Install.WantedBy = ["default.target"];
-        Service = {
-          ExecStartPre = "${pkgs.coreutils}/bin/mkdir -p ${workspace}";
-          ExecStart = "${hermesBin} gateway run";
-          Restart = "on-failure";
-          RestartSec = 5;
-          Environment = serviceEnvironment;
-          WorkingDirectory = workspace;
-        };
+    systemd.user.services.hermes-dashboard = {
+      Unit = {
+        Description = "Hermes Agent dashboard";
+        After = ["network-online.target"];
+        Wants = ["network-online.target"];
+        ConditionPathIsExecutable = hermesBin;
       };
-
-      hermes-dashboard = {
-        Unit = {
-          Description = "Hermes Agent dashboard";
-          After = ["network-online.target"];
-          Wants = ["network-online.target"];
-          ConditionPathIsExecutable = hermesBin;
-        };
-        Install.WantedBy = ["default.target"];
-        Service = {
-          ExecStart = "${hermesBin} dashboard --host 127.0.0.1 --port 9119 --no-open";
-          Restart = "on-failure";
-          RestartSec = 5;
-          Environment = serviceEnvironment;
-          WorkingDirectory = "/home/neil";
-        };
+      Install.WantedBy = ["default.target"];
+      Service = {
+        ExecStart = "${hermesBin} dashboard --host 127.0.0.1 --port 9119 --no-open";
+        Restart = "on-failure";
+        RestartSec = 5;
+        Environment = serviceEnvironment;
+        WorkingDirectory = "/home/neil";
       };
     };
   };
