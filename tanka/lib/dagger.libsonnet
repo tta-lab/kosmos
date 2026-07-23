@@ -66,8 +66,7 @@ local labels = {
               '--config', '/etc/dagger/engine.json',
               '--network-name', 'dagger',
               '--network-cidr', '10.89.0.0/16',
-              '--network-pool', '10.90.0.0/16',
-              '--grpc-address', 'tcp://0.0.0.0:8080',
+              '--addr', 'tcp://0.0.0.0:8080',
             ],
             securityContext: { privileged: true },
             ports: [{

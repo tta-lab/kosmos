@@ -26,6 +26,16 @@ legacy_units=(
   podman-dagger-engine.service
   cloudflared-tunnel-kepos.service
 )
+legacy_start_units=(
+  forgejo.service
+  podman-dagger-engine.service
+  forgejo-internal-registry-proxy.service
+  woodpecker-server.service
+  woodpecker-agent-wsl-podman.service
+  woodpecker-agent-wsl-podman-2.service
+  woodpecker-agent-wsl-podman-3.service
+  cloudflared-tunnel-kepos.service
+)
 
 stop_known_units() {
   local unit
@@ -38,11 +48,18 @@ stop_known_units() {
 
 start_known_units() {
   local unit
-  for unit in "${legacy_units[@]}"; do
+  local failed_units=()
+  for unit in "${legacy_start_units[@]}"; do
     if systemctl cat "$unit" >/dev/null 2>&1; then
-      systemctl start "$unit"
+      if ! systemctl start "$unit"; then
+        failed_units+=("$unit")
+      fi
     fi
   done
+  if ((${#failed_units[@]} > 0)); then
+    printf 'failed to start legacy units: %s\n' "${failed_units[*]}" >&2
+    return 1
+  fi
 }
 
 case "$mode" in
