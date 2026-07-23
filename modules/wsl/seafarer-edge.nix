@@ -11,13 +11,7 @@ in {
     seafileHostname = lib.mkOption {
       type = lib.types.str;
       default = "seafile.guion.io";
-      description = "Public Seafile hostname exposed through cloudflared.";
-    };
-
-    onlyofficeHostname = lib.mkOption {
-      type = lib.types.str;
-      default = "onlyoffice.guion.io";
-      description = "Public OnlyOffice hostname exposed through cloudflared.";
+      description = "Host matcher used by the local Seafarer Caddy router.";
     };
 
     seafilePort = lib.mkOption {
