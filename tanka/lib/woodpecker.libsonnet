@@ -127,7 +127,7 @@ local agentLabels = labels('woodpecker-agent');
       labels: agentLabels,
     },
     spec: {
-      replicas: 1,
+      replicas: 3,
       serviceName: 'woodpecker-agent',
       selector: { matchLabels: agentLabels },
       template: {
