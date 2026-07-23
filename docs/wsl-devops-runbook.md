@@ -75,12 +75,16 @@ The cutover command:
    `http://woodpecker.localhost:17480/authorize`;
 3. creates the Kubernetes Woodpecker secret from the existing agenix runtime
    file without printing it;
-4. applies Tanka, waits for every workload, and checks both HTTP health paths;
+4. applies Tanka, waits for every workload, checks both HTTP health paths, and
+   verifies that Dagger can pull and run a public image;
 5. writes a cutover marker that keeps the legacy services and Cloudflare
    tunnel disabled across reboots.
 
 The command restarts the legacy services automatically if prepare, apply,
-rollout, or health checks fail.
+rollout, health checks, or the Dagger pull fail. The migration writes a
+`migration-prepared` marker only after both copied databases and the Kubernetes
+secret are ready. Rollback refuses to overwrite the legacy data unless that
+marker exists and both copied SQLite databases pass an integrity check.
 
 Forgejo and Woodpecker use static local PVs with a `Retain` reclaim policy.
 Dagger starts with a fresh cache at `/var/lib/kosmos-k3s/dagger`.
@@ -106,14 +110,12 @@ curl --fail http://forgejo.localhost:17480/api/healthz
 curl --fail http://woodpecker.localhost:17480/healthz
 ```
 
-For Dagger, socket reachability is not enough. Run a small public-image pull
-after cutover:
+`just cutover` includes a public-image pull because socket reachability is not
+enough. To repeat that check manually:
 
 ```bash
-kubectl run -n devops dagger-check --rm -i --restart=Never \
-  --image=registry.dagger.io/cli:v0.21.7 \
-  --env=_EXPERIMENTAL_DAGGER_RUNNER_HOST=tcp://dagger:8080 \
-  -- dagger -M call container from --address alpine:3.20 \
+_EXPERIMENTAL_DAGGER_RUNNER_HOST=tcp://127.0.0.1:8080 \
+  dagger -M call container from --address alpine:3.20 \
   with-exec --args=echo --args=dagger-pull-ok stdout
 ```
 
