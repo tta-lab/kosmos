@@ -1,0 +1,11 @@
+{
+  "apiVersion": "tanka.dev/v1alpha1",
+  "kind": "Environment",
+  "metadata": {
+    "name": "environments/devops"
+  },
+  "spec": {
+    "apiServer": "https://127.0.0.1:26443",
+    "namespace": "devops"
+  }
+}

@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+source_state="${KEPOS_SOURCE_STATE:-$HOME/.local/state/kepos-neo/mux-navidrome-publisher}"
+state="${KEPOS_PUBLISHER_STATE:-$HOME/.local/state/kepos-neo/mux-publisher}"
+
+if [[ -e "$state" ]]; then
+  printf 'refusing to replace existing Kepos state: %s\n' "$state" >&2
+  exit 1
+fi
+
+source_manifest="$source_state/publisher.manifest.json"
+if [[ ! -f "$source_manifest" && -z "${KEPOS_SOURCE_STATE:-}" ]]; then
+  source_state="$HOME/.local/state/kepos-neo/publisher"
+  source_manifest="$source_state/publisher.manifest.json"
+fi
+[[ -f "$source_manifest" ]] || {
+  printf 'source Kepos manifest not found: %s\n' "$source_manifest" >&2
+  exit 1
+}
+
+source_config_name="$(jq -er '(.publisherConfig // .homeConfig) | select(type == "string")' "$source_manifest")"
+source_config="$source_state/$source_config_name"
+jq -e '
+  (.seed | type == "string" and test("^[0-9a-f]{64}$")) and
+  (.allow | type == "array" and all(.[]; type == "string" and test("^[0-9a-f]{64}$")))
+' "$source_config" >/dev/null
+
+umask 077
+parent="$(dirname "$state")"
+mkdir -p "$parent"
+temporary="$(mktemp -d "$parent/.mux-publisher.XXXXXX")"
+trap 'rm -rf "$temporary"' EXIT
+
+jq '{seed, allow}' "$source_config" >"$temporary/publisher.json"
+jq -n '{
+  displayName: "kosmos-wsl",
+  publisherConfig: "publisher.json",
+  services: [
+    {id: "forgejo", name: "Forgejo", kind: "tcp", targetPort: 17480},
+    {id: "woodpecker", name: "Woodpecker", kind: "tcp", targetPort: 17480},
+    {id: "navidrome", name: "Navidrome", kind: "tcp", targetPort: 4533},
+    {id: "ssh", name: "SSH", kind: "tcp", targetPort: 22}
+  ]
+}' >"$temporary/publisher.manifest.json"
+
+mv "$temporary" "$state"
+trap - EXIT
+printf 'Kepos publisher state initialized at %s\n' "$state"

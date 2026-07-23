@@ -16,6 +16,10 @@
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
     fenix.url = "github:nix-community/fenix";
     fenix.inputs.nixpkgs.follows = "nixpkgs";
+    kepos-neo = {
+      url = "github:tta-lab/kepos-neo/b265df514dc9203fb92e1f1ad6033edaf948e5d7";
+      flake = false;
+    };
   };
 
   outputs = {
@@ -27,6 +31,7 @@
     nix-index-database,
     home-manager,
     fenix,
+    kepos-neo,
     ...
   }: let
     system = "x86_64-linux";
@@ -110,47 +115,6 @@
         assert tunnel.ingress."test.guion.io" == "http://127.0.0.1:8080";
         assert cfg.systemd.services.cloudflared-tunnel-kepos.environment.TUNNEL_TRANSPORT_PROTOCOL == "http2";
           pkgs.runCommand "kepos-tunnel-module-check" {} "touch $out";
-
-      seafarer-edge-module = let
-        eval = nixpkgs.lib.nixosSystem {
-          inherit system;
-          modules = [
-            ./modules/wsl/seafarer-edge.nix
-            ({
-              lib,
-              pkgs,
-              ...
-            }: {
-              options.kosmos.wsl.keposTunnel.enable = lib.mkEnableOption "test Kepos tunnel";
-              config = {
-                system.stateVersion = "25.05";
-                kosmos.wsl = {
-                  keposTunnel.enable = true;
-                  seafarerEdge.enable = true;
-                };
-                services.cloudflared.tunnels.kepos = {
-                  credentialsFile = pkgs.writeText "credentials.json" "{}";
-                  default = "http_status:404";
-                };
-              };
-            })
-          ];
-        };
-        cfg = eval.config;
-        edge = cfg.kosmos.wsl.seafarerEdge;
-        caddyHost = cfg.services.caddy.virtualHosts."http://:${toString edge.proxyPort}";
-      in
-        assert cfg.services.caddy.enable;
-        assert !cfg.services.nginx.enable;
-        assert nixpkgs.lib.hasInfix "output discard" caddyHost.logFormat;
-        assert nixpkgs.lib.hasInfix "bind 127.0.0.1" caddyHost.extraConfig;
-        assert nixpkgs.lib.hasInfix "host ${edge.seafileHostname}" caddyHost.extraConfig;
-        assert nixpkgs.lib.hasInfix "path /sdoc-server /sdoc-server/* /socket.io /socket.io/*" caddyHost.extraConfig;
-        assert nixpkgs.lib.hasInfix "reverse_proxy 127.0.0.1:${toString edge.seadocPort}" caddyHost.extraConfig;
-        assert nixpkgs.lib.hasInfix "header_up X-Forwarded-Proto https" caddyHost.extraConfig;
-        assert nixpkgs.lib.hasInfix "reverse_proxy 127.0.0.1:${toString edge.seafilePort}" caddyHost.extraConfig;
-        assert nixpkgs.lib.hasInfix "respond \"\" 404" caddyHost.extraConfig;
-          pkgs.runCommand "seafarer-edge-module-check" {} "touch $out";
 
       woodpecker-module = let
         eval = nixpkgs.lib.nixosSystem {
@@ -300,7 +264,7 @@
     nixosConfigurations.wsl = nixpkgs.lib.nixosSystem {
       inherit system;
       specialArgs = {
-        inherit agenix fenix nixpkgs-unstable pkgsUnstable;
+        inherit agenix fenix kepos-neo nixpkgs-unstable pkgsUnstable;
       };
       modules = [
         nixos-wsl.nixosModules.default

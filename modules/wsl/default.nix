@@ -115,8 +115,8 @@ in {
       forgejo
       forgejoHttpsGitSmoke
       forgejoK8sPullSecretSmoke
-      k3d
       proxyEnv
+      rsync
       pkgsUnstable.woodpecker-cli
       woodpeckerDaggerJobSmoke
       woodpeckerPreflight

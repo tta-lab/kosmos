@@ -144,6 +144,23 @@
         "type": "github"
       }
     },
+    "kepos-neo": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1784793869,
+        "narHash": "sha256-oewa7zdMQVdTULrGkTwRz0Sawt+C+2AhjJw1ZxYvsG8=",
+        "owner": "tta-lab",
+        "repo": "kepos-neo",
+        "rev": "b265df514dc9203fb92e1f1ad6033edaf948e5d7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "tta-lab",
+        "repo": "kepos-neo",
+        "rev": "b265df514dc9203fb92e1f1ad6033edaf948e5d7",
+        "type": "github"
+      }
+    },
     "nix-index-database": {
       "inputs": {
         "nixpkgs": [
@@ -224,6 +241,7 @@
         "disko": "disko",
         "fenix": "fenix",
         "home-manager": "home-manager_2",
+        "kepos-neo": "kepos-neo",
         "nix-index-database": "nix-index-database",
         "nixos-wsl": "nixos-wsl",
         "nixpkgs": "nixpkgs",
