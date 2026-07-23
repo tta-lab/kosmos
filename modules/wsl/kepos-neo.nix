@@ -1,45 +1,40 @@
-{
-  kepos-neo,
-  pkgs,
-  ...
-}: let
-  kepos = pkgs.callPackage ../../packages/kepos-neo {
-    src = kepos-neo;
-  };
-  stateDir = "/home/neil/.local/state/kepos-neo/mux-publisher";
-in {
-  environment.systemPackages = [kepos];
-
+{kepos-neo, ...}: {
   home-manager.users.neil = {
-    xdg.configFile."kepos/config.toml".text = ''
-      [network]
-      bootstrap = [
-        "47.94.213.63:49737",
-        "203.91.75.19:49738",
-        "34.143.181.65:49738",
-        "134.209.3.19:49739",
-      ]
-    '';
+    imports = [kepos-neo.homeManagerModules.default];
 
-    systemd.user.services.kepos-publisher = {
-      Unit = {
-        Description = "Kepos multiplex service publisher";
-        After = ["network-online.target"];
-        Wants = ["network-online.target"];
-        ConditionPathExists = "${stateDir}/publisher.manifest.json";
-      };
-      Install.WantedBy = ["default.target"];
-      Service = {
-        ExecStart = "${kepos}/bin/kepos publisher run --state ${stateDir} --config /home/neil/.config/kepos/config.toml";
-        Restart = "on-failure";
-        RestartSec = 5;
-        WorkingDirectory = "/home/neil";
-        Environment = [
-          "HOME=/home/neil"
-          "NO_PROXY=localhost,127.0.0.1,::1"
-        ];
-        NoNewPrivileges = true;
-        PrivateTmp = true;
+    services.kepos.publisher = {
+      enable = true;
+      package = kepos-neo.packages.x86_64-linux.kepos;
+      stateDir = "/home/neil/.local/state/kepos-neo/mux-publisher";
+      displayName = "kosmos-wsl";
+      bootstrap = [
+        "47.94.213.63:49737"
+        "203.91.75.19:49738"
+        "34.143.181.65:49738"
+        "134.209.3.19:49739"
+      ];
+      allow = [
+        "c5a2168e17a53b699ced7e3f3c8470afd7f91b97a1582076c9797c3e024311a2"
+        "80745ccfb5cb1ec8f10faf19225c0add320b1dc2e3a65914f3789935422fee96"
+        "e7cd23d4729148b6a6682c65787be743d63c48f96a3a2cb76ff07a72547be77e"
+      ];
+      services = {
+        forgejo = {
+          name = "Forgejo";
+          targetPort = 17480;
+        };
+        woodpecker = {
+          name = "Woodpecker";
+          targetPort = 17480;
+        };
+        navidrome = {
+          name = "Navidrome";
+          targetPort = 4533;
+        };
+        ssh = {
+          name = "SSH";
+          targetPort = 22;
+        };
       };
     };
   };
