@@ -300,7 +300,7 @@
     nixosConfigurations.wsl = nixpkgs.lib.nixosSystem {
       inherit system;
       specialArgs = {
-        inherit agenix nixpkgs-unstable pkgsUnstable fenix;
+        inherit agenix fenix nixpkgs-unstable pkgsUnstable;
       };
       modules = [
         nixos-wsl.nixosModules.default

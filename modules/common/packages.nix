@@ -33,7 +33,7 @@
         --alias orga \
         --alias temenos \
         --alias ttal \
-        "$@"
+      "$@"
     '';
   };
 in {

@@ -13,6 +13,7 @@ _: {
     ../../modules/wsl
     ../../modules/wsl/frpc-ssh.nix
     ../../modules/wsl/secrets.nix
+    ../../modules/wsl/hermes-agent.nix
     ../../modules/wsl/mihomo.nix
     ../../modules/wsl/kepos-tunnel.nix
     ../../modules/wsl/forgejo.nix
