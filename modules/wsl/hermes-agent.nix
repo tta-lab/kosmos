@@ -34,7 +34,7 @@ in {
         Description = "Hermes Agent dashboard";
         After = ["network-online.target"];
         Wants = ["network-online.target"];
-        ConditionPathIsExecutable = hermesBin;
+        ConditionFileIsExecutable = hermesBin;
       };
       Install.WantedBy = ["default.target"];
       Service = {
