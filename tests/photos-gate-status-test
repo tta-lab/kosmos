@@ -110,6 +110,11 @@ grep -q '^summary: 0 failed$' "$test_root/output"
 awk '$1 != "--kubeconfig" || $2 != "/etc/rancher/k3s/k3s.yaml" { exit 1 }' "$TEST_KUBECTL_LOG"
 [[ "$(wc -l <"$TEST_KUBECTL_LOG")" -eq 5 ]]
 
+export TEST_CORS_ALLOW_ORIGIN="http://localhost"
+bash scripts/photos-gate-status --strict >"$test_root/exact-cors-origin-output"
+grep -q '^ok: Garage S3 endpoint accepts browser CORS preflight$' "$test_root/exact-cors-origin-output"
+
+export TEST_CORS_ALLOW_ORIGIN="*"
 export TEST_NOT_READY="statefulset/garage"
 if bash scripts/photos-gate-status --strict >"$test_root/not-ready-output" 2>&1; then
   echo "photos-gate-status accepted an unready Garage workload" >&2

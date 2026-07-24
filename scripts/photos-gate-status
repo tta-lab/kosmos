@@ -125,8 +125,8 @@ cors_status="$(curl \
   --header 'Access-Control-Request-Method: GET' \
   http://ente-storage.localhost:17480/b2-eu-cen/cors-probe \
   || true)"
-cors_origin="$(awk -F ': *' 'tolower($1) == "access-control-allow-origin" { sub(/\r$/, "", $2); print $2; exit }' "$cors_headers")"
-cors_methods="$(awk -F ': *' 'tolower($1) == "access-control-allow-methods" { sub(/\r$/, "", $2); print $2; exit }' "$cors_headers")"
+cors_origin="$(awk 'tolower($0) ~ /^access-control-allow-origin:[[:space:]]*/ { sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit }' "$cors_headers")"
+cors_methods="$(awk 'tolower($0) ~ /^access-control-allow-methods:[[:space:]]*/ { sub(/^[^:]*:[[:space:]]*/, ""); sub(/\r$/, ""); print; exit }' "$cors_headers")"
 rm -f "$cors_headers"
 if [[ "$cors_status" == "200" \
   && ( "$cors_origin" == "*" || "$cors_origin" == "http://localhost" ) \
