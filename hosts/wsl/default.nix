@@ -14,13 +14,11 @@ _: {
     ../../modules/wsl/frpc-ssh.nix
     ../../modules/wsl/secrets.nix
     ../../modules/wsl/hermes-agent.nix
-    ../../modules/wsl/mihomo.nix
+    ../../modules/wsl/proxy.nix
     ../../modules/wsl/k3s.nix
     ../../modules/wsl/kepos-neo.nix
     ../../modules/wsl/kepos-tunnel.nix
     ../../modules/wsl/forgejo.nix
-    ../../modules/wsl/dagger.nix
-    ../../modules/wsl/woodpecker.nix
     ../../modules/wsl/navidrome.nix
     ../../modules/wsl/apt-cacher-ng.nix
     ../../modules/configs.nix
@@ -41,11 +39,6 @@ _: {
     frpcSsh.enable = true;
     keposTunnel.enable = true;
     forgejo.enable = true;
-    dagger.enable = true;
-    woodpecker = {
-      enable = true;
-      enableCloudflared = true;
-    };
     navidrome.enable = true;
   };
   system.stateVersion = "25.05";
