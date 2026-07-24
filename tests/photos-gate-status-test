@@ -17,7 +17,11 @@ cat >"$test_root/bin/curl" <<'EOF'
 #!@bash@
 url="${!#}"
 printf '%s\n' "$url" >>"$TEST_CURL_LOG"
-printf '%s' "$TEST_HTTP_STATUS"
+if [[ "$url" == "http://ente-storage.localhost:17480/" ]]; then
+  printf '%s' "$TEST_STORAGE_HTTP_STATUS"
+else
+  printf '%s' "$TEST_MUSEUM_HTTP_STATUS"
+fi
 EOF
 
 cat >"$test_root/bin/df" <<'EOF'
@@ -40,6 +44,8 @@ elif [[ "$*" == *" get statefulset/postgres "* ]]; then
   [[ "$TEST_NOT_READY" == "statefulset/postgres" ]] && printf '0 1' || printf '1 1'
 elif [[ "$*" == *" get statefulset/garage "* ]]; then
   [[ "$TEST_NOT_READY" == "statefulset/garage" ]] && printf '0 1' || printf '1 1'
+elif [[ "$*" == *" exec -n photos garage-0 -- /garage bucket info b2-eu-cen"* ]]; then
+  [[ "$TEST_BUCKET_PRESENT" == "yes" ]]
 fi
 EOF
 
@@ -53,7 +59,9 @@ export TEST_DF_LOG="$test_root/df.log"
 export TEST_KUBECTL_LOG="$test_root/kubectl.log"
 export TEST_KUBE_SERVER="https://127.0.0.1:26443"
 export TEST_SYNC_ACTIVE="yes"
-export TEST_HTTP_STATUS="200"
+export TEST_MUSEUM_HTTP_STATUS="200"
+export TEST_STORAGE_HTTP_STATUS="403"
+export TEST_BUCKET_PRESENT="yes"
 export TEST_NOT_READY=""
 
 cd "$repo_root"
@@ -64,13 +72,15 @@ grep -q '^ok: Museum workload ready$' "$test_root/output"
 grep -q '^ok: PostgreSQL workload ready$' "$test_root/output"
 grep -q '^ok: Garage workload ready$' "$test_root/output"
 grep -q '^ok: Museum endpoint responds through canonical gateway$' "$test_root/output"
+grep -q '^ok: Garage S3 endpoint responds through canonical gateway$' "$test_root/output"
+grep -q '^ok: Garage bucket b2-eu-cen exists$' "$test_root/output"
 grep -q '^Garage storage filesystem:$' "$test_root/output"
 grep -q '^summary: 0 failed$' "$test_root/output"
 [[ "$(cat "$TEST_SYSTEMCTL_LOG")" == 'is-active --quiet ente-secret-sync.service' ]]
-[[ "$(cat "$TEST_CURL_LOG")" == 'http://ente.localhost:17480/ping' ]]
+[[ "$(cat "$TEST_CURL_LOG")" == $'http://ente.localhost:17480/ping\nhttp://ente-storage.localhost:17480/' ]]
 [[ "$(cat "$TEST_DF_LOG")" == '-h /var/lib/kosmos-k3s' ]]
 awk '$1 != "--kubeconfig" || $2 != "/etc/rancher/k3s/k3s.yaml" { exit 1 }' "$TEST_KUBECTL_LOG"
-[[ "$(wc -l <"$TEST_KUBECTL_LOG")" -eq 4 ]]
+[[ "$(wc -l <"$TEST_KUBECTL_LOG")" -eq 5 ]]
 
 export TEST_NOT_READY="statefulset/garage"
 if bash scripts/photos-gate-status --strict >"$test_root/not-ready-output" 2>&1; then
@@ -80,14 +90,31 @@ fi
 grep -q '^fail: Garage workload ready$' "$test_root/not-ready-output"
 
 export TEST_NOT_READY=""
-export TEST_HTTP_STATUS="503"
+export TEST_MUSEUM_HTTP_STATUS="503"
 if bash scripts/photos-gate-status --strict >"$test_root/unhealthy-output" 2>&1; then
   echo "photos-gate-status accepted an unhealthy Museum endpoint" >&2
   exit 1
 fi
 grep -q '^fail: Museum endpoint responds through canonical gateway$' "$test_root/unhealthy-output"
 
-export TEST_HTTP_STATUS="200"
+export TEST_MUSEUM_HTTP_STATUS="200"
+
+export TEST_STORAGE_HTTP_STATUS="502"
+if bash scripts/photos-gate-status --strict >"$test_root/storage-output" 2>&1; then
+  echo "photos-gate-status accepted an unhealthy Garage S3 endpoint" >&2
+  exit 1
+fi
+grep -q '^fail: Garage S3 endpoint responds through canonical gateway$' "$test_root/storage-output"
+
+export TEST_STORAGE_HTTP_STATUS="403"
+export TEST_BUCKET_PRESENT="no"
+if bash scripts/photos-gate-status --strict >"$test_root/bucket-output" 2>&1; then
+  echo "photos-gate-status accepted a missing Garage bucket" >&2
+  exit 1
+fi
+grep -q '^fail: Garage bucket b2-eu-cen exists$' "$test_root/bucket-output"
+
+export TEST_BUCKET_PRESENT="yes"
 export TEST_SYNC_ACTIVE="no"
 if bash scripts/photos-gate-status --strict >"$test_root/sync-output" 2>&1; then
   echo "photos-gate-status accepted an inactive Secret sync unit" >&2

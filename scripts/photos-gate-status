@@ -40,20 +40,18 @@ fail() {
   failures=$((failures + 1))
 }
 
-http_status_ok() {
+http_status_is() {
   local url="$1"
+  local expected="$2"
   local status
 
   status="$(curl --silent --output /dev/null --write-out '%{http_code}' "$url" || true)"
-  case "$status" in
-    200|204)
-      return 0
-      ;;
-    *)
-      printf 'unexpected status for %s: %s\n' "$url" "$status" >&2
-      return 1
-      ;;
-  esac
+  if [[ "$status" == "$expected" ]]; then
+    return 0
+  fi
+
+  printf 'unexpected status for %s: got %s, expected %s\n' "$url" "$status" "$expected" >&2
+  return 1
 }
 
 replica_workload_ready() {
@@ -103,10 +101,22 @@ else
   fail "Garage workload ready"
 fi
 
-if http_status_ok http://ente.localhost:17480/ping; then
+if http_status_is http://ente.localhost:17480/ping 200; then
   ok "Museum endpoint responds through canonical gateway"
 else
   fail "Museum endpoint responds through canonical gateway"
+fi
+
+if http_status_is http://ente-storage.localhost:17480/ 403; then
+  ok "Garage S3 endpoint responds through canonical gateway"
+else
+  fail "Garage S3 endpoint responds through canonical gateway"
+fi
+
+if "${kubectl_local[@]}" exec -n photos garage-0 -- /garage bucket info b2-eu-cen >/dev/null 2>&1; then
+  ok "Garage bucket b2-eu-cen exists"
+else
+  fail "Garage bucket b2-eu-cen exists"
 fi
 
 printf 'Garage storage filesystem:\n'
