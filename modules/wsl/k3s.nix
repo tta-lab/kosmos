@@ -5,7 +5,7 @@
   ];
 
   networking.firewall.interfaces.cni0.allowedTCPPorts = [
-    7890
+    7897
     26443
   ];
 
@@ -30,34 +30,20 @@
     ];
   };
 
-  systemd.services = let
-    legacyCondition = {
-      unitConfig.ConditionPathExists = "!/var/lib/kosmos-k3s/cutover-complete";
-    };
-  in {
+  systemd.services = {
     k3s = {
-      after = ["mihomo.service"];
-      wants = ["mihomo.service"];
       environment = {
-        HTTP_PROXY = config.kosmos.wsl.mihomoProxyUrl;
-        HTTPS_PROXY = config.kosmos.wsl.mihomoProxyUrl;
+        HTTP_PROXY = config.kosmos.wsl.k3sProxyUrl;
+        HTTPS_PROXY = config.kosmos.wsl.k3sProxyUrl;
         NO_PROXY = "localhost,127.0.0.1,::1,10.42.0.0/16,10.43.0.0/16,.svc,.cluster.local,forgejo.localhost,woodpecker.localhost";
       };
     };
-    forgejo = legacyCondition;
-    forgejo-internal-registry-proxy = legacyCondition;
-    woodpecker-server = legacyCondition;
-    woodpecker-agent-wsl-podman = legacyCondition;
-    woodpecker-agent-wsl-podman-2 = legacyCondition;
-    woodpecker-agent-wsl-podman-3 = legacyCondition;
-    podman-dagger-engine = legacyCondition;
-    cloudflared-tunnel-kepos = legacyCondition;
   };
 
   systemd.tmpfiles.rules = [
     "d /var/lib/kosmos-k3s 0750 root root - -"
-    "d /var/lib/kosmos-k3s/forgejo 0750 root root - -"
-    "d /var/lib/kosmos-k3s/woodpecker 0750 root root - -"
+    "d /var/lib/kosmos-k3s/forgejo 0750 1000 1000 - -"
+    "d /var/lib/kosmos-k3s/woodpecker 0750 1000 1000 - -"
     "d /var/lib/kosmos-k3s/dagger 0750 root root - -"
   ];
 }

@@ -41,7 +41,24 @@ wsl.wslConf.interop.appendWindowsPath = false;
 
 Home Manager deploys non-secret config to `~/.config/ttal`, `~/.config/einai`, and `~/.config/temenos`. Real `chat_id`, `.env`, license, kubeconfig, and tunnel tokens are intentionally left out for the later secret-management PR.
 
-`services.mihomo` runs as a systemd service with a non-TUN mixed-port listener at `127.0.0.1:7890`. The config is managed via agenix (`secrets/mihomo-config.age`). Enable the Windows-host fallback with `kosmos.wsl.windowsProxy.enable = true` if needed.
+Proxy is provided by a Windows-side HTTP proxy at `127.0.0.1:7897`. The `kosmos-wsl-proxy-env` helper auto-detects the proxy host, preferring `127.0.0.1` (mirrored WSL) before falling back to the default gateway.
+
+**Windows `.wslconfig` required:**
+
+```ini
+[general]
+instanceIdleTimeout=-1
+
+[wsl2]
+networkingMode=mirrored
+firewall=true
+vmIdleTimeout=-1
+
+[experimental]
+hostAddressLoopback=true
+```
+
+**Windows proxy must listen on the LAN address** (e.g. `192.168.x.x:7897`), not only `127.0.0.1`. K3s Pods reach the proxy via the node IP, not loopback.
 
 Codex CLI is installed outside Nixpkgs so it can track OpenAI's fast npm releases:
 
@@ -68,7 +85,7 @@ The Go binaries live in `~/go/bin`, which is added to Fish and to the user servi
 
 The user services are managed by Home Manager. NixOS only enables `linger` for `neil` so the user manager can keep running without an active login shell.
 
-Proxy is provided by the local `mihomo` systemd service at `127.0.0.1:7890`. Fish and the TTAL user services load `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY` from `kosmos.wsl.mihomoProxyUrl`. To switch back to the Windows-host proxy, set `kosmos.wsl.windowsProxy.enable = true` before rebuilding.
+Proxy is provided by a Windows-side HTTP proxy at `127.0.0.1:7897`. Fish and TTAL services set `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY` (and lowercase equivalents) to `http://127.0.0.1:7897`.
 
 ## Keep WSL Running After SSH Disconnect
 
@@ -83,15 +100,9 @@ Set them from Windows, not from NixOS. Open PowerShell and edit the user-level W
 notepad $env:USERPROFILE\.wslconfig
 ```
 
-Use this content:
-
-```ini
-[general]
-instanceIdleTimeout=-1
-
-[wsl2]
-vmIdleTimeout=-1
-```
+The complete `.wslconfig` shown in the TTAL Runtime section already includes
+both timeout settings. Keep its mirrored networking, firewall, and
+`hostAddressLoopback` settings when changing the idle timers.
 
 Then restart WSL:
 

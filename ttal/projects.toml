@@ -112,6 +112,11 @@
   path = "/home/neil/code/projects/GuionAI/guion-infra"
   remote = "http://forgejo.localhost:17480/GuionAI/guion-infra.git"
 
+[gpro]
+  name = "Guion Proxy"
+  path = "/home/neil/code/projects/GuionAI/guion-proxy"
+  remote = "http://forgejo.localhost:17480/GuionAI/guion-proxy.git"
+
 [ghbt]
   name = "GuionAI Homebrew Tap"
   path = "/home/neil/code/projects/GuionAI/homebrew-tap"

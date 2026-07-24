@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+test_root="$(mktemp -d)"
+trap 'rm -rf "$test_root"' EXIT
+
+cat >"$test_root/kosmos-devops-gate-status" <<'EOF'
+#!@bash@
+printf '%s\n' "$*" >"$TEST_GATE_LOG"
+exit "$TEST_GATE_EXIT"
+EOF
+
+sed -i "s|@bash@|$BASH|" "$test_root/kosmos-devops-gate-status"
+chmod +x "$test_root/kosmos-devops-gate-status"
+export PATH="$test_root:$PATH"
+export TEST_GATE_LOG="$test_root/gate.log"
+export TEST_GATE_EXIT=0
+
+bash "$repo_root/scripts/wsl-devops-smoke"
+[[ "$(cat "$TEST_GATE_LOG")" == "--strict" ]]
+
+export TEST_GATE_EXIT=1
+if bash "$repo_root/scripts/wsl-devops-smoke"; then
+  echo "wsl-devops-smoke ignored a local gate failure" >&2
+  exit 1
+fi

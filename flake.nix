@@ -24,6 +24,7 @@
   };
 
   outputs = {
+    self,
     nixpkgs,
     nixpkgs-unstable,
     nixos-wsl,
@@ -50,46 +51,32 @@
             jq
             python3
             shellcheck
-            woodpecker-cli
           ];
         } ''
           shellcheck \
-            ${./scripts/cloudflared-ingress-smoke} \
-            ${./scripts/dagger-local-registry-smoke} \
-            ${./scripts/dagger-large-registry-smoke} \
-            ${./scripts/dagger-engine-config-smoke} \
-            ${./scripts/dagger-engine-isolation-smoke} \
-            ${./scripts/dagger-unix-socket-smoke} \
             ${./scripts/devops-gate-status} \
             ${./scripts/forgejo-https-git-smoke} \
             ${./scripts/forgejo-k8s-pull-secret-smoke} \
             ${./scripts/ttal-tmux-project-picker} \
-            ${./scripts/woodpecker-dagger-job-smoke} \
-            ${./scripts/woodpecker-preflight} \
             ${./scripts/wsl-devops-smoke} \
             ${./tests/temenos-env-test} \
             ${./tests/ttal-tmux-project-picker-test} \
             ${./tests/temenos-ca-test} \
-            ${./tests/cloudflared-ingress-smoke-test} \
-            ${./tests/dagger-large-registry-smoke-test} \
-            ${./tests/dagger-engine-config-smoke-test} \
-            ${./tests/dagger-engine-isolation-smoke-test} \
             ${./tests/tmux-tmpdir-test} \
             ${./tests/tmux-copy-mode-test} \
             ${./tests/devops-gate-status-test} \
+            ${./tests/sync-woodpecker-secret-test} \
+            ${./tests/wsl-devops-smoke-test} \
             ${./tests/orga-cli-service-test}
-          WOODPECKER_DISABLE_UPDATE_CHECK=true woodpecker-cli lint --strict ${./fixtures/woodpecker/dagger-unix-socket-smoke.yml}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
           KOSMOS_REPO_ROOT=${./.} ${pkgs.python3}/bin/python3 ${./tests/test_sync_projects_auth.py}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudflared-ingress-smoke-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-large-registry-smoke-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-engine-config-smoke-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/dagger-engine-isolation-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-env-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-tmpdir-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-copy-mode-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/devops-gate-status-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-woodpecker-secret-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/wsl-devops-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
           touch $out
         '';
@@ -117,136 +104,51 @@
         assert cfg.systemd.services.cloudflared-tunnel-kepos.environment.TUNNEL_TRANSPORT_PROTOCOL == "http2";
           pkgs.runCommand "kepos-tunnel-module-check" {} "touch $out";
 
-      woodpecker-module = let
+      woodpecker-secret-sync-module = let
         eval = nixpkgs.lib.nixosSystem {
           inherit system;
+          specialArgs = {inherit agenix;};
           modules = [
             agenix.nixosModules.default
-            ./modules/wsl/woodpecker.nix
-            ({pkgs, ...}: {
-              system.stateVersion = "25.05";
-              kosmos.wsl.woodpecker = {
-                enable = true;
-                serverEnvironmentFile = pkgs.writeText "woodpecker-server.env" ''
-                  WOODPECKER_AGENT_SECRET=test
-                  WOODPECKER_FORGEJO_CLIENT=test
-                  WOODPECKER_FORGEJO_SECRET=test
-                '';
-                agentEnvironmentFile = pkgs.writeText "woodpecker-agent.env" ''
-                  WOODPECKER_AGENT_SECRET=test
-                '';
-              };
-            })
+            ./modules/wsl/secrets.nix
+            (_: {system.stateVersion = "25.05";})
           ];
         };
         cfg = eval.config;
-        agent = cfg.services.woodpecker-agents.agents.wsl-podman;
-        agent2 = cfg.services.woodpecker-agents.agents.wsl-podman-2;
-        agentUnit = cfg.systemd.services.woodpecker-agent-wsl-podman;
-        agentUnit2 = cfg.systemd.services.woodpecker-agent-wsl-podman-2;
-        server = cfg.services.woodpecker-server;
+        secret = cfg.age.secrets.woodpecker-server-env;
+        unit = cfg.systemd.services.woodpecker-secret-sync;
         has = value: list: builtins.elem value list;
       in
-        assert server.enable;
-        assert server.environment.WOODPECKER_FORGEJO_URL == "http://127.0.0.1:3000";
-        assert server.environment.WOODPECKER_ENVIRONMENT == "_EXPERIMENTAL_DAGGER_RUNNER_HOST:unix:///run/dagger/engine.sock";
-        assert server.environment.WOODPECKER_BACKEND_HTTP_PROXY == "http://host.containers.internal:7890";
-        assert server.environment.WOODPECKER_BACKEND_HTTPS_PROXY == "http://host.containers.internal:7890";
-        assert server.environment.WOODPECKER_BACKEND_NO_PROXY == "localhost,127.0.0.1,::1,host.containers.internal";
-        assert agent.enable;
-        assert agent2.enable;
-        assert agent.environment.DOCKER_HOST == "unix:///run/podman/podman.sock";
-        assert agent2.environment.DOCKER_HOST == "unix:///run/podman/podman.sock";
-        assert agent.environment.HTTP_PROXY == "http://127.0.0.1:7890";
-        assert agent2.environment.HTTP_PROXY == "http://127.0.0.1:7890";
-        assert agent.environment.WOODPECKER_BACKEND_DOCKER_VOLUMES == "/run/dagger:/run/dagger";
-        assert has "podman.socket" agentUnit.after;
-        assert has "podman-dagger-engine.service" agentUnit.after;
-        assert has "forgejo-internal-registry-proxy.service" agentUnit.after;
-        assert has "forgejo-internal-registry-proxy.service" agentUnit.wants;
-        assert has "podman.socket" agentUnit2.after;
-        assert has "podman-dagger-engine.service" agentUnit2.after;
-        assert has "forgejo-internal-registry-proxy.service" agentUnit2.after;
-        assert has "forgejo-internal-registry-proxy.service" agentUnit2.wants;
-          pkgs.runCommand "kosmos-woodpecker-module-check" {} ''
-            touch $out
-          '';
+        assert unit.restartTriggers == [secret.file];
+        assert has "k3s.service" unit.after;
+        assert has "k3s.service" unit.wants;
+        assert has "multi-user.target" unit.wantedBy;
+        assert unit.serviceConfig.Type == "oneshot";
+        assert unit.serviceConfig.RemainAfterExit;
+          pkgs.runCommand "woodpecker-secret-sync-module-check" {} "touch $out";
 
-      forgejo-module = let
+      k3s-state-directories = let
         eval = nixpkgs.lib.nixosSystem {
           inherit system;
           modules = [
-            ./modules/wsl/forgejo.nix
-            (_: {
-              system.stateVersion = "25.05";
-              kosmos.wsl.forgejo.enable = true;
-            })
+            ./modules/wsl/proxy.nix
+            ./modules/wsl/k3s.nix
+            (_: {system.stateVersion = "25.05";})
           ];
         };
-        cfg = eval.config;
-        inherit (cfg.services) forgejo;
-        inherit (cfg.systemd.services) forgejo-internal-registry-proxy;
-        has = value: list: builtins.elem value list;
+        inherit (eval.config.systemd.tmpfiles) rules;
       in
-        assert forgejo.enable;
-        assert forgejo.database.type == "sqlite3";
-        assert forgejo.database.path == "/var/lib/forgejo/data/forgejo.db";
-        assert forgejo.settings.server.ROOT_URL == "https://git.guion.io/";
-        assert forgejo.settings.server.HTTP_ADDR == "127.0.0.1";
-        assert forgejo.settings.server.HTTP_PORT == 3000;
-        assert forgejo.settings.server.DISABLE_SSH;
-        assert forgejo.settings.packages.ENABLED;
-        assert forgejo.settings.service.DISABLE_REGISTRATION;
-        assert forgejo.settings.service.REQUIRE_SIGNIN_VIEW;
-        assert !forgejo.settings.actions.ENABLED;
-        assert has "forgejo.service" forgejo-internal-registry-proxy.after;
-        assert has "forgejo.service" forgejo-internal-registry-proxy.wants;
-          pkgs.runCommand "kosmos-forgejo-module-check" {} ''
-            touch $out
-          '';
+        assert builtins.elem "d /var/lib/kosmos-k3s/dagger 0750 root root - -" rules;
+          pkgs.runCommand "k3s-state-directories-check" {} "touch $out";
 
-      dagger-module = let
-        eval = nixpkgs.lib.nixosSystem {
-          inherit system;
-          modules = [
-            ./modules/wsl/dagger.nix
-            (_: {
-              system.stateVersion = "25.05";
-              kosmos.wsl.dagger.enable = true;
-            })
-          ];
-        };
-        cfg = eval.config;
-        container = cfg.virtualisation.oci-containers.containers.dagger-engine;
-        daggerUnit = cfg.systemd.services.podman-dagger-engine;
-        dnsProxyUnit = cfg.systemd.services.dagger-dnsproxy;
-        has = value: list: builtins.elem value list;
+      wsl-devops-cli = let
+        cfg = self.nixosConfigurations.wsl.config;
+        packageNames = map nixpkgs.lib.getName cfg.environment.systemPackages;
       in
-        assert cfg.virtualisation.oci-containers.backend == "podman";
-        assert container.autoStart;
-        assert container.privileged;
-        assert container.image == "registry.dagger.io/engine:v${cfg.kosmos.wsl.dagger.package.version}";
-        assert container.pull == "missing";
-        assert has "127.0.0.1:8080:8080" container.ports;
-        assert has "/var/lib/dagger:/var/lib/dagger" container.volumes;
-        assert has "/etc/dagger/engine.json:/etc/dagger/engine.json:ro" container.volumes;
-        assert has "/run/dagger:/run/dagger" container.volumes;
-        assert has "tcp://0.0.0.0:8080" container.cmd;
-        assert has "unix:///run/dagger/engine.sock" container.cmd;
-        assert has "--dns=10.88.0.1" container.extraOptions;
-        assert container.environment.HTTPS_PROXY == "http://host.containers.internal:7890";
-        assert container.environment.NO_PROXY == "localhost,127.0.0.1,::1,host.containers.internal,10.87.0.0/16,10.88.0.0/16";
-        assert cfg.kosmos.wsl.dagger.dockerHubMirrors == ["mirror.gcr.io"];
-        assert cfg.kosmos.wsl.dagger.dnsUpstreams == ["127.0.0.1:1053"];
-        assert has "dagger-dnsproxy.service" daggerUnit.after;
-        assert has "dagger-dnsproxy.service" daggerUnit.wants;
-        assert has "multi-user.target" dnsProxyUnit.wantedBy;
-        assert has "mihomo.service" dnsProxyUnit.after;
-        assert has "mihomo.service" dnsProxyUnit.wants;
-        assert has "L+ '/var/lib/dagger/config/dagger/engine.json' - - - - /etc/dagger/engine.json" cfg.systemd.tmpfiles.rules;
-          pkgs.runCommand "kosmos-dagger-module-check" {} ''
-            touch $out
-          '';
+        assert builtins.elem "dagger" packageNames;
+        assert cfg.environment.variables._EXPERIMENTAL_DAGGER_RUNNER_HOST == "tcp://127.0.0.1:8080";
+          pkgs.runCommand "wsl-devops-cli-check" {} "touch $out";
+
     };
 
     nixosConfigurations.kosmos = nixpkgs.lib.nixosSystem {

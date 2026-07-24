@@ -36,7 +36,7 @@ Encrypted files live in `secrets/` and are safe to commit:
 - `secrets/kube-config.age`
 - `secrets/ttal-kubeconfig.age`
 - `secrets/sops-age-keys.age`
-- `secrets/mihomo-config.age`
+- `secrets/woodpecker-server-env.age`
 
 They decrypt to:
 
@@ -44,7 +44,9 @@ They decrypt to:
 - `/home/neil/.kube/config`
 - `/home/neil/.ttal/kubeconfig`
 - `/home/neil/.config/sops/age/keys.txt`
-- `/run/agenix/mihomo-config` (root-owned, read by mihomo systemd service)
+- `/run/agenix/woodpecker-server-env` (root-owned, synchronized to the local
+  K3s `devops/woodpecker-server-env` Secret by
+  `woodpecker-secret-sync.service`)
 
 `lenos/config.json` in this repo is non-secret and still maps to
 `/home/neil/.config/lenos/config.json`.
@@ -64,13 +66,22 @@ agenix -e secrets/ttal.env.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/kube-config.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/ttal-kubeconfig.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/sops-age-keys.age -i ~/.ssh/agenix_ed25519
-agenix -e secrets/mihomo-config.age -i ~/.ssh/agenix_ed25519
+agenix -e secrets/woodpecker-server-env.age -i ~/.ssh/agenix_ed25519
+```
+
+Before deploying a changed Woodpecker secret, Neil must validate that all
+three required keys exist exactly once and are non-empty. This command prints
+only the validation result, never the values:
+
+```bash
+agenix -d secrets/woodpecker-server-env.age -i ~/.ssh/agenix_ed25519 \
+  | bash scripts/sync-woodpecker-secret --validate-only -
 ```
 
 Commit encrypted files after editing:
 
 ```bash
-git add secrets/ttal.env.age secrets/kube-config.age secrets/ttal-kubeconfig.age secrets/sops-age-keys.age secrets/mihomo-config.age
+git add secrets/ttal.env.age secrets/kube-config.age secrets/ttal-kubeconfig.age secrets/sops-age-keys.age secrets/woodpecker-server-env.age
 git commit -m "chore(secrets): update encrypted secrets"
 ```
 
@@ -102,4 +113,15 @@ After creating or editing encrypted files, apply the WSL config:
 ```bash
 cd /home/neil/code/projects/tta-lab/kosmos
 sudo nixos-rebuild switch --flake .#wsl
+```
+
+The rebuild restarts `woodpecker-secret-sync.service` when
+`secrets/woodpecker-server-env.age` changes. The unit uses only
+`/etc/rancher/k3s/k3s.yaml` and refuses a non-local API server. Verify it
+without reading the secret:
+
+```bash
+systemctl status woodpecker-secret-sync.service --no-pager
+KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
+  kubectl get secret woodpecker-server-env -n devops -o name
 ```

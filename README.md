@@ -46,7 +46,7 @@ The initial tunnel maps remote traffic to local SSH on `127.0.0.1:22`.
 
 ## Proxy
 
-`services.mihomo` is enabled as a systemd service with a non-TUN mixed-port listener at `127.0.0.1:7890`. The config is managed via agenix (`secrets/mihomo-config.age`). The old Windows-host proxy (`kosmos-wsl-proxy-env` on port `7897`) is kept as an opt-in fallback — set `kosmos.wsl.windowsProxy.enable = true` to use it instead.
+Proxy is provided by a Windows-side HTTP proxy at `127.0.0.1:7897`. The `kosmos-wsl-proxy-env` helper auto-detects the proxy host, preferring `127.0.0.1` (mirrored WSL) before falling back to the default gateway.
 
 ## Codex CLI
 
@@ -70,7 +70,7 @@ This starts the `tta-lab-go-install.service` oneshot user unit. It first runs `k
 
 The Home Manager user services `temenos.service`, `einai.service`, `ttal.service`, and `og.service` are defined in `modules/common/tta-lab-go.nix`. They only start after their binary exists in `~/go/bin`.
 
-Proxy is provided by the local `mihomo` systemd service at `127.0.0.1:7890`. Fish and TTAL services use `kosmos.wsl.mihomoProxyUrl`. The old Windows-host proxy (`kosmos-wsl-proxy-env` on `7897`) is an opt-in fallback via `kosmos.wsl.windowsProxy.enable = true`.
+Proxy is provided by a Windows-side HTTP proxy at `127.0.0.1:7897`. Fish and TTAL services set `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY` (and lowercase equivalents) to `http://127.0.0.1:7897`.
 
 Code lives under two roots:
 

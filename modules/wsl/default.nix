@@ -19,6 +19,12 @@
       host="''${KOSMOS_WSL_PROXY_HOST:-}"
 
       if [ -z "$host" ]; then
+        if timeout 1 bash -c ":</dev/tcp/127.0.0.1/$port" 2>/dev/null; then
+          host="127.0.0.1"
+        fi
+      fi
+
+      if [ -z "$host" ]; then
         host="$(ip route show default 2>/dev/null | awk '/^default[[:space:]]+/ { print $3; exit }')"
       fi
 
@@ -75,18 +81,16 @@
       esac
     '';
   };
-  cloudflaredIngressSmoke = pkgs.writeScriptBin "kosmos-cloudflared-ingress-smoke" (builtins.readFile ../../scripts/cloudflared-ingress-smoke);
-  daggerEngineIsolationSmoke = pkgs.writeScriptBin "kosmos-dagger-engine-isolation-smoke" (builtins.readFile ../../scripts/dagger-engine-isolation-smoke);
-  daggerEngineConfigSmoke = pkgs.writeScriptBin "kosmos-dagger-engine-config-smoke" (builtins.readFile ../../scripts/dagger-engine-config-smoke);
-  daggerLocalRegistrySmoke = pkgs.writeScriptBin "kosmos-dagger-local-registry-smoke" (builtins.readFile ../../scripts/dagger-local-registry-smoke);
-  daggerLargeRegistrySmoke = pkgs.writeScriptBin "kosmos-dagger-large-registry-smoke" (builtins.readFile ../../scripts/dagger-large-registry-smoke);
-  daggerUnixSocketSmoke = pkgs.writeScriptBin "kosmos-dagger-unix-socket-smoke" (builtins.readFile ../../scripts/dagger-unix-socket-smoke);
+  daggerPackage = pkgs.callPackage ../../packages/dagger-cli {};
+  daggerCli = pkgs.writeShellApplication {
+    name = "dagger";
+    text = ''
+      export _EXPERIMENTAL_DAGGER_RUNNER_HOST="''${_EXPERIMENTAL_DAGGER_RUNNER_HOST:-tcp://127.0.0.1:8080}"
+      exec ${daggerPackage}/bin/dagger "$@"
+    '';
+  };
   devopsGateStatus = pkgs.writeScriptBin "kosmos-devops-gate-status" (builtins.readFile ../../scripts/devops-gate-status);
   devopsSmoke = pkgs.writeScriptBin "kosmos-wsl-devops-smoke" (builtins.readFile ../../scripts/wsl-devops-smoke);
-  forgejoHttpsGitSmoke = pkgs.writeScriptBin "kosmos-forgejo-https-git-smoke" (builtins.readFile ../../scripts/forgejo-https-git-smoke);
-  forgejoK8sPullSecretSmoke = pkgs.writeScriptBin "kosmos-forgejo-k8s-pull-secret-smoke" (builtins.readFile ../../scripts/forgejo-k8s-pull-secret-smoke);
-  woodpeckerDaggerJobSmoke = pkgs.writeScriptBin "kosmos-woodpecker-dagger-job-smoke" (builtins.readFile ../../scripts/woodpecker-dagger-job-smoke);
-  woodpeckerPreflight = pkgs.writeScriptBin "kosmos-woodpecker-preflight" (builtins.readFile ../../scripts/woodpecker-preflight);
 in {
   wsl = {
     enable = true;
@@ -103,24 +107,13 @@ in {
 
   environment = {
     systemPackages = with pkgs; [
-      cloudflaredIngressSmoke
-      daggerLocalRegistrySmoke
-      daggerEngineIsolationSmoke
-      daggerEngineConfigSmoke
-      daggerLargeRegistrySmoke
-      daggerUnixSocketSmoke
+      daggerCli
       devopsGateStatus
-      docker-compose
       devopsSmoke
-      forgejo
-      forgejoHttpsGitSmoke
-      forgejoK8sPullSecretSmoke
       proxyEnv
       rsync
-      pkgsUnstable.woodpecker-cli
-      woodpeckerDaggerJobSmoke
-      woodpeckerPreflight
     ];
+    variables._EXPERIMENTAL_DAGGER_RUNNER_HOST = "tcp://127.0.0.1:8080";
   };
 
   virtualisation.podman = {
@@ -128,12 +121,6 @@ in {
     dockerCompat = true;
     dockerSocket.enable = true;
   };
-
-  virtualisation.containers.registries.insecure = [
-    "127.0.0.1:3000"
-    "10.88.0.1:3000"
-    "host.containers.internal:3000"
-  ];
 
   programs.nix-ld = {
     enable = true;

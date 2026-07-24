@@ -20,21 +20,12 @@
     pkgs.openssh
     pkgs.tmux
   ]}:/run/current-system/sw/bin";
-  windowsProxyEnable = config.kosmos.wsl.windowsProxy.enable or false;
-  mihomoProxyUrl = config.kosmos.wsl.mihomoProxyUrl or "http://127.0.0.1:7890";
-  proxyPrelude =
-    if windowsProxyEnable
-    then ''
-      if command -v kosmos-wsl-proxy-env >/dev/null 2>&1; then
-        eval "$(kosmos-wsl-proxy-env sh)"
-      fi
-    ''
-    else ''
-      export HTTP_PROXY=${mihomoProxyUrl}
-      export HTTPS_PROXY=${mihomoProxyUrl}
-      export ALL_PROXY=${mihomoProxyUrl}
-      export NO_PROXY=localhost,127.0.0.1,::1
-    '';
+  proxyPrelude = ''
+    export HTTP_PROXY=http://127.0.0.1:7897
+    export HTTPS_PROXY=http://127.0.0.1:7897
+    export ALL_PROXY=http://127.0.0.1:7897
+    export NO_PROXY=localhost,127.0.0.1,::1
+  '';
   goEnv = [
     "GOPATH=${goPath}"
     "GOBIN=${goBin}"
@@ -196,7 +187,14 @@ in {
         ExecStart = withProxy "og-with-proxy" "${goBin}/og daemon run";
         Restart = "on-failure";
         EnvironmentFile = "-/home/neil/.config/ttal/.env";
-        Environment = serviceEnv;
+        Environment =
+          serviceEnv
+          ++ [
+            "HTTP_PROXY=http://127.0.0.1:7897"
+            "HTTPS_PROXY=http://127.0.0.1:7897"
+            "ALL_PROXY=http://127.0.0.1:7897"
+            "NO_PROXY=localhost,127.0.0.1,::1"
+          ];
         WorkingDirectory = "/home/neil";
       };
     };

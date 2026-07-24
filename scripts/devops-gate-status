@@ -2,25 +2,18 @@
 set -euo pipefail
 
 strict=0
-deep=0
-smoke_token_file="${FORGEJO_SMOKE_TOKEN_FILE:-/home/neil/.config/kosmos/forgejo-smoke-token}"
+local_kubeconfig="/etc/rancher/k3s/k3s.yaml"
+local_api_server="https://127.0.0.1:26443"
+kubectl_local=(kubectl --kubeconfig "$local_kubeconfig")
 
 usage() {
   cat <<'EOF'
-usage: devops-gate-status [--strict] [--deep]
+usage: devops-gate-status [--strict]
 
-Report WSL DevOps Box migration gates without reading secret plaintext.
+Report the local WSL K3s DevOps stack gates without reading secret plaintext.
 
 Options:
   --strict  Exit non-zero when any gate is pending or failed
-  --deep    Run checks that may create temporary cluster objects, such as the
-            Kubernetes private image pull smoke and service checks such as
-            kosmos-cloudflared-ingress-smoke and
-            kosmos-dagger-engine-config-smoke
-
-Environment:
-  FORGEJO_SMOKE_TOKEN_FILE  Package-write smoke token file checked by this
-                            command. Default: /home/neil/.config/kosmos/forgejo-smoke-token
 EOF
 }
 
@@ -28,10 +21,6 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --strict)
       strict=1
-      shift
-      ;;
-    --deep)
-      deep=1
       shift
       ;;
     -h|--help)
@@ -62,28 +51,12 @@ wait() {
   pending=$((pending + 1))
 }
 
-skip() {
-  printf 'skipped: %s\n' "$1"
-}
-
 have_command() {
   command -v "$1" >/dev/null 2>&1
 }
 
 unit_active() {
   systemctl is-active --quiet "$1"
-}
-
-unit_enabled() {
-  systemctl is-enabled --quiet "$1"
-}
-
-file_exists() {
-  [[ -f "$1" ]]
-}
-
-socket_exists() {
-  [[ -S "$1" ]]
 }
 
 file_nonempty_maybe_root() {
@@ -98,7 +71,7 @@ http_status_ok() {
 
   status="$(curl --silent --output /dev/null --write-out '%{http_code}' "$url" || true)"
   case "$status" in
-    200|401)
+    200|204)
       return 0
       ;;
     *)
@@ -108,155 +81,94 @@ http_status_ok() {
   esac
 }
 
+replica_workload_ready() {
+  local resource="$1"
+  local jsonpath="$2"
+  local counts
+  local ready
+  local desired
+
+  counts="$("${kubectl_local[@]}" get "$resource" -n devops -o "jsonpath=${jsonpath}" 2>/dev/null || true)"
+  read -r ready desired <<<"$counts"
+
+  [[ "$ready" =~ ^[0-9]+$ ]] \
+    && [[ "$desired" =~ ^[0-9]+$ ]] \
+    && [[ "$desired" -gt 0 ]] \
+    && [[ "$ready" -eq "$desired" ]]
+}
+
 printf 'WSL DevOps Box gate status\n'
 
-if unit_active forgejo.service; then
-  ok "Forgejo service active"
+if unit_active k3s.service; then
+  ok "K3s service active"
 else
-  fail "Forgejo service active"
+  fail "K3s service active"
 fi
 
-if unit_enabled forgejo.service; then
-  ok "Forgejo service enabled"
+if http_status_ok http://forgejo.localhost:17480/api/healthz; then
+  ok "Forgejo endpoint responds (K3s)"
 else
-  fail "Forgejo service enabled"
-fi
-
-if unit_active podman-dagger-engine.service; then
-  ok "Dagger engine service active"
-else
-  fail "Dagger engine service active"
-fi
-
-if unit_enabled podman-dagger-engine.service; then
-  ok "Dagger engine service enabled"
-else
-  fail "Dagger engine service enabled"
-fi
-
-if unit_active forgejo-internal-registry-proxy.service; then
-  ok "internal Forgejo registry proxy active"
-else
-  fail "internal Forgejo registry proxy active"
-fi
-
-if unit_enabled forgejo-internal-registry-proxy.service; then
-  ok "internal Forgejo registry proxy enabled"
-else
-  fail "internal Forgejo registry proxy enabled"
-fi
-
-if unit_active cloudflared-tunnel-kepos.service; then
-  ok "Cloudflared kepos tunnel service active"
-else
-  fail "Cloudflared kepos tunnel service active"
-fi
-
-if unit_enabled cloudflared-tunnel-kepos.service; then
-  ok "Cloudflared kepos tunnel service enabled"
-else
-  fail "Cloudflared kepos tunnel service enabled"
-fi
-
-if http_status_ok http://127.0.0.1:3000/; then
-  ok "local Forgejo HTTP responds"
-else
-  fail "local Forgejo HTTP responds"
-fi
-
-if http_status_ok https://git.guion.io/v2/; then
-  ok "public registry endpoint responds"
-else
-  fail "public registry endpoint responds"
-fi
-
-if http_status_ok http://10.88.0.1:3000/v2/; then
-  ok "internal registry endpoint responds"
-else
-  fail "internal registry endpoint responds"
-fi
-
-if socket_exists /run/dagger/engine.sock; then
-  ok "Dagger Unix socket exists"
-else
-  fail "Dagger Unix socket exists"
-fi
-
-if socket_exists /run/podman/podman.sock; then
-  ok "Podman socket exists"
-else
-  fail "Podman socket exists"
-fi
-
-if file_nonempty_maybe_root "$smoke_token_file"; then
-  ok "Forgejo package-write smoke token file exists"
-else
-  wait "Forgejo package-write smoke token file missing or empty: ${smoke_token_file}"
-fi
-
-if file_exists secrets/woodpecker-server-env.age && file_exists secrets/woodpecker-agent-env.age; then
-  ok "Woodpecker age secrets tracked"
-  if unit_active woodpecker-server.service && unit_active woodpecker-agent-wsl-podman.service; then
-    ok "Woodpecker services active"
-  else
-    fail "Woodpecker services active"
-  fi
-else
-  wait "Woodpecker age secrets not created"
+  fail "Forgejo endpoint responds (K3s)"
 fi
 
 if have_command kubectl; then
-  if kubectl get secret forgejo-packages -n devops -o jsonpath='{.type}' 2>/dev/null | grep -qx 'kubernetes.io/dockerconfigjson'; then
-    ok "source Kubernetes pull secret exists with dockerconfigjson type"
-  else
-    wait "source Kubernetes pull secret not verified"
+  actual_api_server="$("${kubectl_local[@]}" config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || true)"
+  if [[ "$actual_api_server" != "$local_api_server" ]]; then
+    printf 'refusing non-local cluster: %s\n' "${actual_api_server:-unknown}" >&2
+    exit 1
   fi
-
-  for namespace in apps-dev apps-prod apps-share; do
-    if kubectl get secret forgejo-packages -n "$namespace" -o jsonpath='{.type}' 2>/dev/null | grep -qx 'kubernetes.io/dockerconfigjson'; then
-      ok "mirrored Kubernetes pull secret exists in ${namespace}"
-    else
-      wait "mirrored Kubernetes pull secret not verified in ${namespace}"
-    fi
-  done
-else
-  wait "kubectl unavailable; skipped Kubernetes pull-secret checks"
 fi
 
-if [[ "$deep" -eq 1 ]]; then
-  if have_command kosmos-cloudflared-ingress-smoke; then
-    if kosmos-cloudflared-ingress-smoke; then
-      ok "deep Cloudflared ingress smoke"
-    else
-      fail "deep Cloudflared ingress smoke"
-    fi
-  else
-    wait "kosmos-cloudflared-ingress-smoke unavailable"
-  fi
+if unit_active woodpecker-secret-sync.service; then
+  ok "Woodpecker Secret sync service active"
+else
+  fail "Woodpecker Secret sync service active"
+fi
 
-  if have_command kosmos-dagger-engine-config-smoke; then
-    if kosmos-dagger-engine-config-smoke; then
-      ok "deep Dagger engine config smoke"
-    else
-      fail "deep Dagger engine config smoke"
-    fi
-  else
-    wait "kosmos-dagger-engine-config-smoke unavailable"
-  fi
+if file_nonempty_maybe_root /run/agenix/woodpecker-server-env; then
+  ok "Woodpecker agenix runtime secret exists"
+else
+  fail "Woodpecker agenix runtime secret exists"
+fi
 
-  if have_command kosmos-forgejo-k8s-pull-secret-smoke; then
-    if kosmos-forgejo-k8s-pull-secret-smoke; then
-      ok "deep Kubernetes private image pull smoke"
-    else
-      fail "deep Kubernetes private image pull smoke"
-    fi
+if have_command kubectl; then
+  if "${kubectl_local[@]}" get secret woodpecker-server-env -n devops -o name 2>/dev/null | grep -q "secret/woodpecker-server-env"; then
+    ok "Woodpecker K3s secret exists"
   else
-    wait "kosmos-forgejo-k8s-pull-secret-smoke unavailable"
+    fail "Woodpecker K3s secret missing"
   fi
 else
-  skip "deep Cloudflared ingress smoke"
-  skip "deep Dagger engine config smoke"
-  skip "deep Kubernetes private image pull smoke"
+  wait "kubectl unavailable; skipped Woodpecker secret check"
+fi
+
+if have_command kubectl; then
+  if replica_workload_ready deployment/woodpecker '{.status.readyReplicas} {.spec.replicas}'; then
+    ok "Woodpecker server workload ready"
+  else
+    fail "Woodpecker server workload ready"
+  fi
+
+  if replica_workload_ready statefulset/woodpecker-agent '{.status.readyReplicas} {.spec.replicas}'; then
+    ok "Woodpecker agent workload ready"
+  else
+    fail "Woodpecker agent workload ready"
+  fi
+
+  if replica_workload_ready daemonset/dagger '{.status.numberReady} {.status.desiredNumberScheduled}'; then
+    ok "Dagger workload ready"
+  else
+    fail "Dagger workload ready"
+  fi
+else
+  wait "kubectl unavailable; skipped Woodpecker server readiness check"
+  wait "kubectl unavailable; skipped Woodpecker agent readiness check"
+  wait "kubectl unavailable; skipped Dagger readiness check"
+fi
+
+if http_status_ok http://woodpecker.localhost:17480/healthz; then
+  ok "Woodpecker endpoint responds (K3s)"
+else
+  fail "Woodpecker endpoint responds (K3s)"
 fi
 
 printf 'summary: %s failed, %s pending\n' "$failures" "$pending"
