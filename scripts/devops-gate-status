@@ -4,19 +4,20 @@ set -euo pipefail
 strict=0
 deep=0
 smoke_token_file="${FORGEJO_SMOKE_TOKEN_FILE:-/home/neil/.config/kosmos/forgejo-smoke-token}"
+local_kubeconfig="/etc/rancher/k3s/k3s.yaml"
+local_api_server="https://127.0.0.1:26443"
+kubectl_local=(kubectl --kubeconfig "$local_kubeconfig")
 
 usage() {
   cat <<'EOF'
 usage: devops-gate-status [--strict] [--deep]
 
-Report WSL DevOps Box migration gates without reading secret plaintext.
+Report the local WSL K3s DevOps stack gates without reading secret plaintext.
 
 Options:
   --strict  Exit non-zero when any gate is pending or failed
   --deep    Run checks that may create temporary cluster objects, such as the
-            Kubernetes private image pull smoke and service checks such as
-            kosmos-cloudflared-ingress-smoke and
-            kosmos-forgejo-k8s-pull-secret-smoke
+            Kubernetes private image pull smoke
 
 Environment:
   FORGEJO_SMOKE_TOKEN_FILE  Package-write smoke token file checked by this
@@ -74,18 +75,6 @@ unit_active() {
   systemctl is-active --quiet "$1"
 }
 
-unit_enabled() {
-  systemctl is-enabled --quiet "$1"
-}
-
-file_exists() {
-  [[ -f "$1" ]]
-}
-
-socket_exists() {
-  [[ -S "$1" ]]
-}
-
 file_nonempty_maybe_root() {
   local path="$1"
 
@@ -110,28 +99,10 @@ http_status_ok() {
 
 printf 'WSL DevOps Box gate status\n'
 
-if unit_active forgejo.service; then
-  ok "Forgejo service active"
-else
-  fail "Forgejo service active"
-fi
-
-if unit_enabled forgejo.service; then
-  ok "Forgejo service enabled"
-else
-  fail "Forgejo service enabled"
-fi
-
 if unit_active k3s.service; then
   ok "K3s service active"
 else
   fail "K3s service active"
-fi
-
-if unit_active cloudflared-tunnel-kepos.service; then
-  ok "Cloudflared kepos tunnel service active"
-else
-  fail "Cloudflared kepos tunnel service active"
 fi
 
 if http_status_ok http://forgejo.localhost:17480/api/healthz; then
@@ -140,42 +111,52 @@ else
   fail "Forgejo endpoint responds (K3s)"
 fi
 
-if http_status_ok https://git.guion.io/v2/; then
-  ok "public registry endpoint responds"
-else
-  fail "public registry endpoint responds"
-fi
-
 if file_nonempty_maybe_root "$smoke_token_file"; then
   ok "Forgejo package-write smoke token file exists"
 else
   wait "Forgejo package-write smoke token file missing or empty: ${smoke_token_file}"
 fi
 
-if file_exists secrets/woodpecker-server-env.age; then
-  ok "Woodpecker age secret tracked"
-  if have_command kubectl; then
-    if kubectl get secret woodpecker-server-env -n devops -o name 2>/dev/null | grep -q "secret/woodpecker-server-env"; then
-      ok "Woodpecker K3s secret exists"
-    else
-      fail "Woodpecker K3s secret missing"
-    fi
-  else
-    wait "kubectl unavailable; skipped Woodpecker secret check"
+if have_command kubectl; then
+  actual_api_server="$("${kubectl_local[@]}" config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || true)"
+  if [[ "$actual_api_server" != "$local_api_server" ]]; then
+    printf 'refusing non-local cluster: %s\n' "${actual_api_server:-unknown}" >&2
+    exit 1
   fi
+  export KUBECONFIG="$local_kubeconfig"
+fi
+
+if unit_active woodpecker-secret-sync.service; then
+  ok "Woodpecker Secret sync service active"
 else
-  wait "Woodpecker age secret not created"
+  fail "Woodpecker Secret sync service active"
+fi
+
+if file_nonempty_maybe_root /run/agenix/woodpecker-server-env; then
+  ok "Woodpecker agenix runtime secret exists"
+else
+  fail "Woodpecker agenix runtime secret exists"
 fi
 
 if have_command kubectl; then
-  if kubectl get secret forgejo-packages -n devops -o jsonpath='{.type}' 2>/dev/null | grep -qx 'kubernetes.io/dockerconfigjson'; then
+  if "${kubectl_local[@]}" get secret woodpecker-server-env -n devops -o name 2>/dev/null | grep -q "secret/woodpecker-server-env"; then
+    ok "Woodpecker K3s secret exists"
+  else
+    fail "Woodpecker K3s secret missing"
+  fi
+else
+  wait "kubectl unavailable; skipped Woodpecker secret check"
+fi
+
+if have_command kubectl; then
+  if "${kubectl_local[@]}" get secret forgejo-packages -n devops -o jsonpath='{.type}' 2>/dev/null | grep -qx 'kubernetes.io/dockerconfigjson'; then
     ok "source Kubernetes pull secret exists with dockerconfigjson type"
   else
     wait "source Kubernetes pull secret not verified"
   fi
 
   for namespace in apps-dev apps-prod apps-share; do
-    if kubectl get secret forgejo-packages -n "$namespace" -o jsonpath='{.type}' 2>/dev/null | grep -qx 'kubernetes.io/dockerconfigjson'; then
+    if "${kubectl_local[@]}" get secret forgejo-packages -n "$namespace" -o jsonpath='{.type}' 2>/dev/null | grep -qx 'kubernetes.io/dockerconfigjson'; then
       ok "mirrored Kubernetes pull secret exists in ${namespace}"
     else
       wait "mirrored Kubernetes pull secret not verified in ${namespace}"
@@ -186,16 +167,6 @@ else
 fi
 
 if [[ "$deep" -eq 1 ]]; then
-  if have_command kosmos-cloudflared-ingress-smoke; then
-    if kosmos-cloudflared-ingress-smoke; then
-      ok "deep Cloudflared ingress smoke"
-    else
-      fail "deep Cloudflared ingress smoke"
-    fi
-  else
-    wait "kosmos-cloudflared-ingress-smoke unavailable"
-  fi
-
   if have_command kosmos-forgejo-k8s-pull-secret-smoke; then
     if kosmos-forgejo-k8s-pull-secret-smoke; then
       ok "deep Kubernetes private image pull smoke"
@@ -206,7 +177,6 @@ if [[ "$deep" -eq 1 ]]; then
     wait "kosmos-forgejo-k8s-pull-secret-smoke unavailable"
   fi
 else
-  skip "deep Cloudflared ingress smoke"
   skip "deep Kubernetes private image pull smoke"
 fi
 

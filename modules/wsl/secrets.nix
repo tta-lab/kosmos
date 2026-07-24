@@ -1,5 +1,6 @@
 {
   agenix,
+  config,
   lib,
   pkgs,
   ...
@@ -12,6 +13,11 @@
     group = "users";
     mode = "0400";
     inherit path;
+  };
+  woodpeckerSecretSync = pkgs.writeShellApplication {
+    name = "kosmos-sync-woodpecker-secret";
+    runtimeInputs = [pkgs.kubectl];
+    text = builtins.readFile ../../scripts/sync-woodpecker-secret;
   };
 in {
   age = {
@@ -39,4 +45,19 @@ in {
   environment.systemPackages = [
     agenix.packages.${pkgs.system}.default
   ];
+
+  systemd.services.woodpecker-secret-sync = {
+    description = "Synchronize the Woodpecker environment Secret to local K3s";
+    wantedBy = ["multi-user.target"];
+    wants = ["k3s.service"];
+    after = ["k3s.service"];
+    restartTriggers = [config.age.secrets.woodpecker-server-env.file];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      Restart = "on-failure";
+      RestartSec = "5s";
+      ExecStart = "${woodpeckerSecretSync}/bin/kosmos-sync-woodpecker-secret ${config.age.secrets.woodpecker-server-env.path}";
+    };
+  };
 }

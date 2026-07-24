@@ -117,8 +117,6 @@ in {
   };
 
   virtualisation.containers.registries.insecure = [
-    "127.0.0.1:3000"
-    "10.88.0.1:3000"
     "host.containers.internal:3000"
   ];
 

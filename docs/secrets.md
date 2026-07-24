@@ -44,7 +44,9 @@ They decrypt to:
 - `/home/neil/.kube/config`
 - `/home/neil/.ttal/kubeconfig`
 - `/home/neil/.config/sops/age/keys.txt`
-- `/run/agenix/woodpecker-server-env` (root-owned, read by k3s-devops-migrate for K3s Woodpecker secret)
+- `/run/agenix/woodpecker-server-env` (root-owned, synchronized to the local
+  K3s `devops/woodpecker-server-env` Secret by
+  `woodpecker-secret-sync.service`)
 
 `lenos/config.json` in this repo is non-secret and still maps to
 `/home/neil/.config/lenos/config.json`.
@@ -102,4 +104,15 @@ After creating or editing encrypted files, apply the WSL config:
 ```bash
 cd /home/neil/code/projects/tta-lab/kosmos
 sudo nixos-rebuild switch --flake .#wsl
+```
+
+The rebuild restarts `woodpecker-secret-sync.service` when
+`secrets/woodpecker-server-env.age` changes. The unit uses only
+`/etc/rancher/k3s/k3s.yaml` and refuses a non-local API server. Verify it
+without reading the secret:
+
+```bash
+systemctl status woodpecker-secret-sync.service --no-pager
+KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
+  kubectl get secret woodpecker-server-env -n devops -o name
 ```

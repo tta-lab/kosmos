@@ -66,6 +66,7 @@
             ${./tests/tmux-tmpdir-test} \
             ${./tests/tmux-copy-mode-test} \
             ${./tests/devops-gate-status-test} \
+            ${./tests/sync-woodpecker-secret-test} \
             ${./tests/orga-cli-service-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
           KOSMOS_REPO_ROOT=${./.} ${pkgs.python3}/bin/python3 ${./tests/test_sync_projects_auth.py}
@@ -75,6 +76,7 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-tmpdir-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-copy-mode-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/devops-gate-status-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-woodpecker-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
           touch $out
         '';
@@ -101,6 +103,29 @@
         assert tunnel.ingress."test.guion.io" == "http://127.0.0.1:8080";
         assert cfg.systemd.services.cloudflared-tunnel-kepos.environment.TUNNEL_TRANSPORT_PROTOCOL == "http2";
           pkgs.runCommand "kepos-tunnel-module-check" {} "touch $out";
+
+      woodpecker-secret-sync-module = let
+        eval = nixpkgs.lib.nixosSystem {
+          inherit system;
+          specialArgs = {inherit agenix;};
+          modules = [
+            agenix.nixosModules.default
+            ./modules/wsl/secrets.nix
+            (_: {system.stateVersion = "25.05";})
+          ];
+        };
+        cfg = eval.config;
+        secret = cfg.age.secrets.woodpecker-server-env;
+        unit = cfg.systemd.services.woodpecker-secret-sync;
+        has = value: list: builtins.elem value list;
+      in
+        assert unit.restartTriggers == [secret.file];
+        assert has "k3s.service" unit.after;
+        assert has "k3s.service" unit.wants;
+        assert has "multi-user.target" unit.wantedBy;
+        assert unit.serviceConfig.Type == "oneshot";
+        assert unit.serviceConfig.RemainAfterExit;
+          pkgs.runCommand "woodpecker-secret-sync-module-check" {} "touch $out";
 
     };
 

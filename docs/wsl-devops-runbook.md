@@ -40,10 +40,10 @@ just status
 `just apply` is the explicit normal apply command. It refuses any kubeconfig
 whose active API server is not `https://127.0.0.1:26443`.
 
-## First cutover
+## Deploy
 
-Deploy the NixOS generation first so k3s, its directories, the packaged Kepos
-CLI, and the user service exist:
+Deploy the NixOS generation first so k3s, its directories, the Woodpecker
+Secret sync unit, the packaged Kepos CLI, and the user service exist:
 
 ```bash
 sudo env NIX_CONFIG="$(cat ~/.config/nix/nix.conf)" \
@@ -53,49 +53,52 @@ sudo env NIX_CONFIG="$(cat ~/.config/nix/nix.conf)" \
 Open a new WSL shell after the switch so the session picks up membership in
 the `k3s` group.
 
+The root-owned `woodpecker-secret-sync.service` reads
+`/run/agenix/woodpecker-server-env` and creates or updates
+`devops/woodpecker-server-env`. It always uses
+`/etc/rancher/k3s/k3s.yaml` and refuses an API server other than
+`https://127.0.0.1:26443`. The unit runs at boot, retries if k3s is not ready,
+and restarts when the encrypted agenix file changes.
+
+Verify the sync before applying the workloads:
+
+```bash
+systemctl status woodpecker-secret-sync.service --no-pager
+```
+
 The upstream Kepos Home Manager module reuses the publisher state at
 `~/.local/state/kepos-neo/mux-publisher`. If the state is absent, the module
 initializes it before starting the publisher.
 
-Then perform the DevOps cutover:
+Apply the Kubernetes objects explicitly:
 
 ```bash
-just cutover
+just diff
+just apply
+just status
 ```
-
-The cutover command:
-
-1. stops the legacy Forgejo, Woodpecker, and Dagger systemd services;
-2. copies Forgejo and Woodpecker data to `/var/lib/kosmos-k3s` while SQLite is
-   stopped, then changes the copied Woodpecker OAuth callback to
-   `http://woodpecker.localhost:17480/authorize`;
-3. creates the Kubernetes Woodpecker secret from the existing agenix runtime
-   file without printing it;
-4. applies Tanka, waits for every workload, checks both HTTP health paths, and
-   verifies that Dagger can pull and run a public image;
-5. writes a cutover marker that keeps the legacy services and Cloudflare
-   tunnel disabled across reboots.
-
-The command restarts the legacy services automatically if prepare, apply,
-rollout, health checks, or the Dagger pull fail. The migration writes a
-`migration-prepared` marker only after both copied databases and the Kubernetes
-secret are ready. Rollback refuses to overwrite the legacy data unless that
-marker exists and both copied SQLite databases pass an integrity check.
 
 Forgejo and Woodpecker use static local PVs with a `Retain` reclaim policy.
 Dagger starts with a fresh cache at `/var/lib/kosmos-k3s/dagger`.
 
-## Rollback
+## Recover
+
+Reapplying NixOS or Tanka does not delete the retained Forgejo and Woodpecker
+data under `/var/lib/kosmos-k3s`. There is no legacy-systemd rollback command.
+
+If the Woodpecker Secret is missing or stale, repair the encrypted secret,
+rebuild NixOS, and verify the sync unit. To retry without changing the secret:
 
 ```bash
-just rollback
+sudo systemctl restart woodpecker-secret-sync.service
+sudo journalctl -u woodpecker-secret-sync.service -n 100 --no-pager
+just apply
 ```
 
-Rollback deletes the k3s workloads but retains their PVs, copies Forgejo and
-Woodpecker data back to the legacy directories while the pods are stopped,
-restores the old OAuth callback, and restarts the legacy systemd services.
-This preserves writes made after cutover instead of silently returning to the
-pre-cutover SQLite snapshot.
+If application data must be restored, scale the affected workload down before
+restoring its retained directory in `/var/lib/kosmos-k3s`, preserve the file
+ownership documented by the NixOS tmpfiles rules, then run `just apply`. Do not
+copy data back to the removed legacy services.
 
 ## Runtime checks
 
@@ -106,15 +109,11 @@ curl --fail http://forgejo.localhost:17480/api/healthz
 curl --fail http://woodpecker.localhost:17480/healthz
 ```
 
-`just cutover` includes a public-image pull because socket reachability is not
-enough. To repeat that check manually:
+To check that Dagger can pull and run a public image rather than only accepting
+a socket connection:
 
 ```bash
 _EXPERIMENTAL_DAGGER_RUNNER_HOST=tcp://127.0.0.1:8080 \
   dagger -M call container from --address alpine:3.20 \
   with-exec --args=echo --args=dagger-pull-ok stdout
 ```
-
-Cloudflare is not part of the new request path. Keep the legacy units only
-through first-cutover acceptance; remove them and their Cloudflare module in a
-follow-up cleanup after rollback is no longer needed.
