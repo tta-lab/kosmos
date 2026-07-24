@@ -82,6 +82,7 @@ in {
 
     # Media
     pkgsUnstable.ffmpeg
+    poppler_utils
     typst
     source-han-serif-simplified-chinese
 
