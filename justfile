@@ -1,6 +1,7 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
 environment := "tanka/environments/devops"
+photos_environment := "tanka/environments/photos"
 kubeconfig := env_var_or_default("KUBECONFIG", "/etc/rancher/k3s/k3s.yaml")
 api_server := "https://127.0.0.1:26443"
 
@@ -18,6 +19,18 @@ apply target=environment: _local-k3s
 
 status namespace="devops": _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n "{{ namespace }}" -o wide
+
+photos-show:
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ photos_environment }}"
+
+photos-diff: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ photos_environment }}"
+
+photos-apply: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ photos_environment }}"
+
+photos-status: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n photos -o wide
 
 kepos-status:
   @systemctl --user status kepos-publisher.service --no-pager

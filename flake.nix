@@ -55,6 +55,7 @@
         } ''
           shellcheck \
             ${./scripts/devops-gate-status} \
+            ${./scripts/photos-gate-status} \
             ${./scripts/forgejo-https-git-smoke} \
             ${./scripts/forgejo-k8s-pull-secret-smoke} \
             ${./scripts/ttal-tmux-project-picker} \
@@ -65,7 +66,9 @@
             ${./tests/tmux-tmpdir-test} \
             ${./tests/tmux-copy-mode-test} \
             ${./tests/devops-gate-status-test} \
+            ${./tests/photos-gate-status-test} \
             ${./tests/sync-woodpecker-secret-test} \
+            ${./tests/sync-ente-secret-test} \
             ${./tests/wsl-devops-smoke-test} \
             ${./tests/orga-cli-service-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
@@ -75,7 +78,9 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-tmpdir-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-copy-mode-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/devops-gate-status-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/photos-gate-status-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-woodpecker-secret-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-ente-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/wsl-devops-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
           touch $out
@@ -127,6 +132,31 @@
         assert unit.serviceConfig.RemainAfterExit;
           pkgs.runCommand "woodpecker-secret-sync-module-check" {} "touch $out";
 
+      ente-secret-sync-module = let
+        eval = nixpkgs.lib.nixosSystem {
+          inherit system;
+          specialArgs = {inherit agenix;};
+          modules = [
+            agenix.nixosModules.default
+            ./modules/wsl/secrets.nix
+            (_: {system.stateVersion = "25.05";})
+          ];
+        };
+        cfg = eval.config;
+        secret = cfg.age.secrets.ente-stack-env;
+        unit = cfg.systemd.services.ente-secret-sync;
+        has = value: list: builtins.elem value list;
+      in
+        assert secret.path == "/run/agenix/ente-stack-env";
+        assert secret.mode == "0400";
+        assert unit.restartTriggers == [secret.file];
+        assert has "k3s.service" unit.after;
+        assert has "k3s.service" unit.wants;
+        assert has "multi-user.target" unit.wantedBy;
+        assert unit.serviceConfig.Type == "oneshot";
+        assert unit.serviceConfig.RemainAfterExit;
+          pkgs.runCommand "ente-secret-sync-module-check" {} "touch $out";
+
       k3s-state-directories = let
         eval = nixpkgs.lib.nixosSystem {
           inherit system;
@@ -139,6 +169,9 @@
         inherit (eval.config.systemd.tmpfiles) rules;
       in
         assert builtins.elem "d /var/lib/kosmos-k3s/dagger 0750 root root - -" rules;
+        assert builtins.elem "d /var/lib/kosmos-k3s/ente 0750 root root - -" rules;
+        assert builtins.elem "d /var/lib/kosmos-k3s/ente/postgres 0700 999 999 - -" rules;
+        assert builtins.elem "d /var/lib/kosmos-k3s/ente/garage 0750 root root - -" rules;
           pkgs.runCommand "k3s-state-directories-check" {} "touch $out";
 
       wsl-devops-cli = let
@@ -146,6 +179,7 @@
         packageNames = map nixpkgs.lib.getName cfg.environment.systemPackages;
       in
         assert builtins.elem "dagger" packageNames;
+        assert builtins.elem "kosmos-photos-gate-status" packageNames;
         assert cfg.environment.variables._EXPERIMENTAL_DAGGER_RUNNER_HOST == "tcp://127.0.0.1:8080";
           pkgs.runCommand "wsl-devops-cli-check" {} "touch $out";
 

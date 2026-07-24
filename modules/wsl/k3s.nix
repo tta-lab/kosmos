@@ -2,6 +2,8 @@
   networking.hosts."127.0.0.1" = [
     "forgejo.localhost"
     "woodpecker.localhost"
+    "ente.localhost"
+    "ente-storage.localhost"
   ];
 
   networking.firewall.interfaces.cni0.allowedTCPPorts = [
@@ -45,5 +47,8 @@
     "d /var/lib/kosmos-k3s/forgejo 0750 1000 1000 - -"
     "d /var/lib/kosmos-k3s/woodpecker 0750 1000 1000 - -"
     "d /var/lib/kosmos-k3s/dagger 0750 root root - -"
+    "d /var/lib/kosmos-k3s/ente 0750 root root - -"
+    "d /var/lib/kosmos-k3s/ente/postgres 0700 999 999 - -"
+    "d /var/lib/kosmos-k3s/ente/garage 0750 root root - -"
   ];
 }

@@ -17,6 +17,8 @@ local gatewayLabels = labels('canonical-gateway');
       'kosmos.override': |||
         rewrite name exact forgejo.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact woodpecker.localhost canonical-gateway.devops.svc.cluster.local
+        rewrite name exact ente.localhost canonical-gateway.devops.svc.cluster.local
+        rewrite name exact ente-storage.localhost canonical-gateway.devops.svc.cluster.local
       |||,
     },
   },
@@ -48,6 +50,16 @@ local gatewayLabels = labels('canonical-gateway');
             reverse_proxy woodpecker:8000
           }
 
+          @ente host ente.localhost
+          handle @ente {
+            reverse_proxy museum.photos.svc.cluster.local:8080
+          }
+
+          @enteStorage host ente-storage.localhost
+          handle @enteStorage {
+            reverse_proxy garage.photos.svc.cluster.local:3900
+          }
+
           handle {
             respond "unknown host" 421
           }
@@ -65,6 +77,7 @@ local gatewayLabels = labels('canonical-gateway');
     },
     spec: {
       replicas: 1,
+      strategy: { type: 'Recreate' },
       selector: { matchLabels: gatewayLabels },
       template: {
         metadata: { labels: gatewayLabels },

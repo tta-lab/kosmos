@@ -17,12 +17,16 @@ two canonical `.localhost` names to that same gateway inside the cluster. This
 keeps browser, Git, Woodpecker OAuth, webhooks, and container-registry URLs
 consistent.
 
-Kepos publishes four service IDs:
+Kepos publishes six service IDs:
 
 - `forgejo` and `woodpecker` both target port `17480`; the preserved HTTP Host
   header selects the Caddy route.
 - `navidrome` targets port `4533`.
 - `ssh` targets port `22`.
+
+The separate Ente Photos stack publishes `ente` and `ente-storage`, both through
+the canonical gateway on port `17480`. See [ente-photos.md](ente-photos.md) for
+its deployment order and mobile acceptance checks.
 
 Local WSL clients connect directly to the loopback Caddy endpoint. They do not
 traverse Kepos.

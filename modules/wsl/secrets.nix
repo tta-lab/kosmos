@@ -19,6 +19,11 @@
     runtimeInputs = [pkgs.kubectl];
     text = builtins.readFile ../../scripts/sync-woodpecker-secret;
   };
+  enteSecretSync = pkgs.writeShellApplication {
+    name = "kosmos-sync-ente-secret";
+    runtimeInputs = [pkgs.kubectl];
+    text = builtins.readFile ../../scripts/sync-ente-secret;
+  };
 in {
   age = {
     identityPaths = ["/etc/ssh/ssh_host_ed25519_key"];
@@ -36,6 +41,13 @@ in {
           mode = "0400";
           path = "/run/agenix/woodpecker-server-env";
         };
+        ente-stack-env = {
+          file = secretsDir + "/ente-stack-env.age";
+          owner = "root";
+          group = "root";
+          mode = "0400";
+          path = "/run/agenix/ente-stack-env";
+        };
       }
       // lib.optionalAttrs haveForgejoSmokeToken {
         forgejo-smoke-token = userSecret "forgejo-smoke-token.age" "/home/neil/.config/kosmos/forgejo-smoke-token";
@@ -46,18 +58,34 @@ in {
     agenix.packages.${pkgs.system}.default
   ];
 
-  systemd.services.woodpecker-secret-sync = {
-    description = "Synchronize the Woodpecker environment Secret to local K3s";
-    wantedBy = ["multi-user.target"];
-    wants = ["k3s.service"];
-    after = ["k3s.service"];
-    restartTriggers = [config.age.secrets.woodpecker-server-env.file];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      Restart = "on-failure";
-      RestartSec = "5s";
-      ExecStart = "${woodpeckerSecretSync}/bin/kosmos-sync-woodpecker-secret ${config.age.secrets.woodpecker-server-env.path}";
+  systemd.services = {
+    woodpecker-secret-sync = {
+      description = "Synchronize the Woodpecker environment Secret to local K3s";
+      wantedBy = ["multi-user.target"];
+      wants = ["k3s.service"];
+      after = ["k3s.service"];
+      restartTriggers = [config.age.secrets.woodpecker-server-env.file];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        Restart = "on-failure";
+        RestartSec = "5s";
+        ExecStart = "${woodpeckerSecretSync}/bin/kosmos-sync-woodpecker-secret ${config.age.secrets.woodpecker-server-env.path}";
+      };
+    };
+    ente-secret-sync = {
+      description = "Synchronize the Ente environment Secret to local K3s";
+      wantedBy = ["multi-user.target"];
+      wants = ["k3s.service"];
+      after = ["k3s.service"];
+      restartTriggers = [config.age.secrets.ente-stack-env.file];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        Restart = "on-failure";
+        RestartSec = "5s";
+        ExecStart = "${enteSecretSync}/bin/kosmos-sync-ente-secret ${config.age.secrets.ente-stack-env.path}";
+      };
     };
   };
 }
