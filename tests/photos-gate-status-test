@@ -17,7 +17,15 @@ cat >"$test_root/bin/curl" <<'EOF'
 #!@bash@
 url="${!#}"
 printf '%s\n' "$url" >>"$TEST_CURL_LOG"
-if [[ "$url" == "http://ente-storage.localhost:17480/" ]]; then
+if [[ "$url" == "http://ente-storage.localhost:17480/b2-eu-cen/cors-probe" ]]; then
+  if [[ "$*" == *"--request OPTIONS"* \
+    && "$*" == *"Origin: http://localhost"* \
+    && "$*" == *"Access-Control-Request-Method: GET"* ]]; then
+    printf '%s' "$TEST_CORS_HTTP_STATUS"
+  else
+    printf '400'
+  fi
+elif [[ "$url" == "http://ente-storage.localhost:17480/" ]]; then
   printf '%s' "$TEST_STORAGE_HTTP_STATUS"
 else
   printf '%s' "$TEST_MUSEUM_HTTP_STATUS"
@@ -61,6 +69,7 @@ export TEST_KUBE_SERVER="https://127.0.0.1:26443"
 export TEST_SYNC_ACTIVE="yes"
 export TEST_MUSEUM_HTTP_STATUS="200"
 export TEST_STORAGE_HTTP_STATUS="403"
+export TEST_CORS_HTTP_STATUS="200"
 export TEST_BUCKET_PRESENT="yes"
 export TEST_NOT_READY=""
 
@@ -73,11 +82,12 @@ grep -q '^ok: PostgreSQL workload ready$' "$test_root/output"
 grep -q '^ok: Garage workload ready$' "$test_root/output"
 grep -q '^ok: Museum endpoint responds through canonical gateway$' "$test_root/output"
 grep -q '^ok: Garage S3 endpoint responds through canonical gateway$' "$test_root/output"
+grep -q '^ok: Garage S3 endpoint accepts browser CORS preflight$' "$test_root/output"
 grep -q '^ok: Garage bucket b2-eu-cen exists$' "$test_root/output"
 grep -q '^Garage storage filesystem:$' "$test_root/output"
 grep -q '^summary: 0 failed$' "$test_root/output"
 [[ "$(cat "$TEST_SYSTEMCTL_LOG")" == 'is-active --quiet ente-secret-sync.service' ]]
-[[ "$(cat "$TEST_CURL_LOG")" == $'http://ente.localhost:17480/ping\nhttp://ente-storage.localhost:17480/' ]]
+[[ "$(cat "$TEST_CURL_LOG")" == $'http://ente.localhost:17480/ping\nhttp://ente-storage.localhost:17480/\nhttp://ente-storage.localhost:17480/b2-eu-cen/cors-probe' ]]
 [[ "$(cat "$TEST_DF_LOG")" == '-h /var/lib/kosmos-k3s' ]]
 awk '$1 != "--kubeconfig" || $2 != "/etc/rancher/k3s/k3s.yaml" { exit 1 }' "$TEST_KUBECTL_LOG"
 [[ "$(wc -l <"$TEST_KUBECTL_LOG")" -eq 5 ]]
@@ -107,6 +117,15 @@ fi
 grep -q '^fail: Garage S3 endpoint responds through canonical gateway$' "$test_root/storage-output"
 
 export TEST_STORAGE_HTTP_STATUS="403"
+
+export TEST_CORS_HTTP_STATUS="403"
+if bash scripts/photos-gate-status --strict >"$test_root/cors-output" 2>&1; then
+  echo "photos-gate-status accepted a rejected Garage CORS preflight" >&2
+  exit 1
+fi
+grep -q '^fail: Garage S3 endpoint accepts browser CORS preflight$' "$test_root/cors-output"
+
+export TEST_CORS_HTTP_STATUS="200"
 export TEST_BUCKET_PRESENT="no"
 if bash scripts/photos-gate-status --strict >"$test_root/bucket-output" 2>&1; then
   echo "photos-gate-status accepted a missing Garage bucket" >&2

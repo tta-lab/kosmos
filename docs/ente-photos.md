@@ -65,6 +65,10 @@ deployment, Pods can remain pending until `ente-secret-sync.service` creates
 their Secret. The normal `just apply` then updates the shared Caddy and CoreDNS
 gateway configuration in the `devops` environment.
 
+The `garage-cors-v1` Job idempotently applies the bucket CORS policy required
+by Ente Desktop's browser runtime. The wildcard origin does not make objects
+public: Garage still requires Museum's signed URLs for object access.
+
 ## Initial mobile setup
 
 1. Install the official Ente Photos app and ensure the device's Kepos
@@ -99,6 +103,15 @@ Before trusting phone cleanup, upload a disposable JPEG and a video larger
 than 20 MiB. Open and download both after restarting Museum, PostgreSQL,
 Garage, Caddy, and k3s. Then test **Free up device space** with a second
 disposable photo and confirm it can be downloaded again.
+
+## Desktop viewing and export
+
+Ente Desktop uses the same custom API endpoint,
+`http://ente.localhost:17480`. Browsing downloads previews into the app cache;
+it does not automatically create original files in Finder. To keep local
+originals, open **Settings > Export data**, select a separate destination
+folder, and enable **Continuous export**. Do not use an upload watch folder as
+the export destination.
 
 ## Operations
 

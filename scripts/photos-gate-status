@@ -113,6 +113,22 @@ else
   fail "Garage S3 endpoint responds through canonical gateway"
 fi
 
+cors_status="$(curl \
+  --silent \
+  --output /dev/null \
+  --write-out '%{http_code}' \
+  --request OPTIONS \
+  --header 'Origin: http://localhost' \
+  --header 'Access-Control-Request-Method: GET' \
+  http://ente-storage.localhost:17480/b2-eu-cen/cors-probe \
+  || true)"
+if [[ "$cors_status" == "200" ]]; then
+  ok "Garage S3 endpoint accepts browser CORS preflight"
+else
+  printf 'unexpected CORS preflight status: got %s, expected 200\n' "$cors_status" >&2
+  fail "Garage S3 endpoint accepts browser CORS preflight"
+fi
+
 if "${kubectl_local[@]}" exec -n photos garage-0 -- /garage bucket info b2-eu-cen >/dev/null 2>&1; then
   ok "Garage bucket b2-eu-cen exists"
 else
