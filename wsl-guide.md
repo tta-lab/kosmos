@@ -46,9 +46,13 @@ Proxy is provided by a Windows-side HTTP proxy at `127.0.0.1:7897`. The `kosmos-
 **Windows `.wslconfig` required:**
 
 ```ini
+[general]
+instanceIdleTimeout=-1
+
 [wsl2]
 networkingMode=mirrored
 firewall=true
+vmIdleTimeout=-1
 
 [experimental]
 hostAddressLoopback=true
@@ -96,15 +100,9 @@ Set them from Windows, not from NixOS. Open PowerShell and edit the user-level W
 notepad $env:USERPROFILE\.wslconfig
 ```
 
-Use this content:
-
-```ini
-[general]
-instanceIdleTimeout=-1
-
-[wsl2]
-vmIdleTimeout=-1
-```
+The complete `.wslconfig` shown in the TTAL Runtime section already includes
+both timeout settings. Keep its mirrored networking, firewall, and
+`hostAddressLoopback` settings when changing the idle timers.
 
 Then restart WSL:
 

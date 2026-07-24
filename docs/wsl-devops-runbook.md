@@ -58,7 +58,8 @@ The root-owned `woodpecker-secret-sync.service` reads
 `devops/woodpecker-server-env`. It always uses
 `/etc/rancher/k3s/k3s.yaml` and refuses an API server other than
 `https://127.0.0.1:26443`. The unit runs at boot, retries if k3s is not ready,
-and restarts when the encrypted agenix file changes.
+restarts when the encrypted agenix file changes, and rolls the Woodpecker
+server and agents when the Kubernetes Secret is updated.
 
 Verify the sync before applying the workloads:
 

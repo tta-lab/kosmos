@@ -81,7 +81,6 @@
       esac
     '';
   };
-  cloudflaredIngressSmoke = pkgs.writeScriptBin "kosmos-cloudflared-ingress-smoke" (builtins.readFile ../../scripts/cloudflared-ingress-smoke);
   devopsGateStatus = pkgs.writeScriptBin "kosmos-devops-gate-status" (builtins.readFile ../../scripts/devops-gate-status);
   devopsSmoke = pkgs.writeScriptBin "kosmos-wsl-devops-smoke" (builtins.readFile ../../scripts/wsl-devops-smoke);
   forgejoK8sPullSecretSmoke = pkgs.writeScriptBin "kosmos-forgejo-k8s-pull-secret-smoke" (builtins.readFile ../../scripts/forgejo-k8s-pull-secret-smoke);
@@ -101,7 +100,6 @@ in {
 
   environment = {
     systemPackages = with pkgs; [
-      cloudflaredIngressSmoke
       devopsGateStatus
       devopsSmoke
       forgejoK8sPullSecretSmoke
@@ -115,10 +113,6 @@ in {
     dockerCompat = true;
     dockerSocket.enable = true;
   };
-
-  virtualisation.containers.registries.insecure = [
-    "host.containers.internal:3000"
-  ];
 
   programs.nix-ld = {
     enable = true;

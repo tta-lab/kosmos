@@ -53,7 +53,6 @@
           ];
         } ''
           shellcheck \
-            ${./scripts/cloudflared-ingress-smoke} \
             ${./scripts/devops-gate-status} \
             ${./scripts/forgejo-https-git-smoke} \
             ${./scripts/forgejo-k8s-pull-secret-smoke} \
@@ -62,7 +61,6 @@
             ${./tests/temenos-env-test} \
             ${./tests/ttal-tmux-project-picker-test} \
             ${./tests/temenos-ca-test} \
-            ${./tests/cloudflared-ingress-smoke-test} \
             ${./tests/tmux-tmpdir-test} \
             ${./tests/tmux-copy-mode-test} \
             ${./tests/devops-gate-status-test} \
@@ -71,7 +69,6 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
           KOSMOS_REPO_ROOT=${./.} ${pkgs.python3}/bin/python3 ${./tests/test_sync_projects_auth.py}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudflared-ingress-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-env-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-tmpdir-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-copy-mode-test}
@@ -126,6 +123,20 @@
         assert unit.serviceConfig.Type == "oneshot";
         assert unit.serviceConfig.RemainAfterExit;
           pkgs.runCommand "woodpecker-secret-sync-module-check" {} "touch $out";
+
+      k3s-state-directories = let
+        eval = nixpkgs.lib.nixosSystem {
+          inherit system;
+          modules = [
+            ./modules/wsl/proxy.nix
+            ./modules/wsl/k3s.nix
+            (_: {system.stateVersion = "25.05";})
+          ];
+        };
+        inherit (eval.config.systemd.tmpfiles) rules;
+      in
+        assert builtins.elem "d /var/lib/kosmos-k3s/dagger 0750 root root - -" rules;
+          pkgs.runCommand "k3s-state-directories-check" {} "touch $out";
 
     };
 
