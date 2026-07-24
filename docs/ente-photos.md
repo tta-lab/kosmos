@@ -76,7 +76,9 @@ gateway configuration in the `devops` environment.
 
    ```bash
    KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
-     kubectl -n photos logs deployment/museum
+     kubectl -n photos logs deployment/museum --since=15m |
+     rg 'Skipping sending email.*Verification code:' |
+     tail -n 1
    ```
 
 5. Configure the official Ente CLI with API endpoint
