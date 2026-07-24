@@ -61,9 +61,17 @@ grep -q '^ok: Forgejo endpoint responds (K3s)$' "$test_root/output"
 grep -q '^ok: Woodpecker Secret sync service active$' "$test_root/output"
 grep -q '^ok: Woodpecker agenix runtime secret exists$' "$test_root/output"
 grep -q '^ok: Woodpecker K3s secret exists$' "$test_root/output"
+grep -q '^summary: 0 failed, 0 pending$' "$test_root/output"
 [[ "$(cat "$TEST_SYSTEMCTL_LOG")" == $'is-active --quiet k3s.service\nis-active --quiet woodpecker-secret-sync.service' ]]
 [[ "$(cat "$TEST_CURL_LOG")" == "http://forgejo.localhost:17480/api/healthz" ]]
 awk '$1 != "--kubeconfig" || $2 != "/etc/rancher/k3s/k3s.yaml" { exit 1 }' "$TEST_KUBECTL_LOG"
+[[ "$(wc -l <"$TEST_KUBECTL_LOG")" -eq 2 ]]
+
+if bash scripts/devops-gate-status --deep >"$test_root/deep-output" 2>&1; then
+  echo "devops-gate-status accepted the removed remote-cluster deep gate" >&2
+  exit 1
+fi
+grep -q '^usage: devops-gate-status \[--strict\]$' "$test_root/deep-output"
 
 : >"$TEST_KUBECTL_LOG"
 export TEST_KUBE_SERVER="https://kube-new.flicknote.app"

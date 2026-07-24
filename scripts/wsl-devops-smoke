@@ -23,31 +23,8 @@ http_ok() {
   curl --fail --silent --show-error --head "$1" >/dev/null
 }
 
-registry_endpoint_ok() {
-  local status
-
-  status="$(
-    curl \
-      --silent \
-      --output /dev/null \
-      --write-out '%{http_code}' \
-      https://git.guion.io/v2/
-  )"
-
-  case "$status" in
-    200|401)
-      return 0
-      ;;
-    *)
-      printf 'unexpected /v2/ status: %s\n' "$status" >&2
-      return 1
-      ;;
-  esac
-}
-
 check "K3s service active" systemd_is_active k3s.service
 check "Forgejo endpoint responds (K3s)" http_ok http://forgejo.localhost:17480/api/healthz
-check "public Forgejo registry endpoint responds" registry_endpoint_ok
 
 if [[ "$failures" -gt 0 ]]; then
   printf '%s smoke check(s) failed\n' "$failures" >&2

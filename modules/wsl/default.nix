@@ -81,9 +81,16 @@
       esac
     '';
   };
+  daggerPackage = pkgs.callPackage ../../packages/dagger-cli {};
+  daggerCli = pkgs.writeShellApplication {
+    name = "dagger";
+    text = ''
+      export _EXPERIMENTAL_DAGGER_RUNNER_HOST="''${_EXPERIMENTAL_DAGGER_RUNNER_HOST:-tcp://127.0.0.1:8080}"
+      exec ${daggerPackage}/bin/dagger "$@"
+    '';
+  };
   devopsGateStatus = pkgs.writeScriptBin "kosmos-devops-gate-status" (builtins.readFile ../../scripts/devops-gate-status);
   devopsSmoke = pkgs.writeScriptBin "kosmos-wsl-devops-smoke" (builtins.readFile ../../scripts/wsl-devops-smoke);
-  forgejoK8sPullSecretSmoke = pkgs.writeScriptBin "kosmos-forgejo-k8s-pull-secret-smoke" (builtins.readFile ../../scripts/forgejo-k8s-pull-secret-smoke);
 in {
   wsl = {
     enable = true;
@@ -100,12 +107,13 @@ in {
 
   environment = {
     systemPackages = with pkgs; [
+      daggerCli
       devopsGateStatus
       devopsSmoke
-      forgejoK8sPullSecretSmoke
       proxyEnv
       rsync
     ];
+    variables._EXPERIMENTAL_DAGGER_RUNNER_HOST = "tcp://127.0.0.1:8080";
   };
 
   virtualisation.podman = {

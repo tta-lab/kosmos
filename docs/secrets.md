@@ -69,6 +69,15 @@ agenix -e secrets/sops-age-keys.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/woodpecker-server-env.age -i ~/.ssh/agenix_ed25519
 ```
 
+Before deploying a changed Woodpecker secret, Neil must validate that all
+three required keys exist exactly once and are non-empty. This command prints
+only the validation result, never the values:
+
+```bash
+agenix -d secrets/woodpecker-server-env.age -i ~/.ssh/agenix_ed25519 \
+  | bash scripts/sync-woodpecker-secret --validate-only -
+```
+
 Commit encrypted files after editing:
 
 ```bash

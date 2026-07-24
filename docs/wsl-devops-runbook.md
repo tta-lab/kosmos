@@ -114,7 +114,9 @@ To check that Dagger can pull and run a public image rather than only accepting
 a socket connection:
 
 ```bash
-_EXPERIMENTAL_DAGGER_RUNNER_HOST=tcp://127.0.0.1:8080 \
-  dagger -M call container from --address alpine:3.20 \
+dagger -M call container from --address alpine:3.20 \
   with-exec --args=echo --args=dagger-pull-ok stdout
 ```
+
+The packaged Dagger 0.21.7 CLI defaults to the matching K3s engine at
+`tcp://127.0.0.1:8080`.

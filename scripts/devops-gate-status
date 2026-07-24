@@ -2,26 +2,18 @@
 set -euo pipefail
 
 strict=0
-deep=0
-smoke_token_file="${FORGEJO_SMOKE_TOKEN_FILE:-/home/neil/.config/kosmos/forgejo-smoke-token}"
 local_kubeconfig="/etc/rancher/k3s/k3s.yaml"
 local_api_server="https://127.0.0.1:26443"
 kubectl_local=(kubectl --kubeconfig "$local_kubeconfig")
 
 usage() {
   cat <<'EOF'
-usage: devops-gate-status [--strict] [--deep]
+usage: devops-gate-status [--strict]
 
 Report the local WSL K3s DevOps stack gates without reading secret plaintext.
 
 Options:
   --strict  Exit non-zero when any gate is pending or failed
-  --deep    Run checks that may create temporary cluster objects, such as the
-            Kubernetes private image pull smoke
-
-Environment:
-  FORGEJO_SMOKE_TOKEN_FILE  Package-write smoke token file checked by this
-                            command. Default: /home/neil/.config/kosmos/forgejo-smoke-token
 EOF
 }
 
@@ -29,10 +21,6 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --strict)
       strict=1
-      shift
-      ;;
-    --deep)
-      deep=1
       shift
       ;;
     -h|--help)
@@ -61,10 +49,6 @@ fail() {
 wait() {
   printf 'pending: %s\n' "$1"
   pending=$((pending + 1))
-}
-
-skip() {
-  printf 'skipped: %s\n' "$1"
 }
 
 have_command() {
@@ -111,19 +95,12 @@ else
   fail "Forgejo endpoint responds (K3s)"
 fi
 
-if file_nonempty_maybe_root "$smoke_token_file"; then
-  ok "Forgejo package-write smoke token file exists"
-else
-  wait "Forgejo package-write smoke token file missing or empty: ${smoke_token_file}"
-fi
-
 if have_command kubectl; then
   actual_api_server="$("${kubectl_local[@]}" config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || true)"
   if [[ "$actual_api_server" != "$local_api_server" ]]; then
     printf 'refusing non-local cluster: %s\n' "${actual_api_server:-unknown}" >&2
     exit 1
   fi
-  export KUBECONFIG="$local_kubeconfig"
 fi
 
 if unit_active woodpecker-secret-sync.service; then
@@ -146,38 +123,6 @@ if have_command kubectl; then
   fi
 else
   wait "kubectl unavailable; skipped Woodpecker secret check"
-fi
-
-if have_command kubectl; then
-  if "${kubectl_local[@]}" get secret forgejo-packages -n devops -o jsonpath='{.type}' 2>/dev/null | grep -qx 'kubernetes.io/dockerconfigjson'; then
-    ok "source Kubernetes pull secret exists with dockerconfigjson type"
-  else
-    wait "source Kubernetes pull secret not verified"
-  fi
-
-  for namespace in apps-dev apps-prod apps-share; do
-    if "${kubectl_local[@]}" get secret forgejo-packages -n "$namespace" -o jsonpath='{.type}' 2>/dev/null | grep -qx 'kubernetes.io/dockerconfigjson'; then
-      ok "mirrored Kubernetes pull secret exists in ${namespace}"
-    else
-      wait "mirrored Kubernetes pull secret not verified in ${namespace}"
-    fi
-  done
-else
-  wait "kubectl unavailable; skipped Kubernetes pull-secret checks"
-fi
-
-if [[ "$deep" -eq 1 ]]; then
-  if have_command kosmos-forgejo-k8s-pull-secret-smoke; then
-    if kosmos-forgejo-k8s-pull-secret-smoke; then
-      ok "deep Kubernetes private image pull smoke"
-    else
-      fail "deep Kubernetes private image pull smoke"
-    fi
-  else
-    wait "kosmos-forgejo-k8s-pull-secret-smoke unavailable"
-  fi
-else
-  skip "deep Kubernetes private image pull smoke"
 fi
 
 printf 'summary: %s failed, %s pending\n' "$failures" "$pending"

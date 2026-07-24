@@ -24,6 +24,7 @@
   };
 
   outputs = {
+    self,
     nixpkgs,
     nixpkgs-unstable,
     nixos-wsl,
@@ -137,6 +138,14 @@
       in
         assert builtins.elem "d /var/lib/kosmos-k3s/dagger 0750 root root - -" rules;
           pkgs.runCommand "k3s-state-directories-check" {} "touch $out";
+
+      wsl-devops-cli = let
+        cfg = self.nixosConfigurations.wsl.config;
+        packageNames = map nixpkgs.lib.getName cfg.environment.systemPackages;
+      in
+        assert builtins.elem "dagger" packageNames;
+        assert cfg.environment.variables._EXPERIMENTAL_DAGGER_RUNNER_HOST == "tcp://127.0.0.1:8080";
+          pkgs.runCommand "wsl-devops-cli-check" {} "touch $out";
 
     };
 
