@@ -45,39 +45,9 @@ registry_endpoint_ok() {
   esac
 }
 
-internal_registry_endpoint_ok() {
-  local status
-
-  status="$(
-    curl \
-      --silent \
-      --output /dev/null \
-      --write-out '%{http_code}' \
-      http://10.88.0.1:3000/v2/
-  )"
-
-  case "$status" in
-    200|401)
-      return 0
-      ;;
-    *)
-      printf 'unexpected internal /v2/ status: %s\n' "$status" >&2
-      return 1
-      ;;
-  esac
-}
-
-dagger_reaches_engine() {
-  dagger version >/dev/null
-}
-
-check "forgejo service active" systemd_is_active forgejo.service
-check "dagger engine service active" systemd_is_active podman-dagger-engine.service
-check "internal Forgejo registry proxy active" systemd_is_active forgejo-internal-registry-proxy.service
-check "local Forgejo HTTP responds" http_ok http://127.0.0.1:3000/
+check "K3s service active" systemd_is_active k3s.service
+check "Forgejo endpoint responds (K3s)" http_ok http://forgejo.localhost:17480/api/healthz
 check "public Forgejo registry endpoint responds" registry_endpoint_ok
-check "internal Forgejo registry endpoint responds" internal_registry_endpoint_ok
-check "Dagger CLI reaches local engine" dagger_reaches_engine
 
 if [[ "$failures" -gt 0 ]]; then
   printf '%s smoke check(s) failed\n' "$failures" >&2

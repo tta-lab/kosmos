@@ -16,7 +16,7 @@ Options:
   --deep    Run checks that may create temporary cluster objects, such as the
             Kubernetes private image pull smoke and service checks such as
             kosmos-cloudflared-ingress-smoke and
-            kosmos-dagger-engine-config-smoke
+            kosmos-forgejo-k8s-pull-secret-smoke
 
 Environment:
   FORGEJO_SMOKE_TOKEN_FILE  Package-write smoke token file checked by this
@@ -122,28 +122,10 @@ else
   fail "Forgejo service enabled"
 fi
 
-if unit_active podman-dagger-engine.service; then
-  ok "Dagger engine service active"
+if unit_active k3s.service; then
+  ok "K3s service active"
 else
-  fail "Dagger engine service active"
-fi
-
-if unit_enabled podman-dagger-engine.service; then
-  ok "Dagger engine service enabled"
-else
-  fail "Dagger engine service enabled"
-fi
-
-if unit_active forgejo-internal-registry-proxy.service; then
-  ok "internal Forgejo registry proxy active"
-else
-  fail "internal Forgejo registry proxy active"
-fi
-
-if unit_enabled forgejo-internal-registry-proxy.service; then
-  ok "internal Forgejo registry proxy enabled"
-else
-  fail "internal Forgejo registry proxy enabled"
+  fail "K3s service active"
 fi
 
 if unit_active cloudflared-tunnel-kepos.service; then
@@ -152,16 +134,10 @@ else
   fail "Cloudflared kepos tunnel service active"
 fi
 
-if unit_enabled cloudflared-tunnel-kepos.service; then
-  ok "Cloudflared kepos tunnel service enabled"
+if http_status_ok http://forgejo.localhost:17480/api/healthz; then
+  ok "Forgejo endpoint responds (K3s)"
 else
-  fail "Cloudflared kepos tunnel service enabled"
-fi
-
-if http_status_ok http://127.0.0.1:3000/; then
-  ok "local Forgejo HTTP responds"
-else
-  fail "local Forgejo HTTP responds"
+  fail "Forgejo endpoint responds (K3s)"
 fi
 
 if http_status_ok https://git.guion.io/v2/; then
@@ -170,39 +146,25 @@ else
   fail "public registry endpoint responds"
 fi
 
-if http_status_ok http://10.88.0.1:3000/v2/; then
-  ok "internal registry endpoint responds"
-else
-  fail "internal registry endpoint responds"
-fi
-
-if socket_exists /run/dagger/engine.sock; then
-  ok "Dagger Unix socket exists"
-else
-  fail "Dagger Unix socket exists"
-fi
-
-if socket_exists /run/podman/podman.sock; then
-  ok "Podman socket exists"
-else
-  fail "Podman socket exists"
-fi
-
 if file_nonempty_maybe_root "$smoke_token_file"; then
   ok "Forgejo package-write smoke token file exists"
 else
   wait "Forgejo package-write smoke token file missing or empty: ${smoke_token_file}"
 fi
 
-if file_exists secrets/woodpecker-server-env.age && file_exists secrets/woodpecker-agent-env.age; then
-  ok "Woodpecker age secrets tracked"
-  if unit_active woodpecker-server.service && unit_active woodpecker-agent-wsl-podman.service; then
-    ok "Woodpecker services active"
+if file_exists secrets/woodpecker-server-env.age; then
+  ok "Woodpecker age secret tracked"
+  if have_command kubectl; then
+    if kubectl get secret woodpecker-server-env -n devops -o name 2>/dev/null | grep -q "secret/woodpecker-server-env"; then
+      ok "Woodpecker K3s secret exists"
+    else
+      fail "Woodpecker K3s secret missing"
+    fi
   else
-    fail "Woodpecker services active"
+    wait "kubectl unavailable; skipped Woodpecker secret check"
   fi
 else
-  wait "Woodpecker age secrets not created"
+  wait "Woodpecker age secret not created"
 fi
 
 if have_command kubectl; then
@@ -234,16 +196,6 @@ if [[ "$deep" -eq 1 ]]; then
     wait "kosmos-cloudflared-ingress-smoke unavailable"
   fi
 
-  if have_command kosmos-dagger-engine-config-smoke; then
-    if kosmos-dagger-engine-config-smoke; then
-      ok "deep Dagger engine config smoke"
-    else
-      fail "deep Dagger engine config smoke"
-    fi
-  else
-    wait "kosmos-dagger-engine-config-smoke unavailable"
-  fi
-
   if have_command kosmos-forgejo-k8s-pull-secret-smoke; then
     if kosmos-forgejo-k8s-pull-secret-smoke; then
       ok "deep Kubernetes private image pull smoke"
@@ -255,7 +207,6 @@ if [[ "$deep" -eq 1 ]]; then
   fi
 else
   skip "deep Cloudflared ingress smoke"
-  skip "deep Dagger engine config smoke"
   skip "deep Kubernetes private image pull smoke"
 fi
 

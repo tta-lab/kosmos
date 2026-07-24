@@ -102,34 +102,6 @@
         assert cfg.systemd.services.cloudflared-tunnel-kepos.environment.TUNNEL_TRANSPORT_PROTOCOL == "http2";
           pkgs.runCommand "kepos-tunnel-module-check" {} "touch $out";
 
-      forgejo-module = let
-        eval = nixpkgs.lib.nixosSystem {
-          inherit system;
-          modules = [
-            ./modules/wsl/forgejo.nix
-            (_: {
-              system.stateVersion = "25.05";
-              kosmos.wsl.forgejo.enable = true;
-            })
-          ];
-        };
-        cfg = eval.config;
-        inherit (cfg.services) forgejo;
-      in
-        assert forgejo.enable;
-        assert forgejo.database.type == "sqlite3";
-        assert forgejo.database.path == "/var/lib/forgejo/data/forgejo.db";
-        assert forgejo.settings.server.ROOT_URL == "https://git.guion.io/";
-        assert forgejo.settings.server.HTTP_ADDR == "127.0.0.1";
-        assert forgejo.settings.server.HTTP_PORT == 3000;
-        assert forgejo.settings.server.DISABLE_SSH;
-        assert forgejo.settings.packages.ENABLED;
-        assert forgejo.settings.service.DISABLE_REGISTRATION;
-        assert forgejo.settings.service.REQUIRE_SIGNIN_VIEW;
-        assert !forgejo.settings.actions.ENABLED;
-          pkgs.runCommand "kosmos-forgejo-module-check" {} ''
-            touch $out
-          '';
     };
 
     nixosConfigurations.kosmos = nixpkgs.lib.nixosSystem {

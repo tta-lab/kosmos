@@ -30,11 +30,7 @@
     ];
   };
 
-  systemd.services = let
-    legacyCondition = {
-      unitConfig.ConditionPathExists = "!/var/lib/kosmos-k3s/cutover-complete";
-    };
-  in {
+  systemd.services = {
     k3s = {
       environment = {
         HTTP_PROXY = config.kosmos.wsl.k3sProxyUrl;
@@ -42,9 +38,6 @@
         NO_PROXY = "localhost,127.0.0.1,::1,10.42.0.0/16,10.43.0.0/16,.svc,.cluster.local,forgejo.localhost,woodpecker.localhost";
       };
     };
-    forgejo = legacyCondition;
-    forgejo-internal-registry-proxy = legacyCondition;
-    cloudflared-tunnel-kepos = legacyCondition;
   };
 
   systemd.tmpfiles.rules = [

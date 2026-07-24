@@ -84,7 +84,6 @@
   cloudflaredIngressSmoke = pkgs.writeScriptBin "kosmos-cloudflared-ingress-smoke" (builtins.readFile ../../scripts/cloudflared-ingress-smoke);
   devopsGateStatus = pkgs.writeScriptBin "kosmos-devops-gate-status" (builtins.readFile ../../scripts/devops-gate-status);
   devopsSmoke = pkgs.writeScriptBin "kosmos-wsl-devops-smoke" (builtins.readFile ../../scripts/wsl-devops-smoke);
-  forgejoHttpsGitSmoke = pkgs.writeScriptBin "kosmos-forgejo-https-git-smoke" (builtins.readFile ../../scripts/forgejo-https-git-smoke);
   forgejoK8sPullSecretSmoke = pkgs.writeScriptBin "kosmos-forgejo-k8s-pull-secret-smoke" (builtins.readFile ../../scripts/forgejo-k8s-pull-secret-smoke);
 in {
   wsl = {
@@ -105,8 +104,6 @@ in {
       cloudflaredIngressSmoke
       devopsGateStatus
       devopsSmoke
-      forgejo
-      forgejoHttpsGitSmoke
       forgejoK8sPullSecretSmoke
       proxyEnv
       rsync
