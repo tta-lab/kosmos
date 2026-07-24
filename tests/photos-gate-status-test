@@ -16,11 +16,27 @@ EOF
 cat >"$test_root/bin/curl" <<'EOF'
 #!@bash@
 url="${!#}"
+args="$*"
+header_file=""
+while [[ $# -gt 0 ]]; do
+  if [[ "$1" == "--dump-header" ]]; then
+    header_file="$2"
+    shift 2
+  else
+    shift
+  fi
+done
 printf '%s\n' "$url" >>"$TEST_CURL_LOG"
 if [[ "$url" == "http://ente-storage.localhost:17480/b2-eu-cen/cors-probe" ]]; then
-  if [[ "$*" == *"--request OPTIONS"* \
-    && "$*" == *"Origin: http://localhost"* \
-    && "$*" == *"Access-Control-Request-Method: GET"* ]]; then
+  if [[ "$args" == *"--request OPTIONS"* \
+    && "$args" == *"Origin: http://localhost"* \
+    && "$args" == *"Access-Control-Request-Method: GET"* ]]; then
+    if [[ -n "$header_file" ]]; then
+      printf 'HTTP/1.1 %s Test\r\nAccess-Control-Allow-Origin: %s\r\nAccess-Control-Allow-Methods: %s\r\n\r\n' \
+        "$TEST_CORS_HTTP_STATUS" \
+        "$TEST_CORS_ALLOW_ORIGIN" \
+        "$TEST_CORS_ALLOW_METHODS" >"$header_file"
+    fi
     printf '%s' "$TEST_CORS_HTTP_STATUS"
   else
     printf '400'
@@ -70,6 +86,8 @@ export TEST_SYNC_ACTIVE="yes"
 export TEST_MUSEUM_HTTP_STATUS="200"
 export TEST_STORAGE_HTTP_STATUS="403"
 export TEST_CORS_HTTP_STATUS="200"
+export TEST_CORS_ALLOW_ORIGIN="*"
+export TEST_CORS_ALLOW_METHODS="GET, PUT, POST, DELETE"
 export TEST_BUCKET_PRESENT="yes"
 export TEST_NOT_READY=""
 
@@ -126,6 +144,22 @@ fi
 grep -q '^fail: Garage S3 endpoint accepts browser CORS preflight$' "$test_root/cors-output"
 
 export TEST_CORS_HTTP_STATUS="200"
+export TEST_CORS_ALLOW_ORIGIN=""
+if bash scripts/photos-gate-status --strict >"$test_root/cors-origin-output" 2>&1; then
+  echo "photos-gate-status accepted a CORS preflight without an allowed origin" >&2
+  exit 1
+fi
+grep -q '^fail: Garage S3 endpoint accepts browser CORS preflight$' "$test_root/cors-origin-output"
+
+export TEST_CORS_ALLOW_ORIGIN="*"
+export TEST_CORS_ALLOW_METHODS="PUT, POST, DELETE"
+if bash scripts/photos-gate-status --strict >"$test_root/cors-method-output" 2>&1; then
+  echo "photos-gate-status accepted a CORS preflight that does not allow GET" >&2
+  exit 1
+fi
+grep -q '^fail: Garage S3 endpoint accepts browser CORS preflight$' "$test_root/cors-method-output"
+
+export TEST_CORS_ALLOW_METHODS="GET, PUT, POST, DELETE"
 export TEST_BUCKET_PRESENT="no"
 if bash scripts/photos-gate-status --strict >"$test_root/bucket-output" 2>&1; then
   echo "photos-gate-status accepted a missing Garage bucket" >&2
