@@ -1,32 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-failures=0
-
-check() {
-  local name="$1"
-  shift
-
-  if "$@"; then
-    printf 'ok: %s\n' "$name"
-  else
-    printf 'fail: %s\n' "$name" >&2
-    failures=$((failures + 1))
-  fi
-}
-
-systemd_is_active() {
-  systemctl is-active --quiet "$1"
-}
-
-http_ok() {
-  curl --fail --silent --show-error --head "$1" >/dev/null
-}
-
-check "K3s service active" systemd_is_active k3s.service
-check "Forgejo endpoint responds (K3s)" http_ok http://forgejo.localhost:17480/api/healthz
-
-if [[ "$failures" -gt 0 ]]; then
-  printf '%s smoke check(s) failed\n' "$failures" >&2
+if ! command -v kosmos-devops-gate-status >/dev/null 2>&1; then
+  echo "missing required command: kosmos-devops-gate-status" >&2
   exit 1
 fi
+
+exec kosmos-devops-gate-status --strict

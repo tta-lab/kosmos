@@ -66,6 +66,7 @@
             ${./tests/tmux-copy-mode-test} \
             ${./tests/devops-gate-status-test} \
             ${./tests/sync-woodpecker-secret-test} \
+            ${./tests/wsl-devops-smoke-test} \
             ${./tests/orga-cli-service-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
           KOSMOS_REPO_ROOT=${./.} ${pkgs.python3}/bin/python3 ${./tests/test_sync_projects_auth.py}
@@ -75,6 +76,7 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-copy-mode-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/devops-gate-status-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-woodpecker-secret-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/wsl-devops-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
           touch $out
         '';

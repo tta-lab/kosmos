@@ -105,6 +105,7 @@ copy data back to the removed legacy services.
 
 ```bash
 just status
+kosmos-devops-gate-status --strict
 just kepos-status
 curl --fail http://forgejo.localhost:17480/api/healthz
 curl --fail http://woodpecker.localhost:17480/healthz

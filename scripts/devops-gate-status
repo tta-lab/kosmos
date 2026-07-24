@@ -71,7 +71,7 @@ http_status_ok() {
 
   status="$(curl --silent --output /dev/null --write-out '%{http_code}' "$url" || true)"
   case "$status" in
-    200|401)
+    200|204)
       return 0
       ;;
     *)
@@ -79,6 +79,22 @@ http_status_ok() {
       return 1
       ;;
   esac
+}
+
+replica_workload_ready() {
+  local resource="$1"
+  local jsonpath="$2"
+  local counts
+  local ready
+  local desired
+
+  counts="$("${kubectl_local[@]}" get "$resource" -n devops -o "jsonpath=${jsonpath}" 2>/dev/null || true)"
+  read -r ready desired <<<"$counts"
+
+  [[ "$ready" =~ ^[0-9]+$ ]] \
+    && [[ "$desired" =~ ^[0-9]+$ ]] \
+    && [[ "$desired" -gt 0 ]] \
+    && [[ "$ready" -eq "$desired" ]]
 }
 
 printf 'WSL DevOps Box gate status\n'
@@ -123,6 +139,36 @@ if have_command kubectl; then
   fi
 else
   wait "kubectl unavailable; skipped Woodpecker secret check"
+fi
+
+if have_command kubectl; then
+  if replica_workload_ready deployment/woodpecker '{.status.readyReplicas} {.spec.replicas}'; then
+    ok "Woodpecker server workload ready"
+  else
+    fail "Woodpecker server workload ready"
+  fi
+
+  if replica_workload_ready statefulset/woodpecker-agent '{.status.readyReplicas} {.spec.replicas}'; then
+    ok "Woodpecker agent workload ready"
+  else
+    fail "Woodpecker agent workload ready"
+  fi
+
+  if replica_workload_ready daemonset/dagger '{.status.numberReady} {.status.desiredNumberScheduled}'; then
+    ok "Dagger workload ready"
+  else
+    fail "Dagger workload ready"
+  fi
+else
+  wait "kubectl unavailable; skipped Woodpecker server readiness check"
+  wait "kubectl unavailable; skipped Woodpecker agent readiness check"
+  wait "kubectl unavailable; skipped Dagger readiness check"
+fi
+
+if http_status_ok http://woodpecker.localhost:17480/healthz; then
+  ok "Woodpecker endpoint responds (K3s)"
+else
+  fail "Woodpecker endpoint responds (K3s)"
 fi
 
 printf 'summary: %s failed, %s pending\n' "$failures" "$pending"
