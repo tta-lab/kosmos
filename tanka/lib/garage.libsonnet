@@ -2,6 +2,10 @@ local labels = {
   'app.kubernetes.io/name': 'garage',
   'app.kubernetes.io/part-of': 'kosmos-photos',
 };
+local corsLabels = {
+  'app.kubernetes.io/name': 'garage-cors',
+  'app.kubernetes.io/part-of': 'kosmos-photos',
+};
 
 {
   garageConfig: {
@@ -115,6 +119,78 @@ local labels = {
         { name: 's3', port: 3900, targetPort: 's3' },
         { name: 'rpc', port: 3901, targetPort: 'rpc' },
       ],
+    },
+  },
+  garageCorsConfig: {
+    apiVersion: 'v1',
+    kind: 'ConfigMap',
+    metadata: {
+      name: 'garage-cors-v1',
+      namespace: 'photos',
+      labels: corsLabels,
+    },
+    data: {
+      'cors.json': |||
+        {
+          "CORSRules": [{
+            "AllowedHeaders": ["*"],
+            "AllowedMethods": ["GET", "PUT", "POST", "DELETE"],
+            "AllowedOrigins": ["*"],
+            "ExposeHeaders": ["ETag"]
+          }]
+        }
+      |||,
+    },
+  },
+  garageCorsJob: {
+    apiVersion: 'batch/v1',
+    kind: 'Job',
+    metadata: {
+      name: 'garage-cors-v1',
+      namespace: 'photos',
+      labels: corsLabels,
+    },
+    spec: {
+      activeDeadlineSeconds: 300,
+      backoffLimit: 6,
+      template: {
+        metadata: { labels: corsLabels },
+        spec: {
+          restartPolicy: 'OnFailure',
+          containers: [{
+            name: 'apply',
+            image: 'amazon/aws-cli:2.36.7@sha256:5b76c069e37cfa091ec6398dc683c09e0c9ef8ae2e557b0a36d931df34011227',
+            command: ['/bin/sh', '-ec'],
+            args: [|||
+              until aws --endpoint-url http://garage:3900 s3api head-bucket --bucket b2-eu-cen >/dev/null 2>&1; do
+                sleep 2
+              done
+              aws --endpoint-url http://garage:3900 s3api put-bucket-cors \
+                --bucket b2-eu-cen \
+                --cors-configuration file:///config/cors.json
+            |||],
+            env: [
+              {
+                name: 'AWS_ACCESS_KEY_ID',
+                valueFrom: { secretKeyRef: { name: 'ente-stack-env', key: 'GARAGE_ACCESS_KEY' } },
+              },
+              {
+                name: 'AWS_SECRET_ACCESS_KEY',
+                valueFrom: { secretKeyRef: { name: 'ente-stack-env', key: 'GARAGE_SECRET_KEY' } },
+              },
+              { name: 'AWS_DEFAULT_REGION', value: 'garage' },
+              { name: 'AWS_EC2_METADATA_DISABLED', value: 'true' },
+              { name: 'AWS_PAGER', value: '' },
+            ],
+            resources: {
+              requests: { cpu: '10m', memory: '32Mi' },
+              limits: { cpu: '250m', memory: '256Mi' },
+            },
+            volumeMounts: [{ name: 'config', mountPath: '/config', readOnly: true }],
+          }],
+          volumes: [{ name: 'config', configMap: { name: 'garage-cors-v1' } }],
+        },
+      },
     },
   },
 }
