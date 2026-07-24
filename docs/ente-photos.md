@@ -72,7 +72,13 @@ gateway configuration in the `devops` environment.
 2. On Ente's onboarding screen, tap the lock image seven times.
 3. Set the custom server endpoint to `http://ente.localhost:17480`.
 4. Create the first account. Without SMTP, read only the one-time code from
-   `kubectl -n photos logs deployment/museum`; do not store the code in Git.
+   Museum's local-cluster logs; do not store the code in Git:
+
+   ```bash
+   KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
+     kubectl -n photos logs deployment/museum
+   ```
+
 5. Configure the official Ente CLI with API endpoint
    `http://ente.localhost:17480`, add the new account, and grant it the
    self-hosted storage allowance:
