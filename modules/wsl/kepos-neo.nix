@@ -31,6 +31,14 @@
           name = "Navidrome";
           targetPort = 4533;
         };
+        ente = {
+          name = "Ente Photos";
+          targetPort = 17480;
+        };
+        ente-storage = {
+          name = "Ente Storage";
+          targetPort = 17480;
+        };
         ssh = {
           name = "SSH";
           targetPort = 22;

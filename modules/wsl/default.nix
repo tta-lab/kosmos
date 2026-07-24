@@ -91,6 +91,7 @@
   };
   devopsGateStatus = pkgs.writeScriptBin "kosmos-devops-gate-status" (builtins.readFile ../../scripts/devops-gate-status);
   devopsSmoke = pkgs.writeScriptBin "kosmos-wsl-devops-smoke" (builtins.readFile ../../scripts/wsl-devops-smoke);
+  photosGateStatus = pkgs.writeScriptBin "kosmos-photos-gate-status" (builtins.readFile ../../scripts/photos-gate-status);
 in {
   wsl = {
     enable = true;
@@ -110,6 +111,7 @@ in {
       daggerCli
       devopsGateStatus
       devopsSmoke
+      photosGateStatus
       proxyEnv
       rsync
     ];

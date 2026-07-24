@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+local_kubeconfig="/etc/rancher/k3s/k3s.yaml"
+local_api_server="https://127.0.0.1:26443"
+kubectl_local=(kubectl --kubeconfig "$local_kubeconfig")
+
+usage() {
+  cat <<'EOF'
+usage: photos-gate-status [--strict]
+
+Report the local WSL Ente Photos stack gates without reading secret plaintext.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --strict)
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+failures=0
+
+ok() {
+  printf 'ok: %s\n' "$1"
+}
+
+fail() {
+  printf 'fail: %s\n' "$1" >&2
+  failures=$((failures + 1))
+}
+
+http_status_is() {
+  local url="$1"
+  local expected="$2"
+  local status
+
+  status="$(curl --silent --output /dev/null --write-out '%{http_code}' "$url" || true)"
+  if [[ "$status" == "$expected" ]]; then
+    return 0
+  fi
+
+  printf 'unexpected status for %s: got %s, expected %s\n' "$url" "$status" "$expected" >&2
+  return 1
+}
+
+replica_workload_ready() {
+  local resource="$1"
+  local counts
+  local ready
+  local desired
+
+  counts="$("${kubectl_local[@]}" get "$resource" -n photos -o 'jsonpath={.status.readyReplicas} {.spec.replicas}' 2>/dev/null || true)"
+  read -r ready desired <<<"$counts"
+
+  [[ "$ready" =~ ^[0-9]+$ ]] \
+    && [[ "$desired" =~ ^[0-9]+$ ]] \
+    && [[ "$desired" -eq 1 ]] \
+    && [[ "$ready" -eq "$desired" ]]
+}
+
+actual_api_server="$("${kubectl_local[@]}" config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || true)"
+if [[ "$actual_api_server" != "$local_api_server" ]]; then
+  printf 'refusing non-local cluster: %s\n' "${actual_api_server:-unknown}" >&2
+  exit 1
+fi
+
+printf 'WSL Ente Photos gate status\n'
+
+if systemctl is-active --quiet ente-secret-sync.service; then
+  ok "Ente Secret sync service active"
+else
+  fail "Ente Secret sync service active"
+fi
+
+if replica_workload_ready deployment/museum; then
+  ok "Museum workload ready"
+else
+  fail "Museum workload ready"
+fi
+
+if replica_workload_ready statefulset/postgres; then
+  ok "PostgreSQL workload ready"
+else
+  fail "PostgreSQL workload ready"
+fi
+
+if replica_workload_ready statefulset/garage; then
+  ok "Garage workload ready"
+else
+  fail "Garage workload ready"
+fi
+
+if http_status_is http://ente.localhost:17480/ping 200; then
+  ok "Museum endpoint responds through canonical gateway"
+else
+  fail "Museum endpoint responds through canonical gateway"
+fi
+
+if http_status_is http://ente-storage.localhost:17480/ 403; then
+  ok "Garage S3 endpoint responds through canonical gateway"
+else
+  fail "Garage S3 endpoint responds through canonical gateway"
+fi
+
+if "${kubectl_local[@]}" exec -n photos garage-0 -- /garage bucket info b2-eu-cen >/dev/null 2>&1; then
+  ok "Garage bucket b2-eu-cen exists"
+else
+  fail "Garage bucket b2-eu-cen exists"
+fi
+
+printf 'Garage storage filesystem:\n'
+df -h /var/lib/kosmos-k3s
+
+printf 'summary: %s failed\n' "$failures"
+
+if [[ "$failures" -gt 0 ]]; then
+  exit 1
+fi
