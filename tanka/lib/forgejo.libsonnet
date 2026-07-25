@@ -23,6 +23,7 @@ local forgejoEnv = [
   { name: 'FORGEJO__service__REQUIRE_SIGNIN_VIEW', value: 'true' },
   { name: 'FORGEJO__session__COOKIE_SECURE', value: 'false' },
   { name: 'FORGEJO__actions__ENABLED', value: 'false' },
+  { name: 'FORGEJO__webhook__ALLOWED_HOST_LIST', value: 'external,woodpecker' },
 ];
 local dataMount = [{ name: 'data', mountPath: '/var/lib/gitea' }];
 
