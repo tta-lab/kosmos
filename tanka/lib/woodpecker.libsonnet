@@ -42,7 +42,10 @@ local agentLabels = labels('woodpecker-agent');
               { name: 'WOODPECKER_EXPERT_WEBHOOK_HOST', value: 'http://woodpecker:8000' },
               { name: 'WOODPECKER_OPEN', value: 'false' },
               { name: 'WOODPECKER_ADMIN', value: 'neil' },
-              { name: 'WOODPECKER_ENVIRONMENT', value: '_EXPERIMENTAL_DAGGER_RUNNER_HOST:tcp://dagger:8080' },
+              {
+                name: 'WOODPECKER_ENVIRONMENT',
+                value: '_EXPERIMENTAL_DAGGER_RUNNER_HOST:tcp://dagger:8080,GIT_CONFIG_COUNT:1,GIT_CONFIG_KEY_0:http.http://forgejo.localhost:17480.proxy,GIT_CONFIG_VALUE_0:http://canonical-gateway.devops.svc.cluster.local:17480',
+              },
             ],
             ports: [
               { name: 'http', containerPort: 8000 },
