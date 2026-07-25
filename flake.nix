@@ -17,7 +17,7 @@
     fenix.url = "github:nix-community/fenix";
     fenix.inputs.nixpkgs.follows = "nixpkgs";
     kepos-neo = {
-      url = "github:tta-lab/kepos-neo/b4c6f5cafa1877a082d0dfead83dfb32c14e024f";
+      url = "github:tta-lab/kepos-neo/145f4b5e501257a3618716c32a9ff95c7b3be5d0";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
