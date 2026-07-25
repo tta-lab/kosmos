@@ -154,17 +154,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1784802915,
-        "narHash": "sha256-aG5fM8lHYQqy+UgRE+Y+vHasok2O/dI4U05tiH9lhdo=",
+        "lastModified": 1784971847,
+        "narHash": "sha256-cXvqK8JB49a2YA+88gaJVo1i7p3ZYOQDO8h90PVGjpY=",
         "owner": "tta-lab",
         "repo": "kepos-neo",
-        "rev": "b4c6f5cafa1877a082d0dfead83dfb32c14e024f",
+        "rev": "145f4b5e501257a3618716c32a9ff95c7b3be5d0",
         "type": "github"
       },
       "original": {
         "owner": "tta-lab",
         "repo": "kepos-neo",
-        "rev": "b4c6f5cafa1877a082d0dfead83dfb32c14e024f",
+        "rev": "145f4b5e501257a3618716c32a9ff95c7b3be5d0",
         "type": "github"
       }
     },
