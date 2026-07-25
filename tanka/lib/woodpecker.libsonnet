@@ -142,6 +142,7 @@ local agentLabels = labels('woodpecker-agent');
               { name: 'WOODPECKER_BACKEND', value: 'kubernetes' },
               { name: 'WOODPECKER_BACKEND_K8S_NAMESPACE', value: 'devops' },
               { name: 'WOODPECKER_BACKEND_K8S_STORAGE_CLASS', value: 'local-path' },
+              { name: 'WOODPECKER_BACKEND_K8S_STORAGE_RWX', value: 'false' },
               { name: 'WOODPECKER_BACKEND_K8S_VOLUME_SIZE', value: '10Gi' },
               { name: 'WOODPECKER_CONNECT_RETRY_COUNT', value: '1' },
               { name: 'WOODPECKER_HEALTHCHECK_ADDR', value: ':3000' },
