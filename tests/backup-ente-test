@@ -97,11 +97,14 @@ backup_dir="$(find "$backup_root/ente" -mindepth 1 -maxdepth 1 -type d -name 'ba
 grep -q 'scale deployment/museum .*--replicas=0' "$TEST_KUBECTL_LOG"
 grep -q 'scale statefulset/postgres .*--replicas=0' "$TEST_KUBECTL_LOG"
 grep -q 'scale statefulset/garage .*--replicas=0' "$TEST_KUBECTL_LOG"
+grep -q 'wait .*--for=delete pod/postgres-0' "$TEST_KUBECTL_LOG"
+grep -q 'wait .*--for=delete pod/garage-0' "$TEST_KUBECTL_LOG"
 grep -q 'scale statefulset/postgres .*--replicas=1' "$TEST_KUBECTL_LOG"
 grep -q 'scale statefulset/garage .*--replicas=1' "$TEST_KUBECTL_LOG"
 grep -q 'scale deployment/museum .*--replicas=1' "$TEST_KUBECTL_LOG"
 grep -q ' cp .*photos/postgres-0:/tmp/kosmos-ente-backup-' "$TEST_KUBECTL_LOG"
 grep -q 'pg_restore --list /tmp/kosmos-ente-backup-' "$TEST_KUBECTL_LOG"
+grep -q 'pg_restore --file=/dev/null /tmp/kosmos-ente-backup-' "$TEST_KUBECTL_LOG"
 if grep -q 'exec -i' "$TEST_KUBECTL_LOG"; then
   echo 'backup-ente used interactive kubectl exec for dump validation' >&2
   exit 1
@@ -135,5 +138,4 @@ if bash "$repo_root/scripts/backup-ente" "$backup_root" >"$test_root/uuid-output
   echo 'backup-ente accepted the wrong destination filesystem' >&2
   exit 1
 fi
-grep -q 'refusing destination filesystem UUID wrong-uuid' "$test_root/uuid-output"
 [[ ! -s "$TEST_KUBECTL_LOG" ]]

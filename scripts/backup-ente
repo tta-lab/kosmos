@@ -51,6 +51,16 @@ get_replicas() {
   "${kubectl_local[@]}" get "$resource" --namespace "$namespace" -o jsonpath='{.spec.replicas}'
 }
 
+wait_for_pod_deleted() {
+  local pod_name="$1"
+  if ! "${kubectl_local[@]}" wait --namespace "$namespace" \
+    --for=delete "pod/$pod_name" --timeout=180s; then
+    if "${kubectl_local[@]}" get "pod/$pod_name" --namespace "$namespace" >/dev/null 2>&1; then
+      return 1
+    fi
+  fi
+}
+
 museum_replicas="$(get_replicas deployment/museum)"
 postgres_replicas="$(get_replicas statefulset/postgres)"
 garage_replicas="$(get_replicas statefulset/garage)"
@@ -156,15 +166,17 @@ validation_path="/tmp/kosmos-ente-backup-$timestamp.dump"
 "${kubectl_local[@]}" exec statefulset/postgres --namespace "$namespace" -- \
   pg_restore --list "$validation_path" \
   >"$partial_dir/postgres/ente_db.dump.list"
+"${kubectl_local[@]}" exec statefulset/postgres --namespace "$namespace" -- \
+  pg_restore --file=/dev/null "$validation_path"
 remove_validation_copy
 
 postgres_scaled=true
 "${kubectl_local[@]}" scale statefulset/postgres --namespace "$namespace" --replicas=0
-"${kubectl_local[@]}" rollout status statefulset/postgres --namespace "$namespace" --timeout=180s
+wait_for_pod_deleted postgres-0
 
 garage_scaled=true
 "${kubectl_local[@]}" scale statefulset/garage --namespace "$namespace" --replicas=0
-"${kubectl_local[@]}" rollout status statefulset/garage --namespace "$namespace" --timeout=180s
+wait_for_pod_deleted garage-0
 
 rsync -aHAX --numeric-ids --info=stats2 \
   "$data_root/postgres/" "$partial_dir/postgres-physical/"
