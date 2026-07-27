@@ -16,10 +16,10 @@ local labels = {
       'engine.json': |||
         {
           "gc": {
-            "maxUsedSpace": "80%",
-            "minFreeSpace": "20GB",
-            "reservedSpace": "10GB",
-            "sweepSize": "10GB"
+            "maxUsedSpace": "200GB",
+            "minFreeSpace": "100GB",
+            "reservedSpace": "20GB",
+            "sweepSize": "20GB"
           },
           "registries": {
             "docker.io": {
