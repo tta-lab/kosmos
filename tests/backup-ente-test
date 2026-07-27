@@ -39,6 +39,11 @@ elif [[ "$*" == *" get statefulset/postgres "* && "$*" == *"image}"* ]]; then
   printf 'postgres:test'
 elif [[ "$*" == *" get statefulset/garage "* && "$*" == *"image}"* ]]; then
   printf 'garage:test'
+elif [[ "$*" == *" get pods "* && "$*" == *" --selector "* ]]; then
+  if [[ -n "$TEST_FAIL_POD_QUERY" && "$*" == *"app.kubernetes.io/name=$TEST_FAIL_POD_QUERY"* ]]; then
+    exit 1
+  fi
+  exit 0
 elif [[ "$*" == *" exec statefulset/postgres "* && "$*" == *" -- pg_dump "* ]]; then
   printf 'test-postgres-dump'
 elif [[ "$*" == *" exec -i statefulset/postgres "* ]]; then
@@ -68,6 +73,11 @@ mkdir -p "$destination"
 printf 'cold-data\n' >"$destination/data"
 EOF
 
+cat >"$test_root/bin/hostname" <<'EOF'
+#!@bash@
+printf 'test-host\n'
+EOF
+
 sed -i "s|@bash@|$BASH|" "$test_root/bin/"*
 chmod +x "$test_root/bin/"*
 
@@ -80,6 +90,7 @@ export TEST_DESTINATION_MOUNT="$test_root/destination"
 export TEST_KUBE_SERVER="https://127.0.0.1:26443"
 export TEST_RSYNC_FAIL="no"
 export TEST_FAIL_SCALE_DOWN="no"
+export TEST_FAIL_POD_QUERY=""
 export KOSMOS_ENTE_DATA_ROOT="$test_root/source"
 
 backup_root="$test_root/destination/kosmos-backup-20260727"
@@ -97,8 +108,12 @@ backup_dir="$(find "$backup_root/ente" -mindepth 1 -maxdepth 1 -type d -name 'ba
 grep -q 'scale deployment/museum .*--replicas=0' "$TEST_KUBECTL_LOG"
 grep -q 'scale statefulset/postgres .*--replicas=0' "$TEST_KUBECTL_LOG"
 grep -q 'scale statefulset/garage .*--replicas=0' "$TEST_KUBECTL_LOG"
-grep -q 'wait .*--for=delete pod/postgres-0' "$TEST_KUBECTL_LOG"
-grep -q 'wait .*--for=delete pod/garage-0' "$TEST_KUBECTL_LOG"
+grep -q 'get pods .*--selector app.kubernetes.io/name=museum' "$TEST_KUBECTL_LOG"
+grep -q 'get pods .*--selector app.kubernetes.io/name=postgres' "$TEST_KUBECTL_LOG"
+grep -q 'get pods .*--selector app.kubernetes.io/name=garage' "$TEST_KUBECTL_LOG"
+museum_deleted_line="$(grep -n 'get pods .*--selector app.kubernetes.io/name=museum' "$TEST_KUBECTL_LOG" | head -n 1 | cut -d: -f1)"
+dump_line="$(grep -n 'pg_dump' "$TEST_KUBECTL_LOG" | head -n 1 | cut -d: -f1)"
+[[ "$museum_deleted_line" -lt "$dump_line" ]]
 grep -q 'scale statefulset/postgres .*--replicas=1' "$TEST_KUBECTL_LOG"
 grep -q 'scale statefulset/garage .*--replicas=1' "$TEST_KUBECTL_LOG"
 grep -q 'scale deployment/museum .*--replicas=1' "$TEST_KUBECTL_LOG"
@@ -123,6 +138,19 @@ grep -q 'scale statefulset/garage .*--replicas=1' "$TEST_KUBECTL_LOG"
 grep -q 'scale deployment/museum .*--replicas=1' "$TEST_KUBECTL_LOG"
 
 : >"$TEST_KUBECTL_LOG"
+: >"$TEST_RSYNC_LOG"
+export TEST_RSYNC_FAIL="no"
+export TEST_FAIL_POD_QUERY="postgres"
+if bash "$repo_root/scripts/backup-ente" "$backup_root" >"$test_root/pod-query-output" 2>&1; then
+  echo 'backup-ente ignored a failed pod query' >&2
+  exit 1
+fi
+[[ ! -s "$TEST_RSYNC_LOG" ]]
+grep -q 'scale statefulset/postgres .*--replicas=1' "$TEST_KUBECTL_LOG"
+grep -q 'scale deployment/museum .*--replicas=1' "$TEST_KUBECTL_LOG"
+
+: >"$TEST_KUBECTL_LOG"
+export TEST_FAIL_POD_QUERY=""
 export TEST_RSYNC_FAIL="no"
 export TEST_FAIL_SCALE_DOWN="yes"
 if bash "$repo_root/scripts/backup-ente" "$backup_root" >"$test_root/scale-output" 2>&1; then

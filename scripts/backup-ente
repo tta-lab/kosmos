@@ -51,14 +51,23 @@ get_replicas() {
   "${kubectl_local[@]}" get "$resource" --namespace "$namespace" -o jsonpath='{.spec.replicas}'
 }
 
-wait_for_pod_deleted() {
-  local pod_name="$1"
-  if ! "${kubectl_local[@]}" wait --namespace "$namespace" \
-    --for=delete "pod/$pod_name" --timeout=180s; then
-    if "${kubectl_local[@]}" get "pod/$pod_name" --namespace "$namespace" >/dev/null 2>&1; then
+wait_for_pods_deleted() {
+  local selector="$1"
+  local deadline=$((SECONDS + 180))
+  local pods
+
+  while true; do
+    if ! pods="$("${kubectl_local[@]}" get pods --namespace "$namespace" \
+      --selector "$selector" -o name)"; then
       return 1
     fi
-  fi
+    [[ -z "$pods" ]] && return 0
+    if ((SECONDS >= deadline)); then
+      echo "timed out waiting for pods matching $selector to terminate" >&2
+      return 1
+    fi
+    sleep 2
+  done
 }
 
 museum_replicas="$(get_replicas deployment/museum)"
@@ -154,7 +163,7 @@ garage_image="$("${kubectl_local[@]}" get statefulset/garage --namespace "$names
 if [[ "$museum_replicas" -gt 0 ]]; then
   museum_scaled=true
   "${kubectl_local[@]}" scale deployment/museum --namespace "$namespace" --replicas=0
-  "${kubectl_local[@]}" rollout status deployment/museum --namespace "$namespace" --timeout=180s
+  wait_for_pods_deleted app.kubernetes.io/name=museum
 fi
 
 "${kubectl_local[@]}" exec statefulset/postgres --namespace "$namespace" -- \
@@ -172,11 +181,11 @@ remove_validation_copy
 
 postgres_scaled=true
 "${kubectl_local[@]}" scale statefulset/postgres --namespace "$namespace" --replicas=0
-wait_for_pod_deleted postgres-0
+wait_for_pods_deleted app.kubernetes.io/name=postgres
 
 garage_scaled=true
 "${kubectl_local[@]}" scale statefulset/garage --namespace "$namespace" --replicas=0
-wait_for_pod_deleted garage-0
+wait_for_pods_deleted app.kubernetes.io/name=garage
 
 rsync -aHAX --numeric-ids --info=stats2 \
   "$data_root/postgres/" "$partial_dir/postgres-physical/"
