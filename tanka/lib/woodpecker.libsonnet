@@ -141,6 +141,22 @@ local agentLabels = labels('woodpecker-agent');
         metadata: { labels: agentLabels },
         spec: {
           serviceAccountName: 'woodpecker-agent',
+          initContainers: [{
+            name: 'wait-for-server',
+            image: 'busybox:1.37.0',
+            command: ['sh', '-c', 'until nc -z -w 2 woodpecker 9000; do sleep 2; done'],
+            securityContext: {
+              allowPrivilegeEscalation: false,
+              capabilities: { drop: ['ALL'] },
+              readOnlyRootFilesystem: true,
+              runAsNonRoot: true,
+              runAsUser: 65534,
+            },
+            resources: {
+              requests: { cpu: '1m', memory: '1Mi' },
+              limits: { cpu: '10m', memory: '8Mi' },
+            },
+          }],
           containers: [{
             name: 'agent',
             image: 'woodpeckerci/woodpecker-agent:v3.16.0',
