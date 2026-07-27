@@ -28,7 +28,7 @@ printf '%s\n' "$*" >>"$TEST_KUBECTL_LOG"
 if [[ "$*" == *" config view "* ]]; then
   printf '%s' "$TEST_KUBE_SERVER"
 elif [[ "$*" == *" get deployment/museum "* && "$*" == *".spec.replicas"* ]]; then
-  printf '1'
+  printf '%s' "$TEST_MUSEUM_REPLICAS"
 elif [[ "$*" == *" get statefulset/postgres "* && "$*" == *".spec.replicas"* ]]; then
   printf '1'
 elif [[ "$*" == *" get statefulset/garage "* && "$*" == *".spec.replicas"* ]]; then
@@ -91,6 +91,7 @@ export TEST_KUBE_SERVER="https://127.0.0.1:26443"
 export TEST_RSYNC_FAIL="no"
 export TEST_FAIL_SCALE_DOWN="no"
 export TEST_FAIL_POD_QUERY=""
+export TEST_MUSEUM_REPLICAS="1"
 export KOSMOS_ENTE_DATA_ROOT="$test_root/source"
 
 backup_root="$test_root/destination/kosmos-backup-20260727"
@@ -128,6 +129,17 @@ grep -q "$test_root/source/postgres/" "$TEST_RSYNC_LOG"
 grep -q "$test_root/source/garage/" "$TEST_RSYNC_LOG"
 
 : >"$TEST_KUBECTL_LOG"
+: >"$TEST_RSYNC_LOG"
+export TEST_MUSEUM_REPLICAS="0"
+bash "$repo_root/scripts/backup-ente" "$backup_root" >"$test_root/museum-zero-output"
+grep -q 'get pods .*--selector app.kubernetes.io/name=museum' "$TEST_KUBECTL_LOG"
+if grep -q 'scale deployment/museum' "$TEST_KUBECTL_LOG"; then
+  echo 'backup-ente changed an already-stopped Museum deployment' >&2
+  exit 1
+fi
+
+: >"$TEST_KUBECTL_LOG"
+export TEST_MUSEUM_REPLICAS="1"
 export TEST_RSYNC_FAIL="yes"
 if bash "$repo_root/scripts/backup-ente" "$backup_root" >"$test_root/failure-output" 2>&1; then
   echo 'backup-ente ignored an rsync failure' >&2

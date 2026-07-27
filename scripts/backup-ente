@@ -163,8 +163,8 @@ garage_image="$("${kubectl_local[@]}" get statefulset/garage --namespace "$names
 if [[ "$museum_replicas" -gt 0 ]]; then
   museum_scaled=true
   "${kubectl_local[@]}" scale deployment/museum --namespace "$namespace" --replicas=0
-  wait_for_pods_deleted app.kubernetes.io/name=museum
 fi
+wait_for_pods_deleted app.kubernetes.io/name=museum
 
 "${kubectl_local[@]}" exec statefulset/postgres --namespace "$namespace" -- \
   pg_dump -U ente -d ente_db --format=custom --create --no-owner --no-privileges \
