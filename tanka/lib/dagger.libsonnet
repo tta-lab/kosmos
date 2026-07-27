@@ -16,10 +16,10 @@ local labels = {
       'engine.json': |||
         {
           "gc": {
-            "maxUsedSpace": "80%",
-            "minFreeSpace": "20GB",
-            "reservedSpace": "10GB",
-            "sweepSize": "10GB"
+            "maxUsedSpace": "200GB",
+            "minFreeSpace": "100GB",
+            "reservedSpace": "20GB",
+            "sweepSize": "20GB"
           },
           "registries": {
             "docker.io": {
@@ -63,9 +63,16 @@ local labels = {
               },
             ],
             args: [
-              '--network-name', 'dagger',
-              '--network-cidr', '10.89.0.0/16',
-              '--addr', 'tcp://0.0.0.0:8080',
+              '--network-name',
+              'dagger',
+              '--network-cidr',
+              '10.89.0.0/16',
+              '--oci-cni-pool-size',
+              '16',
+              '--oci-max-parallelism',
+              '4',
+              '--addr',
+              'tcp://0.0.0.0:8080',
             ],
             securityContext: { privileged: true },
             ports: [{
