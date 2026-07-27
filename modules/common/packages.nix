@@ -36,6 +36,18 @@
       "$@"
     '';
   };
+  enteBackup = pkgs.writeShellApplication {
+    name = "kosmos-backup-ente";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.findutils
+      pkgs.jq
+      pkgs.kubectl
+      pkgs.rsync
+      pkgs.util-linux
+    ];
+    text = builtins.readFile ../../scripts/backup-ente;
+  };
 in {
   environment.systemPackages = with pkgs; [
     # Shells and editors
@@ -107,6 +119,7 @@ in {
     pkgsUnstable.just
     syncProjects
     syncTtaLabProjects
+    enteBackup
     ttaLab.ttalTmuxProjectPicker
     ttaLab.flicknote
     ttaLab.taskwarrior

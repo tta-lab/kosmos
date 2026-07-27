@@ -139,6 +139,59 @@ Application state remains in:
 Both static PVs use `Retain`, but they are on the same WSL virtual disk and are
 not a backup. Stop the affected workload before restoring either directory.
 
+## Migration backup and restore
+
+The Ente recovery unit is the PostgreSQL database, the complete Garage data
+directory, and the existing `ente-stack-env` agenix secret. Photos cannot be
+reconnected from Garage object blocks alone because PostgreSQL holds the Ente
+account, album, object, and sharing records. Garage's `meta`, `snapshots`, and
+`data` directories must also stay together.
+
+For the 2026 bare-metal migration, mount the Micron ext4 filesystem with UUID
+`441ba8bb-d21b-40e4-a921-ef5553e07ff3` at
+`/mnt/kosmos-data-backup`. The backup command rejects any other filesystem so
+an unmounted directory on the WSL root disk cannot silently receive the copy:
+
+```bash
+sudo kosmos-backup-ente \
+  /mnt/kosmos-data-backup/kosmos-backup-20260727
+```
+
+The command performs one coordinated backup:
+
+1. Scale Museum to zero to stop application writes.
+2. Create and validate a custom-format PostgreSQL dump.
+3. Stop PostgreSQL and Garage, then copy both physical data directories with
+   numeric ownership, ACLs, and extended attributes intact.
+4. Restore PostgreSQL, Garage, and Museum to their original replica counts.
+5. Write `BACKUP-INFO.json` without Secret values, generate `SHA256SUMS`, and
+   verify every copied file before publishing the timestamped backup directory.
+
+A failed copy leaves a hidden `.backup-*.partial` directory for inspection and
+still attempts to restore all workloads. Do not treat a partial directory as a
+backup.
+
+For the first bare-metal restore, keep the image versions recorded in
+`BACKUP-INFO.json` and reuse the existing agenix secret. Before starting the
+Photos workloads, restore `garage/` and `postgres-physical/` to the host paths
+selected by the new PV definitions with:
+
+```bash
+sudo rsync -aHAX --numeric-ids BACKUP/garage/ GARAGE_HOST_PATH/
+sudo rsync -aHAX --numeric-ids BACKUP/postgres-physical/ POSTGRES_HOST_PATH/
+```
+
+The physical PostgreSQL copy is the shortest exact-version recovery path. The
+validated `postgres/ente_db.dump` is the portable fallback: start an empty
+PostgreSQL instance of a compatible version and feed the dump to `pg_restore`.
+Do not let Museum write to an empty database before the restore completes.
+
+After applying the Secret and Photos manifests, verify `just photos-status`,
+run `kosmos-photos-gate-status --strict`, open and download an existing photo
+from a client, upload a disposable new photo, restart all three workloads, and
+download both again. A successful pod rollout alone does not prove that the
+database and Garage object index match.
+
 Images are pinned by version and digest. Before upgrading Museum, PostgreSQL,
 or Garage, read upstream migration notes, render and review the Tanka diff, and
 make a separate rollback decision. Do not switch an image to `latest`.

@@ -55,6 +55,7 @@
         } ''
           shellcheck \
             ${./scripts/devops-gate-status} \
+            ${./scripts/backup-ente} \
             ${./scripts/photos-gate-status} \
             ${./scripts/forgejo-https-git-smoke} \
             ${./scripts/forgejo-k8s-pull-secret-smoke} \
@@ -66,6 +67,7 @@
             ${./tests/tmux-tmpdir-test} \
             ${./tests/tmux-copy-mode-test} \
             ${./tests/devops-gate-status-test} \
+            ${./tests/backup-ente-test} \
             ${./tests/photos-gate-status-test} \
             ${./tests/sync-woodpecker-secret-test} \
             ${./tests/sync-ente-secret-test} \
@@ -78,6 +80,7 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-tmpdir-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-copy-mode-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/devops-gate-status-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/backup-ente-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/photos-gate-status-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-woodpecker-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-ente-secret-test}

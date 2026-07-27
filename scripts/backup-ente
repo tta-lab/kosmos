@@ -1,0 +1,220 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+kubeconfig="/etc/rancher/k3s/k3s.yaml"
+namespace="photos"
+expected_destination_uuid="441ba8bb-d21b-40e4-a921-ef5553e07ff3"
+data_root="${KOSMOS_ENTE_DATA_ROOT:-/var/lib/kosmos-k3s/ente}"
+
+usage() {
+  echo "usage: backup-ente BACKUP_ROOT" >&2
+  exit 2
+}
+
+[[ $# -eq 1 ]] || usage
+backup_root="${1%/}"
+[[ -n "$backup_root" && "$backup_root" == /* ]] || {
+  echo "BACKUP_ROOT must be an absolute path" >&2
+  exit 2
+}
+
+mount_probe="$backup_root"
+while [[ ! -e "$mount_probe" ]]; do
+  parent="$(dirname "$mount_probe")"
+  [[ "$parent" != "$mount_probe" ]] || break
+  mount_probe="$parent"
+done
+
+destination_uuid="$(findmnt -n -o UUID --target "$mount_probe")"
+if [[ "$destination_uuid" != "$expected_destination_uuid" ]]; then
+  echo "refusing destination filesystem UUID $destination_uuid; expected $expected_destination_uuid" >&2
+  exit 1
+fi
+destination_mount="$(findmnt -n -o TARGET --target "$mount_probe")"
+
+kubectl_local=(kubectl --kubeconfig "$kubeconfig")
+api_server="$("${kubectl_local[@]}" config view --minify -o jsonpath='{.clusters[0].cluster.server}')"
+if [[ "$api_server" != "https://127.0.0.1:26443" ]]; then
+  echo "refusing non-local cluster: $api_server" >&2
+  exit 1
+fi
+
+for source_dir in "$data_root/postgres" "$data_root/garage"; do
+  [[ -d "$source_dir" ]] || {
+    echo "missing Ente data directory: $source_dir" >&2
+    exit 1
+  }
+done
+
+get_replicas() {
+  local resource="$1"
+  "${kubectl_local[@]}" get "$resource" --namespace "$namespace" -o jsonpath='{.spec.replicas}'
+}
+
+museum_replicas="$(get_replicas deployment/museum)"
+postgres_replicas="$(get_replicas statefulset/postgres)"
+garage_replicas="$(get_replicas statefulset/garage)"
+
+[[ "$museum_replicas" =~ ^[0-9]+$ ]] || {
+  echo "invalid Museum replica count: $museum_replicas" >&2
+  exit 1
+}
+[[ "$postgres_replicas" =~ ^[1-9][0-9]*$ ]] || {
+  echo "PostgreSQL must be running before backup" >&2
+  exit 1
+}
+[[ "$garage_replicas" =~ ^[1-9][0-9]*$ ]] || {
+  echo "Garage must be running before backup" >&2
+  exit 1
+}
+
+museum_scaled=false
+postgres_scaled=false
+garage_scaled=false
+validation_path=""
+
+remove_validation_copy() {
+  [[ -n "$validation_path" ]] || return 0
+  if ! "${kubectl_local[@]}" exec statefulset/postgres --namespace "$namespace" -- \
+    rm -f "$validation_path"; then
+    return 1
+  fi
+  validation_path=""
+}
+
+restore_workloads() {
+  local status=0
+
+  if [[ "$postgres_scaled" == true ]]; then
+    if ! "${kubectl_local[@]}" scale statefulset/postgres --namespace "$namespace" --replicas="$postgres_replicas"; then
+      status=1
+    elif ! "${kubectl_local[@]}" rollout status statefulset/postgres --namespace "$namespace" --timeout=180s; then
+      status=1
+    fi
+    postgres_scaled=false
+  fi
+
+  if [[ "$garage_scaled" == true ]]; then
+    if ! "${kubectl_local[@]}" scale statefulset/garage --namespace "$namespace" --replicas="$garage_replicas"; then
+      status=1
+    elif ! "${kubectl_local[@]}" rollout status statefulset/garage --namespace "$namespace" --timeout=180s; then
+      status=1
+    fi
+    garage_scaled=false
+  fi
+
+  if [[ "$museum_scaled" == true ]]; then
+    if ! "${kubectl_local[@]}" scale deployment/museum --namespace "$namespace" --replicas="$museum_replicas"; then
+      status=1
+    elif [[ "$museum_replicas" -gt 0 ]] \
+      && ! "${kubectl_local[@]}" rollout status deployment/museum --namespace "$namespace" --timeout=180s; then
+      status=1
+    fi
+    museum_scaled=false
+  fi
+
+  return "$status"
+}
+
+on_exit() {
+  local status=$?
+  trap - EXIT
+  if ! remove_validation_copy; then
+    echo "failed to remove temporary PostgreSQL dump copy" >&2
+    status=1
+  fi
+  if ! restore_workloads; then
+    echo "failed to restore one or more Ente workloads" >&2
+    status=1
+  fi
+  exit "$status"
+}
+trap on_exit EXIT
+
+timestamp="$(date -u +%Y%m%dT%H%M%S.%NZ)"
+ente_root="$backup_root/ente"
+partial_dir="$ente_root/.backup-$timestamp.partial"
+final_dir="$ente_root/backup-$timestamp"
+mkdir -p "$partial_dir/postgres" "$partial_dir/postgres-physical" "$partial_dir/garage"
+
+museum_image="$("${kubectl_local[@]}" get deployment/museum --namespace "$namespace" -o jsonpath='{.spec.template.spec.containers[?(@.name=="museum")].image}')"
+postgres_image="$("${kubectl_local[@]}" get statefulset/postgres --namespace "$namespace" -o jsonpath='{.spec.template.spec.containers[?(@.name=="postgres")].image}')"
+garage_image="$("${kubectl_local[@]}" get statefulset/garage --namespace "$namespace" -o jsonpath='{.spec.template.spec.containers[?(@.name=="garage")].image}')"
+
+if [[ "$museum_replicas" -gt 0 ]]; then
+  museum_scaled=true
+  "${kubectl_local[@]}" scale deployment/museum --namespace "$namespace" --replicas=0
+  "${kubectl_local[@]}" rollout status deployment/museum --namespace "$namespace" --timeout=180s
+fi
+
+"${kubectl_local[@]}" exec statefulset/postgres --namespace "$namespace" -- \
+  pg_dump -U ente -d ente_db --format=custom --create --no-owner --no-privileges \
+  >"$partial_dir/postgres/ente_db.dump"
+validation_path="/tmp/kosmos-ente-backup-$timestamp.dump"
+"${kubectl_local[@]}" cp \
+  "$partial_dir/postgres/ente_db.dump" "$namespace/postgres-0:$validation_path"
+"${kubectl_local[@]}" exec statefulset/postgres --namespace "$namespace" -- \
+  pg_restore --list "$validation_path" \
+  >"$partial_dir/postgres/ente_db.dump.list"
+remove_validation_copy
+
+postgres_scaled=true
+"${kubectl_local[@]}" scale statefulset/postgres --namespace "$namespace" --replicas=0
+"${kubectl_local[@]}" rollout status statefulset/postgres --namespace "$namespace" --timeout=180s
+
+garage_scaled=true
+"${kubectl_local[@]}" scale statefulset/garage --namespace "$namespace" --replicas=0
+"${kubectl_local[@]}" rollout status statefulset/garage --namespace "$namespace" --timeout=180s
+
+rsync -aHAX --numeric-ids --info=stats2 \
+  "$data_root/postgres/" "$partial_dir/postgres-physical/"
+rsync -aHAX --numeric-ids --info=stats2 \
+  "$data_root/garage/" "$partial_dir/garage/"
+
+jq -n \
+  --arg createdAt "$timestamp" \
+  --arg sourceHost "$(hostname)" \
+  --arg destinationMount "$destination_mount" \
+  --arg destinationUuid "$destination_uuid" \
+  --arg museumImage "$museum_image" \
+  --arg postgresImage "$postgres_image" \
+  --arg garageImage "$garage_image" \
+  '{
+    formatVersion: 1,
+    createdAt: $createdAt,
+    sourceHost: $sourceHost,
+    destination: {mount: $destinationMount, uuid: $destinationUuid},
+    namespace: "photos",
+    images: {
+      museum: $museumImage,
+      postgres: $postgresImage,
+      garage: $garageImage
+    },
+    contents: {
+      postgresLogical: "postgres/ente_db.dump",
+      postgresPhysical: "postgres-physical/",
+      garagePhysical: "garage/"
+    },
+    secretsIncluded: false
+  }' >"$partial_dir/BACKUP-INFO.json"
+
+if ! restore_workloads; then
+  echo "backup copied, but failed to restore one or more Ente workloads" >&2
+  exit 1
+fi
+
+(
+  cd "$partial_dir"
+  # SHA256SUMS is excluded from find; this output redirection is intentional.
+  # shellcheck disable=SC2094
+  find . -type f ! -name SHA256SUMS -print0 \
+    | sort -z \
+    | xargs -0 --no-run-if-empty sha256sum \
+    >SHA256SUMS
+  sha256sum --check --quiet SHA256SUMS
+)
+
+mv "$partial_dir" "$final_dir"
+trap - EXIT
+
+echo "Ente backup created and verified: $final_dir"
