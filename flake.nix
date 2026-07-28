@@ -17,7 +17,7 @@
     fenix.url = "github:nix-community/fenix";
     fenix.inputs.nixpkgs.follows = "nixpkgs";
     kepos-neo = {
-      url = "github:tta-lab/kepos-neo/145f4b5e501257a3618716c32a9ff95c7b3be5d0";
+      url = "github:tta-lab/kepos-neo/62081b4430916f2ee628932fe95a8ebff66775da";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
@@ -185,6 +185,14 @@
         assert builtins.elem "kosmos-photos-gate-status" packageNames;
         assert cfg.environment.variables._EXPERIMENTAL_DAGGER_RUNNER_HOST == "tcp://127.0.0.1:8080";
           pkgs.runCommand "wsl-devops-cli-check" {} "touch $out";
+
+      kepos-publisher-services = let
+        inherit (self.nixosConfigurations.wsl.config.home-manager.users.neil.services.kepos.publisher) services;
+      in
+        assert services.dagger.name == "Dagger";
+        assert services.dagger.targetPort == 8080;
+        assert services.dagger.allow == ["c5a2168e17a53b699ced7e3f3c8470afd7f91b97a1582076c9797c3e024311a2"];
+          pkgs.runCommand "kepos-publisher-services-check" {} "touch $out";
 
     };
 
