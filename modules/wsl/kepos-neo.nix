@@ -56,6 +56,10 @@ in {
           name = "Ente Storage";
           targetPort = 17480;
         };
+        bookorbit = {
+          name = "BookOrbit";
+          targetPort = 17480;
+        };
         ssh = {
           name = "SSH";
           targetPort = 22;

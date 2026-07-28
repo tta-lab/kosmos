@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+rendered="$(mktemp)"
+trap 'rm -f "$rendered"' EXIT
+
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/ebooks" \
+  | yq -s '.' >"$rendered"
+
+jq -e '
+  . as $resources |
+  def resource($kind; $name):
+    $resources | map(select(.kind == $kind and .metadata.name == $name)) | first;
+
+  (resource("Namespace"; "ebooks").metadata.name == "ebooks") and
+  ((resource("Deployment"; "bookorbit").spec.template.spec.containers[0].readinessProbe.httpGet.path | length) > 0) and
+  (resource("Service"; "bookorbit").spec.type == "ClusterIP") and
+  (resource("StatefulSet"; "bookorbit-postgres").spec.replicas == 1) and
+  (["kosmos-bookorbit", "kosmos-bookorbit-db"] | map(. as $name |
+    resource("PersistentVolume"; $name).spec.persistentVolumeReclaimPolicy == "Retain"
+  ) | all) and
+  (["bookorbit-data", "bookorbit-db"] | map(. as $name |
+    resource("PersistentVolumeClaim"; $name).spec.storageClassName == "kosmos-static"
+  ) | all) and
+  (map(select(.kind == "Secret")) | length == 0) and
+  ([
+    resource("Deployment"; "bookorbit").spec.template.spec.containers[0].env[],
+    resource("StatefulSet"; "bookorbit-postgres").spec.template.spec.containers[0].env[]
+  ] | map(select(.valueFrom.secretKeyRef != null)) | length >= 4)
+' "$rendered" >/dev/null
+
+printf 'ebook manifests expose BookOrbit with retained storage and external Secret references\n'
