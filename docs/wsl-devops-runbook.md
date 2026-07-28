@@ -22,7 +22,8 @@ Kepos publishes seven service IDs:
 - `forgejo` and `woodpecker` both target port `17480`; the preserved HTTP Host
   header selects the Caddy route.
 - `navidrome` targets port `4533`.
-- `dagger` targets the Dagger engine on port `8080`.
+- `dagger` targets the Dagger engine on port `8080` and is restricted to the
+  named Mac subscriber. Other allowed subscribers neither see nor can open it.
 - `ssh` targets port `22`.
 
 The separate Ente Photos stack publishes `ente` and `ente-storage`, both through
