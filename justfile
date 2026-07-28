@@ -40,7 +40,7 @@ ebooks-diff: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ ebooks_environment }}"
 
 ebooks-secrets: _local-k3s
-  @scripts/init-ebook-secrets
+  @KUBECONFIG="{{ kubeconfig }}" scripts/init-ebook-secrets
 
 ebooks-apply: _local-k3s ebooks-secrets
   @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ ebooks_environment }}"
