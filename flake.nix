@@ -51,6 +51,8 @@
             jq
             python3
             shellcheck
+            tanka
+            yq
           ];
         } ''
           shellcheck \
@@ -59,6 +61,7 @@
             ${./scripts/photos-gate-status} \
             ${./scripts/forgejo-https-git-smoke} \
             ${./scripts/forgejo-k8s-pull-secret-smoke} \
+            ${./scripts/init-ebook-secrets} \
             ${./scripts/ttal-tmux-project-picker} \
             ${./scripts/wsl-devops-smoke} \
             ${./tests/temenos-env-test} \
@@ -71,6 +74,9 @@
             ${./tests/photos-gate-status-test} \
             ${./tests/sync-woodpecker-secret-test} \
             ${./tests/sync-ente-secret-test} \
+            ${./tests/init-ebook-secrets-test} \
+            ${./tests/ebooks-render-test} \
+            ${./tests/ebook-gateway-render-test} \
             ${./tests/wsl-devops-smoke-test} \
             ${./tests/orga-cli-service-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
@@ -84,6 +90,9 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/photos-gate-status-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-woodpecker-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-ente-secret-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-ebook-secrets-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/ebooks-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/ebook-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/wsl-devops-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
           touch $out
@@ -175,6 +184,13 @@
         assert builtins.elem "d /var/lib/kosmos-k3s/ente 0750 root root - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ente/postgres 0700 999 999 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ente/garage 0750 root root - -" rules;
+        assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/booklore/data 0750 1000 1000 - -" rules;
+        assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/booklore/books 0750 1000 1000 - -" rules;
+        assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/booklore/bookdrop 0750 1000 1000 - -" rules;
+        assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/booklore-db 0700 999 999 - -" rules;
+        assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit/data 0750 1000 1000 - -" rules;
+        assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit/books 0750 1000 1000 - -" rules;
+        assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit-db 0700 999 999 - -" rules;
           pkgs.runCommand "k3s-state-directories-check" {} "touch $out";
 
       wsl-devops-cli = let
@@ -187,11 +203,19 @@
           pkgs.runCommand "wsl-devops-cli-check" {} "touch $out";
 
       kepos-publisher-services = let
-        inherit (self.nixosConfigurations.wsl.config.home-manager.users.neil.services.kepos.publisher) services;
+        cfg = self.nixosConfigurations.wsl.config;
+        inherit (cfg.home-manager.users.neil.services.kepos.publisher) services;
+        loopbackHosts = cfg.networking.hosts."127.0.0.1";
       in
         assert services.dagger.name == "Dagger";
         assert services.dagger.targetPort == 8080;
         assert services.dagger.allow == ["c5a2168e17a53b699ced7e3f3c8470afd7f91b97a1582076c9797c3e024311a2"];
+        assert services.booklore.name == "BookLore";
+        assert services.booklore.targetPort == 17480;
+        assert services.bookorbit.name == "BookOrbit";
+        assert services.bookorbit.targetPort == 17480;
+        assert builtins.elem "booklore.localhost" loopbackHosts;
+        assert builtins.elem "bookorbit.localhost" loopbackHosts;
           pkgs.runCommand "kepos-publisher-services-check" {} "touch $out";
 
     };

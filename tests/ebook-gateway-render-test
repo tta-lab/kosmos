@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+rendered="$(mktemp)"
+trap 'rm -f "$rendered"' EXIT
+
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/devops" \
+  | yq -s '.' >"$rendered"
+
+jq -e '
+  (map(select(.kind == "ConfigMap" and .metadata.name == "canonical-gateway")) | first | .data.Caddyfile) as $caddy |
+  (map(select(.kind == "ConfigMap" and .metadata.name == "coredns-custom")) | first | .data["kosmos.override"]) as $dns |
+  ($caddy | contains("@booklore host booklore.localhost")) and
+  ($caddy | contains("reverse_proxy booklore.ebooks.svc.cluster.local:6060")) and
+  ($caddy | contains("@bookorbit host bookorbit.localhost")) and
+  ($caddy | contains("reverse_proxy bookorbit.ebooks.svc.cluster.local:3000")) and
+  ($dns | contains("rewrite name exact booklore.localhost canonical-gateway.devops.svc.cluster.local")) and
+  ($dns | contains("rewrite name exact bookorbit.localhost canonical-gateway.devops.svc.cluster.local"))
+' "$rendered" >/dev/null
+
+printf 'canonical gateway routes both private ebook hosts\n'

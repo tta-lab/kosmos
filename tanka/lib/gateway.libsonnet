@@ -19,6 +19,8 @@ local gatewayLabels = labels('canonical-gateway');
         rewrite name exact woodpecker.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact ente.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact ente-storage.localhost canonical-gateway.devops.svc.cluster.local
+        rewrite name exact booklore.localhost canonical-gateway.devops.svc.cluster.local
+        rewrite name exact bookorbit.localhost canonical-gateway.devops.svc.cluster.local
       |||,
     },
   },
@@ -58,6 +60,16 @@ local gatewayLabels = labels('canonical-gateway');
           @enteStorage host ente-storage.localhost
           handle @enteStorage {
             reverse_proxy garage.photos.svc.cluster.local:3900
+          }
+
+          @booklore host booklore.localhost
+          handle @booklore {
+            reverse_proxy booklore.ebooks.svc.cluster.local:6060
+          }
+
+          @bookorbit host bookorbit.localhost
+          handle @bookorbit {
+            reverse_proxy bookorbit.ebooks.svc.cluster.local:3000
           }
 
           handle {

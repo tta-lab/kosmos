@@ -2,6 +2,7 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 
 environment := "tanka/environments/devops"
 photos_environment := "tanka/environments/photos"
+ebooks_environment := "tanka/environments/ebooks"
 kubeconfig := env_var_or_default("KUBECONFIG", "/etc/rancher/k3s/k3s.yaml")
 api_server := "https://127.0.0.1:26443"
 
@@ -31,6 +32,29 @@ photos-apply: _local-k3s
 
 photos-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n photos -o wide
+
+ebooks-show:
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ ebooks_environment }}"
+
+ebooks-diff: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ ebooks_environment }}"
+
+ebooks-secrets: _local-k3s
+  @scripts/init-ebook-secrets
+
+ebooks-apply: _local-k3s ebooks-secrets
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ ebooks_environment }}"
+
+ebooks-deploy: ebooks-apply
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}"
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+
+ebooks-status: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n ebooks -o wide
+
+bookorbit-bootstrap-token: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl get secret bookorbit-env -n ebooks -o jsonpath='{.data.SETUP_BOOTSTRAP_TOKEN}' | base64 --decode; echo
 
 kepos-status:
   @systemctl --user status kepos-publisher.service --no-pager

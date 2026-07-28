@@ -4,6 +4,8 @@
     "woodpecker.localhost"
     "ente.localhost"
     "ente-storage.localhost"
+    "booklore.localhost"
+    "bookorbit.localhost"
   ];
 
   networking.firewall.interfaces.cni0.allowedTCPPorts = [
@@ -50,5 +52,15 @@
     "d /var/lib/kosmos-k3s/ente 0750 root root - -"
     "d /var/lib/kosmos-k3s/ente/postgres 0700 999 999 - -"
     "d /var/lib/kosmos-k3s/ente/garage 0750 root root - -"
+    "d /var/lib/kosmos-k3s/ebooks 0750 root root - -"
+    "d /var/lib/kosmos-k3s/ebooks/booklore 0750 1000 1000 - -"
+    "d /var/lib/kosmos-k3s/ebooks/booklore/data 0750 1000 1000 - -"
+    "d /var/lib/kosmos-k3s/ebooks/booklore/books 0750 1000 1000 - -"
+    "d /var/lib/kosmos-k3s/ebooks/booklore/bookdrop 0750 1000 1000 - -"
+    "d /var/lib/kosmos-k3s/ebooks/booklore-db 0700 999 999 - -"
+    "d /var/lib/kosmos-k3s/ebooks/bookorbit 0750 1000 1000 - -"
+    "d /var/lib/kosmos-k3s/ebooks/bookorbit/data 0750 1000 1000 - -"
+    "d /var/lib/kosmos-k3s/ebooks/bookorbit/books 0750 1000 1000 - -"
+    "d /var/lib/kosmos-k3s/ebooks/bookorbit-db 0700 999 999 - -"
   ];
 }
