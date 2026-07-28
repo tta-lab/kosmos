@@ -24,7 +24,7 @@ yq --yaml-output '
   ."allow-lan" = true |
   ."bind-address" = "*" |
   ."external-controller" = "127.0.0.1:9090" |
-  .dns.listen = "127.0.0.1:5336" |
+  del(.dns.listen) |
   .tun.enable = false
 ' "$source_config" >"$runtime_config"
 chmod 600 "$runtime_config"

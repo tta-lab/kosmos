@@ -211,12 +211,15 @@
         assert cfg.services.mihomo.enable;
         assert cfg.services.mihomo.configFile == expectedConfig;
         assert !cfg.services.mihomo.tunMode;
+        assert cfg.services.mihomo.webui != null;
+        assert cfg.services.mihomo.webui == self.nixosConfigurations.wsl.pkgs.metacubexd;
         assert unit.serviceConfig.LoadCredential == "config.yaml:${expectedConfig}";
         assert unit.serviceConfig ? RuntimeDirectory;
         assert unit.serviceConfig.RuntimeDirectory == "mihomo-runtime";
         assert unit.serviceConfig.RuntimeDirectoryMode == "0700";
         assert unit.serviceConfig ? ExecStartPre;
         assert nixpkgs.lib.hasInfix "\${RUNTIME_DIRECTORY}/config.yaml" unit.serviceConfig.ExecStart;
+        assert nixpkgs.lib.hasInfix "-ext-ui " unit.serviceConfig.ExecStart;
         assert cfg.kosmos.wsl.k3sProxyUrl == expectedProxy;
         assert cfg.environment.variables.HTTP_PROXY == expectedProxy;
         assert has "mihomo.service" cfg.systemd.services.k3s.wants;
@@ -236,6 +239,10 @@
         assert services ? mihomo;
         assert services.mihomo.name == "Mihomo";
         assert services.mihomo.targetPort == 7890;
+        assert builtins.hasAttr "mihomo-dashboard" services;
+        assert services."mihomo-dashboard".name == "Mihomo Dashboard";
+        assert services."mihomo-dashboard".targetPort == 9090;
+        assert services."mihomo-dashboard".allow == ["c5a2168e17a53b699ced7e3f3c8470afd7f91b97a1582076c9797c3e024311a2"];
         assert builtins.elem "bookorbit.localhost" loopbackHosts;
           pkgs.runCommand "kepos-publisher-services-check" {} "touch $out";
     };

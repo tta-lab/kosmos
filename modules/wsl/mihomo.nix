@@ -26,11 +26,12 @@ in {
       enable = true;
       inherit (cfg) configFile;
       tunMode = false;
+      webui = pkgs.metacubexd;
     };
 
     systemd.services.mihomo.serviceConfig = {
       ExecStartPre = "${prepareMihomoConfig}/bin/kosmos-prepare-mihomo-config \${CREDENTIALS_DIRECTORY}/config.yaml \${RUNTIME_DIRECTORY}/config.yaml";
-      ExecStart = lib.mkForce "${lib.getExe config.services.mihomo.package} -d /var/lib/private/mihomo -f \${RUNTIME_DIRECTORY}/config.yaml";
+      ExecStart = lib.mkForce "${lib.getExe config.services.mihomo.package} -d /var/lib/private/mihomo -f \${RUNTIME_DIRECTORY}/config.yaml -ext-ui ${config.services.mihomo.webui}";
       RuntimeDirectory = "mihomo-runtime";
       RuntimeDirectoryMode = "0700";
       Restart = "on-failure";

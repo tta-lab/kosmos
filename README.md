@@ -47,6 +47,11 @@ The initial tunnel maps remote traffic to local SSH on `127.0.0.1:22`.
 ## Proxy
 
 Proxy is provided by the local Mihomo systemd service at `127.0.0.1:7890`.
+The mixed listener accepts both HTTP and SOCKS5 clients. MetaCubeXD is bundled
+at the loopback-only controller on port `9090` and is published to the Mac as
+the Kepos `mihomo-dashboard` service. The standalone DNS listener is disabled;
+Mihomo still applies the inherited DNS configuration internally to proxied
+hostnames.
 Mihomo loads the generated Clash Verge runtime configuration from the mounted
 Windows profile through systemd credentials; the configuration is never copied
 into the Nix store. The `kosmos-wsl-proxy-env` helper remains available for

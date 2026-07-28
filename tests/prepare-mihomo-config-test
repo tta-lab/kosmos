@@ -42,7 +42,7 @@ bash "$repo_root/scripts/prepare-mihomo-config" "$input" "$output"
   ."allow-lan" == true and
   ."bind-address" == "*" and
   ."external-controller" == "127.0.0.1:9090" and
-  .dns.listen == "127.0.0.1:5336" and
+  (.dns | has("listen") | not) and
   .tun.enable == false and
   .secret == "fake-sensitive-value" and
   .proxies[0].password == "fake-proxy-password"

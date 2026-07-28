@@ -42,10 +42,22 @@ wsl.wslConf.interop.appendWindowsPath = false;
 Home Manager deploys non-secret config to `~/.config/ttal`, `~/.config/einai`, and `~/.config/temenos`. Real `chat_id`, `.env`, license, kubeconfig, and tunnel tokens are intentionally left out for the later secret-management PR.
 
 Proxy is provided by the local Mihomo systemd service at `127.0.0.1:7890`.
+The listener accepts HTTP and SOCKS5. MetaCubeXD is served by the loopback-only
+controller on port `9090` and published to the Mac through the Kepos
+`mihomo-dashboard` service. Enter the controller secret from Clash Verge when
+the dashboard asks for it; agents must not read that value. The standalone DNS
+listener is disabled while Mihomo's internal DNS processing remains enabled.
 The service loads Clash Verge's generated runtime YAML from the mounted Windows
 profile through systemd credentials, so the secret-bearing file does not enter
 Git or the Nix store. The `kosmos-wsl-proxy-env` helper remains available for
 manual bootstrap fallback.
+
+Verify both proxy protocols locally:
+
+```bash
+curl --proxy http://127.0.0.1:7890 https://www.google.com/generate_204
+curl --socks5-hostname 127.0.0.1:7890 https://www.google.com/generate_204
+```
 
 **Windows `.wslconfig` required:**
 
