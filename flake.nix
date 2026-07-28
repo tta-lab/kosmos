@@ -184,10 +184,6 @@
         assert builtins.elem "d /var/lib/kosmos-k3s/ente 0750 root root - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ente/postgres 0700 999 999 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ente/garage 0750 root root - -" rules;
-        assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/booklore/data 0750 1000 1000 - -" rules;
-        assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/booklore/books 0750 1000 1000 - -" rules;
-        assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/booklore/bookdrop 0750 1000 1000 - -" rules;
-        assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/booklore-db 0700 999 999 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit/data 0750 1000 1000 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit/books 0750 1000 1000 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit-db 0700 999 999 - -" rules;
@@ -210,11 +206,8 @@
         assert services.dagger.name == "Dagger";
         assert services.dagger.targetPort == 8080;
         assert services.dagger.allow == ["c5a2168e17a53b699ced7e3f3c8470afd7f91b97a1582076c9797c3e024311a2"];
-        assert services.booklore.name == "BookLore";
-        assert services.booklore.targetPort == 17480;
         assert services.bookorbit.name == "BookOrbit";
         assert services.bookorbit.targetPort == 17480;
-        assert builtins.elem "booklore.localhost" loopbackHosts;
         assert builtins.elem "bookorbit.localhost" loopbackHosts;
           pkgs.runCommand "kepos-publisher-services-check" {} "touch $out";
 

@@ -36,7 +36,5 @@ local volume(name, claimName, path, size) = {
   },
 };
 
-volume('booklore', 'booklore-data', '/var/lib/kosmos-k3s/ebooks/booklore', '20Gi') +
-volume('booklore-db', 'booklore-db', '/var/lib/kosmos-k3s/ebooks/booklore-db', '5Gi') +
 volume('bookorbit', 'bookorbit-data', '/var/lib/kosmos-k3s/ebooks/bookorbit', '20Gi') +
 volume('bookorbit-db', 'bookorbit-db', '/var/lib/kosmos-k3s/ebooks/bookorbit-db', '5Gi')

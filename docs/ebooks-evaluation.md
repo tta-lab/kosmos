@@ -1,22 +1,19 @@
 # Ebook evaluation
 
-BookLore and BookOrbit run side by side in the local `ebooks` namespace for a
-short reading evaluation. Both are private: the only client routes are the
-Kepos-published HTTP hosts on the canonical loopback gateway.
+BookOrbit runs in the local `ebooks` namespace for a reading evaluation. It is
+private: the only client route is the Kepos-published HTTP host on the canonical
+loopback gateway.
 
 ## Endpoints
 
-- BookLore: `http://booklore.localhost:17480`
 - BookOrbit: `http://bookorbit.localhost:17480`
 
-The databases have ClusterIP services only and are not published through
-Kepos. BookLore and BookOrbit use independent credentials, databases, and
-storage so either evaluation can be removed without changing the other.
+The database has a ClusterIP service only and is not published through Kepos.
 
 ## Deploy
 
 Deploy the NixOS generation first. It creates the retained host directories,
-adds the local hostnames, and publishes both Kepos service IDs:
+adds the local hostname, and publishes the Kepos service ID:
 
 ```bash
 nix build .#nixosConfigurations.wsl.config.system.build.toplevel --no-link
@@ -24,7 +21,7 @@ sudo env NIX_CONFIG="$(cat ~/.config/nix/nix.conf)" \
   nixos-rebuild switch --flake .#wsl
 ```
 
-Then create missing credentials and apply both Tanka environments:
+Then create missing credentials and apply the Tanka environments:
 
 ```bash
 just ebooks-diff
@@ -38,9 +35,8 @@ directly into Kubernetes Secrets when they are absent. Re-running it preserves
 the existing credentials. Generated values are never stored in this repository
 or printed during deployment.
 
-BookLore creates its administrator through the first-run web page. BookOrbit's
-first-run page asks for its one-time bootstrap token. Neil can print that token
-locally with:
+BookOrbit's first-run page asks for its one-time bootstrap token. Neil can print
+that token locally with:
 
 ```bash
 just bookorbit-bootstrap-token
@@ -68,8 +64,6 @@ its retained state has survived a pod restart.
 
 Static PVs use `Retain` and keep temporary evaluation data under:
 
-- `/var/lib/kosmos-k3s/ebooks/booklore`
-- `/var/lib/kosmos-k3s/ebooks/booklore-db`
 - `/var/lib/kosmos-k3s/ebooks/bookorbit`
 - `/var/lib/kosmos-k3s/ebooks/bookorbit-db`
 

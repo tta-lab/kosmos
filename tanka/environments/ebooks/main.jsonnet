@@ -1,4 +1,3 @@
-local booklore = import '../../lib/booklore.libsonnet';
 local bookorbit = import '../../lib/bookorbit.libsonnet';
 local storage = import '../../lib/ebooks-storage.libsonnet';
 
@@ -10,4 +9,4 @@ local storage = import '../../lib/ebooks-storage.libsonnet';
       name: 'ebooks',
     },
   },
-} + storage + booklore + bookorbit
+} + storage + bookorbit

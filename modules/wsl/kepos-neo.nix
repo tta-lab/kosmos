@@ -56,10 +56,6 @@ in {
           name = "Ente Storage";
           targetPort = 17480;
         };
-        booklore = {
-          name = "BookLore";
-          targetPort = 17480;
-        };
         bookorbit = {
           name = "BookOrbit";
           targetPort = 17480;
