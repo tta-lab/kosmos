@@ -186,6 +186,13 @@
         assert cfg.environment.variables._EXPERIMENTAL_DAGGER_RUNNER_HOST == "tcp://127.0.0.1:8080";
           pkgs.runCommand "wsl-devops-cli-check" {} "touch $out";
 
+      kepos-publisher-services = let
+        inherit (self.nixosConfigurations.wsl.config.home-manager.users.neil.services.kepos.publisher) services;
+      in
+        assert services.dagger.name == "Dagger";
+        assert services.dagger.targetPort == 8080;
+          pkgs.runCommand "kepos-publisher-services-check" {} "touch $out";
+
     };
 
     nixosConfigurations.kosmos = nixpkgs.lib.nixosSystem {

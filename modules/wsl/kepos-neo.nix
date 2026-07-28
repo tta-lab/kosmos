@@ -37,6 +37,10 @@
           name = "Navidrome";
           targetPort = 4533;
         };
+        dagger = {
+          name = "Dagger";
+          targetPort = 8080;
+        };
         ente = {
           name = "Ente Photos";
           targetPort = 17480;

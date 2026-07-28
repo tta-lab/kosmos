@@ -17,11 +17,12 @@ two canonical `.localhost` names to that same gateway inside the cluster. This
 keeps browser, Git, Woodpecker OAuth, webhooks, and container-registry URLs
 consistent.
 
-Kepos publishes six service IDs:
+Kepos publishes seven service IDs:
 
 - `forgejo` and `woodpecker` both target port `17480`; the preserved HTTP Host
   header selects the Caddy route.
 - `navidrome` targets port `4533`.
+- `dagger` targets the Dagger engine on port `8080`.
 - `ssh` targets port `22`.
 
 The separate Ente Photos stack publishes `ente` and `ente-storage`, both through
@@ -125,3 +126,25 @@ dagger -M call container from --address alpine:3.20 \
 
 The packaged Dagger 0.21.7 CLI defaults to the matching K3s engine at
 `tcp://127.0.0.1:8080`.
+
+## Mac Dagger client through Kepos
+
+On the Mac, add a raw TCP listener for the published `dagger` service to
+`~/.config/kepos/config.toml` under the existing subscriber configuration:
+
+```toml
+[[subscriber.services]]
+id = "dagger"
+local_port = 18080
+```
+
+Restart Kepos Desktop, then point the Mac Dagger CLI at that listener:
+
+```bash
+export _EXPERIMENTAL_DAGGER_RUNNER_HOST=tcp://127.0.0.1:18080
+dagger core version
+```
+
+Port `18080` avoids colliding with a local Dagger engine. The Kepos publisher
+must be deployed after adding the service; seeing `dagger` in the Mac service
+list alone does not create the local TCP listener.
