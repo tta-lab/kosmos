@@ -8,7 +8,7 @@
   ];
 
   networking.firewall.interfaces.cni0.allowedTCPPorts = [
-    7897
+    7890
     26443
   ];
 
@@ -35,6 +35,8 @@
 
   systemd.services = {
     k3s = {
+      wants = ["mihomo.service"];
+      after = ["mihomo.service"];
       environment = {
         HTTP_PROXY = config.kosmos.wsl.k3sProxyUrl;
         HTTPS_PROXY = config.kosmos.wsl.k3sProxyUrl;

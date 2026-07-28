@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+test_root="$(mktemp -d)"
+trap 'rm -rf "$test_root"' EXIT
+
+input="$test_root/input.yaml"
+output="$test_root/output.yaml"
+
+cat >"$input" <<'YAML'
+mixed-port: 7897
+port: 7899
+socks-port: 7898
+allow-lan: true
+bind-address: '*'
+external-controller: 127.0.0.1:9097
+secret: fake-sensitive-value
+dns:
+  enable: true
+  listen: 127.0.0.1:5335
+tun:
+  enable: true
+proxies:
+  - name: fake
+    password: fake-proxy-password
+YAML
+
+if [[ ! -x "$repo_root/scripts/prepare-mihomo-config" ]]; then
+  echo 'prepare-mihomo-config is missing' >&2
+  exit 1
+fi
+
+bash "$repo_root/scripts/prepare-mihomo-config" "$input" "$output"
+
+[[ "$(yq '
+  ."mixed-port" == 7890 and
+  .port == 0 and
+  ."socks-port" == 0 and
+  ."redir-port" == 0 and
+  ."tproxy-port" == 0 and
+  ."allow-lan" == true and
+  ."bind-address" == "*" and
+  ."external-controller" == "127.0.0.1:9090" and
+  .dns.listen == "127.0.0.1:5336" and
+  .tun.enable == false and
+  .secret == "fake-sensitive-value" and
+  .proxies[0].password == "fake-proxy-password"
+' "$output")" == "true" ]]
+
+[[ "$(stat -c '%a' "$output")" == "600" ]]
+
+printf 'Mihomo runtime config uses isolated WSL listeners and preserves credentials\n'

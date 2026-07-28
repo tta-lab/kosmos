@@ -41,7 +41,11 @@ wsl.wslConf.interop.appendWindowsPath = false;
 
 Home Manager deploys non-secret config to `~/.config/ttal`, `~/.config/einai`, and `~/.config/temenos`. Real `chat_id`, `.env`, license, kubeconfig, and tunnel tokens are intentionally left out for the later secret-management PR.
 
-Proxy is provided by a Windows-side HTTP proxy at `127.0.0.1:7897`. The `kosmos-wsl-proxy-env` helper auto-detects the proxy host, preferring `127.0.0.1` (mirrored WSL) before falling back to the default gateway.
+Proxy is provided by the local Mihomo systemd service at `127.0.0.1:7890`.
+The service loads Clash Verge's generated runtime YAML from the mounted Windows
+profile through systemd credentials, so the secret-bearing file does not enter
+Git or the Nix store. The `kosmos-wsl-proxy-env` helper remains available for
+manual bootstrap fallback.
 
 **Windows `.wslconfig` required:**
 
@@ -58,7 +62,8 @@ vmIdleTimeout=-1
 hostAddressLoopback=true
 ```
 
-**Windows proxy must listen on the LAN address** (e.g. `192.168.x.x:7897`), not only `127.0.0.1`. K3s Pods reach the proxy via the node IP, not loopback.
+K3s containerd starts after the local Mihomo service and uses its loopback
+listener for image pulls.
 
 Codex CLI is installed outside Nixpkgs so it can track OpenAI's fast npm releases:
 
@@ -85,7 +90,9 @@ The Go binaries live in `~/go/bin`, which is added to Fish and to the user servi
 
 The user services are managed by Home Manager. NixOS only enables `linger` for `neil` so the user manager can keep running without an active login shell.
 
-Proxy is provided by a Windows-side HTTP proxy at `127.0.0.1:7897`. Fish and TTAL services set `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY` (and lowercase equivalents) to `http://127.0.0.1:7897`.
+Fish and TTAL services use the local Mihomo systemd service through
+`HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY` (and lowercase equivalents) at
+`http://127.0.0.1:7890`.
 
 ## Keep WSL Running After SSH Disconnect
 

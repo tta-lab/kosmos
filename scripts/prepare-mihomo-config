@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "$#" -ne 2 ]]; then
+  echo 'usage: prepare-mihomo-config <source> <destination>' >&2
+  exit 2
+fi
+
+source_config="$1"
+runtime_config="$2"
+
+if [[ ! -r "$source_config" ]]; then
+  echo 'Mihomo source configuration is not readable' >&2
+  exit 1
+fi
+
+umask 077
+yq --yaml-output '
+  ."mixed-port" = 7890 |
+  .port = 0 |
+  ."socks-port" = 0 |
+  ."redir-port" = 0 |
+  ."tproxy-port" = 0 |
+  ."allow-lan" = true |
+  ."bind-address" = "*" |
+  ."external-controller" = "127.0.0.1:9090" |
+  .dns.listen = "127.0.0.1:5336" |
+  .tun.enable = false
+' "$source_config" >"$runtime_config"
+chmod 600 "$runtime_config"

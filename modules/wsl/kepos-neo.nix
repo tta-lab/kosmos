@@ -60,6 +60,10 @@ in {
           name = "BookOrbit";
           targetPort = 17480;
         };
+        mihomo = {
+          name = "Mihomo";
+          targetPort = 7890;
+        };
         ssh = {
           name = "SSH";
           targetPort = 22;
