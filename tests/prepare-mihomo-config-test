@@ -39,8 +39,8 @@ bash "$repo_root/scripts/prepare-mihomo-config" "$input" "$output"
   ."socks-port" == 0 and
   ."redir-port" == 0 and
   ."tproxy-port" == 0 and
-  ."allow-lan" == true and
-  ."bind-address" == "*" and
+  ."allow-lan" == false and
+  ."bind-address" == "127.0.0.1" and
   ."external-controller" == "127.0.0.1:9090" and
   (.dns | has("listen") | not) and
   .tun.enable == false and

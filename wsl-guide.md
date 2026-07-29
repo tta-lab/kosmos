@@ -47,6 +47,13 @@ controller on port `9090` and published to the Mac through the Kepos
 `mihomo-dashboard` service. Enter the controller secret from Clash Verge when
 the dashboard asks for it; agents must not read that value. The standalone DNS
 listener is disabled while Mihomo's internal DNS processing remains enabled.
+Mihomo does not listen on the WSL LAN address; remote access goes through the
+ACL-protected Kepos service. k3s Pods connect to a protocol-transparent TCP
+forwarder on `10.42.0.1:7890`, which sends traffic to the loopback listener.
+`10.42.0.1` is the CNI gateway for this single-node cluster's default
+`10.42.0.0/16` Pod CIDR. If the Pod CIDR or node allocation changes, update the
+systemd socket and both Pod proxy URLs together. NixOS-WSL keeps the NixOS
+firewall masked by design; do not enable it to protect this listener.
 The service loads Clash Verge's generated runtime YAML from the mounted Windows
 profile through systemd credentials, so the secret-bearing file does not enter
 Git or the Nix store. The `kosmos-wsl-proxy-env` helper remains available for

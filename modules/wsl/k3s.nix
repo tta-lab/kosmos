@@ -8,7 +8,6 @@
   ];
 
   networking.firewall.interfaces.cni0.allowedTCPPorts = [
-    7890
     26443
   ];
 

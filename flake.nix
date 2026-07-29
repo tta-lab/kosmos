@@ -205,8 +205,21 @@
         cfg = self.nixosConfigurations.wsl.config;
         expectedConfig = "/mnt/c/Users/white/AppData/Roaming/io.github.clash-verge-rev.clash-verge-rev/clash-verge.yaml";
         expectedProxy = "http://127.0.0.1:7890";
+        expectedProxyEnvironment = [
+          "HTTP_PROXY=${expectedProxy}"
+          "HTTPS_PROXY=${expectedProxy}"
+          "ALL_PROXY=${expectedProxy}"
+          "NO_PROXY=localhost,127.0.0.1,::1"
+          "http_proxy=${expectedProxy}"
+          "https_proxy=${expectedProxy}"
+          "all_proxy=${expectedProxy}"
+          "no_proxy=localhost,127.0.0.1,::1"
+        ];
         has = value: list: builtins.elem value list;
         unit = cfg.systemd.services.mihomo;
+        cniSocket = cfg.systemd.sockets.mihomo-cni-proxy;
+        cniProxy = cfg.systemd.services.mihomo-cni-proxy;
+        flicknoteEnvironment = cfg.home-manager.users.neil.systemd.user.services.flicknote-sync.Service.Environment;
       in
         assert cfg.services.mihomo.enable;
         assert cfg.services.mihomo.configFile == expectedConfig;
@@ -224,6 +237,14 @@
         assert cfg.environment.variables.HTTP_PROXY == expectedProxy;
         assert has "mihomo.service" cfg.systemd.services.k3s.wants;
         assert has "mihomo.service" cfg.systemd.services.k3s.after;
+        assert !cfg.systemd.services.firewall.enable;
+        assert !has 7890 cfg.networking.firewall.interfaces.cni0.allowedTCPPorts;
+        assert cniSocket.listenStreams == ["10.42.0.1:7890"];
+        assert cniSocket.socketConfig.FreeBind;
+        assert has "mihomo.service" cniProxy.requires;
+        assert has "mihomo.service" cniProxy.after;
+        assert nixpkgs.lib.hasSuffix "systemd-socket-proxyd 127.0.0.1:7890" cniProxy.serviceConfig.ExecStart;
+        assert builtins.all (value: has value flicknoteEnvironment) expectedProxyEnvironment;
           pkgs.runCommand "wsl-mihomo-service-check" {} "touch $out";
 
       kepos-publisher-services = let

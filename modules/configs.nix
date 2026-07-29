@@ -11,7 +11,20 @@ in {
     useUserPackages = true;
     backupFileExtension = "hm-backup";
 
-    users.neil = {lib, ...}: {
+    users.neil = {lib, ...}: let
+      proxyUrl = "http://127.0.0.1:7890";
+      noProxy = "localhost,127.0.0.1,::1";
+      flicknoteProxyEnvironment = [
+        "HTTP_PROXY=${proxyUrl}"
+        "HTTPS_PROXY=${proxyUrl}"
+        "ALL_PROXY=${proxyUrl}"
+        "NO_PROXY=${noProxy}"
+        "http_proxy=${proxyUrl}"
+        "https_proxy=${proxyUrl}"
+        "all_proxy=${proxyUrl}"
+        "no_proxy=${noProxy}"
+      ];
+    in {
       home = {
         username = "neil";
         homeDirectory = "/home/neil";
@@ -76,9 +89,11 @@ in {
           ExecStart = "${ttaLab.flicknote}/bin/flicknote-sync";
           Restart = "on-failure";
           RestartSec = 5;
-          Environment = [
-            "RUST_LOG=flicknote_sync=info,powersync=debug"
-          ];
+          Environment =
+            [
+              "RUST_LOG=flicknote_sync=info,powersync=debug"
+            ]
+            ++ flicknoteProxyEnvironment;
         };
       };
 
