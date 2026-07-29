@@ -52,12 +52,12 @@ at the loopback-only controller on port `9090` and is published to the Mac as
 the Kepos `mihomo-dashboard` service. The standalone DNS listener is disabled;
 Mihomo still applies the inherited DNS configuration internally to proxied
 hostnames.
-Mihomo does not listen on the WSL LAN address. Remote clients use the
-ACL-protected Kepos service. k3s Pods use a protocol-transparent TCP forwarder
-on `10.42.0.1:7890`, which forwards to the loopback listener. That address is
-the CNI gateway for this single-node cluster's default `10.42.0.0/16` Pod CIDR;
-if the Pod CIDR or node allocation changes, update both the systemd socket and
-the Pod proxy URLs. The NixOS firewall stays masked on WSL by design.
+Mihomo binds the mixed port to loopback so the systemd CNI forwarder can own
+`10.42.0.1:7890` for Pods. This address split gives Pods a stable proxy endpoint;
+it is not intended as a general policy against user-configured LAN listeners.
+`10.42.0.1` depends on this single-node cluster's default `10.42.0.0/16` Pod
+CIDR, so the socket and Pod proxy URLs must change together if it changes. The
+NixOS firewall stays masked on WSL by design.
 Mihomo loads the generated Clash Verge runtime configuration from the mounted
 Windows profile through systemd credentials; the configuration is never copied
 into the Nix store. The `kosmos-wsl-proxy-env` helper remains available for
