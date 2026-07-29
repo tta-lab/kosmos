@@ -62,6 +62,7 @@
             ${./scripts/forgejo-https-git-smoke} \
             ${./scripts/forgejo-k8s-pull-secret-smoke} \
             ${./scripts/init-ebook-secrets} \
+            ${./scripts/prepare-mihomo-config} \
             ${./scripts/ttal-tmux-project-picker} \
             ${./scripts/wsl-devops-smoke} \
             ${./tests/temenos-env-test} \
@@ -75,6 +76,7 @@
             ${./tests/sync-woodpecker-secret-test} \
             ${./tests/sync-ente-secret-test} \
             ${./tests/init-ebook-secrets-test} \
+            ${./tests/prepare-mihomo-config-test} \
             ${./tests/ebooks-render-test} \
             ${./tests/ebook-gateway-render-test} \
             ${./tests/wsl-devops-smoke-test} \
@@ -91,6 +93,7 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-woodpecker-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-ente-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-ebook-secrets-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/prepare-mihomo-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ebooks-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ebook-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/wsl-devops-smoke-test}
@@ -198,6 +201,52 @@
         assert cfg.environment.variables._EXPERIMENTAL_DAGGER_RUNNER_HOST == "tcp://127.0.0.1:8080";
           pkgs.runCommand "wsl-devops-cli-check" {} "touch $out";
 
+      wsl-mihomo-service = let
+        cfg = self.nixosConfigurations.wsl.config;
+        expectedConfig = "/mnt/c/Users/white/AppData/Roaming/io.github.clash-verge-rev.clash-verge-rev/clash-verge.yaml";
+        expectedProxy = "http://127.0.0.1:7890";
+        expectedProxyEnvironment = [
+          "HTTP_PROXY=${expectedProxy}"
+          "HTTPS_PROXY=${expectedProxy}"
+          "ALL_PROXY=${expectedProxy}"
+          "NO_PROXY=localhost,127.0.0.1,::1"
+          "http_proxy=${expectedProxy}"
+          "https_proxy=${expectedProxy}"
+          "all_proxy=${expectedProxy}"
+          "no_proxy=localhost,127.0.0.1,::1"
+        ];
+        has = value: list: builtins.elem value list;
+        unit = cfg.systemd.services.mihomo;
+        cniSocket = cfg.systemd.sockets.mihomo-cni-proxy;
+        cniProxy = cfg.systemd.services.mihomo-cni-proxy;
+        flicknoteEnvironment = cfg.home-manager.users.neil.systemd.user.services.flicknote-sync.Service.Environment;
+      in
+        assert cfg.services.mihomo.enable;
+        assert cfg.services.mihomo.configFile == expectedConfig;
+        assert !cfg.services.mihomo.tunMode;
+        assert cfg.services.mihomo.webui != null;
+        assert cfg.services.mihomo.webui == self.nixosConfigurations.wsl.pkgs.metacubexd;
+        assert unit.serviceConfig.LoadCredential == "config.yaml:${expectedConfig}";
+        assert unit.serviceConfig ? RuntimeDirectory;
+        assert unit.serviceConfig.RuntimeDirectory == "mihomo-runtime";
+        assert unit.serviceConfig.RuntimeDirectoryMode == "0700";
+        assert unit.serviceConfig ? ExecStartPre;
+        assert nixpkgs.lib.hasInfix "\${RUNTIME_DIRECTORY}/config.yaml" unit.serviceConfig.ExecStart;
+        assert nixpkgs.lib.hasInfix "-ext-ui " unit.serviceConfig.ExecStart;
+        assert cfg.kosmos.wsl.k3sProxyUrl == expectedProxy;
+        assert cfg.environment.variables.HTTP_PROXY == expectedProxy;
+        assert has "mihomo.service" cfg.systemd.services.k3s.wants;
+        assert has "mihomo.service" cfg.systemd.services.k3s.after;
+        assert !cfg.systemd.services.firewall.enable;
+        assert !has 7890 cfg.networking.firewall.interfaces.cni0.allowedTCPPorts;
+        assert cniSocket.listenStreams == ["10.42.0.1:7890"];
+        assert cniSocket.socketConfig.FreeBind;
+        assert has "mihomo.service" cniProxy.requires;
+        assert has "mihomo.service" cniProxy.after;
+        assert nixpkgs.lib.hasSuffix "systemd-socket-proxyd 127.0.0.1:7890" cniProxy.serviceConfig.ExecStart;
+        assert builtins.all (value: has value flicknoteEnvironment) expectedProxyEnvironment;
+          pkgs.runCommand "wsl-mihomo-service-check" {} "touch $out";
+
       kepos-publisher-services = let
         cfg = self.nixosConfigurations.wsl.config;
         inherit (cfg.home-manager.users.neil.services.kepos.publisher) services;
@@ -208,9 +257,15 @@
         assert services.dagger.allow == ["c5a2168e17a53b699ced7e3f3c8470afd7f91b97a1582076c9797c3e024311a2"];
         assert services.bookorbit.name == "BookOrbit";
         assert services.bookorbit.targetPort == 17480;
+        assert services ? mihomo;
+        assert services.mihomo.name == "Mihomo";
+        assert services.mihomo.targetPort == 7890;
+        assert builtins.hasAttr "mihomo-dashboard" services;
+        assert services."mihomo-dashboard".name == "Mihomo Dashboard";
+        assert services."mihomo-dashboard".targetPort == 9090;
+        assert services."mihomo-dashboard".allow == ["c5a2168e17a53b699ced7e3f3c8470afd7f91b97a1582076c9797c3e024311a2"];
         assert builtins.elem "bookorbit.localhost" loopbackHosts;
           pkgs.runCommand "kepos-publisher-services-check" {} "touch $out";
-
     };
 
     nixosConfigurations.kosmos = nixpkgs.lib.nixosSystem {

@@ -60,6 +60,15 @@ in {
           name = "BookOrbit";
           targetPort = 17480;
         };
+        mihomo = {
+          name = "Mihomo";
+          targetPort = 7890;
+        };
+        mihomo-dashboard = {
+          name = "Mihomo Dashboard";
+          targetPort = 9090;
+          allow = [subscribers.mac];
+        };
         ssh = {
           name = "SSH";
           targetPort = 22;

@@ -46,7 +46,22 @@ The initial tunnel maps remote traffic to local SSH on `127.0.0.1:22`.
 
 ## Proxy
 
-Proxy is provided by a Windows-side HTTP proxy at `127.0.0.1:7897`. The `kosmos-wsl-proxy-env` helper auto-detects the proxy host, preferring `127.0.0.1` (mirrored WSL) before falling back to the default gateway.
+Proxy is provided by the local Mihomo systemd service at `127.0.0.1:7890`.
+The mixed listener accepts both HTTP and SOCKS5 clients. MetaCubeXD is bundled
+at the loopback-only controller on port `9090` and is published to the Mac as
+the Kepos `mihomo-dashboard` service. The standalone DNS listener is disabled;
+Mihomo still applies the inherited DNS configuration internally to proxied
+hostnames.
+Mihomo binds the mixed port to loopback so the systemd CNI forwarder can own
+`10.42.0.1:7890` for Pods. This address split gives Pods a stable proxy endpoint;
+it is not intended as a general policy against user-configured LAN listeners.
+`10.42.0.1` depends on this single-node cluster's default `10.42.0.0/16` Pod
+CIDR, so the socket and Pod proxy URLs must change together if it changes. The
+NixOS firewall stays masked on WSL by design.
+Mihomo loads the generated Clash Verge runtime configuration from the mounted
+Windows profile through systemd credentials; the configuration is never copied
+into the Nix store. The `kosmos-wsl-proxy-env` helper remains available for
+manual bootstrap fallback.
 
 ## Codex CLI
 
@@ -70,7 +85,9 @@ This starts the `tta-lab-go-install.service` oneshot user unit. It first runs `k
 
 The Home Manager user services `temenos.service`, `einai.service`, `ttal.service`, and `og.service` are defined in `modules/common/tta-lab-go.nix`. They only start after their binary exists in `~/go/bin`.
 
-Proxy is provided by a Windows-side HTTP proxy at `127.0.0.1:7897`. Fish and TTAL services set `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY` (and lowercase equivalents) to `http://127.0.0.1:7897`.
+Fish and TTAL services use the local Mihomo systemd service through
+`HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY` (and lowercase equivalents) at
+`http://127.0.0.1:7890`.
 
 Code lives under two roots:
 

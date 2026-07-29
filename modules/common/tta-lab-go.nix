@@ -21,9 +21,9 @@
     pkgs.tmux
   ]}:/run/current-system/sw/bin";
   proxyPrelude = ''
-    export HTTP_PROXY=http://127.0.0.1:7897
-    export HTTPS_PROXY=http://127.0.0.1:7897
-    export ALL_PROXY=http://127.0.0.1:7897
+    export HTTP_PROXY=http://127.0.0.1:7890
+    export HTTPS_PROXY=http://127.0.0.1:7890
+    export ALL_PROXY=http://127.0.0.1:7890
     export NO_PROXY=localhost,127.0.0.1,::1
   '';
   goEnv = [
@@ -190,9 +190,9 @@ in {
         Environment =
           serviceEnv
           ++ [
-            "HTTP_PROXY=http://127.0.0.1:7897"
-            "HTTPS_PROXY=http://127.0.0.1:7897"
-            "ALL_PROXY=http://127.0.0.1:7897"
+            "HTTP_PROXY=http://127.0.0.1:7890"
+            "HTTPS_PROXY=http://127.0.0.1:7890"
+            "ALL_PROXY=http://127.0.0.1:7890"
             "NO_PROXY=localhost,127.0.0.1,::1"
           ];
         WorkingDirectory = "/home/neil";

@@ -14,6 +14,7 @@ _: {
     ../../modules/wsl/frpc-ssh.nix
     ../../modules/wsl/secrets.nix
     ../../modules/wsl/hermes-agent.nix
+    ../../modules/wsl/mihomo.nix
     ../../modules/wsl/proxy.nix
     ../../modules/wsl/k3s.nix
     ../../modules/wsl/kepos-neo.nix
@@ -37,6 +38,7 @@ _: {
   kosmos.wsl = {
     frpcSsh.enable = true;
     keposTunnel.enable = true;
+    mihomo.enable = true;
     navidrome.enable = true;
   };
   system.stateVersion = "25.05";
