@@ -11,13 +11,14 @@ switch never applies Tanka.
 - Dagger: `tcp://dagger.devops.svc.cluster.local:8080` in-cluster and
   `tcp://127.0.0.1:8080` for the local CLI
 - k3s API: `https://127.0.0.1:26443`
+- Anki Sync: `http://anki.localhost:17480/` through Kepos
 
 Caddy binds the host gateway only on `127.0.0.1:17480`. CoreDNS rewrites the
 two canonical `.localhost` names to that same gateway inside the cluster. This
 keeps browser, Git, Woodpecker OAuth, webhooks, and container-registry URLs
 consistent.
 
-Kepos publishes seven service IDs:
+Kepos publishes application service IDs including:
 
 - `forgejo` and `woodpecker` both target port `17480`; the preserved HTTP Host
   header selects the Caddy route.
@@ -25,6 +26,8 @@ Kepos publishes seven service IDs:
 - `dagger` targets the Dagger engine on port `8080` and is restricted to the
   named Mac subscriber. Other allowed subscribers neither see nor can open it.
 - `ssh` targets port `22`.
+- `anki` targets the canonical gateway on port `17480`; see
+  [anki-sync.md](anki-sync.md) for credentials, deployment, and first sync.
 
 The separate Ente Photos stack publishes `ente` and `ente-storage`, both through
 the canonical gateway on port `17480`. See [ente-photos.md](ente-photos.md) for

@@ -24,6 +24,11 @@
     runtimeInputs = [pkgs.kubectl];
     text = builtins.readFile ../../scripts/sync-ente-secret;
   };
+  ankiSecretSync = pkgs.writeShellApplication {
+    name = "kosmos-sync-anki-secret";
+    runtimeInputs = [pkgs.kubectl];
+    text = builtins.readFile ../../scripts/sync-anki-secret;
+  };
 in {
   age = {
     identityPaths = ["/etc/ssh/ssh_host_ed25519_key"];
@@ -47,6 +52,13 @@ in {
           group = "root";
           mode = "0400";
           path = "/run/agenix/ente-stack-env";
+        };
+        anki-sync-env = {
+          file = secretsDir + "/anki-sync-env.age";
+          owner = "root";
+          group = "root";
+          mode = "0400";
+          path = "/run/agenix/anki-sync-env";
         };
       }
       // lib.optionalAttrs haveForgejoSmokeToken {
@@ -85,6 +97,20 @@ in {
         Restart = "on-failure";
         RestartSec = "5s";
         ExecStart = "${enteSecretSync}/bin/kosmos-sync-ente-secret ${config.age.secrets.ente-stack-env.path}";
+      };
+    };
+    anki-secret-sync = {
+      description = "Synchronize the Anki environment Secret to local K3s";
+      wantedBy = ["multi-user.target"];
+      wants = ["k3s.service"];
+      after = ["k3s.service"];
+      restartTriggers = [config.age.secrets.anki-sync-env.file];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        Restart = "on-failure";
+        RestartSec = "5s";
+        ExecStart = "${ankiSecretSync}/bin/kosmos-sync-anki-secret ${config.age.secrets.anki-sync-env.path}";
       };
     };
   };
