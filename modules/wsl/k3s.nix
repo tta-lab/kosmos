@@ -28,6 +28,7 @@
       "--disable=servicelb"
       "--disable=traefik"
       "--https-listen-port=26443"
+      "--node-ip=192.168.31.237"
       "--write-kubeconfig-group=k3s"
       "--write-kubeconfig-mode=0640"
     ];
