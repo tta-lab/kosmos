@@ -204,6 +204,27 @@
         assert unit.serviceConfig.RemainAfterExit;
           pkgs.runCommand "anki-secret-sync-module-check" {} "touch $out";
 
+      openvpn-client-module = let
+        cfg = self.nixosConfigurations.wsl.config;
+        vpn = cfg.services.openvpn.servers.client;
+        configSecret = cfg.age.secrets.openvpn-config;
+        authSecret = cfg.age.secrets.openvpn-auth;
+        unit = cfg.systemd.services.openvpn-client;
+      in
+        assert configSecret.path == "/run/agenix/openvpn-config";
+        assert configSecret.mode == "0400";
+        assert authSecret.path == "/run/agenix/openvpn-auth";
+        assert authSecret.mode == "0400";
+        assert vpn.autoStart;
+        assert vpn.config == ''
+          config ${configSecret.path}
+          auth-user-pass ${authSecret.path}
+          data-ciphers AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305:AES-128-CBC
+        '';
+        assert builtins.elem "multi-user.target" unit.wantedBy;
+        assert unit.serviceConfig.Restart == "always";
+          pkgs.runCommand "openvpn-client-module-check" {} "touch $out";
+
       k3s-state-directories = let
         eval = nixpkgs.lib.nixosSystem {
           inherit system;
