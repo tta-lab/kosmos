@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+rendered="$(mktemp)"
+trap 'rm -f "$rendered"' EXIT
+
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/anki" \
+  | yq -s '.' >"$rendered"
+
+jq -e '
+  . as $resources |
+  def resource($kind; $name):
+    $resources | map(select(.kind == $kind and .metadata.name == $name)) | first;
+
+  (resource("Namespace"; "anki").metadata.name == "anki") and
+  (resource("Deployment"; "anki-sync-server").spec.replicas == 1) and
+  (resource("Deployment"; "anki-sync-server").spec.strategy.type == "Recreate") and
+  (resource("Deployment"; "anki-sync-server").spec.template.spec.containers[0] as $container |
+    ($container.image == "jeankhawand/anki-sync-server:26.05@sha256:cbe79eb94aa8ffc718f324eccd76b9500736e33082b6fc27c563bc697169e059") and
+    ($container.readinessProbe.httpGet.path == "/health") and
+    ($container.env | map(select(.name == "SYNC_USER1" and .valueFrom.secretKeyRef.name == "anki-sync-env" and .valueFrom.secretKeyRef.key == "SYNC_USER1")) | length == 1) and
+    ($container.volumeMounts | map(select(.name == "data" and .mountPath == "/anki_data")) | length == 1)
+  ) and
+  (resource("Service"; "anki-sync-server").spec.type == "ClusterIP") and
+  (resource("PersistentVolume"; "kosmos-anki").spec.persistentVolumeReclaimPolicy == "Retain") and
+  (resource("PersistentVolume"; "kosmos-anki").spec.hostPath.path == "/var/lib/kosmos-k3s/anki") and
+  (resource("PersistentVolumeClaim"; "anki-data").spec.volumeName == "kosmos-anki") and
+  (map(select(.kind == "Secret")) | length == 0)
+' "$rendered" >/dev/null
+
+printf 'Anki manifests expose the pinned sync server with retained storage and an external Secret\n'

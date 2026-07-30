@@ -45,6 +45,10 @@ Run the full WSL build before changes to packages, users, services, networking, 
 Build `.#nixosConfigurations.kosmos...` only when touching shared or bare-metal modules.
 For simple package selection changes, rely on Nix evaluation and the system build.
 Do not add tests that only grep source files for the selected package expression.
+Before evaluating a Git-backed flake that references new files, stage those files with
+`git add`; untracked files are absent from the flake source and can cause misleading
+"file not found" failures. Staging is not committing. Review `git diff --cached`
+before the commit as usual.
 
 ## Editing Rules
 

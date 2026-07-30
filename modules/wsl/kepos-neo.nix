@@ -60,6 +60,10 @@ in {
           name = "BookOrbit";
           targetPort = 17480;
         };
+        anki = {
+          name = "Anki";
+          targetPort = 17480;
+        };
         mihomo = {
           name = "Mihomo";
           targetPort = 7890;

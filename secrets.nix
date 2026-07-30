@@ -14,4 +14,5 @@ in {
   "secrets/forgejo-smoke-token.age".publicKeys = users ++ systems;
   "secrets/woodpecker-server-env.age".publicKeys = users ++ systems;
   "secrets/ente-stack-env.age".publicKeys = users ++ systems;
+  "secrets/anki-sync-env.age".publicKeys = users ++ systems;
 }

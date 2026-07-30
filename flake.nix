@@ -62,6 +62,7 @@
             ${./scripts/forgejo-https-git-smoke} \
             ${./scripts/forgejo-k8s-pull-secret-smoke} \
             ${./scripts/init-ebook-secrets} \
+            ${./scripts/sync-anki-secret} \
             ${./scripts/prepare-mihomo-config} \
             ${./scripts/ttal-tmux-project-picker} \
             ${./scripts/wsl-devops-smoke} \
@@ -79,6 +80,9 @@
             ${./tests/prepare-mihomo-config-test} \
             ${./tests/ebooks-render-test} \
             ${./tests/ebook-gateway-render-test} \
+            ${./tests/anki-render-test} \
+            ${./tests/anki-gateway-render-test} \
+            ${./tests/sync-anki-secret-test} \
             ${./tests/wsl-devops-smoke-test} \
             ${./tests/orga-cli-service-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
@@ -96,6 +100,9 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/prepare-mihomo-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ebooks-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ebook-gateway-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-gateway-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-anki-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/wsl-devops-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
           touch $out
@@ -172,6 +179,31 @@
         assert unit.serviceConfig.RemainAfterExit;
           pkgs.runCommand "ente-secret-sync-module-check" {} "touch $out";
 
+      anki-secret-sync-module = let
+        eval = nixpkgs.lib.nixosSystem {
+          inherit system;
+          specialArgs = {inherit agenix;};
+          modules = [
+            agenix.nixosModules.default
+            ./modules/wsl/secrets.nix
+            (_: {system.stateVersion = "25.05";})
+          ];
+        };
+        cfg = eval.config;
+        secret = cfg.age.secrets.anki-sync-env;
+        unit = cfg.systemd.services.anki-secret-sync;
+        has = value: list: builtins.elem value list;
+      in
+        assert secret.path == "/run/agenix/anki-sync-env";
+        assert secret.mode == "0400";
+        assert unit.restartTriggers == [secret.file];
+        assert has "k3s.service" unit.after;
+        assert has "k3s.service" unit.wants;
+        assert has "multi-user.target" unit.wantedBy;
+        assert unit.serviceConfig.Type == "oneshot";
+        assert unit.serviceConfig.RemainAfterExit;
+          pkgs.runCommand "anki-secret-sync-module-check" {} "touch $out";
+
       k3s-state-directories = let
         eval = nixpkgs.lib.nixosSystem {
           inherit system;
@@ -182,7 +214,10 @@
           ];
         };
         inherit (eval.config.systemd.tmpfiles) rules;
+        k3sFlags = eval.config.services.k3s.extraFlags;
       in
+        assert builtins.elem "--node-ip=10.255.255.1" k3sFlags;
+        assert builtins.elem "k3s-node-address.service" eval.config.systemd.services.k3s.requires;
         assert builtins.elem "d /var/lib/kosmos-k3s/dagger 0750 root root - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ente 0750 root root - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ente/postgres 0700 999 999 - -" rules;
@@ -190,6 +225,7 @@
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit/data 0750 1000 1000 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit/books 0750 1000 1000 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit-db 0700 999 999 - -" rules;
+        assert builtins.elem "d /var/lib/kosmos-k3s/anki 0750 1000 1000 - -" rules;
           pkgs.runCommand "k3s-state-directories-check" {} "touch $out";
 
       wsl-devops-cli = let
@@ -257,6 +293,8 @@
         assert services.dagger.allow == ["c5a2168e17a53b699ced7e3f3c8470afd7f91b97a1582076c9797c3e024311a2"];
         assert services.bookorbit.name == "BookOrbit";
         assert services.bookorbit.targetPort == 17480;
+        assert services.anki.name == "Anki";
+        assert services.anki.targetPort == 17480;
         assert services ? mihomo;
         assert services.mihomo.name == "Mihomo";
         assert services.mihomo.targetPort == 7890;
@@ -265,6 +303,7 @@
         assert services."mihomo-dashboard".targetPort == 9090;
         assert services."mihomo-dashboard".allow == ["c5a2168e17a53b699ced7e3f3c8470afd7f91b97a1582076c9797c3e024311a2"];
         assert builtins.elem "bookorbit.localhost" loopbackHosts;
+        assert builtins.elem "anki.localhost" loopbackHosts;
           pkgs.runCommand "kepos-publisher-services-check" {} "touch $out";
     };
 
