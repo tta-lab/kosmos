@@ -219,6 +219,7 @@
         assert vpn.config == ''
           config ${configSecret.path}
           auth-user-pass ${authSecret.path}
+          data-ciphers AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305:AES-128-CBC
         '';
         assert builtins.elem "multi-user.target" unit.wantedBy;
         assert unit.serviceConfig.Restart == "always";
