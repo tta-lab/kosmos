@@ -60,6 +60,20 @@ in {
           mode = "0400";
           path = "/run/agenix/anki-sync-env";
         };
+        openvpn-config = {
+          file = secretsDir + "/openvpn-config.age";
+          owner = "root";
+          group = "root";
+          mode = "0400";
+          path = "/run/agenix/openvpn-config";
+        };
+        openvpn-auth = {
+          file = secretsDir + "/openvpn-auth.age";
+          owner = "root";
+          group = "root";
+          mode = "0400";
+          path = "/run/agenix/openvpn-auth";
+        };
       }
       // lib.optionalAttrs haveForgejoSmokeToken {
         forgejo-smoke-token = userSecret "forgejo-smoke-token.age" "/home/neil/.config/kosmos/forgejo-smoke-token";

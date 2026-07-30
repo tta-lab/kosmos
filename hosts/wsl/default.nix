@@ -21,6 +21,7 @@ _: {
     ../../modules/wsl/kepos-tunnel.nix
     ../../modules/wsl/navidrome.nix
     ../../modules/wsl/apt-cacher-ng.nix
+    ../../modules/wsl/openvpn.nix
     ../../modules/configs.nix
   ];
 
