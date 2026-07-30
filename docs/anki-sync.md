@@ -68,7 +68,9 @@ downloads.
 ## First sync
 
 1. Confirm which device has the complete and newest collection.
-2. Connect Kepos and select the published `anki` service.
+2. Connect Kepos to the kosmos publisher. The current Kepos client does not
+   show a separate `anki` service tile; the hostname route becomes available
+   when the publisher is connected.
 3. Set the client's self-hosted sync server to
    `http://anki.localhost:17480/`.
 4. Enter username `ooneil` and the password stored in agenix.

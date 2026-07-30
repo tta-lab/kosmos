@@ -1,4 +1,10 @@
-{config, ...}: {
+{
+  config,
+  pkgs,
+  ...
+}: let
+  k3sNodeAddress = "10.255.255.1";
+in {
   networking.hosts."127.0.0.1" = [
     "forgejo.localhost"
     "woodpecker.localhost"
@@ -28,16 +34,37 @@
       "--disable=servicelb"
       "--disable=traefik"
       "--https-listen-port=26443"
-      "--node-ip=192.168.31.237"
+      "--node-ip=${k3sNodeAddress}"
       "--write-kubeconfig-group=k3s"
       "--write-kubeconfig-mode=0640"
     ];
   };
 
   systemd.services = {
+    k3s-node-address = {
+      description = "Stable local node address for k3s";
+      before = ["k3s.service"];
+      path = [pkgs.iproute2];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+      };
+      script = ''
+        if ! ip link show dev k3s-node >/dev/null 2>&1; then
+          ip link add k3s-node type dummy
+        fi
+        ip address replace ${k3sNodeAddress}/32 dev k3s-node
+        ip link set k3s-node up
+      '';
+    };
+
     k3s = {
       wants = ["mihomo.service"];
-      after = ["mihomo.service"];
+      requires = ["k3s-node-address.service"];
+      after = [
+        "k3s-node-address.service"
+        "mihomo.service"
+      ];
       environment = {
         HTTP_PROXY = config.kosmos.wsl.k3sProxyUrl;
         HTTPS_PROXY = config.kosmos.wsl.k3sProxyUrl;

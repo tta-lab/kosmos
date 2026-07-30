@@ -216,7 +216,8 @@
         inherit (eval.config.systemd.tmpfiles) rules;
         k3sFlags = eval.config.services.k3s.extraFlags;
       in
-        assert builtins.elem "--node-ip=192.168.31.237" k3sFlags;
+        assert builtins.elem "--node-ip=10.255.255.1" k3sFlags;
+        assert builtins.elem "k3s-node-address.service" eval.config.systemd.services.k3s.requires;
         assert builtins.elem "d /var/lib/kosmos-k3s/dagger 0750 root root - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ente 0750 root root - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ente/postgres 0700 999 999 - -" rules;
