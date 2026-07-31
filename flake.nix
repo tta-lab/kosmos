@@ -308,7 +308,15 @@
         cfg = self.nixosConfigurations.wsl.config;
         inherit (cfg.home-manager.users.neil.services.kepos.publisher) services;
         loopbackHosts = cfg.networking.hosts."127.0.0.1";
+        forgeAllow = [
+          "c5a2168e17a53b699ced7e3f3c8470afd7f91b97a1582076c9797c3e024311a2"
+          "ff9e2bee88a324ccf9ccdcc680a597e8798d008d57b54a4ae2873d26ddfea43e"
+          "682276873f44fd590054f68af34798651089b34d5dc70d9ecd151e8bd1a03a90"
+          "de087b86a5ced0d4f85e63463b8508e42ede89d2d4c9c9a64efd52697b1ce78b"
+        ];
       in
+        assert services.forgejo.allow == forgeAllow;
+        assert services.woodpecker.allow == forgeAllow;
         assert services.dagger.name == "Dagger";
         assert services.dagger.targetPort == 8080;
         assert services.dagger.allow == ["c5a2168e17a53b699ced7e3f3c8470afd7f91b97a1582076c9797c3e024311a2"];

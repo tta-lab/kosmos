@@ -5,8 +5,15 @@
     subscriber-e7cd23 = "e7cd23d4729148b6a6682c65787be743d63c48f96a3a2cb76ff07a72547be77e";
     guion-worker-1 = "ff9e2bee88a324ccf9ccdcc680a597e8798d008d57b54a4ae2873d26ddfea43e";
     guion-worker-2 = "682276873f44fd590054f68af34798651089b34d5dc70d9ecd151e8bd1a03a90";
+    sw-server = "de087b86a5ced0d4f85e63463b8508e42ede89d2d4c9c9a64efd52697b1ce78b";
     lemon = "f8bcb7c20d24d3a295fdec2a5a250adef59b3d7e70b21592a01de99b63cae6de";
   };
+  forgeServicesAllow = [
+    subscribers.mac
+    subscribers.guion-worker-1
+    subscribers.guion-worker-2
+    subscribers.sw-server
+  ];
 in {
   home-manager.users.neil = {
     imports = [kepos-neo.homeManagerModules.default];
@@ -34,10 +41,12 @@ in {
         forgejo = {
           name = "Forgejo";
           targetPort = 17480;
+          allow = forgeServicesAllow;
         };
         woodpecker = {
           name = "Woodpecker";
           targetPort = 17480;
+          allow = forgeServicesAllow;
         };
         navidrome = {
           name = "Navidrome";
