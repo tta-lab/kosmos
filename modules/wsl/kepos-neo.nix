@@ -36,6 +36,7 @@ in {
         subscribers.guion-worker-1
         subscribers.guion-worker-2
         subscribers.lemon
+        subscribers.sw-server
       ];
       services = {
         forgejo = {
