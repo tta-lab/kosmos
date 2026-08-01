@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+rendered="$(mktemp)"
+trap 'rm -f "$rendered"' EXIT
+
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/notes" \
+  | yq -s '.' >"$rendered"
+
+jq -e '
+  . as $resources |
+  def resource($kind; $name):
+    $resources | map(select(.kind == $kind and .metadata.name == $name)) | first;
+
+  (resource("Namespace"; "notes").metadata.name == "notes") and
+  (resource("Deployment"; "memos").spec.replicas == 1) and
+  (resource("Deployment"; "memos").spec.strategy.type == "Recreate") and
+  (resource("Deployment"; "memos").spec.template.spec.containers[0] as $container |
+    ($container.image | startswith("neosmemo/memos:0.29.1@sha256:")) and
+    ($container.readinessProbe.httpGet.path == "/healthz") and
+    ($container.securityContext.runAsNonRoot == true) and
+    ($container.volumeMounts | any(.mountPath == "/var/opt/memos")) and
+    ($container.env | any(.name == "MEMOS_INSTANCE_URL" and .value == "http://memos.localhost:17480"))
+  ) and
+  (resource("Service"; "memos").spec.type == "ClusterIP") and
+  (resource("Service"; "memos").spec.ports[0].port == 5230) and
+  (resource("PersistentVolume"; "kosmos-memos").spec.persistentVolumeReclaimPolicy == "Retain") and
+  (resource("PersistentVolumeClaim"; "memos-data").spec.storageClassName == "kosmos-static") and
+  (map(select(.kind == "Secret")) | length == 0)
+' "$rendered" >/dev/null
+
+printf 'notes manifests expose a hardened Memos service with retained storage\n'
