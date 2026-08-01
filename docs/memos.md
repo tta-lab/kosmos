@@ -13,11 +13,18 @@ lists that server version as compatible.
 ## Deploy
 
 ```bash
+sudo env NIX_CONFIG="$(cat ~/.config/nix/nix.conf)" \
+  nixos-rebuild switch --flake .#wsl
+
 just notes-diff
 just notes-deploy
 just notes-status
 just kepos-status
 ```
+
+The WSL rebuild is required before the first deploy. It creates the host data
+directory, installs the Kepos service, and adds the local hostname used by the
+gateway.
 
 The persistent data lives at `/var/lib/kosmos-k3s/notes/memos`. The directory
 contains the SQLite database and attachments. Back up the whole directory; do
