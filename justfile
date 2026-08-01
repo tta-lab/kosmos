@@ -4,6 +4,7 @@ environment := "tanka/environments/devops"
 photos_environment := "tanka/environments/photos"
 ebooks_environment := "tanka/environments/ebooks"
 anki_environment := "tanka/environments/anki"
+notes_environment := "tanka/environments/notes"
 kubeconfig := env_var_or_default("KUBECONFIG", "/etc/rancher/k3s/k3s.yaml")
 api_server := "https://127.0.0.1:26443"
 
@@ -70,6 +71,23 @@ anki-deploy: anki-apply
 
 anki-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n anki -o wide
+
+notes-show:
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ notes_environment }}"
+
+notes-diff: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ notes_environment }}"
+
+notes-apply: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ notes_environment }}"
+
+notes-deploy: notes-apply
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}"
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+
+notes-status: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n notes -o wide
 
 bookorbit-bootstrap-token: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get secret bookorbit-env -n ebooks -o jsonpath='{.data.SETUP_BOOTSTRAP_TOKEN}' | base64 --decode; echo

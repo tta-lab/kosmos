@@ -12,6 +12,7 @@ in {
     "ente-storage.localhost"
     "bookorbit.localhost"
     "anki.localhost"
+    "memos.localhost"
   ];
 
   networking.firewall.interfaces.cni0.allowedTCPPorts = [
@@ -87,5 +88,7 @@ in {
     "d /var/lib/kosmos-k3s/ebooks/bookorbit/books 0750 1000 1000 - -"
     "d /var/lib/kosmos-k3s/ebooks/bookorbit-db 0700 999 999 - -"
     "d /var/lib/kosmos-k3s/anki 0750 1000 1000 - -"
+    "d /var/lib/kosmos-k3s/notes 0750 root root - -"
+    "d /var/lib/kosmos-k3s/notes/memos 0750 10001 10001 - -"
   ];
 }

@@ -82,6 +82,8 @@
             ${./tests/ebook-gateway-render-test} \
             ${./tests/anki-render-test} \
             ${./tests/anki-gateway-render-test} \
+            ${./tests/notes-render-test} \
+            ${./tests/notes-gateway-render-test} \
             ${./tests/sync-anki-secret-test} \
             ${./tests/wsl-devops-smoke-test} \
             ${./tests/orga-cli-service-test}
@@ -102,6 +104,8 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ebook-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-gateway-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-anki-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/wsl-devops-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
@@ -247,6 +251,7 @@
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit/books 0750 1000 1000 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit-db 0700 999 999 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/anki 0750 1000 1000 - -" rules;
+        assert builtins.elem "d /var/lib/kosmos-k3s/notes/memos 0750 10001 10001 - -" rules;
           pkgs.runCommand "k3s-state-directories-check" {} "touch $out";
 
       wsl-devops-cli = let
@@ -331,6 +336,7 @@
           "ente-storage"
           "bookorbit"
           "anki"
+          "memos"
           "mihomo"
           "ssh"
         ];
@@ -343,6 +349,8 @@
         assert services.bookorbit.targetPort == 17480;
         assert services.anki.name == "Anki";
         assert services.anki.targetPort == 17480;
+        assert services.memos.name == "Memos";
+        assert services.memos.targetPort == 17480;
         assert services ? mihomo;
         assert services.mihomo.name == "Mihomo";
         assert services.mihomo.targetPort == 7890;
@@ -352,6 +360,7 @@
         assert services."mihomo-dashboard".allow == ["c5a2168e17a53b699ced7e3f3c8470afd7f91b97a1582076c9797c3e024311a2"];
         assert builtins.elem "bookorbit.localhost" loopbackHosts;
         assert builtins.elem "anki.localhost" loopbackHosts;
+        assert builtins.elem "memos.localhost" loopbackHosts;
           pkgs.runCommand "kepos-publisher-services-check" {} "touch $out";
     };
 

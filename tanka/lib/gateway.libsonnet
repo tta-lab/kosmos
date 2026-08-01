@@ -21,6 +21,7 @@ local gatewayLabels = labels('canonical-gateway');
         rewrite name exact ente-storage.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact bookorbit.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact anki.localhost canonical-gateway.devops.svc.cluster.local
+        rewrite name exact memos.localhost canonical-gateway.devops.svc.cluster.local
       |||,
     },
   },
@@ -74,6 +75,11 @@ local gatewayLabels = labels('canonical-gateway');
                 read_buffer 512k
               }
             }
+          }
+
+          @memos host memos.localhost
+          handle @memos {
+            reverse_proxy memos.notes.svc.cluster.local:5230
           }
 
           handle {
