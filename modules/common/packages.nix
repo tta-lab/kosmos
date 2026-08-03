@@ -1,5 +1,6 @@
 {
   config,
+  moonbitToolchain,
   pkgs,
   pkgsUnstable,
   ...
@@ -133,6 +134,7 @@ in {
     pkgsUnstable.gotestsum
     pkgsUnstable.cargo-deny
     pkgsUnstable.cargo-release
+    moonbitToolchain
     python3
     pkgsUnstable.uv
     pkgsUnstable.ruff
