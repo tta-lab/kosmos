@@ -16,6 +16,8 @@
     home-manager.inputs.nixpkgs.follows = "nixpkgs";
     fenix.url = "github:nix-community/fenix";
     fenix.inputs.nixpkgs.follows = "nixpkgs";
+    moonbit-overlay.url = "github:moonbit-community/moonbit-overlay";
+    moonbit-overlay.inputs.nixpkgs.follows = "nixpkgs-unstable";
     kepos-neo = {
       url = "github:tta-lab/kepos-neo/62081b4430916f2ee628932fe95a8ebff66775da";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -33,12 +35,14 @@
     nix-index-database,
     home-manager,
     fenix,
+    moonbit-overlay,
     kepos-neo,
     ...
   }: let
     system = "x86_64-linux";
     pkgs = import nixpkgs {inherit system;};
     pkgsUnstable = import nixpkgs-unstable {inherit system;};
+    moonbitToolchain = moonbit-overlay.packages.${system}.default;
   in {
     checks.${system} = {
       shell-tests =
@@ -351,7 +355,7 @@
     nixosConfigurations.kosmos = nixpkgs.lib.nixosSystem {
       inherit system;
       specialArgs = {
-        inherit pkgsUnstable;
+        inherit moonbitToolchain pkgsUnstable;
       };
       modules = [
         disko.nixosModules.disko
@@ -364,7 +368,7 @@
     nixosConfigurations.wsl = nixpkgs.lib.nixosSystem {
       inherit system;
       specialArgs = {
-        inherit agenix fenix kepos-neo nixpkgs-unstable pkgsUnstable;
+        inherit agenix fenix kepos-neo moonbitToolchain nixpkgs-unstable pkgsUnstable;
       };
       modules = [
         nixos-wsl.nixosModules.default
