@@ -154,17 +154,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1785218542,
-        "narHash": "sha256-hDs7jtEsnT2ACyHW0QsRTGrGsPBin+0hS62LBKzU94E=",
-        "owner": "tta-lab",
-        "repo": "kepos-neo",
-        "rev": "62081b4430916f2ee628932fe95a8ebff66775da",
+        "lastModified": 1785815008,
+        "narHash": "sha256-bJ4Trd2965GfGOIJDBbf/NaetFHzs0+/gX4VJfWBkJE=",
+        "owner": "LamplitIsles",
+        "repo": "kepos",
+        "rev": "b7bd39f4c5490902bd9df148231ab74018152f8a",
         "type": "github"
       },
       "original": {
-        "owner": "tta-lab",
-        "repo": "kepos-neo",
-        "rev": "62081b4430916f2ee628932fe95a8ebff66775da",
+        "owner": "LamplitIsles",
+        "repo": "kepos",
         "type": "github"
       }
     },

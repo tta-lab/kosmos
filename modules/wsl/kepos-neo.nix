@@ -1,4 +1,32 @@
-{kepos-neo, ...}: let
+{
+  kepos-neo,
+  lib,
+  pkgs,
+  ...
+}: let
+  package = kepos-neo.packages.x86_64-linux.kepos;
+  bootstrap = [
+    "47.94.213.63:49737"
+    "203.91.75.19:49738"
+    "34.143.181.65:49738"
+    "134.209.3.19:49739"
+  ];
+  subscriberStateDir = "/home/neil/.local/state/kepos-neo/subscriber";
+  macPublisherKey = "2cb7ff31ed689b79259b97043c2b3e8fbd3ae8e905d6c17b1738e8bfbd2716da";
+  subscriberConfigFile = (pkgs.formats.toml {}).generate "kepos-subscriber-config.toml" {
+    network = {inherit bootstrap;};
+    subscriber = {
+      enabled = true;
+      gateway_port = 17481;
+      route = "auto";
+      services = [
+        {
+          id = "ssh";
+          local_port = 2222;
+        }
+      ];
+    };
+  };
   subscribers = {
     mac = "c5a2168e17a53b699ced7e3f3c8470afd7f91b97a1582076c9797c3e024311a2";
     pixel7a = "d1c8e7bad4f0468a12d54c5b80d175677ff58c833f9e666f8a838b0d6b9256bc";
@@ -19,15 +47,9 @@ in {
 
     services.kepos.publisher = {
       enable = true;
-      package = kepos-neo.packages.x86_64-linux.kepos;
+      inherit package bootstrap;
       stateDir = "/home/neil/.local/state/kepos-neo/mux-publisher";
       displayName = "kosmos-wsl";
-      bootstrap = [
-        "47.94.213.63:49737"
-        "203.91.75.19:49738"
-        "34.143.181.65:49738"
-        "134.209.3.19:49739"
-      ];
       allow = [
         subscribers.mac
         subscribers.pixel7a
@@ -89,6 +111,55 @@ in {
           name = "SSH";
           targetPort = 22;
         };
+      };
+    };
+
+    systemd.user.services.kepos-subscriber = {
+      Unit = {
+        Description = "Kepos Neo subscriber for the Mac publisher";
+        After = ["network-online.target"];
+      };
+      Install.WantedBy = ["default.target"];
+      Service = {
+        Type = "simple";
+        ExecStartPre = [
+          (lib.escapeShellArgs [
+            (lib.getExe package)
+            "setup"
+            "subscriber"
+            "--state"
+            subscriberStateDir
+          ])
+          (lib.escapeShellArgs [
+            (lib.getExe package)
+            "subscriber"
+            "set-publisher"
+            "--state"
+            subscriberStateDir
+            "--label"
+            "neil-mac"
+            "--publisher-key"
+            macPublisherKey
+          ])
+        ];
+        ExecStart = lib.escapeShellArgs [
+          (lib.getExe package)
+          "subscriber"
+          "run"
+          "--state"
+          subscriberStateDir
+          "--config"
+          (toString subscriberConfigFile)
+          "--observations"
+          "ndjson"
+        ];
+        Restart = "always";
+        RestartSec = 5;
+        KillMode = "mixed";
+        TimeoutStopSec = 15;
+        UMask = "0077";
+        NoNewPrivileges = true;
+        PrivateTmp = true;
       };
     };
   };

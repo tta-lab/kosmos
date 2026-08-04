@@ -19,7 +19,7 @@
     moonbit-overlay.url = "github:moonbit-community/moonbit-overlay";
     moonbit-overlay.inputs.nixpkgs.follows = "nixpkgs-unstable";
     kepos-neo = {
-      url = "github:tta-lab/kepos-neo/62081b4430916f2ee628932fe95a8ebff66775da";
+      url = "github:LamplitIsles/kepos";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
@@ -224,7 +224,8 @@
         assert authSecret.path == "/run/agenix/openvpn-auth";
         assert authSecret.mode == "0400";
         assert vpn.autoStart;
-        assert vpn.config == ''
+        assert vpn.config
+        == ''
           config ${configSecret.path}
           auth-user-pass ${authSecret.path}
           data-ciphers AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305:AES-128-CBC
@@ -350,6 +351,13 @@
         assert builtins.elem "anki.localhost" loopbackHosts;
         assert builtins.elem "memos.localhost" loopbackHosts;
           pkgs.runCommand "kepos-publisher-services-check" {} "touch $out";
+
+      kepos-subscriber-service = let
+        cfg = self.nixosConfigurations.wsl.config;
+        service = cfg.home-manager.users.neil.systemd.user.services.kepos-subscriber;
+      in
+        assert nixpkgs.lib.hasInfix "subscriber run" service.Service.ExecStart;
+          pkgs.runCommand "kepos-subscriber-service-check" {} "touch $out";
     };
 
     nixosConfigurations.kosmos = nixpkgs.lib.nixosSystem {
