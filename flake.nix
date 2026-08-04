@@ -19,7 +19,7 @@
     moonbit-overlay.url = "github:moonbit-community/moonbit-overlay";
     moonbit-overlay.inputs.nixpkgs.follows = "nixpkgs-unstable";
     kepos-neo = {
-      url = "github:tta-lab/kepos-neo/b7bd39f4c5490902bd9df148231ab74018152f8a";
+      url = "github:tta-lab/kepos-neo";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
