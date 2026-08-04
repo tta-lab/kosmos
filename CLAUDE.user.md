@@ -26,8 +26,8 @@
 ## GitHub & Forgejo
 
 - **Use a branch and PR for repository changes.** Never push directly to `main` or `master`.
-- **Use `og git` for guarded git network operations** — `og git push`, `og git pull`, and `og git tag`; never use `git push` directly. Commands resolve the current repo from git metadata and handle forge auth through the daemon.
-- **Prefer no amend, no force-push.** `og git push --force` is force-with-lease and exists only for rebase/amend workflows. Avoid it unless you explicitly need to rewrite a remote branch you own.
+- **Use `og` for guarded git network operations** — `og push`, `og pull`, and `og tag`; never use `git push` directly. Commands resolve the current repo from git metadata and handle forge auth through the daemon.
+- **Prefer no amend, no force-push.** `og push --force` is force-with-lease and exists only for rebase/amend workflows. Avoid it unless you explicitly need to rewrite a remote branch you own.
 - **Use `og pr` for PR operations it supports** — create, view/list, find, get, modify, comment, checks/status, and failure logs. Never use `gh`, `tea`, `curl`, or Forgejo MCP for PR work.
   - `echo "body" | og pr create "title"` / `og pr view --json` / `og pr find --state open` / `og pr checks` / `og pr failures --tail 100`
 - **`og pr` V1 does not merge** — if a merge is required, use the approved repo workflow/tool for merge rather than inventing a forge API call.
