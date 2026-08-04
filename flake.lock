@@ -156,14 +156,14 @@
       "locked": {
         "lastModified": 1785815008,
         "narHash": "sha256-bJ4Trd2965GfGOIJDBbf/NaetFHzs0+/gX4VJfWBkJE=",
-        "owner": "tta-lab",
-        "repo": "kepos-neo",
+        "owner": "LamplitIsles",
+        "repo": "kepos",
         "rev": "b7bd39f4c5490902bd9df148231ab74018152f8a",
         "type": "github"
       },
       "original": {
-        "owner": "tta-lab",
-        "repo": "kepos-neo",
+        "owner": "LamplitIsles",
+        "repo": "kepos",
         "type": "github"
       }
     },
