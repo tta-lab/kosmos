@@ -1,8 +1,8 @@
 # WSL DevOps Runbook
 
 The WSL DevOps stack runs in the single-node NixOS k3s cluster. Nix manages
-k3s and the Kepos publisher; Tanka manages the Kubernetes objects. A NixOS
-switch never applies Tanka.
+k3s and the Kepos publisher and subscriber; Tanka manages the Kubernetes
+objects. A NixOS switch never applies Tanka.
 
 ## Endpoints
 
@@ -79,6 +79,25 @@ systemctl status woodpecker-secret-sync.service --no-pager
 The upstream Kepos Home Manager module reuses the publisher state at
 `~/.local/state/kepos-neo/mux-publisher`. If the state is absent, the module
 initializes it before starting the publisher.
+
+WSL also runs a separate Kepos subscriber for the Mac publisher. Its identity
+is created once at `~/.local/state/kepos-neo/subscriber`, pins the Mac publisher
+key declared in `modules/wsl/kepos-neo.nix`, and maps the published `ssh`
+service to `127.0.0.1:2222`. Its HTTP gateway uses port `17481` so it does not
+replace the local Kubernetes ingress on port `17480`.
+
+After the first deploy, print the WSL subscriber public key:
+
+```bash
+just kepos-subscriber-key
+```
+
+Add that public key to the Mac publisher allowlist and restart its publisher.
+Then connect to the Mac through the local Kepos listener:
+
+```bash
+ssh -p 2222 <mac-user>@127.0.0.1
+```
 
 Apply the Kubernetes objects explicitly:
 
