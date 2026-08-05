@@ -39,7 +39,7 @@ wsl.wslConf.interop.appendWindowsPath = false;
 
 ## TTAL Runtime
 
-Home Manager deploys non-secret config to `~/.config/ttal`, `~/.config/einai`, and `~/.config/temenos`. Real `chat_id`, `.env`, license, kubeconfig, and tunnel tokens are intentionally left out for the later secret-management PR.
+Home Manager deploys non-secret config to `~/.config/einai` and `~/.config/temenos`. TTAL config in `~/.config/ttal` is managed directly outside Kosmos. Real `chat_id`, `.env`, license, kubeconfig, and tunnel tokens are intentionally left out for the later secret-management PR.
 
 Proxy is provided by the local Mihomo systemd service at `127.0.0.1:7890`.
 The listener accepts HTTP and SOCKS5. MetaCubeXD is served by the loopback-only
@@ -175,7 +175,7 @@ Project checkouts use two roots:
 - `~/code/projects/<org>/<repo>` for repos we maintain or run from
 - `~/code/references/<org>/<repo>` for external research clones
 
-Clone or fetch the active project set from `ttal/projects.toml`:
+Clone or fetch the active project set from `~/.config/ttal/projects.toml`:
 
 ```bash
 kosmos-sync-projects
