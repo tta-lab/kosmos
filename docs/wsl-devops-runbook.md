@@ -80,24 +80,30 @@ The upstream Kepos Home Manager module reuses the publisher state at
 `~/.local/state/kepos-neo/mux-publisher`. If the state is absent, the module
 initializes it before starting the publisher.
 
-WSL also runs a separate Kepos subscriber for the Mac publisher. Its identity
-is created once at `~/.local/state/kepos-neo/subscriber`, pins the Mac publisher
-key declared in `modules/wsl/kepos-neo.nix`, and maps the published `ssh`
-service to `127.0.0.1:2222`. Its HTTP gateway uses port `17481` so it does not
-replace the local Kubernetes ingress on port `17480`.
+Print the WSL publisher public key without exposing its private state:
 
-After the first deploy, print the WSL subscriber public key:
+```bash
+just kepos-publisher-key
+```
+
+The WSL subscriber for the Mac publisher is declaratively disabled because the
+current nested network cannot establish that direction. Its configuration,
+identity, pinned publisher contact, and state at
+`~/.local/state/kepos-neo/subscriber` remain intact for a future retry. The Mac
+publisher may keep the WSL subscriber key in its allowlist.
+
+While disabled, WSL does not listen on the subscriber gateway `17481` or the
+local SSH endpoint `127.0.0.1:2222`. To inspect the retained subscriber public
+key without starting the service:
 
 ```bash
 just kepos-subscriber-key
 ```
 
-Add that public key to the Mac publisher allowlist and restart its publisher.
-Then connect to the Mac through the local Kepos listener:
-
-```bash
-ssh -p 2222 <mac-user>@127.0.0.1
-```
+Do not remove the subscriber state or Mac allowlist entry. Resume this direction
+only after selecting and verifying a network or relay path from orientation
+notes 1724 and 1725, then set `enableMacSubscriber` in
+`modules/wsl/kepos-neo.nix` to `true` and rebuild WSL.
 
 Apply the Kubernetes objects explicitly:
 

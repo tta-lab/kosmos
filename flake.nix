@@ -352,12 +352,30 @@
         assert builtins.elem "memos.localhost" loopbackHosts;
           pkgs.runCommand "kepos-publisher-services-check" {} "touch $out";
 
-      kepos-subscriber-service = let
+      kepos-publisher-only = let
         cfg = self.nixosConfigurations.wsl.config;
-        service = cfg.home-manager.users.neil.systemd.user.services.kepos-subscriber;
+        home = cfg.home-manager.users.neil;
+        package = kepos-neo.packages.${system}.kepos;
+        keposServiceNames =
+          builtins.filter
+          (name: nixpkgs.lib.hasPrefix "kepos-" name)
+          (builtins.attrNames home.systemd.user.services);
       in
-        assert nixpkgs.lib.hasInfix "subscriber run" service.Service.ExecStart;
-          pkgs.runCommand "kepos-subscriber-service-check" {} "touch $out";
+        assert home.services.kepos.publisher.enable;
+        assert home.services.kepos.publisher.stateDir == "/home/neil/.local/state/kepos-neo/mux-publisher";
+        assert home.systemd.user.startServices;
+        assert keposServiceNames == ["kepos-publisher"];
+          pkgs.runCommand "kepos-publisher-only-check" {
+            nativeBuildInputs = [package];
+          } ''
+            state_dir="$TMPDIR/publisher"
+            kepos setup publisher \
+              --state "$state_dir" \
+              --display-name test >/dev/null
+            key_output="$(kepos publisher key --state "$state_dir")"
+            [[ "$key_output" =~ ^Publisher\ key:\ [0-9a-f]{64}$ ]]
+            touch "$out"
+          '';
     };
 
     nixosConfigurations.kosmos = nixpkgs.lib.nixosSystem {

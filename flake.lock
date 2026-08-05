@@ -154,11 +154,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1785815008,
-        "narHash": "sha256-bJ4Trd2965GfGOIJDBbf/NaetFHzs0+/gX4VJfWBkJE=",
+        "lastModified": 1785906080,
+        "narHash": "sha256-w2cZwGagISSOLYb3kyjEWSA65aaLRf55AYt++x6gXLo=",
         "owner": "LamplitIsles",
         "repo": "kepos",
-        "rev": "b7bd39f4c5490902bd9df148231ab74018152f8a",
+        "rev": "bd9044300a2e33d77b2dda0e5687bcfa5b3f232f",
         "type": "github"
       },
       "original": {
