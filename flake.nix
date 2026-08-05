@@ -314,50 +314,127 @@
         assert builtins.all (value: has value flicknoteEnvironment) expectedProxyEnvironment;
           pkgs.runCommand "wsl-mihomo-service-check" {} "touch $out";
 
-      kepos-publisher-services = let
+      kepos-device-service = let
         cfg = self.nixosConfigurations.wsl.config;
-        inherit (cfg.home-manager.users.neil.services.kepos.publisher) services;
+        inherit (cfg.home-manager.users.neil.systemd.user) services;
+        service = services.kepos-device;
+        execStart = service.Service.ExecStart;
+        execStartPre = service.Service.ExecStartPre;
+        keposServiceNames = builtins.filter (nixpkgs.lib.hasPrefix "kepos-") (builtins.attrNames services);
         loopbackHosts = cfg.networking.hosts."127.0.0.1";
       in
-        assert builtins.all (service: services.${service}.allow == null) [
-          "navidrome"
-          "ente"
-          "ente-storage"
-          "bookorbit"
-          "anki"
-          "memos"
-          "mihomo"
-          "ssh"
-        ];
-        assert services.forgejo.allow != null;
-        assert services.forgejo.allow == services.woodpecker.allow;
-        assert services.dagger.name == "Dagger";
-        assert services.dagger.targetPort == 8080;
-        assert services.dagger.allow != null;
-        assert services.bookorbit.name == "BookOrbit";
-        assert services.bookorbit.targetPort == 17480;
-        assert services.anki.name == "Anki";
-        assert services.anki.targetPort == 17480;
-        assert services.memos.name == "Memos";
-        assert services.memos.targetPort == 17480;
-        assert services ? mihomo;
-        assert services.mihomo.name == "Mihomo";
-        assert services.mihomo.targetPort == 7890;
-        assert builtins.hasAttr "mihomo-dashboard" services;
-        assert services."mihomo-dashboard".name == "Mihomo Dashboard";
-        assert services."mihomo-dashboard".targetPort == 9090;
-        assert services."mihomo-dashboard".allow != null;
+        assert keposServiceNames == ["kepos-device"];
+        assert nixpkgs.lib.hasInfix "device run" execStart;
+        assert nixpkgs.lib.hasInfix "--publisher-state /home/neil/.local/state/kepos-neo/mux-publisher" execStart;
+        assert nixpkgs.lib.hasInfix "--subscriber-state /home/neil/.local/state/kepos-neo/subscriber" execStart;
+        assert nixpkgs.lib.hasInfix "--config " execStart;
+        assert nixpkgs.lib.hasSuffix "--observations ndjson" execStart;
+        assert builtins.length execStartPre == 3;
+        assert nixpkgs.lib.hasInfix "kepos-initialize-publisher" (builtins.elemAt execStartPre 0);
+        assert nixpkgs.lib.hasInfix "setup subscriber" (builtins.elemAt execStartPre 1);
+        assert nixpkgs.lib.hasSuffix "--state /home/neil/.local/state/kepos-neo/subscriber" (builtins.elemAt execStartPre 1);
+        assert nixpkgs.lib.hasInfix "subscriber set-publisher" (builtins.elemAt execStartPre 2);
+        assert nixpkgs.lib.hasInfix "--state /home/neil/.local/state/kepos-neo/subscriber" (builtins.elemAt execStartPre 2);
+        assert nixpkgs.lib.hasInfix "--label neil-mac" (builtins.elemAt execStartPre 2);
+        assert nixpkgs.lib.hasSuffix "--publisher-key 2cb7ff31ed689b79259b97043c2b3e8fbd3ae8e905d6c17b1738e8bfbd2716da" (builtins.elemAt execStartPre 2);
         assert builtins.elem "bookorbit.localhost" loopbackHosts;
         assert builtins.elem "anki.localhost" loopbackHosts;
         assert builtins.elem "memos.localhost" loopbackHosts;
-          pkgs.runCommand "kepos-publisher-services-check" {} "touch $out";
+          pkgs.runCommand "kepos-device-service-check" {
+            nativeBuildInputs = [pkgs.python3];
+            inherit execStart;
+            initializePublisher = builtins.elemAt execStartPre 0;
+          } ''
+            python - <<'PY'
+            import os
+            import shlex
+            import tomllib
 
-      kepos-subscriber-service = let
-        cfg = self.nixosConfigurations.wsl.config;
-        service = cfg.home-manager.users.neil.systemd.user.services.kepos-subscriber;
-      in
-        assert nixpkgs.lib.hasInfix "subscriber run" service.Service.ExecStart;
-          pkgs.runCommand "kepos-subscriber-service-check" {} "touch $out";
+            argv = shlex.split(os.environ["execStart"])
+            config_path = argv[argv.index("--config") + 1]
+            with open(config_path, "rb") as config_file:
+                config = tomllib.load(config_file)
+
+            assert config["network"]["bootstrap"] == [
+                "47.94.213.63:49737",
+                "203.91.75.19:49738",
+                "34.143.181.65:49738",
+                "134.209.3.19:49739",
+            ]
+
+            publisher = config["publisher"]
+            assert publisher["enabled"] is True
+            assert publisher["display_name"] == "kosmos-wsl"
+            assert publisher["allow"] == [
+                "c5a2168e17a53b699ced7e3f3c8470afd7f91b97a1582076c9797c3e024311a2",
+                "d1c8e7bad4f0468a12d54c5b80d175677ff58c833f9e666f8a838b0d6b9256bc",
+                "ff9e2bee88a324ccf9ccdcc680a597e8798d008d57b54a4ae2873d26ddfea43e",
+                "682276873f44fd590054f68af34798651089b34d5dc70d9ecd151e8bd1a03a90",
+                "f8bcb7c20d24d3a295fdec2a5a250adef59b3d7e70b21592a01de99b63cae6de",
+                "de087b86a5ced0d4f85e63463b8508e42ede89d2d4c9c9a64efd52697b1ce78b",
+            ]
+            publisher_services = {service["id"]: service for service in publisher["services"]}
+            assert {service_id: service["target_port"] for service_id, service in publisher_services.items()} == {
+                "forgejo": 17480,
+                "woodpecker": 17480,
+                "navidrome": 4533,
+                "dagger": 8080,
+                "ente": 17480,
+                "ente-storage": 17480,
+                "bookorbit": 17480,
+                "anki": 17480,
+                "memos": 17480,
+                "mihomo": 7890,
+                "mihomo-dashboard": 9090,
+                "ssh": 22,
+            }
+            assert publisher_services["forgejo"]["allow"] == publisher_services["woodpecker"]["allow"]
+            assert publisher_services["dagger"]["allow"] == [publisher["allow"][0]]
+            assert publisher_services["mihomo-dashboard"]["allow"] == [publisher["allow"][0]]
+            for service_id in [
+                "navidrome",
+                "ente",
+                "ente-storage",
+                "bookorbit",
+                "anki",
+                "memos",
+                "mihomo",
+                "ssh",
+            ]:
+                assert "allow" not in publisher_services[service_id]
+
+            subscriber = config["subscriber"]
+            assert subscriber == {
+                "enabled": True,
+                "gateway_port": 17481,
+                "route": "auto",
+                "services": [{"id": "ssh", "local_port": 2222}],
+            }
+
+            private_fields = {"private_key", "secret_key", "seed", "key_pair"}
+            def assert_no_private_fields(value):
+                if isinstance(value, dict):
+                    assert private_fields.isdisjoint(value)
+                    for nested in value.values():
+                        assert_no_private_fields(nested)
+                elif isinstance(value, list):
+                    for nested in value:
+                        assert_no_private_fields(nested)
+
+            assert_no_private_fields(config)
+
+            initialize_publisher = shlex.split(os.environ["initializePublisher"])[0]
+            with open(initialize_publisher, encoding="utf-8") as initializer_file:
+                initializer = initializer_file.read()
+            assert "publisher.manifest.json" in initializer
+            assert "publisher.json" in initializer
+            assert "/home/neil/.local/state/kepos-neo/mux-publisher" in initializer
+            assert "setup publisher" in initializer
+            assert "--state" in initializer
+            assert "--config" in initializer
+            PY
+            touch $out
+          '';
     };
 
     nixosConfigurations.kosmos = nixpkgs.lib.nixosSystem {

@@ -76,28 +76,112 @@ Verify the sync before applying the workloads:
 systemctl status woodpecker-secret-sync.service --no-pager
 ```
 
-The upstream Kepos Home Manager module reuses the publisher state at
-`~/.local/state/kepos-neo/mux-publisher`. If the state is absent, the module
-initializes it before starting the publisher.
+WSL runs publisher and subscriber roles in one `kepos-device.service`. The
+device owns one shared HyperDHT node while keeping the two identities separate.
+Publisher state remains at `~/.local/state/kepos-neo/mux-publisher`; subscriber
+state remains at `~/.local/state/kepos-neo/subscriber`. Existing complete state
+is reused, and partial publisher state fails closed.
 
-WSL also runs a separate Kepos subscriber for the Mac publisher. Its identity
-is created once at `~/.local/state/kepos-neo/subscriber`, pins the Mac publisher
-key declared in `modules/wsl/kepos-neo.nix`, and maps the published `ssh`
-service to `127.0.0.1:2222`. Its HTTP gateway uses port `17481` so it does not
-replace the local Kubernetes ingress on port `17480`.
+Home Manager generates one TOML file for the shared bootstrap list, publisher
+policy, and subscriber policy. It contains public policy only. Private seeds
+remain in the two state directories and are never copied into the Nix store.
 
-After the first deploy, print the WSL subscriber public key:
+Print the two WSL public role keys without exposing either private seed:
 
 ```bash
+just kepos-publisher-key
 just kepos-subscriber-key
 ```
 
-Add that public key to the Mac publisher allowlist and restart its publisher.
-Then connect to the Mac through the local Kepos listener:
+The subscriber still pins the Mac publisher key declared in
+`modules/wsl/kepos-neo.nix` and maps its published `ssh` service to
+`127.0.0.1:2222`. Its HTTP gateway remains on port `17481`, leaving the local
+Kubernetes ingress on port `17480` unchanged.
+
+One device normally binds one HyperDHT UDP endpoint, but the preferred port may
+already be occupied. Keep the Windows Hyper-V inbound rule for UDP
+`49737-49741`; the shared runtime does not make that firewall range obsolete.
+
+Inspect or operate the user service with:
+
+```bash
+just kepos-status
+just kepos-logs
+just kepos-restart
+```
+
+Add the WSL subscriber public key to the Mac publisher allowlist and restart
+its publisher. Then connect to the Mac through the local Kepos listener:
 
 ```bash
 ssh -p 2222 <mac-user>@127.0.0.1
 ```
+
+### Migrate to the shared Kepos device service
+
+Before switching from the former two-service generation:
+
+1. Record the current NixOS generation with
+   `readlink -f /nix/var/nix/profiles/system`.
+2. Record the WSL publisher and subscriber public keys, and record both Mac
+   role keys from Kepos Desktop. These four values must not change.
+3. Record `MainPID`, `ExecStart`, and state for the old units:
+
+   ```bash
+   systemctl --user show kepos-publisher.service kepos-subscriber.service \
+     -p Id -p MainPID -p ExecStart -p ActiveState
+   ```
+
+4. Confirm in Windows that the Hyper-V inbound UDP `49737-49741` rule remains
+   enabled.
+5. Release both state locks before switching:
+
+   ```bash
+   systemctl --user stop kepos-publisher.service kepos-subscriber.service
+   ```
+
+Deploy only after the Kosmos PR is merged and its checks pass:
+
+```bash
+sudo env NIX_CONFIG="$(cat ~/.config/nix/nix.conf)" \
+  nixos-rebuild switch --flake .#wsl
+```
+
+Inspect the combined runtime:
+
+```bash
+systemctl --user status kepos-device.service --no-pager
+systemctl --user show kepos-device.service \
+  -p MainPID -p ExecStart -p ActiveState
+ss -uanp
+journalctl --user -u kepos-device.service --since=-10m --no-pager
+```
+
+Confirm there is one Kepos device PID and one bound HyperDHT UDP endpoint. Test
+both directions and check that each command returns the remote hostname:
+
+```bash
+# Run in WSL: WSL subscriber to Mac publisher
+ssh -p 2222 <mac-user>@127.0.0.1 hostname
+
+# Run on the Mac: Mac subscriber to WSL publisher
+ssh -p 2222 neil@127.0.0.1 hostname
+```
+
+Record all four role keys again, restart once with `just kepos-restart`, and
+repeat the PID/socket, key, and bidirectional SSH checks.
+
+If the migration fails, return to the immediately previous generation and
+restore the former units:
+
+```bash
+sudo nixos-rebuild switch --rollback
+systemctl --user daemon-reload
+systemctl --user restart kepos-publisher.service kepos-subscriber.service
+```
+
+The rollback reuses the same state formats and identities; do not move, merge,
+or regenerate either state directory.
 
 Apply the Kubernetes objects explicitly:
 

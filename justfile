@@ -93,7 +93,16 @@ bookorbit-bootstrap-token: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get secret bookorbit-env -n ebooks -o jsonpath='{.data.SETUP_BOOTSTRAP_TOKEN}' | base64 --decode; echo
 
 kepos-status:
-  @systemctl --user status kepos-publisher.service kepos-subscriber.service --no-pager
+  @systemctl --user status kepos-device.service --no-pager
+
+kepos-logs:
+  @journalctl --user -u kepos-device.service --since=-10m --no-pager
+
+kepos-restart:
+  @systemctl --user restart kepos-device.service
+
+kepos-publisher-key:
+  @kepos publisher key --state ~/.local/state/kepos-neo/mux-publisher
 
 kepos-subscriber-key:
   @kepos setup subscriber --state ~/.local/state/kepos-neo/subscriber
