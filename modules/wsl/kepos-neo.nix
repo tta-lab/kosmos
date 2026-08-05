@@ -5,6 +5,9 @@
   ...
 }: let
   package = kepos-neo.packages.x86_64-linux.kepos;
+  # Direct WSL-to-Mac traversal is unavailable on the current nested network.
+  # Keep the complete subscriber wiring so it can be re-enabled later.
+  enableMacSubscriber = false;
   bootstrap = [
     "47.94.213.63:49737"
     "203.91.75.19:49738"
@@ -114,52 +117,54 @@ in {
       };
     };
 
-    systemd.user.services.kepos-subscriber = {
-      Unit = {
-        Description = "Kepos Neo subscriber for the Mac publisher";
-        After = ["network-online.target"];
-      };
-      Install.WantedBy = ["default.target"];
-      Service = {
-        Type = "simple";
-        ExecStartPre = [
-          (lib.escapeShellArgs [
+    systemd.user.services = lib.optionalAttrs enableMacSubscriber {
+      kepos-subscriber = {
+        Unit = {
+          Description = "Kepos Neo subscriber for the Mac publisher";
+          After = ["network-online.target"];
+        };
+        Install.WantedBy = ["default.target"];
+        Service = {
+          Type = "simple";
+          ExecStartPre = [
+            (lib.escapeShellArgs [
+              (lib.getExe package)
+              "setup"
+              "subscriber"
+              "--state"
+              subscriberStateDir
+            ])
+            (lib.escapeShellArgs [
+              (lib.getExe package)
+              "subscriber"
+              "set-publisher"
+              "--state"
+              subscriberStateDir
+              "--label"
+              "neil-mac"
+              "--publisher-key"
+              macPublisherKey
+            ])
+          ];
+          ExecStart = lib.escapeShellArgs [
             (lib.getExe package)
-            "setup"
             "subscriber"
+            "run"
             "--state"
             subscriberStateDir
-          ])
-          (lib.escapeShellArgs [
-            (lib.getExe package)
-            "subscriber"
-            "set-publisher"
-            "--state"
-            subscriberStateDir
-            "--label"
-            "neil-mac"
-            "--publisher-key"
-            macPublisherKey
-          ])
-        ];
-        ExecStart = lib.escapeShellArgs [
-          (lib.getExe package)
-          "subscriber"
-          "run"
-          "--state"
-          subscriberStateDir
-          "--config"
-          (toString subscriberConfigFile)
-          "--observations"
-          "ndjson"
-        ];
-        Restart = "always";
-        RestartSec = 5;
-        KillMode = "mixed";
-        TimeoutStopSec = 15;
-        UMask = "0077";
-        NoNewPrivileges = true;
-        PrivateTmp = true;
+            "--config"
+            (toString subscriberConfigFile)
+            "--observations"
+            "ndjson"
+          ];
+          Restart = "always";
+          RestartSec = 5;
+          KillMode = "mixed";
+          TimeoutStopSec = 15;
+          UMask = "0077";
+          NoNewPrivileges = true;
+          PrivateTmp = true;
+        };
       };
     };
   };
