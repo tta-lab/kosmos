@@ -126,7 +126,11 @@
     name = "kepos-initialize-publisher";
     runtimeInputs = [pkgs.coreutils];
     text = ''
-      state_dir=${lib.escapeShellArg publisherStateDir}
+      if [[ $# -ne 1 ]]; then
+        echo "usage: kepos-initialize-publisher STATE_DIR" >&2
+        exit 2
+      fi
+      state_dir=$1
       if [[ -f "$state_dir/publisher.manifest.json" && -f "$state_dir/publisher.json" ]]; then
         exit 0
       fi
@@ -156,7 +160,10 @@ in {
       Service = {
         Type = "simple";
         ExecStartPre = [
-          (lib.getExe initializePublisher)
+          (lib.escapeShellArgs [
+            (lib.getExe initializePublisher)
+            publisherStateDir
+          ])
           (lib.escapeShellArgs [
             (lib.getExe package)
             "setup"

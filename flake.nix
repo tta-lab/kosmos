@@ -346,8 +346,12 @@
             initializePublisher = builtins.elemAt execStartPre 0;
           } ''
             python - <<'PY'
+            import hashlib
             import os
+            import pathlib
             import shlex
+            import subprocess
+            import tempfile
             import tomllib
 
             argv = shlex.split(os.environ["execStart"])
@@ -423,15 +427,48 @@
 
             assert_no_private_fields(config)
 
-            initialize_publisher = shlex.split(os.environ["initializePublisher"])[0]
-            with open(initialize_publisher, encoding="utf-8") as initializer_file:
-                initializer = initializer_file.read()
-            assert "publisher.manifest.json" in initializer
-            assert "publisher.json" in initializer
-            assert "/home/neil/.local/state/kepos-neo/mux-publisher" in initializer
-            assert "setup publisher" in initializer
-            assert "--state" in initializer
-            assert "--config" in initializer
+            initialize_argv = shlex.split(os.environ["initializePublisher"])
+            assert initialize_argv[1:] == ["/home/neil/.local/state/kepos-neo/mux-publisher"]
+            initialize_publisher = initialize_argv[0]
+
+            def state_fingerprint(state_dir):
+                return {
+                    path.relative_to(state_dir): hashlib.sha256(path.read_bytes()).hexdigest()
+                    for path in state_dir.rglob("*")
+                    if path.is_file()
+                }
+
+            with tempfile.TemporaryDirectory() as temp_dir:
+                temp_path = pathlib.Path(temp_dir)
+                complete_state = temp_path / "complete"
+                subprocess.run(
+                    [initialize_publisher, str(complete_state)],
+                    check=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                assert (complete_state / "publisher.manifest.json").is_file()
+                assert (complete_state / "publisher.json").is_file()
+
+                before = state_fingerprint(complete_state)
+                subprocess.run(
+                    [initialize_publisher, str(complete_state)],
+                    check=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                assert state_fingerprint(complete_state) == before
+
+                partial_state = temp_path / "partial"
+                partial_state.mkdir()
+                (partial_state / "publisher.manifest.json").touch()
+                partial_result = subprocess.run(
+                    [initialize_publisher, str(partial_state)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                assert partial_result.returncode != 0
+                assert not (partial_state / "publisher.json").exists()
             PY
             touch $out
           '';
