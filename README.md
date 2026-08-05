@@ -11,8 +11,8 @@ NixOS configuration for a headless dev/ops environment. It supports both the Int
 - `modules/nixos/` — bare-metal boot, network, SSH, proxy, firewall, and containers
 - `modules/wsl/` — WSL-specific settings
 - `modules/users/` — shared user definitions
-- `ttal/`, `einai/`, `temenos/` — non-secret runtime config deployed by Home Manager
-- `scripts/sync-projects` — clones or fetches repos listed in `ttal/projects.toml`
+- `einai/`, `temenos/` — non-secret runtime config deployed by Home Manager
+- `scripts/sync-projects` — clones or fetches repos listed in `~/.config/ttal/projects.toml`
 - `packages/tta-lab/` — pinned release packages for tta-lab tools that are not in nixpkgs
 - `configuration.nix` — compatibility entry point for the `kosmos` host
 - `disko-config.nix` — declarative NVMe partition layout for bare-metal install
@@ -94,13 +94,13 @@ Code lives under two roots:
 - `~/code/projects/<org>/<repo>` for repos we maintain or run from
 - `~/code/references/<org>/<repo>` for external research clones
 
-After applying the WSL host, clone or fetch the active project set from `ttal/projects.toml`:
+Clone or fetch the active project set from `~/.config/ttal/projects.toml`:
 
 ```bash
 kosmos-sync-projects
 ```
 
-Use `remote = "https://host/org/repo.git"` in `ttal/projects.toml` when a repo is not on GitHub. Entries without `remote` default to `https://github.com/<org>/<repo>.git`.
+Use `remote = "https://host/org/repo.git"` in `~/.config/ttal/projects.toml` when a repo is not on GitHub. Entries without `remote` default to `https://github.com/<org>/<repo>.git`.
 
 For HTTPS remotes, `kosmos-sync-projects` reads only the required token from
 `~/.config/ttal/.env`. Forgejo uses `FORGEJO_TOKEN`; GitHub uses the project's

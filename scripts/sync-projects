@@ -237,7 +237,7 @@ def sync_project(alias, entry, path, args, collections, orgs, seen):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Clone or fetch repos listed in ttal/projects.toml."
+        description="Clone or fetch repos listed in ~/.config/ttal/projects.toml."
     )
     parser.add_argument(
         "--projects-file",
