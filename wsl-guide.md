@@ -95,7 +95,7 @@ Install or update the fast-moving Go CLIs with:
 tta-lab-go-install
 ```
 
-The installer first runs `kosmos-sync-tta-lab-projects`, removes retired TTAL and Einai binaries, then installs the remaining binaries from local checkouts in `~/code/projects/tta-lab`. This avoids `go install module@version` problems with local `replace` directives.
+The installer first runs `kosmos-sync-tta-lab-projects`, then installs the managed binaries from local checkouts in `~/code/projects/tta-lab`. This avoids `go install module@version` problems with local `replace` directives.
 
 Then start the daemons:
 
