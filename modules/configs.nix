@@ -36,7 +36,6 @@ in {
             "$HOME/code/references" \
             "$HOME/.config/ttal" \
             "$HOME/.config/sops/age" \
-            "$HOME/.ttal" \
             "$HOME/.kube"
         '';
 
@@ -46,8 +45,14 @@ in {
             powersync.db_path=/home/neil/.local/share/flicknote/flicknote.db
             news.version=3.4.2
           '';
-          ".claude/CLAUDE.md".source = ../CLAUDE.user.md;
-          ".codex/AGENTS.md".source = ../CLAUDE.user.md;
+          ".agents/skills/plan-triage".source = ../skills/plan-triage;
+          ".agents/skills/sp-brainstorming".source = ../skills/sp-brainstorming;
+          ".agents/skills/sp-complete-design".source = ../skills/sp-complete-design;
+          ".agents/skills/sp-debugging".source = ../skills/sp-debugging;
+          ".agents/skills/sp-planning".source = ../skills/sp-planning;
+          ".agents/skills/sp-research".source = ../skills/sp-research;
+          ".agents/skills/sp-write-test-plan".source = ../skills/sp-write-test-plan;
+          ".codex/AGENTS.md".source = ../AGENTS.user.md;
         };
       };
 
@@ -55,7 +60,6 @@ in {
         enable = true;
         configFile = {
           "lenos/config.json".source = ../lenos/config.json;
-          "einai/config.toml".source = ../einai/config.toml;
           "temenos/config.toml".source = ../temenos/config.toml;
           "helix/config.toml".source = ../helix/config.toml;
           "helix/languages.toml".source = ../helix/languages.toml;

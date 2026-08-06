@@ -6,7 +6,6 @@ let
 in {
   "secrets/ttal.env.age".publicKeys = users ++ systems;
   "secrets/kube-config.age".publicKeys = users ++ systems;
-  "secrets/ttal-kubeconfig.age".publicKeys = users ++ systems;
   "secrets/sops-age-keys.age".publicKeys = users ++ systems;
   "secrets/frpc-env.age".publicKeys = users ++ systems;
   "secrets/env.age".publicKeys = users ++ systems;

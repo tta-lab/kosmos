@@ -1,6 +1,0 @@
-default_runtime = "lenos"
-
-model = "deepseek/deepseek-v4-flash"
-
-# Reference repos for --repo flag
-references_path = "~/code/references"

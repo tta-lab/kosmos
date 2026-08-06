@@ -29,11 +29,9 @@
     text = ''
       exec ${syncProjects}/bin/kosmos-sync-projects \
         --alias diary \
-        --alias ei \
         --alias len \
         --alias orga \
         --alias temenos \
-        --alias ttal \
       "$@"
     '';
   };

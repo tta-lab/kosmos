@@ -1,6 +1,5 @@
 mcp_port = 9783
 allow_env = [
-  "TTAL_*",
   "LENOS_*",
   "TMUX",
   "TMUX_*",
@@ -47,10 +46,8 @@ allow_env = [
 ]
 
 allow_write = [
-  "~/.einai",
-  "~/.ttal",                             # ttal data dir (tasks, daemon state)
   "~/.task",                             # taskwarrior data (SQLite WAL needs write)
-  "~/.config/ttal",                      # ttal config (projects.toml, config.toml, etc.)
+  "~/.config/ttal",                      # legacy project registry and forge token env
   "~/.diary",                            # diary data
   "~/.local/share/flicknote",            # flicknote SQLite database
   "/private/var/folders",                # macOS TMPDIR — used by Go, Rust, and most build tools
@@ -67,7 +64,6 @@ allow_write = [
   "~/.cargo/advisory-dbs",               # cargo-deny advisory DB cache (rustsec/advisory-db clone + lock)
   "~/.cache/organon",
   "~/.npm/_logs",                        # npm log directory
-  "~/.claude",                           # claude agent config
   "~/.agents",                           # agent skills and config
 ]
 
@@ -80,8 +76,6 @@ allow_read = [
   "~/.gitconfig",                        # git config (home dir variant)
   "~/.taskrc",                           # taskwarrior config
   "~/.taskrc.guion",                     # taskwarrior config
-  "~/.taskrc.ttal",                      # taskwarrior config
-  "~/.ttal/kubeconfig",                  # ttal Kubernetes config
   "~/.cargo/config.toml",                # Rust user-level Cargo config (registries, build overrides) — read-only by design
   "~/.rustup",                           # Rust toolchain
   "~/code/projects",                     # local project repos, read-only baseline for cross-repo context

@@ -11,7 +11,7 @@ NixOS configuration for a headless dev/ops environment. It supports both the Int
 - `modules/nixos/` — bare-metal boot, network, SSH, proxy, firewall, and containers
 - `modules/wsl/` — WSL-specific settings
 - `modules/users/` — shared user definitions
-- `einai/`, `temenos/` — non-secret runtime config deployed by Home Manager
+- `lenos/`, `temenos/` — non-secret tool config deployed by Home Manager
 - `scripts/sync-projects` — clones or fetches repos listed in `~/.config/ttal/projects.toml`
 - `packages/tta-lab/` — pinned release packages for tta-lab tools that are not in nixpkgs
 - `configuration.nix` — compatibility entry point for the `kosmos` host
@@ -73,7 +73,7 @@ openai-codex-install
 
 This installs `@openai/codex@latest` into `~/.local/share/npm-global/bin`, which Fish adds to `PATH`.
 
-## TTAL Runtime
+## TTA Lab Tools
 
 The WSL host installs pinned release builds for `flicknote` and the GuionAI fork of `taskwarrior`. Frequently updated Go CLIs stay outside Nix for now and install from local checkouts into `~/go/bin`:
 
@@ -81,11 +81,11 @@ The WSL host installs pinned release builds for `flicknote` and the GuionAI fork
 tta-lab-go-install
 ```
 
-This starts the `tta-lab-go-install.service` oneshot user unit. It first runs `kosmos-sync-tta-lab-projects`, then installs `ttal`, `temenos`, `diary`, `organon` (`og`, `skill`, `src`, and `web`), `einai`, and `lenos` from `~/code/projects/tta-lab`.
+This starts the `tta-lab-go-install.service` oneshot user unit. It first runs `kosmos-sync-tta-lab-projects`, then installs `temenos`, `diary`, `organon` (`og`, `skill`, `src`, and `web`), and `lenos` from `~/code/projects/tta-lab`.
 
-The Home Manager user services `temenos.service`, `einai.service`, `ttal.service`, and `og.service` are defined in `modules/common/tta-lab-go.nix`. They only start after their binary exists in `~/go/bin`.
+The Home Manager user services `temenos.service` and `og.service` are defined in `modules/common/tta-lab-go.nix`. They only start after their binary exists in `~/go/bin`.
 
-Fish and TTAL services use the local Mihomo systemd service through
+Fish and the user services use the local Mihomo systemd service through
 `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY` (and lowercase equivalents) at
 `http://127.0.0.1:7890`.
 
