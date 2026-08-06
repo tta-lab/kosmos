@@ -67,6 +67,7 @@
             ${./scripts/forgejo-k8s-pull-secret-smoke} \
             ${./scripts/init-ebook-secrets} \
             ${./scripts/sync-anki-secret} \
+            ${./scripts/sync-hindsight-secret} \
             ${./scripts/prepare-mihomo-config} \
             ${./scripts/ttal-tmux-project-picker} \
             ${./scripts/wsl-devops-smoke} \
@@ -84,10 +85,12 @@
             ${./tests/ebooks-render-test} \
             ${./tests/ebook-gateway-render-test} \
             ${./tests/anki-render-test} \
+            ${./tests/hindsight-render-test} \
             ${./tests/anki-gateway-render-test} \
             ${./tests/notes-render-test} \
             ${./tests/notes-gateway-render-test} \
             ${./tests/sync-anki-secret-test} \
+            ${./tests/sync-hindsight-secret-test} \
             ${./tests/wsl-devops-smoke-test} \
             ${./tests/orga-cli-service-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
@@ -105,10 +108,12 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ebooks-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ebook-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-anki-secret-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-hindsight-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/wsl-devops-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
           touch $out
@@ -210,6 +215,31 @@
         assert unit.serviceConfig.RemainAfterExit;
           pkgs.runCommand "anki-secret-sync-module-check" {} "touch $out";
 
+      hindsight-secret-sync-module = let
+        eval = nixpkgs.lib.nixosSystem {
+          inherit system;
+          specialArgs = {inherit agenix;};
+          modules = [
+            agenix.nixosModules.default
+            ./modules/wsl/secrets.nix
+            (_: {system.stateVersion = "25.05";})
+          ];
+        };
+        cfg = eval.config;
+        secret = cfg.age.secrets.hindsight-env;
+        unit = cfg.systemd.services.hindsight-secret-sync;
+        has = value: list: builtins.elem value list;
+      in
+        assert secret.path == "/run/agenix/hindsight-env";
+        assert secret.mode == "0400";
+        assert unit.restartTriggers == [secret.file];
+        assert has "k3s.service" unit.after;
+        assert has "k3s.service" unit.wants;
+        assert has "multi-user.target" unit.wantedBy;
+        assert unit.serviceConfig.Type == "oneshot";
+        assert unit.serviceConfig.RemainAfterExit;
+          pkgs.runCommand "hindsight-secret-sync-module-check" {} "touch $out";
+
       openvpn-client-module = let
         cfg = self.nixosConfigurations.wsl.config;
         vpn = cfg.services.openvpn.servers.client;
@@ -255,6 +285,7 @@
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit-db 0700 999 999 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/anki 0750 1000 1000 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/notes/memos 0750 10001 10001 - -" rules;
+        assert builtins.elem "d /var/lib/kosmos-k3s/hindsight 0750 1000 1000 - -" rules;
           pkgs.runCommand "k3s-state-directories-check" {} "touch $out";
 
       wsl-devops-cli = let

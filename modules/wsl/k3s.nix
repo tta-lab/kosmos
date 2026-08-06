@@ -90,5 +90,6 @@ in {
     "d /var/lib/kosmos-k3s/anki 0750 1000 1000 - -"
     "d /var/lib/kosmos-k3s/notes 0750 root root - -"
     "d /var/lib/kosmos-k3s/notes/memos 0750 10001 10001 - -"
+    "d /var/lib/kosmos-k3s/hindsight 0750 1000 1000 - -"
   ];
 }
