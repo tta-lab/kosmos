@@ -33,6 +33,7 @@
   subscribers = {
     mac = "c5a2168e17a53b699ced7e3f3c8470afd7f91b97a1582076c9797c3e024311a2";
     pixel7a = "d1c8e7bad4f0468a12d54c5b80d175677ff58c833f9e666f8a838b0d6b9256bc";
+    aipaper = "0d88922a7b6de68ca5011398c846f60de49129bc0d9592e0437b580c41a7e625";
     guion-worker-1 = "ff9e2bee88a324ccf9ccdcc680a597e8798d008d57b54a4ae2873d26ddfea43e";
     guion-worker-2 = "682276873f44fd590054f68af34798651089b34d5dc70d9ecd151e8bd1a03a90";
     sw-server = "de087b86a5ced0d4f85e63463b8508e42ede89d2d4c9c9a64efd52697b1ce78b";
@@ -56,6 +57,7 @@ in {
       allow = [
         subscribers.mac
         subscribers.pixel7a
+        subscribers.aipaper
         subscribers.guion-worker-1
         subscribers.guion-worker-2
         subscribers.lemon
