@@ -81,7 +81,7 @@ The WSL host installs pinned release builds for `flicknote` and the GuionAI fork
 tta-lab-go-install
 ```
 
-This starts the `tta-lab-go-install.service` oneshot user unit. It first runs `kosmos-sync-tta-lab-projects`, removes retired TTAL and Einai binaries, then installs `temenos`, `diary`, `organon` (`og`, `skill`, `src`, and `web`), and `lenos` from `~/code/projects/tta-lab`.
+This starts the `tta-lab-go-install.service` oneshot user unit. It first runs `kosmos-sync-tta-lab-projects`, then installs `temenos`, `diary`, `organon` (`og`, `skill`, `src`, and `web`), and `lenos` from `~/code/projects/tta-lab`.
 
 The Home Manager user services `temenos.service` and `og.service` are defined in `modules/common/tta-lab-go.nix`. They only start after their binary exists in `~/go/bin`.
 

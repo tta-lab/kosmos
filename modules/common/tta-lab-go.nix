@@ -76,7 +76,6 @@
       )
     }
 
-    rm -f "$GOBIN/ttal" "$GOBIN/ttal-cli" "$GOBIN/einai" "$GOBIN/ei"
     install_from temenos ./cmd/temenos
     install_from diary ./cmd/diary
     install_from organon ./cmd/og ./cmd/skill ./cmd/src ./cmd/web
