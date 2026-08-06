@@ -34,7 +34,6 @@ Encrypted files live in `secrets/` and are safe to commit:
 
 - `secrets/ttal.env.age`
 - `secrets/kube-config.age`
-- `secrets/ttal-kubeconfig.age`
 - `secrets/sops-age-keys.age`
 - `secrets/woodpecker-server-env.age`
 
@@ -42,7 +41,6 @@ They decrypt to:
 
 - `/home/neil/.config/ttal/.env`
 - `/home/neil/.kube/config`
-- `/home/neil/.ttal/kubeconfig`
 - `/home/neil/.config/sops/age/keys.txt`
 - `/run/agenix/woodpecker-server-env` (root-owned, synchronized to the local
   K3s `devops/woodpecker-server-env` Secret by
@@ -54,8 +52,6 @@ They decrypt to:
 The secret Lenos config at `/home/neil/.local/share/lenos/config.json` is not
 managed by agenix yet.
 
-`einai/config.toml` is not a secret.
-
 ## Create Or Edit Secrets
 
 From the repo root, run `agenix` directly (the rules file `secrets.nix` lives at repo root):
@@ -64,7 +60,6 @@ From the repo root, run `agenix` directly (the rules file `secrets.nix` lives at
 cd /home/neil/code/projects/tta-lab/kosmos
 agenix -e secrets/ttal.env.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/kube-config.age -i ~/.ssh/agenix_ed25519
-agenix -e secrets/ttal-kubeconfig.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/sops-age-keys.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/woodpecker-server-env.age -i ~/.ssh/agenix_ed25519
 ```
@@ -81,7 +76,7 @@ agenix -d secrets/woodpecker-server-env.age -i ~/.ssh/agenix_ed25519 \
 Commit encrypted files after editing:
 
 ```bash
-git add secrets/ttal.env.age secrets/kube-config.age secrets/ttal-kubeconfig.age secrets/sops-age-keys.age secrets/woodpecker-server-env.age
+git add secrets/ttal.env.age secrets/kube-config.age secrets/sops-age-keys.age secrets/woodpecker-server-env.age
 git commit -m "chore(secrets): update encrypted secrets"
 ```
 

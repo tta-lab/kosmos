@@ -4,7 +4,6 @@ set -euo pipefail
 repo_root="${KOSMOS_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 tta_lab_go="$repo_root/modules/common/tta-lab-go.nix"
 readme="$repo_root/README.md"
-wsl_guide="$repo_root/wsl-guide.md"
 
 if ! grep -Fq 'install_from organon ./cmd/og ./cmd/skill ./cmd/src ./cmd/web' "$tta_lab_go"; then
   printf 'tta-lab Go installer should install og with the other Organon CLIs\n' >&2
@@ -23,11 +22,6 @@ fi
 
 if ! grep -Fq 'EnvironmentFile = "-/home/neil/.config/ttal/.env";' "$tta_lab_go"; then
   printf 'og user service should load the shared ttal .env file for forge tokens\n' >&2
-  exit 1
-fi
-
-if ! grep -Fq 'systemctl --user start temenos einai ttal og' "$wsl_guide"; then
-  printf 'WSL guide should include og in daemon start instructions\n' >&2
   exit 1
 fi
 

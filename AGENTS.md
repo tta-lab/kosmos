@@ -7,8 +7,8 @@
 Use `pkgsUnstable.<name>` for bleeding-edge, `pkgs.<name>` for stable.
 
 **Adding user config:**
-Edit source dir (`helix/`, `einai/`, `temenos/`) → rebuild WSL.
-Edit TTAL config directly in `~/.config/ttal/`; Kosmos does not manage it.
+Edit source dir (`helix/`, `lenos/`, `temenos/`) → rebuild WSL.
+Edit the legacy project registry in `~/.config/ttal/` directly; Kosmos does not manage it.
 
 **Adding a secret:**
 1) register in `secrets.nix`, 2) declare in `modules/wsl/secrets.nix`, 3) `agenix -e secrets/<name>.age`.
@@ -19,8 +19,8 @@ Edit TTAL config directly in `~/.config/ttal/`; Kosmos does not manage it.
 |---|---|
 | System packages | `modules/common/packages.nix` |
 | User dotfiles (fish, git, starship) | `modules/configs.nix` |
-| User config dirs (helix, einai, temenos) | Source dirs → wired in `modules/configs.nix` |
-| TTAL config | `~/.config/ttal/` (not managed by Kosmos) |
+| User config dirs (helix, lenos, temenos) | Source dirs → wired in `modules/configs.nix` |
+| Project registry | `~/.config/ttal/` (legacy path, not managed by Kosmos) |
 | WSL-only services, options, secrets | `modules/wsl/` |
 | Shared config (Nix, SSH, rust, shell) | `modules/common/` |
 | Bare-metal (NUC) config | `modules/nixos/` |
@@ -54,12 +54,12 @@ before the commit as usual.
 
 ## Editing Rules
 
-- **Never edit managed `~/.config/*` files directly** — edit the repo source and rebuild WSL. TTAL config in `~/.config/ttal/` is unmanaged and must be edited there directly.
+- **Never edit managed `~/.config/*` files directly** — edit the repo source and rebuild WSL. The legacy project registry in `~/.config/ttal/` is unmanaged and must be edited there directly.
 - For tmux clipboard on kosmos-wsl, use tmux clipboard/OSC 52 commands such as `copy-selection` or `copy-selection-and-cancel`; do not pipe copy bindings to platform clipboard tools like `pbcopy`, `clip.exe`, or `wl-copy`.
-- **Never use `ttal project add/modify`** — edit `~/.config/ttal/projects.toml` directly.
+- Edit `~/.config/ttal/projects.toml` directly; Kosmos does not manage a project-registry mutation command.
 - NixOS/Home Manager deploys managed config files, including agent rules.
 - On kosmos, `og daemon` is managed by a Home Manager systemd user service. Use `systemctl --user status|start|restart og`; do not run `og daemon install`.
-- **Home Manager** owns managed `~/.config/*` files, shell, editor, and git config. TTAL config is unmanaged. **NixOS modules** own system packages, daemons, networking, hardware.
+- **Home Manager** owns managed `~/.config/*` files, shell, editor, and git config. The legacy project registry is unmanaged. **NixOS modules** own system packages, daemons, networking, hardware.
 - Do not use `systemd.tmpfiles` for user dotfiles unless Home Manager can't express the file.
 - Name new modules by purpose: `modules/common/editors.nix`, `modules/wsl/backup.nix`, etc.
 - Write Nix with two-space indent, one list item per line for long lists, keep `configuration.nix` thin.
@@ -71,7 +71,6 @@ WSL decrypt key: `/etc/ssh/ssh_host_ed25519_key`.
 Expected secret targets:
 - `~/.config/ttal/.env`
 - `~/.kube/config`
-- `~/.ttal/kubeconfig`
 - `~/.config/sops/age/keys.txt`
 
 Adding a secret: (1) register `.age` file in `secrets.nix` with public keys, (2) declare path/owner/mode/target in `modules/wsl/secrets.nix`, (3) run `agenix -e secrets/<name>.age` and paste plaintext. Commit the `.age` file.

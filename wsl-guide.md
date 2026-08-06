@@ -37,9 +37,9 @@ wsl.interop.includePath = false;
 wsl.wslConf.interop.appendWindowsPath = false;
 ```
 
-## TTAL Runtime
+## TTA Lab Tools
 
-Home Manager deploys non-secret config to `~/.config/einai` and `~/.config/temenos`. TTAL config in `~/.config/ttal` is managed directly outside Kosmos. Real `chat_id`, `.env`, license, kubeconfig, and tunnel tokens are intentionally left out for the later secret-management PR.
+Home Manager deploys non-secret config to `~/.config/lenos` and `~/.config/temenos`. The project registry and shared forge-token environment under `~/.config/ttal` remain managed directly outside Kosmos; no TTAL runtime uses them.
 
 Proxy is provided by the local Mihomo systemd service at `127.0.0.1:7890`.
 The listener accepts HTTP and SOCKS5. MetaCubeXD is served by the loopback-only
@@ -95,20 +95,20 @@ Install or update the fast-moving Go CLIs with:
 tta-lab-go-install
 ```
 
-The installer first runs `kosmos-sync-tta-lab-projects`, then installs the binaries from local checkouts in `~/code/projects/tta-lab`. This avoids `go install module@version` problems with local `replace` directives.
+The installer first runs `kosmos-sync-tta-lab-projects`, removes retired TTAL and Einai binaries, then installs the remaining binaries from local checkouts in `~/code/projects/tta-lab`. This avoids `go install module@version` problems with local `replace` directives.
 
 Then start the daemons:
 
 ```bash
-systemctl --user start temenos einai ttal og
-systemctl --user status temenos einai ttal og
+systemctl --user start temenos og
+systemctl --user status temenos og
 ```
 
 The Go binaries live in `~/go/bin`, which is added to Fish and to the user services' `PATH`. The services are enabled for the user manager, but skip cleanly until the matching binary exists.
 
 The user services are managed by Home Manager. NixOS only enables `linger` for `neil` so the user manager can keep running without an active login shell.
 
-Fish and TTAL services use the local Mihomo systemd service through
+Fish and the user services use the local Mihomo systemd service through
 `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY` (and lowercase equivalents) at
 `http://127.0.0.1:7890`.
 
@@ -125,7 +125,7 @@ Set them from Windows, not from NixOS. Open PowerShell and edit the user-level W
 notepad $env:USERPROFILE\.wslconfig
 ```
 
-The complete `.wslconfig` shown in the TTAL Runtime section already includes
+The complete `.wslconfig` shown in the TTA Lab Tools section already includes
 both timeout settings. Keep its mirrored networking, firewall, and
 `hostAddressLoopback` settings when changing the idle timers.
 

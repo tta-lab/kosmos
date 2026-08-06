@@ -76,31 +76,11 @@
       )
     }
 
-    build_from() {
-      repo="$1"
-      binary="$2"
-      package="$3"
-      dir="${projectsRoot}/$repo"
-      if [ ! -f "$dir/go.mod" ]; then
-        echo "missing Go module: $dir" >&2
-        exit 1
-      fi
-
-      (
-        cd "$dir"
-        go build -o "$GOBIN/$binary" "$package"
-      )
-    }
-
-    build_from ttal-cli ttal .
-    rm -f "$GOBIN/ttal-cli"
+    rm -f "$GOBIN/ttal" "$GOBIN/ttal-cli" "$GOBIN/einai" "$GOBIN/ei"
     install_from temenos ./cmd/temenos
     install_from diary ./cmd/diary
     install_from organon ./cmd/og ./cmd/skill ./cmd/src ./cmd/web
-    install_from einai .
     install_from lenos .
-
-    [ -x "$GOBIN/einai" ] && ln -sf "$GOBIN/einai" "$GOBIN/ei"
   '';
 in {
   environment = {
@@ -138,39 +118,6 @@ in {
       Install.WantedBy = ["default.target"];
       Service = {
         ExecStart = withProxy "temenos-with-proxy" "${goBin}/temenos daemon";
-        Restart = "on-failure";
-        Environment = serviceEnv;
-        WorkingDirectory = "/home/neil";
-      };
-    };
-
-    einai = {
-      Unit = {
-        Description = "Einai agent runtime daemon";
-        After = ["temenos.service"];
-        ConditionPathExists = "${goBin}/ei";
-      };
-      Install.WantedBy = ["default.target"];
-      Service = {
-        ExecStart = withProxy "einai-with-proxy" "${goBin}/ei daemon run";
-        Restart = "on-failure";
-        Environment = serviceEnv;
-        WorkingDirectory = "/home/neil";
-      };
-    };
-
-    ttal = {
-      Unit = {
-        Description = "TTAL coordination daemon";
-        After = [
-          "einai.service"
-          "temenos.service"
-        ];
-        ConditionPathExists = "${goBin}/ttal";
-      };
-      Install.WantedBy = ["default.target"];
-      Service = {
-        ExecStart = withProxy "ttal-with-proxy" "${goBin}/ttal daemon run";
         Restart = "on-failure";
         Environment = serviceEnv;
         WorkingDirectory = "/home/neil";

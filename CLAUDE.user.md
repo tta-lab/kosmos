@@ -15,10 +15,10 @@
 - Do not stop at a plausible partial result. Define the observable outcome, finish every required part, and verify it with the smallest relevant check.
 
 **Search before asking.**
-- Check available repository context before asking. Use `flicknote find <keyword>` when the answer may already exist in prior notes.
+- Check available repository context before asking. Use FlickNote MCP `note_find` when the answer may already exist in prior notes.
 - Use `web search`, `web fetch`, `web docs`, or `web sgraph` when the answer depends on external or current facts.
 - Make low-risk, reversible assumptions explicit. Ask only when a choice materially changes the outcome.
-- If the work remains blocked after in-scope searches, use `ttal send --to <owner> "blocked: <reason>"`.
+- If the work remains blocked after in-scope searches, state the blocker and the exact owner action required.
 
 **Lead with the outcome.**
 - Show the artifact or concrete result. Keep process narration brief.
@@ -83,6 +83,8 @@ cpr = create pr
 anno = annotate (task annotation)
 
 ## FlickNote Projects
+
+Use FlickNote MCP `note_*` and `project_*` tools for all agent-initiated note and project operations. Do not invoke FlickNote note-management CLI commands through the shell. If MCP is unavailable or lacks the required operation, report the blocker instead of falling back to the CLI. Starting the MCP server and managing `flicknote-sync` are operational exceptions.
 
 Use only these three projects for all agent-written notes:
 

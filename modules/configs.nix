@@ -36,7 +36,6 @@ in {
             "$HOME/code/references" \
             "$HOME/.config/ttal" \
             "$HOME/.config/sops/age" \
-            "$HOME/.ttal" \
             "$HOME/.kube"
         '';
 
@@ -55,7 +54,6 @@ in {
         enable = true;
         configFile = {
           "lenos/config.json".source = ../lenos/config.json;
-          "einai/config.toml".source = ../einai/config.toml;
           "temenos/config.toml".source = ../temenos/config.toml;
           "helix/config.toml".source = ../helix/config.toml;
           "helix/languages.toml".source = ../helix/languages.toml;

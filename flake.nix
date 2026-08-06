@@ -73,7 +73,6 @@
             ${./tests/temenos-env-test} \
             ${./tests/ttal-tmux-project-picker-test} \
             ${./tests/temenos-ca-test} \
-            ${./tests/tmux-tmpdir-test} \
             ${./tests/tmux-copy-mode-test} \
             ${./tests/devops-gate-status-test} \
             ${./tests/backup-ente-test} \
@@ -95,7 +94,6 @@
           KOSMOS_REPO_ROOT=${./.} ${pkgs.python3}/bin/python3 ${./tests/test_sync_projects_auth.py}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-env-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-tmpdir-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-copy-mode-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/devops-gate-status-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/backup-ente-test}

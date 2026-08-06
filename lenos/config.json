@@ -1,7 +1,4 @@
 {
-  "hooks": {
-    "post_step": "ttal status update"
-  },
   "options": {
     "disable_notifications": true,
     "disable_provider_auto_update": true,
@@ -11,11 +8,6 @@
     },
     "context_paths": [
       "/home/neil/.claude/CLAUDE.md"
-    ],
-    "agent_paths": [
-      "/home/neil/code/projects/tta-lab/einai/agents",
-      "/home/neil/code/projects/tta-lab/ttal-cli/templates/ttal",
-      "/home/neil/code/projects/tta-lab/ttal-cli/agents"
     ]
   }
 }
