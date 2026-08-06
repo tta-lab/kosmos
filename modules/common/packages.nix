@@ -69,6 +69,7 @@ in {
     wezterm.terminfo
     ghostty.terminfo
 
+    cmake
     gnumake
 
     # Archive tools
