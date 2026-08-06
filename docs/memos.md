@@ -13,8 +13,7 @@ lists that server version as compatible.
 ## Deploy
 
 ```bash
-sudo env NIX_USER_CONF_FILES="$HOME/.config/nix/nix.conf" \
-  nixos-rebuild switch --flake .#wsl
+nh os switch . -H wsl --ask
 
 just notes-diff
 just notes-deploy

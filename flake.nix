@@ -319,6 +319,22 @@
         assert builtins.all (value: has value flicknoteEnvironment) expectedProxyEnvironment;
           pkgs.runCommand "wsl-mihomo-service-check" {} "touch $out";
 
+      nix-cache-policy = let
+        cfg = self.nixosConfigurations.wsl.config;
+        has = value: list: builtins.elem value list;
+        inherit (cfg.nix.settings) substituters;
+        extraSubstituters = cfg.nix.settings.extra-substituters;
+        trustedPublicKeys = cfg.nix.settings.trusted-public-keys;
+        extraTrustedPublicKeys = cfg.nix.settings.extra-trusted-public-keys;
+      in
+        assert has "https://cache.nixos.org/" substituters;
+        assert has "https://mirrors.tuna.tsinghua.edu.cn/nix-channels/store?priority=30" extraSubstituters;
+        assert has "https://fenix.cachix.org" extraSubstituters;
+        assert has "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" trustedPublicKeys;
+        assert has "fenix.cachix.org-1:ecJhr+RdYEdcVgUkjruiYhjbBloIEGov7bos90cZi0Q=" extraTrustedPublicKeys;
+        assert cfg.nix.settings.trusted-users == ["root"];
+          pkgs.runCommand "nix-cache-policy-check" {} "touch $out";
+
       kepos-publisher-services = let
         cfg = self.nixosConfigurations.wsl.config;
         inherit (cfg.home-manager.users.neil.services.kepos.publisher) services;

@@ -107,7 +107,7 @@ After creating or editing encrypted files, apply the WSL config:
 
 ```bash
 cd /home/neil/code/projects/tta-lab/kosmos
-sudo nixos-rebuild switch --flake .#wsl
+nh os switch . -H wsl --ask
 ```
 
 The rebuild restarts `woodpecker-secret-sync.service` when

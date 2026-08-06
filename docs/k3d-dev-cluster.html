@@ -127,7 +127,7 @@
           <li>Restart the WSL session after switching so the <code>podman</code> group membership applies.</li>
           <li>Run these commands inside the NixOS-WSL shell, not Windows PowerShell.</li>
         </ul>
-        <pre><code>sudo nixos-rebuild switch --flake .#wsl
+        <pre><code>nh os switch . -H wsl --ask
 exit
 </code></pre>
         <p>Start a new WSL shell, then verify the tools and socket:</p>
