@@ -135,7 +135,7 @@ local gatewayLabels = labels('canonical-gateway');
               requests: { cpu: '20m', memory: '32Mi' },
               limits: { cpu: '250m', memory: '128Mi' },
             },
-            volumeMounts: [{ name: 'config', mountPath: '/etc/caddy/Caddyfile', subPath: 'Caddyfile', readOnly: true }],
+            volumeMounts: [{ name: 'config', mountPath: '/etc/caddy', readOnly: true }],
           }],
           volumes: [{ name: 'config', configMap: { name: 'canonical-gateway' } }],
         },

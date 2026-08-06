@@ -10,6 +10,7 @@ tk show --dangerous-allow-redirect "$repo_root/tanka/environments/devops" >"$ren
 caddy="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "canonical-gateway") | .data.Caddyfile' "$rendered")"
 dns="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "coredns-custom") | .data."kosmos.override"' "$rendered")"
 gateway_args="$(yq -r 'select(.kind == "Deployment" and .metadata.name == "canonical-gateway") | .spec.template.spec.containers[0].args[]' "$rendered")"
+gateway_mount="$(yq -c 'select(.kind == "Deployment" and .metadata.name == "canonical-gateway") | .spec.template.spec.containers[0].volumeMounts[] | select(.name == "config")' "$rendered")"
 
 [[ "$caddy" == *"@hindsight host hindsight.localhost"* ]]
 [[ "$caddy" == *"reverse_proxy hindsight.hindsight.svc.cluster.local:8888"* ]]
@@ -18,5 +19,6 @@ gateway_args="$(yq -r 'select(.kind == "Deployment" and .metadata.name == "canon
 [[ "$dns" == *"rewrite name exact hindsight.localhost canonical-gateway.devops.svc.cluster.local"* ]]
 [[ "$dns" == *"rewrite name exact hindsightui.localhost canonical-gateway.devops.svc.cluster.local"* ]]
 grep -qx -- '--watch' <<<"$gateway_args"
+jq -e '.mountPath == "/etc/caddy" and .readOnly == true and (has("subPath") | not)' <<<"$gateway_mount" >/dev/null
 
 printf 'canonical gateway routes the Hindsight API and UI hosts independently\n'
