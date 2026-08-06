@@ -132,6 +132,21 @@ in {
             grep = "command rg $argv";
             fn = "command flicknote $argv";
             sc = "command spine-codex $argv";
+            naco = {
+              description = "Run nanocodex with personal MCP servers";
+              body = ''
+                command nanocodex \
+                  --mcp-defaults false \
+                  --mcp-tool-timeout 300 \
+                  --mcp-stdio flicknote=flicknote \
+                  --mcp-arg flicknote=mcp \
+                  --web-search false \
+                  --image-generation false \
+                  --subagents true \
+                  --thinking medium \
+                  $argv
+              '';
+            };
             ogv = "command og pr view $argv";
             op = "command og push $argv";
             ol = "command og pull $argv";
