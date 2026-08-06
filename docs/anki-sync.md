@@ -50,7 +50,7 @@ Kepos publisher service. Tanka owns the Kubernetes resources. Deploy in this
 order:
 
 ```bash
-sudo env NIX_CONFIG="$(cat ~/.config/nix/nix.conf)" \
+sudo env NIX_USER_CONF_FILES="$HOME/.config/nix/nix.conf" \
   nixos-rebuild switch --flake .#wsl
 sudo systemctl restart anki-secret-sync.service
 sudo systemctl status anki-secret-sync.service --no-pager

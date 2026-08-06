@@ -90,8 +90,12 @@ Agents must not read, decrypt, or inspect plaintext secrets. If a task needs one
 
 After merging config/package changes, deploy on WSL:
 ```bash
-sudo env NIX_CONFIG="$(cat ~/.config/nix/nix.conf)" nixos-rebuild switch --flake .#wsl
+sudo env NIX_USER_CONF_FILES="$HOME/.config/nix/nix.conf" nixos-rebuild switch --flake .#wsl
 ```
+
+The user Nix config contains credentials. Pass its path with
+`NIX_USER_CONF_FILES`; never expand its contents into `NIX_CONFIG` or another
+command-line argument.
 
 ## AGENTS.user.md
 

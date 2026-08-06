@@ -17,7 +17,7 @@ adds the local hostname, and publishes the Kepos service ID:
 
 ```bash
 nix build .#nixosConfigurations.wsl.config.system.build.toplevel --no-link
-sudo env NIX_CONFIG="$(cat ~/.config/nix/nix.conf)" \
+sudo env NIX_USER_CONF_FILES="$HOME/.config/nix/nix.conf" \
   nixos-rebuild switch --flake .#wsl
 ```
 

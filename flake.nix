@@ -270,20 +270,22 @@
         cfg = self.nixosConfigurations.wsl.config;
         expectedConfig = "/mnt/c/Users/white/AppData/Roaming/io.github.clash-verge-rev.clash-verge-rev/clash-verge.yaml";
         expectedProxy = "http://127.0.0.1:7890";
+        expectedNoProxy = "localhost,127.0.0.1,::1";
         expectedProxyEnvironment = [
           "HTTP_PROXY=${expectedProxy}"
           "HTTPS_PROXY=${expectedProxy}"
           "ALL_PROXY=${expectedProxy}"
-          "NO_PROXY=localhost,127.0.0.1,::1"
+          "NO_PROXY=${expectedNoProxy}"
           "http_proxy=${expectedProxy}"
           "https_proxy=${expectedProxy}"
           "all_proxy=${expectedProxy}"
-          "no_proxy=localhost,127.0.0.1,::1"
+          "no_proxy=${expectedNoProxy}"
         ];
         has = value: list: builtins.elem value list;
         unit = cfg.systemd.services.mihomo;
         cniSocket = cfg.systemd.sockets.mihomo-cni-proxy;
         cniProxy = cfg.systemd.services.mihomo-cni-proxy;
+        nixDaemonEnvironment = cfg.systemd.services.nix-daemon.environment;
         flicknoteEnvironment = cfg.home-manager.users.neil.systemd.user.services.flicknote-sync.Service.Environment;
       in
         assert cfg.services.mihomo.enable;
@@ -300,6 +302,11 @@
         assert nixpkgs.lib.hasInfix "-ext-ui " unit.serviceConfig.ExecStart;
         assert cfg.kosmos.wsl.k3sProxyUrl == expectedProxy;
         assert cfg.environment.variables.HTTP_PROXY == expectedProxy;
+        assert cfg.networking.proxy.default == expectedProxy;
+        assert cfg.networking.proxy.noProxy == expectedNoProxy;
+        assert nixDaemonEnvironment.http_proxy == expectedProxy;
+        assert nixDaemonEnvironment.https_proxy == expectedProxy;
+        assert nixDaemonEnvironment.no_proxy == expectedNoProxy;
         assert has "mihomo.service" cfg.systemd.services.k3s.wants;
         assert has "mihomo.service" cfg.systemd.services.k3s.after;
         assert !cfg.systemd.services.firewall.enable;
