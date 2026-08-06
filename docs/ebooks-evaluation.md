@@ -16,9 +16,7 @@ Deploy the NixOS generation first. It creates the retained host directories,
 adds the local hostname, and publishes the Kepos service ID:
 
 ```bash
-nix build .#nixosConfigurations.wsl.config.system.build.toplevel --no-link
-sudo env NIX_CONFIG="$(cat ~/.config/nix/nix.conf)" \
-  nixos-rebuild switch --flake .#wsl
+nh os switch . -H wsl --ask
 ```
 
 Then create missing credentials and apply the Tanka environments:

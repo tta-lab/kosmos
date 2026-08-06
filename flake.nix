@@ -270,20 +270,22 @@
         cfg = self.nixosConfigurations.wsl.config;
         expectedConfig = "/mnt/c/Users/white/AppData/Roaming/io.github.clash-verge-rev.clash-verge-rev/clash-verge.yaml";
         expectedProxy = "http://127.0.0.1:7890";
+        expectedNoProxy = "localhost,127.0.0.1,::1";
         expectedProxyEnvironment = [
           "HTTP_PROXY=${expectedProxy}"
           "HTTPS_PROXY=${expectedProxy}"
           "ALL_PROXY=${expectedProxy}"
-          "NO_PROXY=localhost,127.0.0.1,::1"
+          "NO_PROXY=${expectedNoProxy}"
           "http_proxy=${expectedProxy}"
           "https_proxy=${expectedProxy}"
           "all_proxy=${expectedProxy}"
-          "no_proxy=localhost,127.0.0.1,::1"
+          "no_proxy=${expectedNoProxy}"
         ];
         has = value: list: builtins.elem value list;
         unit = cfg.systemd.services.mihomo;
         cniSocket = cfg.systemd.sockets.mihomo-cni-proxy;
         cniProxy = cfg.systemd.services.mihomo-cni-proxy;
+        nixDaemonEnvironment = cfg.systemd.services.nix-daemon.environment;
         flicknoteEnvironment = cfg.home-manager.users.neil.systemd.user.services.flicknote-sync.Service.Environment;
       in
         assert cfg.services.mihomo.enable;
@@ -300,6 +302,11 @@
         assert nixpkgs.lib.hasInfix "-ext-ui " unit.serviceConfig.ExecStart;
         assert cfg.kosmos.wsl.k3sProxyUrl == expectedProxy;
         assert cfg.environment.variables.HTTP_PROXY == expectedProxy;
+        assert cfg.networking.proxy.default == expectedProxy;
+        assert cfg.networking.proxy.noProxy == expectedNoProxy;
+        assert nixDaemonEnvironment.http_proxy == expectedProxy;
+        assert nixDaemonEnvironment.https_proxy == expectedProxy;
+        assert nixDaemonEnvironment.no_proxy == expectedNoProxy;
         assert has "mihomo.service" cfg.systemd.services.k3s.wants;
         assert has "mihomo.service" cfg.systemd.services.k3s.after;
         assert !cfg.systemd.services.firewall.enable;
@@ -311,6 +318,22 @@
         assert nixpkgs.lib.hasSuffix "systemd-socket-proxyd 127.0.0.1:7890" cniProxy.serviceConfig.ExecStart;
         assert builtins.all (value: has value flicknoteEnvironment) expectedProxyEnvironment;
           pkgs.runCommand "wsl-mihomo-service-check" {} "touch $out";
+
+      nix-cache-policy = let
+        cfg = self.nixosConfigurations.wsl.config;
+        has = value: list: builtins.elem value list;
+        inherit (cfg.nix.settings) substituters;
+        extraSubstituters = cfg.nix.settings.extra-substituters;
+        trustedPublicKeys = cfg.nix.settings.trusted-public-keys;
+        extraTrustedPublicKeys = cfg.nix.settings.extra-trusted-public-keys;
+      in
+        assert has "https://cache.nixos.org/" substituters;
+        assert has "https://mirrors.tuna.tsinghua.edu.cn/nix-channels/store?priority=30" extraSubstituters;
+        assert has "https://fenix.cachix.org" extraSubstituters;
+        assert has "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY=" trustedPublicKeys;
+        assert has "fenix.cachix.org-1:ecJhr+RdYEdcVgUkjruiYhjbBloIEGov7bos90cZi0Q=" extraTrustedPublicKeys;
+        assert cfg.nix.settings.trusted-users == ["root"];
+          pkgs.runCommand "nix-cache-policy-check" {} "touch $out";
 
       kepos-publisher-services = let
         cfg = self.nixosConfigurations.wsl.config;

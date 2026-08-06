@@ -4,6 +4,7 @@
   ...
 }: let
   mihomoProxyUrl = "http://127.0.0.1:7890";
+  noProxy = "localhost,127.0.0.1,::1";
 in {
   options.kosmos.wsl = {
     k3sProxyUrl = lib.mkOption {
@@ -14,15 +15,20 @@ in {
   };
 
   config = {
+    networking.proxy = {
+      default = mihomoProxyUrl;
+      inherit noProxy;
+    };
+
     environment.variables = {
       HTTP_PROXY = mihomoProxyUrl;
       HTTPS_PROXY = mihomoProxyUrl;
       ALL_PROXY = mihomoProxyUrl;
-      NO_PROXY = "localhost,127.0.0.1,::1";
+      NO_PROXY = noProxy;
       http_proxy = mihomoProxyUrl;
       https_proxy = mihomoProxyUrl;
       all_proxy = mihomoProxyUrl;
-      no_proxy = "localhost,127.0.0.1,::1";
+      no_proxy = noProxy;
     };
   };
 }

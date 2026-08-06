@@ -90,8 +90,15 @@ Agents must not read, decrypt, or inspect plaintext secrets. If a task needs one
 
 After merging config/package changes, deploy on WSL:
 ```bash
-sudo env NIX_CONFIG="$(cat ~/.config/nix/nix.conf)" nixos-rebuild switch --flake .#wsl
+nh os switch . -H wsl --ask
 ```
+
+Run `nh` as the regular user. It delegates builds to `nix-daemon` and elevates
+only the system activation. The user Nix config is loaded automatically and
+contains credentials; never expand its contents into `NIX_CONFIG` or another
+command-line argument. Configure substituters and their trusted keys in the
+NixOS modules, not the user config, and do not grant trusted-user access just
+to use a cache.
 
 ## AGENTS.user.md
 
