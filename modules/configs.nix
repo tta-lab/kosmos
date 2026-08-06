@@ -145,7 +145,7 @@ in {
               body = ''
                 command nanocodex \
                   --mcp-defaults false \
-                  --mcp hindsight=http://localhost:8888/mcp/hermes/ \
+                  --mcp hindsight=http://hindsight.localhost:17480/mcp/hermes/ \
                   --mcp-tool-timeout 300 \
                   --mcp-stdio flicknote=flicknote \
                   --mcp-arg flicknote=mcp \

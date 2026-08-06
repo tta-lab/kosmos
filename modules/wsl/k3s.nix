@@ -13,6 +13,8 @@ in {
     "bookorbit.localhost"
     "anki.localhost"
     "memos.localhost"
+    "hindsight.localhost"
+    "hindsightui.localhost"
   ];
 
   networking.firewall.interfaces.cni0.allowedTCPPorts = [

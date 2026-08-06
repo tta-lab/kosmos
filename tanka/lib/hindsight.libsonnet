@@ -48,14 +48,10 @@ local labels = {
               {
                 name: 'api',
                 containerPort: 8888,
-                hostPort: 8888,
-                hostIP: '127.0.0.1',
               },
               {
                 name: 'ui',
                 containerPort: 9999,
-                hostPort: 9999,
-                hostIP: '127.0.0.1',
               },
             ],
             env: [

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+rendered="$(mktemp)"
+trap 'rm -f "$rendered"' EXIT
+
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/devops" >"$rendered"
+
+caddy="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "canonical-gateway") | .data.Caddyfile' "$rendered")"
+dns="$(yq -r 'select(.kind == "ConfigMap" and .metadata.name == "coredns-custom") | .data."kosmos.override"' "$rendered")"
+gateway_args="$(yq -r 'select(.kind == "Deployment" and .metadata.name == "canonical-gateway") | .spec.template.spec.containers[0].args[]' "$rendered")"
+
+[[ "$caddy" == *"@hindsight host hindsight.localhost"* ]]
+[[ "$caddy" == *"reverse_proxy hindsight.hindsight.svc.cluster.local:8888"* ]]
+[[ "$caddy" == *"@hindsightui host hindsightui.localhost"* ]]
+[[ "$caddy" == *"reverse_proxy hindsight.hindsight.svc.cluster.local:9999"* ]]
+[[ "$dns" == *"rewrite name exact hindsight.localhost canonical-gateway.devops.svc.cluster.local"* ]]
+[[ "$dns" == *"rewrite name exact hindsightui.localhost canonical-gateway.devops.svc.cluster.local"* ]]
+grep -qx -- '--watch' <<<"$gateway_args"
+
+printf 'canonical gateway routes the Hindsight API and UI hosts independently\n'

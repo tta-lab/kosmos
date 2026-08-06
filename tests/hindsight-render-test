@@ -22,8 +22,8 @@ jq -e '
     ($container.startupProbe.httpGet.path == "/health") and
     ($container.readinessProbe.httpGet.path == "/health") and
     ($container.livenessProbe.httpGet.path == "/health") and
-    ($container.ports | any(.name == "api" and .containerPort == 8888 and .hostPort == 8888 and .hostIP == "127.0.0.1")) and
-    ($container.ports | any(.name == "ui" and .containerPort == 9999 and .hostPort == 9999 and .hostIP == "127.0.0.1")) and
+    ($container.ports | any(.name == "api" and .containerPort == 8888 and (has("hostPort") | not))) and
+    ($container.ports | any(.name == "ui" and .containerPort == 9999 and (has("hostPort") | not))) and
     ($container.env | any(.name == "HINDSIGHT_API_LLM_PROVIDER" and .value == "deepseek")) and
     ($container.env | any(.name == "HINDSIGHT_API_LLM_MODEL" and .value == "deepseek-v4-flash")) and
     ($container.env | any(.name == "HINDSIGHT_API_WORKER_ID" and .value == "hindsight")) and
@@ -44,4 +44,4 @@ jq -e '
   (map(select(.kind == "Secret")) | length == 0)
 ' "$rendered" >/dev/null
 
-printf 'Hindsight manifests expose pinned loopback services with retained data and an external Secret\n'
+printf 'Hindsight manifests expose cluster services without direct host ports, retained data, and an external Secret\n'

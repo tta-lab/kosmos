@@ -1,8 +1,15 @@
 # Hindsight
 
 Hindsight 0.8.6 runs as one local k3s workload with its embedded pg0 database.
-The API and MCP endpoint are available only at `http://127.0.0.1:8888`; the
-control-plane UI is available only at `http://127.0.0.1:9999`.
+The canonical gateway and Kepos publish two distinct endpoints:
+
+- API and MCP: `http://hindsight.localhost:17480`
+- Control Plane: `http://hindsightui.localhost:17480`
+
+The workload has no direct host ports. Caddy selects the API or UI by hostname,
+and both Kepos service IDs allow only the named Mac subscriber. Hindsight has
+no application API key because the local k3s network and that Mac-only Kepos
+boundary are the intended trust model.
 
 ## Secret
 
@@ -36,15 +43,18 @@ Outbound LLM traffic uses the Mihomo listener exposed to Pods at
 ## Deploy
 
 NixOS owns the retained host directory and agenix Secret synchronization.
-Tanka owns the Kubernetes workload. Deploy in this order:
+Tanka owns the canonical gateway and Kubernetes workload. Deploy in this order:
 
 ```bash
 nh os switch . -H wsl --ask
 sudo systemctl restart hindsight-secret-sync.service
 sudo systemctl status hindsight-secret-sync.service --no-pager
+just diff
+just apply
 just hindsight-diff
 just hindsight-deploy
 just hindsight-status
+just kepos-status
 ```
 
 The first image pull is large. The image is pinned to the signed Hindsight
@@ -55,15 +65,15 @@ an empty volume over `/home/hindsight/.cache/huggingface`.
 ## Verify
 
 ```bash
-curl --fail http://127.0.0.1:8888/health
-curl --fail http://127.0.0.1:9999/
+curl --fail http://hindsight.localhost:17480/health
+curl --fail http://hindsightui.localhost:17480/
 just hindsight-logs
 ```
 
 Nanocodex uses the personal `hermes` memory bank through:
 
 ```text
-http://localhost:8888/mcp/hermes/
+http://hindsight.localhost:17480/mcp/hermes/
 ```
 
 After switching the Home Manager generation, the `naco` Fish function includes

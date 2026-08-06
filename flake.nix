@@ -86,6 +86,7 @@
             ${./tests/ebook-gateway-render-test} \
             ${./tests/anki-render-test} \
             ${./tests/hindsight-render-test} \
+            ${./tests/hindsight-gateway-render-test} \
             ${./tests/anki-gateway-render-test} \
             ${./tests/notes-render-test} \
             ${./tests/notes-gateway-render-test} \
@@ -109,6 +110,7 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ebook-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-gateway-render-test}
@@ -392,6 +394,12 @@
         assert services.anki.targetPort == 17480;
         assert services.memos.name == "Memos";
         assert services.memos.targetPort == 17480;
+        assert services.hindsight.name == "Hindsight";
+        assert services.hindsight.targetPort == 17480;
+        assert services.hindsight.allow == services.dagger.allow;
+        assert services.hindsightui.name == "Hindsight UI";
+        assert services.hindsightui.targetPort == 17480;
+        assert services.hindsightui.allow == services.dagger.allow;
         assert services ? mihomo;
         assert services.mihomo.name == "Mihomo";
         assert services.mihomo.targetPort == 7890;
@@ -402,6 +410,8 @@
         assert builtins.elem "bookorbit.localhost" loopbackHosts;
         assert builtins.elem "anki.localhost" loopbackHosts;
         assert builtins.elem "memos.localhost" loopbackHosts;
+        assert builtins.elem "hindsight.localhost" loopbackHosts;
+        assert builtins.elem "hindsightui.localhost" loopbackHosts;
           pkgs.runCommand "kepos-publisher-services-check" {} "touch $out";
 
       kepos-publisher-only = let
