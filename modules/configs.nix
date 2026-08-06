@@ -30,6 +30,25 @@ in {
         homeDirectory = "/home/neil";
         inherit stateVersion;
 
+        shellAliases = {
+          vi = "command hx";
+          ls = "command eza";
+          lt = "command eza --tree";
+          tree = "command eza --icons --classify --tree";
+          lg = "command lazygit";
+          catp = "command bat -P";
+          cat = "command bat";
+          yz = "command yazi";
+          b = "command bat";
+          k = "command kubectl";
+          grep = "command rg";
+          fn = "command flicknote";
+          sc = "command spine-codex";
+          ogv = "command og pr view";
+          op = "command og push";
+          ol = "command og pull";
+        };
+
         activation.createCodeDirs = lib.hm.dag.entryAfter ["writeBoundary"] ''
           $DRY_RUN_CMD mkdir -p \
             "$HOME/code/projects" \
@@ -96,6 +115,8 @@ in {
       programs = {
         home-manager.enable = true;
 
+        bash.enable = true;
+
         fish = {
           enable = true;
           shellInit = ''
@@ -119,19 +140,6 @@ in {
               or return 1
               cd -- "$dir"
             '';
-            vi = "command hx $argv";
-            ls = "command eza $argv";
-            lt = "command eza --tree $argv";
-            tree = "command eza --icons --classify --tree $argv";
-            lg = "command lazygit $argv";
-            catp = "command bat -P $argv";
-            cat = "command bat $argv";
-            yz = "command yazi $argv";
-            b = "command bat $argv";
-            k = "command kubectl $argv";
-            grep = "command rg $argv";
-            fn = "command flicknote $argv";
-            sc = "command spine-codex $argv";
             naco = {
               description = "Run nanocodex with personal MCP servers";
               body = ''
@@ -147,9 +155,6 @@ in {
                   $argv
               '';
             };
-            ogv = "command og pr view $argv";
-            op = "command og push $argv";
-            ol = "command og pull $argv";
           };
         };
 
