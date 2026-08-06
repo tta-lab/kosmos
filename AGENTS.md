@@ -10,6 +10,9 @@ Use `pkgsUnstable.<name>` for bleeding-edge, `pkgs.<name>` for stable.
 Edit source dir (`helix/`, `lenos/`, `temenos/`) → rebuild WSL.
 Edit the legacy project registry in `~/.config/ttal/` directly; Kosmos does not manage it.
 
+**Adding or updating a shared agent skill:**
+Edit `skills/<name>/SKILL.md` → wire it in `modules/configs.nix` → rebuild WSL.
+
 **Adding a secret:**
 1) register in `secrets.nix`, 2) declare in `modules/wsl/secrets.nix`, 3) `agenix -e secrets/<name>.age`.
 
@@ -20,6 +23,7 @@ Edit the legacy project registry in `~/.config/ttal/` directly; Kosmos does not 
 | System packages | `modules/common/packages.nix` |
 | User dotfiles (fish, git, starship) | `modules/configs.nix` |
 | User config dirs (helix, lenos, temenos) | Source dirs → wired in `modules/configs.nix` |
+| Shared agent skills | `skills/` → wired in `modules/configs.nix` |
 | Project registry | `~/.config/ttal/` (legacy path, not managed by Kosmos) |
 | WSL-only services, options, secrets | `modules/wsl/` |
 | Shared config (Nix, SSH, rust, shell) | `modules/common/` |
@@ -55,6 +59,7 @@ before the commit as usual.
 ## Editing Rules
 
 - **Never edit managed `~/.config/*` files directly** — edit the repo source and rebuild WSL. The legacy project registry in `~/.config/ttal/` is unmanaged and must be edited there directly.
+- **Never edit managed `~/.agents/skills/*` files directly** — edit the corresponding source under `skills/` and rebuild WSL.
 - For tmux clipboard on kosmos-wsl, use tmux clipboard/OSC 52 commands such as `copy-selection` or `copy-selection-and-cancel`; do not pipe copy bindings to platform clipboard tools like `pbcopy`, `clip.exe`, or `wl-copy`.
 - Edit `~/.config/ttal/projects.toml` directly; Kosmos does not manage a project-registry mutation command.
 - NixOS/Home Manager deploys managed config files, including agent rules.

@@ -39,12 +39,25 @@ in {
             "$HOME/.kube"
         '';
 
+        activation.removeRetiredAgentSkills = lib.hm.dag.entryAfter ["writeBoundary"] ''
+          $DRY_RUN_CMD rm -rf \
+            /home/neil/.agents/skills/breathe \
+            /home/neil/.agents/skills/flicknote
+        '';
+
         file = {
           ".taskrc".text = ''
             data.location=/home/neil/.task
             powersync.db_path=/home/neil/.local/share/flicknote/flicknote.db
             news.version=3.4.2
           '';
+          ".agents/skills/plan-triage".source = ../skills/plan-triage;
+          ".agents/skills/sp-brainstorming".source = ../skills/sp-brainstorming;
+          ".agents/skills/sp-complete-design".source = ../skills/sp-complete-design;
+          ".agents/skills/sp-debugging".source = ../skills/sp-debugging;
+          ".agents/skills/sp-planning".source = ../skills/sp-planning;
+          ".agents/skills/sp-research".source = ../skills/sp-research;
+          ".agents/skills/sp-write-test-plan".source = ../skills/sp-write-test-plan;
           ".claude/CLAUDE.md".source = ../CLAUDE.user.md;
           ".codex/AGENTS.md".source = ../CLAUDE.user.md;
         };
