@@ -39,12 +39,6 @@ in {
             "$HOME/.kube"
         '';
 
-        activation.removeRetiredAgentSkills = lib.hm.dag.entryAfter ["writeBoundary"] ''
-          $DRY_RUN_CMD rm -rf \
-            /home/neil/.agents/skills/breathe \
-            /home/neil/.agents/skills/flicknote
-        '';
-
         file = {
           ".taskrc".text = ''
             data.location=/home/neil/.task
@@ -58,8 +52,7 @@ in {
           ".agents/skills/sp-planning".source = ../skills/sp-planning;
           ".agents/skills/sp-research".source = ../skills/sp-research;
           ".agents/skills/sp-write-test-plan".source = ../skills/sp-write-test-plan;
-          ".claude/CLAUDE.md".source = ../CLAUDE.user.md;
-          ".codex/AGENTS.md".source = ../CLAUDE.user.md;
+          ".codex/AGENTS.md".source = ../AGENTS.user.md;
         };
       };
 

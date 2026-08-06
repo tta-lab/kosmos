@@ -64,7 +64,6 @@ allow_write = [
   "~/.cargo/advisory-dbs",               # cargo-deny advisory DB cache (rustsec/advisory-db clone + lock)
   "~/.cache/organon",
   "~/.npm/_logs",                        # npm log directory
-  "~/.claude",                           # claude agent config
   "~/.agents",                           # agent skills and config
 ]
 

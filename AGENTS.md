@@ -93,6 +93,6 @@ After merging config/package changes, deploy on WSL:
 sudo env NIX_CONFIG="$(cat ~/.config/nix/nix.conf)" nixos-rebuild switch --flake .#wsl
 ```
 
-## CLAUDE.user.md
+## AGENTS.user.md
 
-`CLAUDE.user.md` in the repo root is the SSOT for user-scope agent instructions. Home Manager sources it to both `.claude/CLAUDE.md` and `.codex/AGENTS.md`. Edit `CLAUDE.user.md` directly in this repo.
+`AGENTS.user.md` in the repo root is the SSOT for user-scope agent instructions. Home Manager sources it to `.codex/AGENTS.md`. Edit `AGENTS.user.md` directly in this repo.
