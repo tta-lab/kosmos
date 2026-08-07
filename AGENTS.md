@@ -8,7 +8,7 @@ Use `pkgsUnstable.<name>` for bleeding-edge, `pkgs.<name>` for stable.
 
 **Adding user config:**
 Edit source dir (`helix/`, `lenos/`, `temenos/`) → rebuild WSL.
-Edit the legacy project registry in `~/.config/ttal/` directly; Kosmos does not manage it.
+Use `og clone <https-url>` to obtain and register project checkouts. Kosmos does not sync repositories.
 
 **Adding or updating a shared agent skill:**
 Edit `skills/<name>/SKILL.md` → wire it in `modules/configs.nix` → rebuild WSL.
@@ -58,10 +58,10 @@ before the commit as usual.
 
 ## Editing Rules
 
-- **Never edit managed `~/.config/*` files directly** — edit the repo source and rebuild WSL. The legacy project registry in `~/.config/ttal/` is unmanaged and must be edited there directly.
+- **Never edit managed `~/.config/*` files directly** — edit the repo source and rebuild WSL. The project registry in `~/.config/ttal/` is unmanaged; use `og clone` for additions and direct edits only for archive/migration work.
 - **Never edit managed `~/.agents/skills/*` files directly** — edit the corresponding source under `skills/` and rebuild WSL.
 - For tmux clipboard on kosmos-wsl, use tmux clipboard/OSC 52 commands such as `copy-selection` or `copy-selection-and-cancel`; do not pipe copy bindings to platform clipboard tools like `pbcopy`, `clip.exe`, or `wl-copy`.
-- Edit `~/.config/ttal/projects.toml` directly; Kosmos does not manage a project-registry mutation command.
+- Use `og clone` for normal project additions. Edit the unmanaged `~/.config/ttal/projects.toml` directly only for archive or migration work that og does not expose.
 - NixOS/Home Manager deploys managed config files, including agent rules.
 - On kosmos, `og daemon` is managed by a Home Manager systemd user service. Use `systemctl --user status|start|restart og`; do not run `og daemon install`.
 - **Home Manager** owns managed `~/.config/*` files, shell, editor, and git config. The legacy project registry is unmanaged. **NixOS modules** own system packages, daemons, networking, hardware.

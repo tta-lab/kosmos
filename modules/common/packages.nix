@@ -10,31 +10,6 @@
   ttaLab = pkgs.callPackage ../../packages/tta-lab {
     inherit ttalBinDir;
   };
-  syncProjects = pkgs.writeShellApplication {
-    name = "kosmos-sync-projects";
-    runtimeInputs = [
-      pkgs.git
-      pkgs.python3
-    ];
-    text = ''
-      exec ${pkgs.python3}/bin/python3 ${../../scripts/sync-projects} "$@"
-    '';
-  };
-  syncTtaLabProjects = pkgs.writeShellApplication {
-    name = "kosmos-sync-tta-lab-projects";
-    runtimeInputs = [
-      pkgs.git
-      pkgs.python3
-    ];
-    text = ''
-      exec ${syncProjects}/bin/kosmos-sync-projects \
-        --alias diary \
-        --alias len \
-        --alias orga \
-        --alias temenos \
-      "$@"
-    '';
-  };
   enteBackup = pkgs.writeShellApplication {
     name = "kosmos-backup-ente";
     runtimeInputs = [
@@ -117,8 +92,6 @@ in {
     openssl
     sops
     pkgsUnstable.just
-    syncProjects
-    syncTtaLabProjects
     enteBackup
     ttaLab.ttalTmuxProjectPicker
     ttaLab.flicknote

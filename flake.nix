@@ -66,6 +66,7 @@
             ${./scripts/forgejo-https-git-smoke} \
             ${./scripts/forgejo-k8s-pull-secret-smoke} \
             ${./scripts/init-ebook-secrets} \
+            ${./scripts/install-tta-lab-go} \
             ${./scripts/sync-anki-secret} \
             ${./scripts/sync-hindsight-secret} \
             ${./scripts/prepare-mihomo-config} \
@@ -95,7 +96,6 @@
             ${./tests/wsl-devops-smoke-test} \
             ${./tests/orga-cli-service-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
-          KOSMOS_REPO_ROOT=${./.} ${pkgs.python3}/bin/python3 ${./tests/test_sync_projects_auth.py}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-env-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-copy-mode-test}

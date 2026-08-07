@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+projects_root="${TTA_LAB_PROJECTS_ROOT:-/home/neil/code/projects/tta-lab}"
+
+install_from() {
+  repo="$1"
+  shift
+  dir="$projects_root/$repo"
+  if [[ ! -f "$dir/go.mod" ]]; then
+    printf 'missing Go module: %s\n' "$dir" >&2
+    exit 1
+  fi
+
+  (
+    cd "$dir"
+    go install "$@"
+  )
+}
+
+install_from temenos ./cmd/temenos
+install_from diary ./cmd/diary
+install_from organon ./cmd/og ./cmd/project ./cmd/skill ./cmd/src ./cmd/web
+install_from lenos .

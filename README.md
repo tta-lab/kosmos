@@ -12,7 +12,7 @@ NixOS configuration for a headless dev/ops environment. It supports both the Int
 - `modules/wsl/` — WSL-specific settings
 - `modules/users/` — shared user definitions
 - `lenos/`, `temenos/` — non-secret tool config deployed by Home Manager
-- `scripts/sync-projects` — clones or fetches repos listed in `~/.config/ttal/projects.toml`
+- `scripts/install-tta-lab-go` — installs Go CLIs from existing local checkouts
 - `packages/tta-lab/` — pinned release packages for tta-lab tools that are not in nixpkgs
 - `configuration.nix` — compatibility entry point for the `kosmos` host
 - `disko-config.nix` — declarative NVMe partition layout for bare-metal install
@@ -81,7 +81,7 @@ The WSL host installs pinned release builds for `flicknote` and the GuionAI fork
 tta-lab-go-install
 ```
 
-This starts the `tta-lab-go-install.service` oneshot user unit. It first runs `kosmos-sync-tta-lab-projects`, then installs `temenos`, `diary`, `organon` (`og`, `skill`, `src`, and `web`), and `lenos` from `~/code/projects/tta-lab`.
+This starts the `tta-lab-go-install.service` oneshot user unit. It installs `temenos`, `diary`, `organon` (`og`, `project`, `skill`, `src`, and `web`), and `lenos` from existing checkouts in `~/code/projects/tta-lab`. A missing checkout is an error; Kosmos does not clone or fetch project repositories.
 
 The Home Manager user services `temenos.service` and `og.service` are defined in `modules/common/tta-lab-go.nix`. They only start after their binary exists in `~/go/bin`.
 
@@ -89,29 +89,28 @@ Fish and the user services use the local Mihomo systemd service through
 `HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY` (and lowercase equivalents) at
 `http://127.0.0.1:7890`.
 
-Code lives under two roots:
-
-- `~/code/projects/<org>/<repo>` for repos we maintain or run from
-- `~/code/references/<org>/<repo>` for external research clones
-
-Clone or fetch the active project set from `~/.config/ttal/projects.toml`:
+For a fresh machine, bootstrap the public Organon repository anonymously, install
+the repository tools, and start the Home Manager-managed daemon:
 
 ```bash
-kosmos-sync-projects
+mkdir -p ~/code/projects/tta-lab
+git clone https://github.com/tta-lab/organon.git ~/code/projects/tta-lab/organon
+cd ~/code/projects/tta-lab/organon
+CGO_ENABLED=0 go install ./cmd/og ./cmd/project
+systemctl --user start og
+
+og clone https://github.com/tta-lab/organon.git
+og clone https://github.com/tta-lab/temenos.git
+og clone https://github.com/tta-lab/diary.git
+og clone https://github.com/tta-lab/lenos.git
+tta-lab-go-install
 ```
 
-Use `remote = "https://host/org/repo.git"` in `~/.config/ttal/projects.toml` when a repo is not on GitHub. Entries without `remote` default to `https://github.com/<org>/<repo>.git`.
-
-For HTTPS remotes, `kosmos-sync-projects` reads only the required token from
-`~/.config/ttal/.env`. Forgejo uses `FORGEJO_TOKEN`; GitHub uses the project's
-`github_token_env`, then the mapping in `~/.config/ttal/orgs.toml`, then
-`GITHUB_TOKEN` or `GH_TOKEN`.
-
-To sync only the runtime repos needed by `tta-lab-go-install`:
-
-```bash
-kosmos-sync-tta-lab-projects
-```
+The first `og clone` recognizes the existing Organon checkout and registers it.
+Subsequent clones derive paths under `~/code/projects/<owner>/<repo>` and register
+their aliases. Use `og clone --reference <https-url>` for research-only checkouts
+under `~/code/references/<host>/<owner>/<repo>`. Use `og pull` to update a
+registered checkout; Kosmos has no repository sync command.
 
 ## License
 

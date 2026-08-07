@@ -39,7 +39,10 @@ wsl.wslConf.interop.appendWindowsPath = false;
 
 ## TTA Lab Tools
 
-Home Manager deploys non-secret config to `~/.config/lenos` and `~/.config/temenos`. The project registry and shared forge-token environment under `~/.config/ttal` remain managed directly outside Kosmos; no TTAL runtime uses them.
+Home Manager deploys non-secret config to `~/.config/lenos` and `~/.config/temenos`.
+The project registry under `~/.config/ttal` is unmanaged; normal additions go
+through `og clone`. Kosmos deploys the agenix-backed forge-token environment and
+injects it only into the og user service.
 
 Proxy is provided by the local Mihomo systemd service at `127.0.0.1:7890`.
 The listener accepts HTTP and SOCKS5. MetaCubeXD is served by the loopback-only
@@ -95,7 +98,7 @@ Install or update the fast-moving Go CLIs with:
 tta-lab-go-install
 ```
 
-The installer first runs `kosmos-sync-tta-lab-projects`, then installs the managed binaries from local checkouts in `~/code/projects/tta-lab`. This avoids `go install module@version` problems with local `replace` directives.
+The installer only installs managed binaries from existing local checkouts in `~/code/projects/tta-lab`. It reports the exact missing Go module and exits if a required checkout is absent. Kosmos does not clone or fetch project repositories.
 
 Then start the daemons:
 
@@ -170,20 +173,27 @@ References:
 - https://learn.microsoft.com/windows/wsl/wsl-config
 - https://github.com/microsoft/WSL/releases/tag/2.5.4
 
-Project checkouts use two roots:
-
-- `~/code/projects/<org>/<repo>` for repos we maintain or run from
-- `~/code/references/<org>/<repo>` for external research clones
-
-Clone or fetch the active project set from `~/.config/ttal/projects.toml`:
+For a fresh environment, bootstrap the public Organon checkout anonymously, install
+`og` and `project`, then let og own all later clone and credential behavior:
 
 ```bash
-kosmos-sync-projects
+mkdir -p ~/code/projects/tta-lab
+git clone https://github.com/tta-lab/organon.git ~/code/projects/tta-lab/organon
+cd ~/code/projects/tta-lab/organon
+CGO_ENABLED=0 go install ./cmd/og ./cmd/project
+systemctl --user start og
+
+og clone https://github.com/tta-lab/organon.git
+og clone https://github.com/tta-lab/temenos.git
+og clone https://github.com/tta-lab/diary.git
+og clone https://github.com/tta-lab/lenos.git
+tta-lab-go-install
 ```
 
-Existing repos are fetched with `git fetch --prune`; the command does not merge or change the working tree. Use `kosmos-sync-projects --collection references` for research-only repos.
-
-Use `kosmos-sync-tta-lab-projects` when you only need the runtime repos required by `tta-lab-go-install`.
+The existing Organon checkout is reused and registered. Project clones go to
+`~/code/projects/<owner>/<repo>`; `og clone --reference <https-url>` creates
+research-only checkouts under `~/code/references/<host>/<owner>/<repo>`.
+Use `og pull` for repository updates. Kosmos provides no sync wrapper.
 
 For the Podman-backed `k3d` local cluster flow, including the `dev` cluster create command and the `localhost:30432` Postgres mapping, see [docs/k3d-dev-cluster.html](docs/k3d-dev-cluster.html).
 
