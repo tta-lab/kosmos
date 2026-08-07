@@ -143,18 +143,15 @@ in {
             naco = {
               description = "Run nanocodex with personal MCP servers";
               body = ''
-                command nanocodex \
-                  --mcp-defaults false \
-                  --mcp hindsight=http://hindsight.localhost:17480/mcp/hermes/ \
-                  --mcp-tool-timeout 300 \
-                  --mcp-stdio flicknote=flicknote \
-                  --mcp-arg flicknote=mcp \
-                  --browser=none \
-                  --cookies=none \
-                  --web-search false \
-                  --image-generation false \
-                  --subagents true \
-                  --thinking medium \
+                env \
+                  NANOCODEX_MCP_DEFAULTS=false \
+                  NANOCODEX_BROWSER=none \
+                  NANOCODEX_BROWSER_COOKIES=none \
+                  NANOCODEX_WEB_SEARCH=false \
+                  NANOCODEX_IMAGE_GENERATION=false \
+                  NANOCODEX_SUBAGENTS=true \
+                  OPENAI_REASONING_EFFORT=medium \
+                  nanocodex \
                   $argv
               '';
             };
