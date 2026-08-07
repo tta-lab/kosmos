@@ -103,6 +103,16 @@ in {
           name = "Memos";
           targetPort = 17480;
         };
+        hindsight = {
+          name = "Hindsight";
+          targetPort = 17480;
+          allow = [subscribers.mac];
+        };
+        hindsightui = {
+          name = "Hindsight UI";
+          targetPort = 17480;
+          allow = [subscribers.mac];
+        };
         mihomo = {
           name = "Mihomo";
           targetPort = 7890;

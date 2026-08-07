@@ -14,6 +14,7 @@ in {
   "secrets/woodpecker-server-env.age".publicKeys = users ++ systems;
   "secrets/ente-stack-env.age".publicKeys = users ++ systems;
   "secrets/anki-sync-env.age".publicKeys = users ++ systems;
+  "secrets/hindsight-env.age".publicKeys = users ++ systems;
   "secrets/openvpn-config.age".publicKeys = users ++ systems;
   "secrets/openvpn-auth.age".publicKeys = users ++ systems;
 }

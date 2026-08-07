@@ -12,9 +12,11 @@ objects. A NixOS switch never applies Tanka.
   `tcp://127.0.0.1:8080` for the local CLI
 - k3s API: `https://127.0.0.1:26443`
 - Anki Sync: `http://anki.localhost:17480/` through Kepos
+- Hindsight API and MCP: `http://hindsight.localhost:17480` through Kepos
+- Hindsight Control Plane: `http://hindsightui.localhost:17480` through Kepos
 
 Caddy binds the host gateway only on `127.0.0.1:17480`. CoreDNS rewrites the
-two canonical `.localhost` names to that same gateway inside the cluster. This
+canonical `.localhost` names to that same gateway inside the cluster. This
 keeps browser, Git, Woodpecker OAuth, webhooks, and container-registry URLs
 consistent.
 
@@ -28,6 +30,10 @@ Kepos publishes application service IDs including:
 - `ssh` targets port `22`.
 - `anki` targets the canonical gateway on port `17480`; see
   [anki-sync.md](anki-sync.md) for credentials, deployment, and first sync.
+- `hindsight` and `hindsightui` are Mac-only services targeting the canonical
+  gateway on port `17480`; the preserved Host header selects the API or Control
+  Plane route. See [hindsight.md](hindsight.md) for deployment and storage
+  details.
 
 The separate Ente Photos stack publishes `ente` and `ente-storage`, both through
 the canonical gateway on port `17480`. See [ente-photos.md](ente-photos.md) for

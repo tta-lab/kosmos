@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+rendered="$(mktemp)"
+trap 'rm -f "$rendered"' EXIT
+
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/hindsight" \
+  | yq -s '.' >"$rendered"
+
+jq -e '
+  . as $resources |
+  def resource($kind; $name):
+    $resources | map(select(.kind == $kind and .metadata.name == $name)) | first;
+
+  (resource("Namespace"; "hindsight").metadata.name == "hindsight") and
+  (resource("Deployment"; "hindsight").spec.replicas == 1) and
+  (resource("Deployment"; "hindsight").spec.strategy.type == "Recreate") and
+  (resource("Deployment"; "hindsight").spec.template.spec.containers[0] as $container |
+    ($container.image == "ghcr.io/vectorize-io/hindsight:0.8.6@sha256:ffa391a77284e49f6b55e32c86f33529ac4257831407b14038a72b6a0a232039") and
+    ($container.securityContext.runAsNonRoot == true) and
+    ($container.startupProbe.httpGet.path == "/health") and
+    ($container.readinessProbe.httpGet.path == "/health") and
+    ($container.livenessProbe.httpGet.path == "/health") and
+    ($container.ports | any(.name == "api" and .containerPort == 8888 and (has("hostPort") | not))) and
+    ($container.ports | any(.name == "ui" and .containerPort == 9999 and (has("hostPort") | not))) and
+    ($container.env | any(.name == "HINDSIGHT_API_LLM_PROVIDER" and .value == "deepseek")) and
+    ($container.env | any(.name == "HINDSIGHT_API_LLM_MODEL" and .value == "deepseek-v4-flash")) and
+    ($container.env | any(.name == "HINDSIGHT_API_WORKER_ID" and .value == "hindsight")) and
+    ($container.env | any(.name == "HTTPS_PROXY" and .value == "http://10.42.0.1:7890")) and
+    ($container.env | any(.name == "NO_PROXY" and (.value | contains("localhost")) and (.value | contains(".cluster.local")))) and
+    ($container.env | any(.name == "HF_HUB_OFFLINE" and .value == "1")) and
+    ($container.env | any(.name == "TRANSFORMERS_OFFLINE" and .value == "1")) and
+    ($container.env | any(.name == "HINDSIGHT_API_LLM_API_KEY" and .valueFrom.secretKeyRef.name == "hindsight-env" and .valueFrom.secretKeyRef.key == "HINDSIGHT_API_LLM_API_KEY")) and
+    ($container.volumeMounts | any(.name == "data" and .mountPath == "/home/hindsight/.pg0")) and
+    ($container.resources.requests.memory == "4Gi")
+  ) and
+  (resource("Service"; "hindsight").spec.type == "ClusterIP") and
+  (resource("Service"; "hindsight").spec.ports | any(.name == "api" and .port == 8888)) and
+  (resource("Service"; "hindsight").spec.ports | any(.name == "ui" and .port == 9999)) and
+  (resource("PersistentVolume"; "kosmos-hindsight").spec.persistentVolumeReclaimPolicy == "Retain") and
+  (resource("PersistentVolume"; "kosmos-hindsight").spec.hostPath.path == "/var/lib/kosmos-k3s/hindsight") and
+  (resource("PersistentVolumeClaim"; "hindsight-data").spec.volumeName == "kosmos-hindsight") and
+  (map(select(.kind == "Secret")) | length == 0)
+' "$rendered" >/dev/null
+
+printf 'Hindsight manifests expose cluster services without direct host ports, retained data, and an external Secret\n'

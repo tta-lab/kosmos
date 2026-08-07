@@ -22,6 +22,8 @@ local gatewayLabels = labels('canonical-gateway');
         rewrite name exact bookorbit.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact anki.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact memos.localhost canonical-gateway.devops.svc.cluster.local
+        rewrite name exact hindsight.localhost canonical-gateway.devops.svc.cluster.local
+        rewrite name exact hindsightui.localhost canonical-gateway.devops.svc.cluster.local
       |||,
     },
   },
@@ -82,6 +84,16 @@ local gatewayLabels = labels('canonical-gateway');
             reverse_proxy memos.notes.svc.cluster.local:5230
           }
 
+          @hindsight host hindsight.localhost
+          handle @hindsight {
+            reverse_proxy hindsight.hindsight.svc.cluster.local:8888
+          }
+
+          @hindsightui host hindsightui.localhost
+          handle @hindsightui {
+            reverse_proxy hindsight.hindsight.svc.cluster.local:9999
+          }
+
           handle {
             respond "unknown host" 421
           }
@@ -107,7 +119,7 @@ local gatewayLabels = labels('canonical-gateway');
           containers: [{
             name: 'caddy',
             image: 'caddy:2.10.0-alpine',
-            args: ['caddy', 'run', '--config', '/etc/caddy/Caddyfile', '--adapter', 'caddyfile'],
+            args: ['caddy', 'run', '--config', '/etc/caddy/Caddyfile', '--adapter', 'caddyfile', '--watch'],
             ports: [{
               name: 'http',
               containerPort: 17480,
@@ -123,7 +135,7 @@ local gatewayLabels = labels('canonical-gateway');
               requests: { cpu: '20m', memory: '32Mi' },
               limits: { cpu: '250m', memory: '128Mi' },
             },
-            volumeMounts: [{ name: 'config', mountPath: '/etc/caddy/Caddyfile', subPath: 'Caddyfile', readOnly: true }],
+            volumeMounts: [{ name: 'config', mountPath: '/etc/caddy', readOnly: true }],
           }],
           volumes: [{ name: 'config', configMap: { name: 'canonical-gateway' } }],
         },
