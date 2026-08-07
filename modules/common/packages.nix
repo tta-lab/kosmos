@@ -121,6 +121,7 @@ in {
     pkgsUnstable.vscode-langservers-extracted
     pkgsUnstable.biome
     pkgsUnstable.shfmt
+    pkgsUnstable.playwright
 
     # Recording
     pkgsUnstable.asciinema
