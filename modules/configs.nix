@@ -155,6 +155,22 @@ in {
                   $argv
               '';
             };
+            nacot = {
+              description = "Run nanocodex with Terra at xhigh reasoning effort";
+              body = ''
+                env \
+                  NANOCODEX_MCP_DEFAULTS=false \
+                  NANOCODEX_BROWSER=none \
+                  NANOCODEX_BROWSER_COOKIES=none \
+                  NANOCODEX_WEB_SEARCH=false \
+                  NANOCODEX_IMAGE_GENERATION=false \
+                  NANOCODEX_SUBAGENTS=true \
+                  OPENAI_MODEL=terra \
+                  OPENAI_REASONING_EFFORT=xhigh \
+                  nanocodex \
+                  $argv
+              '';
+            };
           };
         };
 
