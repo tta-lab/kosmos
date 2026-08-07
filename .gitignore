@@ -5,6 +5,10 @@ result-*
 # Ignore automatically generated direnv output
 .direnv
 
+# Ignore local agent runtime state
+.nanocodex/
+.lenos/
+
 # Ignore Python bytecode caches
 __pycache__/
 *.py[cod]
