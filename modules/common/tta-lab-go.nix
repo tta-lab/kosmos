@@ -58,28 +58,8 @@
     ${proxyPrelude}
 
     mkdir -p "$GOBIN"
-
-    kosmos-sync-tta-lab-projects
-
-    install_from() {
-      repo="$1"
-      shift
-      dir="${projectsRoot}/$repo"
-      if [ ! -f "$dir/go.mod" ]; then
-        echo "missing Go module: $dir" >&2
-        exit 1
-      fi
-
-      (
-        cd "$dir"
-        go install "$@"
-      )
-    }
-
-    install_from temenos ./cmd/temenos
-    install_from diary ./cmd/diary
-    install_from organon ./cmd/og ./cmd/skill ./cmd/src ./cmd/web
-    install_from lenos .
+    export TTA_LAB_PROJECTS_ROOT=${projectsRoot}
+    exec ${pkgs.bash}/bin/bash ${../../scripts/install-tta-lab-go}
   '';
 in {
   environment = {

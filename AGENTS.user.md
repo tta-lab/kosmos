@@ -28,16 +28,19 @@
 - **Use a branch and PR for repository changes.** Never push directly to `main` or `master`.
 - **Use `og` for guarded git network operations** — `og push`, `og pull`, and `og tag`; never use `git push` directly. Commands resolve the current repo from git metadata and handle forge auth through the daemon.
 - **Prefer no amend, no force-push.** `og push --force` is force-with-lease and exists only for rebase/amend workflows. Avoid it unless you explicitly need to rewrite a remote branch you own.
-- **Use `og pr` for PR operations it supports** — create, view/list, find, get, modify, comment, checks/status, and failure logs. Never use `gh`, `tea`, `curl`, or Forgejo MCP for PR work.
-  - `echo "body" | og pr create "title"` / `og pr view --json` / `og pr find --state open` / `og pr checks` / `og pr failures --tail 100`
-- **`og pr` V1 does not merge** — if a merge is required, use the approved repo workflow/tool for merge rather than inventing a forge API call.
+- **Use the `og` MCP server for repository cloning and PR operations.** Never use `gh`, `tea`, `curl`, or Forgejo MCP for this work.
+  - Clone a known registered project with `clone(project="<alias>")`.
+  - Clone and register a new project with `clone(url="https://host/owner/repo.git", alias="<alias>")`.
+  - Clone an unregistered reference checkout with `clone(url="https://host/owner/repo.git", reference=true)`.
+  - Use `pr_create`, `pr_get`, `pr_find`, `pr_modify`, `pr_comment`, `pr_checks`, `pr_log`, and `pr_failures`; pass the exact project alias and the PR ID when the tool requires one.
+- **The `og` MCP server does not merge** — if a merge is required, use the approved repo workflow/tool for merge rather than inventing a forge API call.
 
 ## Orga CLI Tools
 
 - Run help before first use of an unfamiliar tool or when its syntax is unclear.
-- `og` — Organon forge operations: guarded git network commands, PR work, auth status, and daemon status. Merge is intentionally out of scope in V1.
+- `og` — CLI for guarded push, pull, tag, auth status, and daemon lifecycle; use the `og` MCP server for clone and PR work. Merge is intentionally out of scope.
 - `web` — unified web lookup: `search`, `fetch`, `docs`, and `sgraph`.
-- `project` — registered project lookup and navigation: `list`, `get`, `resolve`, `jump`, and `org`.
+- `project` — registered project lookup and navigation: `list`, `get`, `resolve`, and `jump`.
 - `src` — symbol-aware source reading and focused edits. Use it to inspect a file's structure or replace/read a function/type by symbol ID; use `rg` for repo-wide text search.
 
 ## Deployment

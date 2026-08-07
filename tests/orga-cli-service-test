@@ -2,30 +2,61 @@
 set -euo pipefail
 
 repo_root="${KOSMOS_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-tta_lab_go="$repo_root/modules/common/tta-lab-go.nix"
-readme="$repo_root/README.md"
+installer="$repo_root/scripts/install-tta-lab-go"
 
-if ! grep -Fq 'install_from organon ./cmd/og ./cmd/skill ./cmd/src ./cmd/web' "$tta_lab_go"; then
-  printf 'tta-lab Go installer should install og with the other Organon CLIs\n' >&2
+test_root="$(mktemp -d)"
+trap 'rm -rf "$test_root"' EXIT
+
+fake_bin="$test_root/bin"
+projects_root="$test_root/projects"
+calls="$test_root/go-calls"
+mkdir -p "$fake_bin" "$projects_root"
+bash_path="$(command -v bash)"
+
+cat >"$fake_bin/go" <<EOF
+#!$bash_path
+set -euo pipefail
+printf '%s\t%s\n' "\$PWD" "\$*" >>"\$TTA_LAB_GO_TEST_CALLS"
+EOF
+chmod +x "$fake_bin/go"
+
+cat >"$fake_bin/git" <<EOF
+#!$bash_path
+printf 'installer must not invoke git: %s\n' "\$*" >&2
+exit 97
+EOF
+chmod +x "$fake_bin/git"
+
+for repo in temenos diary organon lenos; do
+  mkdir -p "$projects_root/$repo"
+  : >"$projects_root/$repo/go.mod"
+done
+
+PATH="$fake_bin:$PATH" \
+  TTA_LAB_PROJECTS_ROOT="$projects_root" \
+  TTA_LAB_GO_TEST_CALLS="$calls" \
+  bash "$installer"
+
+expected="$test_root/expected"
+printf '%s\t%s\n' \
+  "$projects_root/temenos" 'install ./cmd/temenos' \
+  "$projects_root/diary" 'install ./cmd/diary' \
+  "$projects_root/organon" 'install ./cmd/og ./cmd/project ./cmd/skill ./cmd/src ./cmd/web' \
+  "$projects_root/lenos" 'install .' >"$expected"
+
+diff -u "$expected" "$calls"
+
+rm "$projects_root/diary/go.mod"
+if PATH="$fake_bin:$PATH" \
+  TTA_LAB_PROJECTS_ROOT="$projects_root" \
+  TTA_LAB_GO_TEST_CALLS="$calls" \
+  bash "$installer" >"$test_root/missing.out" 2>"$test_root/missing.err"; then
+  printf 'installer should fail when a required checkout is missing\n' >&2
   exit 1
 fi
 
-if ! grep -Fq 'og = {' "$tta_lab_go"; then
-  printf 'Home Manager should define an og user service\n' >&2
-  exit 1
-fi
-
-if ! grep -F 'ExecStart = withProxy "og-with-proxy"' "$tta_lab_go" | grep -Fq 'og daemon run'; then
-  printf 'og user service should run og daemon under the shared proxy wrapper\n' >&2
-  exit 1
-fi
-
-if ! grep -Fq 'EnvironmentFile = "-/home/neil/.config/ttal/.env";' "$tta_lab_go"; then
-  printf 'og user service should load the shared ttal .env file for forge tokens\n' >&2
-  exit 1
-fi
-
-if ! grep -Fq 'og.service' "$readme"; then
-  printf 'README should list og.service with the Home Manager user services\n' >&2
+if ! grep -Fq "missing Go module: $projects_root/diary" "$test_root/missing.err"; then
+  printf 'installer should identify the missing checkout\n' >&2
+  cat "$test_root/missing.err" >&2
   exit 1
 fi
