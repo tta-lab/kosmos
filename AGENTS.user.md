@@ -35,13 +35,36 @@
   - Use `pr_create`, `pr_get`, `pr_find`, `pr_modify`, `pr_comment`, `pr_checks`, `pr_log`, and `pr_failures`; pass the exact project alias and the PR ID when the tool requires one.
 - **The `og` MCP server does not merge** — if a merge is required, use the approved repo workflow/tool for merge rather than inventing a forge API call.
 
-## Orga CLI Tools
+## Organon tools
 
-- Run help before first use of an unfamiliar tool or when its syntax is unclear.
-- `og` — CLI for guarded push, pull, tag, auth status, and daemon lifecycle; use the `og` MCP server for clone and PR work. Merge is intentionally out of scope.
-- `web` — unified web lookup: `search`, `fetch`, `docs`, and `sgraph`.
-- `project` — registered project lookup and navigation: `list`, `get`, `resolve`, and `jump`.
-- `src` — symbol-aware source reading and focused edits. Use it to inspect a file's structure or replace/read a function/type by symbol ID; use `rg` for repo-wide text search.
+When a short token is presented as a project or repository target—for example,
+“in ko” or “project ko”—treat it as a possible registered alias. Call project
+MCP `project_get` with that exact alias before interpreting it as a directory or
+ordinary word. Use `project_list` only when discovery is needed.
+
+- `project`: discover registered projects. Project-scoped MCP calls take the
+  alias; do not reconstruct an absolute path for them.
+- `src`: inspect a known file in a registered project by alias and
+  repository-relative path. Use `symbols` for structure and IDs, then `read`
+  for a symbol/section or bounded text. It is read-only. Use `rg` for
+  repository-wide filename/text search and normal workspace editing tools for
+  changes.
+- `skill`: use `skill_get` when the user names a skill or the task clearly
+  matches an advertised skill. Use find/list only for discovery. Pass a project
+  alias when project-local skills should take precedence; do not preload
+  unrelated skills.
+- `web`: use when the answer depends on external or current facts. Search for
+  discovery, fetch primary pages, docs for library documentation, and sgraph
+  for public source code. Prefer repository context and prior FlickNote notes
+  when they already answer the question.
+- `og`: use for registered-repository clone, guarded push/pull, auth, and pull
+  request operations. Pass the exact project alias. Do not substitute raw
+  `git push`, gh, tea, curl, or provider APIs. Use the CLI only for operations
+  MCP intentionally omits, such as tag and daemon lifecycle.
+
+Run CLI help before using an unfamiliar CLI-only operation or when syntax is
+unclear. If an MCP server lacks an operation, use an existing approved local
+tool only when policy permits; do not invent a raw network/provider fallback.
 
 ## Deployment
 
