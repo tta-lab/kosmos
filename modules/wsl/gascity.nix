@@ -162,4 +162,9 @@ in {
       WorkingDirectory = "/home/neil";
     };
   };
+
+  home-manager.users.neil.home.file.".local/share/gascity/supervisor.toml".text = ''
+    [supervisor]
+    allowed_hosts = ["gascity-dashboard.localhost"]
+  '';
 }
