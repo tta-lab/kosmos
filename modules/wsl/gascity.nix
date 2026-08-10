@@ -5,6 +5,10 @@
 }: let
   gascityHome = "/home/neil/.local/share/gascity";
   gascityCity = "${gascityHome}/city";
+  gascityGitConfig = "${gascityHome}/gitconfig";
+  bootstrapCityConfig = pkgs.writeText "gascity-city.toml" ''
+    [workspace]
+  '';
 
   dolt = pkgs.stdenvNoCC.mkDerivation {
     pname = "dolt";
@@ -72,10 +76,18 @@
     pkgs.util-linux
   ];
   servicePath = lib.makeBinPath runtimePackages;
+  prepareGitConfig = pkgs.writeShellScript "gascity-prepare-git-config" ''
+    set -euo pipefail
+
+    if test ! -e ${lib.escapeShellArg gascityGitConfig}; then
+      ${pkgs.coreutils}/bin/mkdir -p ${lib.escapeShellArg gascityHome}
+      ${pkgs.git}/bin/git config --file ${lib.escapeShellArg gascityGitConfig} include.path /home/neil/.config/git/config
+    fi
+  '';
   runtimeEnvironment = [
     "HOME=/home/neil"
     "GC_HOME=${gascityHome}"
-    "GC_DOLT_PORT=3307"
+    "GIT_CONFIG_GLOBAL=${gascityGitConfig}"
     "GC_SUPERVISOR_SYSTEMD_UNIT=gascity.service"
     "GC_SUPERVISOR_SYSTEMD_SCOPE=user"
     "GC_SUPERVISOR_LOG_TEE=0"
@@ -88,6 +100,7 @@ in {
       GC_SUPERVISOR_SYSTEMD_UNIT = "gascity.service";
       GC_SUPERVISOR_SYSTEMD_SCOPE = "user";
       GC_SUPERVISOR_LOG_TEE = "0";
+      GIT_CONFIG_GLOBAL = gascityGitConfig;
     };
     systemPackages =
       runtimePackages
@@ -101,14 +114,32 @@ in {
             export GC_SUPERVISOR_SYSTEMD_UNIT=gascity.service
             export GC_SUPERVISOR_SYSTEMD_SCOPE=user
             export GC_SUPERVISOR_LOG_TEE=0
+            export GIT_CONFIG_GLOBAL=${gascityGitConfig}
             unset GC_DOLT_HOST GC_DOLT_PORT GC_DOLT_USER GC_DOLT_DATABASE GC_BEADS_PROJECT_ID
+
+            ${prepareGitConfig}
 
             if test -e ${lib.escapeShellArg "${gascityCity}/city.toml"}; then
               echo "Gas City is already initialized at ${gascityCity}" >&2
               exit 1
             fi
 
-            exec ${gascity}/bin/gc init --template empty --name kosmos ${lib.escapeShellArg gascityCity}
+            exec ${gascity}/bin/gc init --file ${bootstrapCityConfig} --name kosmos --no-start ${lib.escapeShellArg gascityCity}
+          '';
+        })
+        (pkgs.writeShellApplication {
+          name = "gascity-start-kosmos";
+          runtimeInputs = runtimePackages;
+          text = ''
+            export HOME=/home/neil
+            export GC_HOME=${gascityHome}
+            export GC_SUPERVISOR_SYSTEMD_UNIT=gascity.service
+            export GC_SUPERVISOR_SYSTEMD_SCOPE=user
+            export GC_SUPERVISOR_LOG_TEE=0
+            export GIT_CONFIG_GLOBAL=${gascityGitConfig}
+
+            ${prepareGitConfig}
+            exec ${gascity}/bin/gc --city ${lib.escapeShellArg gascityCity} start "$@"
           '';
         })
       ];
@@ -122,6 +153,7 @@ in {
     };
     Install.WantedBy = ["default.target"];
     Service = {
+      ExecStartPre = "${prepareGitConfig}";
       ExecStart = "${gascity}/bin/gc supervisor run";
       Restart = "always";
       RestartSec = 5;
