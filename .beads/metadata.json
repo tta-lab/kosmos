@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "server",
+  "dolt_database": "shared_beads_smoke",
+  "project_id": "12128618-af99-47e9-8978-3173422542d0"
+}
