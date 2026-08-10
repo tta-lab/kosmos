@@ -20,6 +20,9 @@ listener: its only host port binds to `127.0.0.1`, and the Kepos `beads` service
 allows only the existing Mac subscriber. Kepos is therefore the network and
 peer-identity boundary for this initial deployment.
 
+The server also disables SQL file import and export with Dolt's
+`secure_file_priv` setting. Beads does not need that feature.
+
 Do not expose port 3307 directly or extend the Kepos allow list without first
 adding SQL credentials and TLS. This setup is suitable only for the current
 single-user WSL and Mac trust boundary.

@@ -14,6 +14,7 @@ jq -e '
     $resources | map(select(.kind == $kind and .metadata.name == $name)) | first;
 
   (resource("Namespace"; "beads").metadata.name == "beads") and
+  (resource("ConfigMap"; "beads-server-config").data["config.yaml"] == "system_variables:\n  secure_file_priv: /var/lib/dolt/file-operations-disabled\n") and
   (resource("StatefulSet"; "beads").spec.replicas == 1) and
   (resource("StatefulSet"; "beads").spec.serviceName == "beads") and
   (resource("StatefulSet"; "beads").spec.template.spec.containers[0] as $container |
@@ -24,7 +25,8 @@ jq -e '
     ($container.startupProbe.tcpSocket.port == "mysql") and
     ($container.readinessProbe.exec.command | any(. == "dolt sql -q \"SELECT 1 FROM mysql.user WHERE User = \u0027root\u0027 AND Host = \u0027%\u0027\" | grep -q 1")) and
     ($container.livenessProbe.tcpSocket.port == "mysql") and
-    ($container.volumeMounts | any(.name == "data" and .mountPath == "/var/lib/dolt"))
+    ($container.volumeMounts | any(.name == "data" and .mountPath == "/var/lib/dolt")) and
+    ($container.volumeMounts | any(.name == "server-config" and .mountPath == "/etc/dolt/servercfg.d" and .readOnly == true))
   ) and
   (resource("Service"; "beads").spec.type == "ClusterIP") and
   (resource("Service"; "beads").spec.ports | any(.name == "mysql" and .port == 3307 and .targetPort == "mysql")) and

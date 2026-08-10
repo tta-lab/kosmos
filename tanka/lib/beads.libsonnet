@@ -4,6 +4,18 @@ local labels = {
 };
 
 {
+  beadsServerConfig: {
+    apiVersion: 'v1',
+    kind: 'ConfigMap',
+    metadata: {
+      name: 'beads-server-config',
+      namespace: 'beads',
+      labels: labels,
+    },
+    data: {
+      'config.yaml': 'system_variables:\n  secure_file_priv: /var/lib/dolt/file-operations-disabled\n',
+    },
+  },
   beadsService: {
     apiVersion: 'v1',
     kind: 'Service',
@@ -77,9 +89,19 @@ local labels = {
               capabilities: { drop: ['ALL'] },
               seccompProfile: { type: 'RuntimeDefault' },
             },
-            volumeMounts: [{ name: 'data', mountPath: '/var/lib/dolt' }],
+            volumeMounts: [
+              { name: 'data', mountPath: '/var/lib/dolt' },
+              {
+                name: 'server-config',
+                mountPath: '/etc/dolt/servercfg.d',
+                readOnly: true,
+              },
+            ],
           }],
-          volumes: [{ name: 'data', persistentVolumeClaim: { claimName: 'beads-data' } }],
+          volumes: [
+            { name: 'data', persistentVolumeClaim: { claimName: 'beads-data' } },
+            { name: 'server-config', configMap: { name: 'beads-server-config' } },
+          ],
         },
       },
     },
