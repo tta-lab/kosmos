@@ -389,10 +389,10 @@
         assert services.dagger.targetPort == 8080;
         assert services.dagger.allow != null;
         assert services."gascity-dolt".name == "Gas City Dolt";
-        assert services."gascity-dolt".targetPort == 3307;
+        assert services."gascity-dolt".targetPort == 24930;
         assert services."gascity-dolt".allow == services.dagger.allow;
         assert services."gascity-dashboard".name == "Gas City Dashboard";
-        assert services."gascity-dashboard".targetPort == 9443;
+        assert services."gascity-dashboard".targetPort == 8372;
         assert services."gascity-dashboard".allow == services.dagger.allow;
         assert services.bookorbit.name == "BookOrbit";
         assert services.bookorbit.targetPort == 17480;

@@ -85,12 +85,14 @@ in {
         };
         gascity-dolt = {
           name = "Gas City Dolt";
-          targetPort = 3307;
+          # Gas City's managed-local allocator deterministically assigns this
+          # city path to 24930 and persists the selected port with the city.
+          targetPort = 24930;
           allow = [subscribers.mac];
         };
         gascity-dashboard = {
           name = "Gas City Dashboard";
-          targetPort = 9443;
+          targetPort = 8372;
           allow = [subscribers.mac];
         };
         ente = {
