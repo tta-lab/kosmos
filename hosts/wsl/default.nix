@@ -14,6 +14,7 @@ _: {
     ../../modules/wsl/frpc-ssh.nix
     ../../modules/wsl/secrets.nix
     ../../modules/wsl/hermes-agent.nix
+    ../../modules/wsl/gascity.nix
     ../../modules/wsl/mihomo.nix
     ../../modules/wsl/proxy.nix
     ../../modules/wsl/k3s.nix

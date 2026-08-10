@@ -83,6 +83,16 @@ in {
           targetPort = 8080;
           allow = [subscribers.mac];
         };
+        gascity-dolt = {
+          name = "Gas City Dolt";
+          targetPort = 3307;
+          allow = [subscribers.mac];
+        };
+        gascity-dashboard = {
+          name = "Gas City Dashboard";
+          targetPort = 9443;
+          allow = [subscribers.mac];
+        };
         ente = {
           name = "Ente Photos";
           targetPort = 17480;
