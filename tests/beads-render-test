@@ -14,9 +14,10 @@ jq -e '
     $resources | map(select(.kind == $kind and .metadata.name == $name)) | first;
 
   (resource("Namespace"; "beads").metadata.name == "beads") and
-  (resource("ConfigMap"; "beads-server-config").data["config.yaml"] == "system_variables:\n  secure_file_priv: /var/lib/dolt/file-operations-disabled\n") and
+  (resource("ConfigMap"; "beads-server-config").data["config.yaml"] == "listener:\n  host: 0.0.0.0\n  port: 3306\nsystem_variables:\n  secure_file_priv: /var/lib/dolt/file-operations-disabled\n") and
   (resource("StatefulSet"; "beads").spec.replicas == 1) and
   (resource("StatefulSet"; "beads").spec.serviceName == "beads") and
+  (resource("StatefulSet"; "beads").spec.template.metadata.annotations["kosmos.ttal/config-sha"] | strings | length == 32) and
   (resource("StatefulSet"; "beads").spec.template.spec.containers[0] as $container |
     ($container.image == "dolthub/dolt-sql-server:2.2.3@sha256:0243d2f3d1655a816d363885a7eb9e373f2aee9f96f8e289a0a0010f067314f3") and
     ($container.env | any(.name == "DOLT_ROOT_HOST" and .value == "%")) and

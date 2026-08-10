@@ -2,6 +2,12 @@ local labels = {
   'app.kubernetes.io/name': 'beads',
   'app.kubernetes.io/part-of': 'kosmos-beads',
 };
+local serverConfig =
+  'listener:\n' +
+  '  host: 0.0.0.0\n' +
+  '  port: 3306\n' +
+  'system_variables:\n' +
+  '  secure_file_priv: /var/lib/dolt/file-operations-disabled\n';
 
 {
   beadsServerConfig: {
@@ -13,7 +19,7 @@ local labels = {
       labels: labels,
     },
     data: {
-      'config.yaml': 'system_variables:\n  secure_file_priv: /var/lib/dolt/file-operations-disabled\n',
+      'config.yaml': serverConfig,
     },
   },
   beadsService: {
@@ -43,7 +49,12 @@ local labels = {
       replicas: 1,
       selector: { matchLabels: labels },
       template: {
-        metadata: { labels: labels },
+        metadata: {
+          labels: labels,
+          annotations: {
+            'kosmos.ttal/config-sha': std.md5(serverConfig),
+          },
+        },
         spec: {
           terminationGracePeriodSeconds: 30,
           containers: [{
