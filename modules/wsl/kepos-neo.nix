@@ -83,6 +83,11 @@ in {
           targetPort = 8080;
           allow = [subscribers.mac];
         };
+        beads = {
+          name = "Beads Dolt";
+          targetPort = 3307;
+          allow = [subscribers.mac];
+        };
         ente = {
           name = "Ente Photos";
           targetPort = 17480;

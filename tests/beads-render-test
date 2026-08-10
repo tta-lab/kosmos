@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+rendered="$(mktemp)"
+trap 'rm -f "$rendered"' EXIT
+
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/beads" \
+  | yq -s '.' >"$rendered"
+
+jq -e '
+  . as $resources |
+  def resource($kind; $name):
+    $resources | map(select(.kind == $kind and .metadata.name == $name)) | first;
+
+  (resource("Namespace"; "beads").metadata.name == "beads") and
+  (resource("StatefulSet"; "beads").spec.replicas == 1) and
+  (resource("StatefulSet"; "beads").spec.serviceName == "beads") and
+  (resource("StatefulSet"; "beads").spec.template.spec.containers[0] as $container |
+    ($container.image == "dolthub/dolt-sql-server:2.2.3@sha256:0243d2f3d1655a816d363885a7eb9e373f2aee9f96f8e289a0a0010f067314f3") and
+    ($container.env | any(.name == "DOLT_ROOT_HOST" and .value == "%")) and
+    ($container.ports | any(.name == "mysql" and .containerPort == 3306 and .hostPort == 3307 and .hostIP == "127.0.0.1")) and
+    ($container.securityContext.allowPrivilegeEscalation == false) and
+    ($container.startupProbe.tcpSocket.port == "mysql") and
+    ($container.readinessProbe.exec.command | any(. == "dolt sql -q \"SELECT 1 FROM mysql.user WHERE User = \u0027root\u0027 AND Host = \u0027%\u0027\" | grep -q 1")) and
+    ($container.livenessProbe.tcpSocket.port == "mysql") and
+    ($container.volumeMounts | any(.name == "data" and .mountPath == "/var/lib/dolt"))
+  ) and
+  (resource("Service"; "beads").spec.type == "ClusterIP") and
+  (resource("Service"; "beads").spec.ports | any(.name == "mysql" and .port == 3307 and .targetPort == "mysql")) and
+  (resource("PersistentVolume"; "kosmos-beads").spec.persistentVolumeReclaimPolicy == "Retain") and
+  (resource("PersistentVolume"; "kosmos-beads").spec.hostPath.path == "/var/lib/kosmos-k3s/beads") and
+  (resource("PersistentVolumeClaim"; "beads-data").spec.volumeName == "kosmos-beads") and
+  (map(select(.kind == "Secret")) | length == 0)
+' "$rendered" >/dev/null
+
+printf 'Beads manifests expose a loopback-only Dolt server with retained storage\n'

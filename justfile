@@ -6,6 +6,7 @@ ebooks_environment := "tanka/environments/ebooks"
 anki_environment := "tanka/environments/anki"
 notes_environment := "tanka/environments/notes"
 hindsight_environment := "tanka/environments/hindsight"
+beads_environment := "tanka/environments/beads"
 kubeconfig := env_var_or_default("KUBECONFIG", "/etc/rancher/k3s/k3s.yaml")
 api_server := "https://127.0.0.1:26443"
 
@@ -106,6 +107,23 @@ hindsight-status: _local-k3s
 
 hindsight-logs: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl logs deployment/hindsight -n hindsight --tail=200
+
+beads-show:
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ beads_environment }}"
+
+beads-diff: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ beads_environment }}"
+
+beads-apply: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ beads_environment }}"
+
+beads-deploy: beads-apply
+
+beads-status: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n beads -o wide
+
+beads-logs: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl logs statefulset/beads -n beads --tail=200
 
 bookorbit-bootstrap-token: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get secret bookorbit-env -n ebooks -o jsonpath='{.data.SETUP_BOOTSTRAP_TOKEN}' | base64 --decode; echo

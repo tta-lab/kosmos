@@ -88,6 +88,7 @@
             ${./tests/anki-render-test} \
             ${./tests/hindsight-render-test} \
             ${./tests/hindsight-gateway-render-test} \
+            ${./tests/beads-render-test} \
             ${./tests/anki-gateway-render-test} \
             ${./tests/notes-render-test} \
             ${./tests/notes-gateway-render-test} \
@@ -111,6 +112,7 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-gateway-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/beads-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-gateway-render-test}
