@@ -10,11 +10,11 @@ Use `pkgsUnstable.<name>` for bleeding-edge, `pkgs.<name>` for stable.
 Edit source dir (`helix/`, `lenos/`, `temenos/`) → rebuild WSL.
 Use `og clone <https-url>` to obtain and register project checkouts. Kosmos does not sync repositories.
 
-**Adding or updating a shared agent skill:**
-Edit `skills/<name>/SKILL.md` → rebuild WSL, or run
-`scripts/sync-agent-config` from a Mac checkout. The script discovers all
-skills, so new skills need no per-skill wiring. It refuses existing targets;
-use `--replace` only to adopt an existing symlink.
+**Adding or updating agent skills:**
+Agent skills are no longer managed by Kosmos. Each machine owns its own
+`~/.agents/skills/` — deploy a skill by copying its directory into that
+path. Only the portable agent rules (`AGENTS.user.md`) are synced by
+`scripts/sync-agent-config`.
 
 **Adding a secret:**
 1) register in `secrets.nix`, 2) declare in `modules/wsl/secrets.nix`, 3) `agenix -e secrets/<name>.age`.
@@ -26,7 +26,7 @@ use `--replace` only to adopt an existing symlink.
 | System packages | `modules/common/packages.nix` |
 | User dotfiles (fish, git, starship) | `modules/configs.nix` |
 | User config dirs (helix, lenos, temenos) | Source dirs → wired in `modules/configs.nix` |
-| Portable agent rules and shared skills | `AGENTS.user.md`, `skills/`, `scripts/sync-agent-config` |
+| Portable agent rules | `AGENTS.user.md`, `scripts/sync-agent-config` |
 | Project registry | `~/.config/ttal/` (legacy path, not managed by Kosmos) |
 | WSL-only services, options, secrets | `modules/wsl/` |
 | Shared config (Nix, SSH, rust, shell) | `modules/common/` |
@@ -62,7 +62,7 @@ before the commit as usual.
 ## Editing Rules
 
 - **Never edit managed `~/.config/*` files directly** — edit the repo source and rebuild WSL. The project registry in `~/.config/ttal/` is unmanaged; use `og clone` for additions and direct edits only for archive/migration work.
-- **Never edit managed `~/.agents/skills/*` files directly** — edit the corresponding source under `skills/`; rebuild WSL or run `scripts/sync-agent-config` on a Mac.
+- `~/.agents/skills/*` is **not** managed by Kosmos — each machine owns its skills directly; deploy by copying skill directories into `~/.agents/skills/`.
 - For tmux clipboard on kosmos-wsl, use tmux clipboard/OSC 52 commands such as `copy-selection` or `copy-selection-and-cancel`; do not pipe copy bindings to platform clipboard tools like `pbcopy`, `clip.exe`, or `wl-copy`.
 - Use `og clone` for normal project additions. Edit the unmanaged `~/.config/ttal/projects.toml` directly only for archive or migration work that og does not expose.
 - NixOS/Home Manager deploys managed config files, including agent rules.
@@ -107,6 +107,6 @@ to use a cache.
 
 `AGENTS.user.md` in the repo root is the SSOT for portable user-scope agent
 instructions. Home Manager sources it to `.codex/AGENTS.md` on WSL;
-`scripts/sync-agent-config` links it and the shared skills from a Mac checkout.
+`scripts/sync-agent-config` links it from a Mac checkout.
 Host-specific rules belong in `~/.codex/AGENTS.machine.md`, outside this
 repository. Edit `AGENTS.user.md` directly in this repo.

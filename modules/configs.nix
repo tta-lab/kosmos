@@ -14,15 +14,6 @@ in {
     users.neil = {lib, ...}: let
       proxyUrl = "http://127.0.0.1:7890";
       noProxy = "localhost,127.0.0.1,::1";
-      agentSkills = lib.filterAttrs (_: type: type == "directory") (builtins.readDir ../skills);
-      agentSkillFiles =
-        lib.mapAttrs' (
-          name: _:
-            lib.nameValuePair ".agents/skills/${name}" {
-              source = ../skills + "/${name}";
-            }
-        )
-        agentSkills;
       flicknoteProxyEnvironment = [
         "HTTP_PROXY=${proxyUrl}"
         "HTTPS_PROXY=${proxyUrl}"
@@ -75,8 +66,7 @@ in {
               news.version=3.4.2
             '';
             ".codex/AGENTS.md".source = ../AGENTS.user.md;
-          }
-          // agentSkillFiles;
+          };
       };
 
       xdg = {
