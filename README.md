@@ -13,7 +13,8 @@ NixOS configuration for a headless dev/ops environment. It supports both the Int
 - `modules/users/` — shared user definitions
 - `lenos/`, `temenos/` — non-secret tool config deployed by Home Manager
 - `scripts/install-tta-lab-go` — installs Go CLIs from existing local checkouts
-- `packages/tta-lab/` — pinned release packages for tta-lab tools that are not in nixpkgs
+- `scripts/install-tta-lab-releases` — installs current FlickNote and Taskwarrior releases
+- `packages/tta-lab/` — build helper for the tta-lab tmux project picker
 - `configuration.nix` — compatibility entry point for the `kosmos` host
 - `disko-config.nix` — declarative NVMe partition layout for bare-metal install
 - `install-guide.md` — step-by-step install instructions
@@ -93,7 +94,19 @@ servers configured for Codex.
 
 ## TTA Lab Tools
 
-The WSL host installs pinned release builds for `flicknote` and the GuionAI fork of `taskwarrior`. Frequently updated Go CLIs stay outside Nix for now and install from local checkouts into `~/go/bin`:
+WSL installs the latest GitHub Releases of `flicknote` and the GuionAI fork of
+`taskwarrior` outside Nix. After applying the host, run:
+
+```bash
+tta-lab-release-install
+```
+
+The installer verifies each GitHub release asset's SHA-256 digest, atomically
+installs binaries and shell completions to `~/.local`, and restarts
+`flicknote-sync`.
+
+Frequently updated Go CLIs stay outside Nix for now and install from local
+checkouts into `~/go/bin`:
 
 ```bash
 tta-lab-go-install

@@ -1,10 +1,5 @@
-{
-  config,
-  pkgs,
-  ...
-}: let
+{config, ...}: let
   inherit (config.system) stateVersion;
-  ttaLab = pkgs.callPackage ../packages/tta-lab {};
 in {
   home-manager = {
     useGlobalPkgs = true;
@@ -75,6 +70,7 @@ in {
               news.version=3.4.2
             '';
             ".codex/AGENTS.md".source = ../AGENTS.user.md;
+            ".pi/agent/AGENTS.md".source = ../AGENTS.user.md;
           }
           // agentSkillFiles;
       };
@@ -107,10 +103,13 @@ in {
       ];
 
       systemd.user.services.flicknote-sync = {
-        Unit.Description = "FlickNote sync daemon";
+        Unit = {
+          Description = "FlickNote sync daemon";
+          ConditionPathExists = "/home/neil/.local/bin/flicknote-sync";
+        };
         Install.WantedBy = ["default.target"];
         Service = {
-          ExecStart = "${ttaLab.flicknote}/bin/flicknote-sync";
+          ExecStart = "/home/neil/.local/bin/flicknote-sync";
           Restart = "on-failure";
           RestartSec = 5;
           Environment =

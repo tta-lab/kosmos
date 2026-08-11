@@ -14,6 +14,7 @@ _: {
     ../../modules/wsl
     ../../modules/wsl/frpc-ssh.nix
     ../../modules/wsl/secrets.nix
+    ../../modules/wsl/tta-lab-release-install.nix
     ../../modules/wsl/hermes-agent.nix
     ../../modules/wsl/gascity.nix
     ../../modules/wsl/mihomo.nix
