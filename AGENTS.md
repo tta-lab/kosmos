@@ -12,9 +12,8 @@ Use `og clone <https-url>` to obtain and register project checkouts. Kosmos does
 
 **Adding or updating agent skills:**
 Agent skills are no longer managed by Kosmos. Each machine owns its own
-`~/.agents/skills/` — host-local on the Mac, and deployed directly on
-kosmos-wsl (scp the skill dirs in, routing via `nuc` over LAN). Only the
-portable agent rules (`AGENTS.user.md`) are synced by
+`~/.agents/skills/` — host-local on the Mac, and scp-deployed directly on
+kosmos-wsl. Only the portable agent rules (`AGENTS.user.md`) are synced by
 `scripts/sync-agent-config`.
 
 **Adding a secret:**
@@ -63,7 +62,7 @@ before the commit as usual.
 ## Editing Rules
 
 - **Never edit managed `~/.config/*` files directly** — edit the repo source and rebuild WSL. The project registry in `~/.config/ttal/` is unmanaged; use `og clone` for additions and direct edits only for archive/migration work.
-- `~/.agents/skills/*` is **not** managed by Kosmos — each machine owns its skills directly. On kosmos-wsl, deploy skills by scp'ing them into `~/.agents/skills/` (route via `nuc` over LAN; the `kosmos-wsl` FRP alias is slower).
+- `~/.agents/skills/*` is **not** managed by Kosmos — each machine owns its skills directly. On kosmos-wsl, deploy skills by scp'ing them into `~/.agents/skills/`.
 - For tmux clipboard on kosmos-wsl, use tmux clipboard/OSC 52 commands such as `copy-selection` or `copy-selection-and-cancel`; do not pipe copy bindings to platform clipboard tools like `pbcopy`, `clip.exe`, or `wl-copy`.
 - Use `og clone` for normal project additions. Edit the unmanaged `~/.config/ttal/projects.toml` directly only for archive or migration work that og does not expose.
 - NixOS/Home Manager deploys managed config files, including agent rules.
