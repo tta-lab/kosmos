@@ -5,6 +5,7 @@ _: {
     ../../modules/common/packages.nix
     ../../modules/common/rust.nix
     ../../modules/common/codex.nix
+    ../../modules/common/pi.nix
     ../../modules/common/tta-lab-go.nix
     ../../modules/common/shell.nix
     ../../modules/common/ssh.nix

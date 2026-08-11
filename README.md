@@ -73,6 +73,24 @@ openai-codex-install
 
 This installs `@openai/codex@latest` into `~/.local/share/npm-global/bin`, which Fish adds to `PATH`.
 
+## Pi Coding Agent
+
+WSL installs Pi with npm so its CLI can track the latest release. Apply the host, then run:
+
+```bash
+pi-install
+```
+
+This installs `@earendil-works/pi-coding-agent@latest` into
+`~/.local/share/npm-global/bin`. Update Pi packages such as Mitsupi with:
+
+```bash
+pi update --all
+```
+
+The `pi-mcp-adapter` package loads the managed `~/.pi/agent/mcp.json`, which
+imports MCP servers configured for Codex.
+
 ## TTA Lab Tools
 
 The WSL host installs pinned release builds for `flicknote` and the GuionAI fork of `taskwarrior`. Frequently updated Go CLIs stay outside Nix for now and install from local checkouts into `~/go/bin`:
