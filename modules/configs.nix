@@ -9,15 +9,6 @@ in {
     users.neil = {lib, ...}: let
       proxyUrl = "http://127.0.0.1:7890";
       noProxy = "localhost,127.0.0.1,::1";
-      agentSkills = lib.filterAttrs (_: type: type == "directory") (builtins.readDir ../skills);
-      agentSkillFiles =
-        lib.mapAttrs' (
-          name: _:
-            lib.nameValuePair ".agents/skills/${name}" {
-              source = ../skills + "/${name}";
-            }
-        )
-        agentSkills;
       flicknoteProxyEnvironment = [
         "HTTP_PROXY=${proxyUrl}"
         "HTTPS_PROXY=${proxyUrl}"
@@ -62,17 +53,15 @@ in {
             "$HOME/.kube"
         '';
 
-        file =
-          {
-            ".taskrc".text = ''
-              data.location=/home/neil/.task
-              powersync.db_path=/home/neil/.local/share/flicknote/flicknote.db
-              news.version=3.4.2
-            '';
-            ".codex/AGENTS.md".source = ../AGENTS.user.md;
-            ".pi/agent/AGENTS.md".source = ../AGENTS.user.md;
-          }
-          // agentSkillFiles;
+        file = {
+          ".taskrc".text = ''
+            data.location=/home/neil/.task
+            powersync.db_path=/home/neil/.local/share/flicknote/flicknote.db
+            news.version=3.4.2
+          '';
+          ".codex/AGENTS.md".source = ../AGENTS.user.md;
+          ".pi/agent/AGENTS.md".source = ../AGENTS.user.md;
+        };
       };
 
       xdg = {
