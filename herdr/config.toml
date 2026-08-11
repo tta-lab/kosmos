@@ -1,0 +1,20 @@
+[terminal]
+default_shell = "/run/current-system/sw/bin/fish"
+
+[ui]
+agent_panel_sort = "priority"
+
+[ui.toast]
+delivery = "system"
+
+[keys]
+previous_workspace = "prefix+)"
+next_workspace = "prefix+("
+
+[[keys.command]]
+key = "prefix+shift+p"
+type = "popup"
+command = "exec /home/neil/.config/herdr/open-project-space.fish"
+description = "Create a workspace for a registered project"
+width = "60%"
+height = "60%"
