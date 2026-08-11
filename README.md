@@ -83,7 +83,10 @@ pi-install
 ```
 
 This installs `@earendil-works/pi-coding-agent@latest` into
-`~/.local/share/npm-global/bin`. Update Pi packages such as Mitsupi with:
+`~/.local/share/npm-global/bin`, plus the latest Mitsupi,
+`pi-mcp-adapter`, and `pi-herdr-subagents` packages. It also installs Herdr's
+Pi integration. Re-run `pi-install` to refresh them; update other Pi packages
+with:
 
 ```bash
 pi update --all

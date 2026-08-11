@@ -17,6 +17,10 @@
 
     mkdir -p "${npmPrefix}"
     npm install -g --ignore-scripts @earendil-works/pi-coding-agent@latest
+    pi install npm:mitsupi
+    pi install npm:pi-mcp-adapter
+    pi install npm:pi-herdr-subagents
+    herdr integration install pi
   '';
 in {
   environment.systemPackages = [
