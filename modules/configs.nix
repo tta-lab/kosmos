@@ -1,10 +1,5 @@
-{
-  config,
-  pkgs,
-  ...
-}: let
+{config, ...}: let
   inherit (config.system) stateVersion;
-  ttaLab = pkgs.callPackage ../packages/tta-lab {};
 in {
   home-manager = {
     useGlobalPkgs = true;
@@ -58,15 +53,15 @@ in {
             "$HOME/.kube"
         '';
 
-        file =
-          {
-            ".taskrc".text = ''
-              data.location=/home/neil/.task
-              powersync.db_path=/home/neil/.local/share/flicknote/flicknote.db
-              news.version=3.4.2
-            '';
-            ".codex/AGENTS.md".source = ../AGENTS.user.md;
-          };
+        file = {
+          ".taskrc".text = ''
+            data.location=/home/neil/.task
+            powersync.db_path=/home/neil/.local/share/flicknote/flicknote.db
+            news.version=3.4.2
+          '';
+          ".codex/AGENTS.md".source = ../AGENTS.user.md;
+          ".pi/agent/AGENTS.md".source = ../AGENTS.user.md;
+        };
       };
 
       xdg = {
@@ -97,10 +92,13 @@ in {
       ];
 
       systemd.user.services.flicknote-sync = {
-        Unit.Description = "FlickNote sync daemon";
+        Unit = {
+          Description = "FlickNote sync daemon";
+          ConditionPathExists = "/home/neil/.local/bin/flicknote-sync";
+        };
         Install.WantedBy = ["default.target"];
         Service = {
-          ExecStart = "${ttaLab.flicknote}/bin/flicknote-sync";
+          ExecStart = "/home/neil/.local/bin/flicknote-sync";
           Restart = "on-failure";
           RestartSec = 5;
           Environment =

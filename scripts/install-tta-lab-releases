@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+home_dir="${HOME:?HOME must be set}"
+install_root="$home_dir/.local"
+state_dir="$install_root/share/tta-lab"
+
+mkdir -p "$state_dir"
+work_dir="$(mktemp -d "$state_dir/release-install.XXXXXX")"
+trap 'rm -rf -- "$work_dir"' EXIT
+
+github_token="$(
+  sed -nE '/^[[:space:]]*access-tokens[[:space:]]*=/ s/.*github\.com=([^[:space:]#]+).*/\1/p' \
+    "$home_dir/.config/nix/nix.conf" \
+    | head -n 1
+)"
+if [ -z "$github_token" ]; then
+  echo "missing github.com access token in $home_dir/.config/nix/nix.conf" >&2
+  exit 1
+fi
+if [[ ! "$github_token" =~ ^[A-Za-z0-9_]+$ ]]; then
+  echo "GitHub access token contains unsupported characters" >&2
+  exit 1
+fi
+
+curl_config="$work_dir/github-api.conf"
+(
+  umask 077
+  printf 'header = "Authorization: Bearer %s"\n' "$github_token" > "$curl_config"
+)
+unset github_token
+
+fetch_release() {
+  local repository="$1"
+
+  if ! curl --config "$curl_config" --fail --location --silent --show-error \
+    --http1.1 --retry 3 --retry-all-errors \
+    -H 'Accept: application/vnd.github+json' \
+    -H 'X-GitHub-Api-Version: 2022-11-28' \
+    "https://api.github.com/repos/$repository/releases/latest"; then
+    return 1
+  fi
+}
+
+download_asset() {
+  local asset="$1"
+  local destination="$2"
+  local url digest expected actual
+
+  url="$(jq -er '.browser_download_url' <<<"$asset")"
+  digest="$(jq -er '.digest' <<<"$asset")"
+  case "$digest" in
+    sha256:*) expected="${digest#sha256:}" ;;
+    *)
+      echo "release asset does not provide a SHA-256 digest" >&2
+      return 1
+      ;;
+  esac
+
+  if ! curl --fail --location --silent --show-error --http1.1 \
+    --retry 3 --retry-all-errors --output "$destination" "$url"; then
+    return 1
+  fi
+  actual="$(sha256sum "$destination")"
+  actual="${actual%% *}"
+  if [ "$actual" != "$expected" ]; then
+    echo "SHA-256 mismatch for $(jq -r '.name' <<<"$asset")" >&2
+    return 1
+  fi
+}
+
+flicknote_release="$(fetch_release GuionAI/flicknote-cli)"
+flicknote_asset="$(
+  jq -ce '
+    [.assets[] | select(.name == "flicknote-cli-x86_64-unknown-linux-musl.tar.xz")]
+    | if length == 1 then .[0] else error("missing flicknote Linux asset") end
+  ' <<<"$flicknote_release"
+)"
+
+task_release="$(fetch_release GuionAI/taskwarrior)"
+task_asset="$(
+  jq -ce '
+    [.assets[] | select(.name | test("^task-.+-x86_64-linux\\.tar\\.gz$"))]
+    | if length == 1 then .[0] else error("missing or ambiguous task Linux asset") end
+  ' <<<"$task_release"
+)"
+
+flicknote_archive="$work_dir/flicknote.tar.xz"
+task_archive="$work_dir/task.tar.gz"
+download_asset "$flicknote_asset" "$flicknote_archive"
+download_asset "$task_asset" "$task_archive"
+
+flicknote_dir="$work_dir/flicknote/flicknote-cli-x86_64-unknown-linux-musl"
+task_dir="$work_dir/task"
+mkdir -p "$work_dir/flicknote" "$task_dir"
+tar -xJf "$flicknote_archive" -C "$work_dir/flicknote"
+tar -xzf "$task_archive" -C "$task_dir"
+
+for binary in flicknote flicknote-sync; do
+  if [ ! -x "$flicknote_dir/$binary" ]; then
+    echo "flicknote archive is missing $binary" >&2
+    exit 1
+  fi
+done
+
+if [ ! -x "$task_dir/task" ] || [ ! -f "$task_dir/completions/task.fish" ]; then
+  echo "task archive has an unexpected layout" >&2
+  exit 1
+fi
+
+stage_dir="$work_dir/stage"
+install -Dm755 "$flicknote_dir/flicknote" "$stage_dir/bin/flicknote"
+install -Dm755 "$flicknote_dir/flicknote-sync" "$stage_dir/bin/flicknote-sync"
+install -Dm755 "$task_dir/task" "$stage_dir/bin/task"
+install -Dm644 "$task_dir/completions/task.sh" \
+  "$stage_dir/share/bash-completion/completions/task"
+install -Dm644 "$task_dir/completions/_task" \
+  "$stage_dir/share/zsh/site-functions/_task"
+install -Dm644 "$task_dir/completions/task.fish" \
+  "$stage_dir/share/fish/vendor_completions.d/task.fish"
+
+mkdir -p \
+  "$install_root/bin" \
+  "$install_root/share/bash-completion/completions" \
+  "$install_root/share/zsh/site-functions" \
+  "$install_root/share/fish/vendor_completions.d"
+mv -f "$stage_dir/bin/flicknote" "$install_root/bin/flicknote"
+mv -f "$stage_dir/bin/flicknote-sync" "$install_root/bin/flicknote-sync"
+mv -f "$stage_dir/bin/task" "$install_root/bin/task"
+mv -f "$stage_dir/share/bash-completion/completions/task" \
+  "$install_root/share/bash-completion/completions/task"
+mv -f "$stage_dir/share/zsh/site-functions/_task" \
+  "$install_root/share/zsh/site-functions/_task"
+mv -f "$stage_dir/share/fish/vendor_completions.d/task.fish" \
+  "$install_root/share/fish/vendor_completions.d/task.fish"
+
+systemctl --user restart flicknote-sync.service
+printf 'Installed FlickNote %s and Taskwarrior %s\n' \
+  "$(jq -r '.tag_name' <<<"$flicknote_release")" \
+  "$(jq -r '.tag_name' <<<"$task_release")"

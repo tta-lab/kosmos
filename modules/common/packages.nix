@@ -117,8 +117,6 @@ in {
     pkgsUnstable.just
     enteBackup
     ttaLab.ttalTmuxProjectPicker
-    ttaLab.flicknote
-    ttaLab.taskwarrior
 
     # Languages
     gcc
