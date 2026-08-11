@@ -48,40 +48,47 @@ resolve_script_path() {
 script_directory="$(resolve_script_path "$0")"
 repository_root="$(cd "$script_directory/.." && pwd)"
 rules_source="$repository_root/AGENTS.user.md"
-codex_directory="$HOME/.codex"
-target="$codex_directory/AGENTS.md"
 
 if [[ ! -f "$rules_source" ]]; then
   printf 'not a Kosmos checkout: %s\n' "$repository_root" >&2
   exit 1
 fi
 
-if [[ -e "$codex_directory" && ! -d "$codex_directory" ]]; then
-  printf 'expected directory: %s\n' "$codex_directory" >&2
-  exit 1
-fi
+symlink_agent_rules() {
+  local target_dir="$1"
+  local target="$target_dir/AGENTS.md"
 
-mkdir -p "$codex_directory"
+  if [[ -e "$target_dir" && ! -d "$target_dir" ]]; then
+    printf 'expected directory: %s\n' "$target_dir" >&2
+    return 1
+  fi
 
-if [[ -e "$target" && ! -L "$target" ]]; then
-  printf 'refusing to replace non-symlink target: %s\n' "$target" >&2
-  exit 1
-fi
+  mkdir -p "$target_dir"
 
-if [[ -L "$target" ]] && [[ "$(readlink "$target")" == /nix/store/* ]]; then
-  printf 'refusing to replace Home Manager target: %s\n' "$target" >&2
-  exit 1
-fi
+  if [[ -e "$target" && ! -L "$target" ]]; then
+    printf 'refusing to replace non-symlink target: %s\n' "$target" >&2
+    return 1
+  fi
 
-if [[ -L "$target" ]] && [[ "$(readlink "$target")" != "$rules_source" ]] && [[ "$replace_links" == false ]]; then
-  printf 'refusing to replace symlink target: %s (rerun with --replace to take it over)\n' "$target" >&2
-  exit 1
-fi
+  if [[ -L "$target" ]] && [[ "$(readlink "$target")" == /nix/store/* ]]; then
+    printf 'skipping Home Manager target: %s\n' "$target" >&2
+    return 0
+  fi
 
-if [[ ! -L "$target" ]] || [[ "$(readlink "$target")" != "$rules_source" ]]; then
-  rm -f "$target"
-  ln -s "$rules_source" "$target"
-fi
+  if [[ -L "$target" ]] && [[ "$(readlink "$target")" != "$rules_source" ]] && [[ "$replace_links" == false ]]; then
+    printf 'refusing to replace symlink target: %s (rerun with --replace to take it over)\n' "$target" >&2
+    return 1
+  fi
 
-printf 'linked portable agent rules: %s -> %s\n' "$target" "$rules_source"
-printf 'left host-local rules untouched: %s\n' "$codex_directory/AGENTS.machine.md"
+  if [[ ! -L "$target" ]] || [[ "$(readlink "$target")" != "$rules_source" ]]; then
+    rm -f "$target"
+    ln -s "$rules_source" "$target"
+  fi
+
+  printf 'linked portable agent rules: %s -> %s\n' "$target" "$rules_source"
+}
+
+symlink_agent_rules "$HOME/.pi/agent"
+symlink_agent_rules "$HOME/.codex"
+
+printf 'left host-local rules untouched: %s\n' "$HOME/.codex/AGENTS.machine.md"
