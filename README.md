@@ -88,8 +88,8 @@ This installs `@earendil-works/pi-coding-agent@latest` into
 pi update --all
 ```
 
-The `pi-mcp-adapter` package loads the managed `~/.pi/agent/mcp.json`, which
-imports MCP servers configured for Codex.
+The `pi-mcp-adapter` package loads `~/.pi/agent/mcp.json`, which imports MCP
+servers configured for Codex.
 
 ## TTA Lab Tools
 

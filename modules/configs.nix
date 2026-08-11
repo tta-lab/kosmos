@@ -75,7 +75,6 @@ in {
               news.version=3.4.2
             '';
             ".codex/AGENTS.md".source = ../AGENTS.user.md;
-            ".pi/agent/mcp.json".source = ../pi/agent/mcp.json;
           }
           // agentSkillFiles;
       };
