@@ -23,6 +23,13 @@
 **Lead with the outcome.**
 - Show the artifact or concrete result. Keep process narration brief.
 
+## Host-local instructions
+
+This file contains portable user-level rules. At the start of a task, read
+`~/.codex/AGENTS.machine.md` when it exists and follow its host-specific
+instructions. That file is deliberately outside this repository and is never
+created, changed, or removed by `scripts/sync-agent-config`.
+
 ## GitHub & Forgejo
 
 - **Use a branch and PR for repository changes.** Never push directly to `main` or `master`.
@@ -69,14 +76,6 @@ tool only when policy permits; do not invent a raw network/provider fallback.
 ## Deployment
 
 - Merging a PR does not deploy it. If the task includes deployment, run and verify the repository's documented deploy step.
-
-## Kubernetes Targets
-
-- Remote Guion k3s uses `~/.kube/config` with context `guion-tunnel`.
-- Local NUC/WSL k3s uses `/etc/rancher/k3s/k3s.yaml` with context `default` and API server `https://127.0.0.1:26443`.
-- Set `KUBECONFIG` explicitly for direct commands so remote and local clusters cannot be confused. Use the repository's `just status`, `just diff`, and `just apply` commands for local DevOps workloads; they reject non-local API servers.
-- Do not use `sudo kubectl` or `sudo kubectx`. A newly added `k3s` group membership requires a new login shell before the local kubeconfig is readable.
-- The agenix-managed `~/.kube/config` is read-only. `kubectl` can use it, but `kubectx` cannot modify it directly. Do not replace or edit the managed kubeconfig.
 
 ## Testing
 
