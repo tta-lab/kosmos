@@ -1,6 +1,28 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+replace_links=false
+
+usage() {
+  printf 'usage: %s [--replace]\n' "$(basename "$0")" >&2
+}
+
+case "$#" in
+  0) ;;
+  1)
+    if [[ "$1" == "--replace" ]]; then
+      replace_links=true
+    else
+      usage
+      exit 1
+    fi
+    ;;
+  *)
+    usage
+    exit 1
+    ;;
+esac
+
 resolve_script_path() {
   local path="$1"
   local directory
@@ -53,7 +75,10 @@ while IFS= read -r -d '' skill; do
   targets+=("$installed_skills_directory/$name")
 done < <(find "$skills_source" -mindepth 1 -maxdepth 1 -type d -print0)
 
-for target in "${targets[@]}"; do
+for index in "${!targets[@]}"; do
+  source="${sources[$index]}"
+  target="${targets[$index]}"
+
   if [[ -e "$target" && ! -L "$target" ]]; then
     printf 'refusing to replace non-symlink target: %s\n' "$target" >&2
     exit 1
@@ -61,6 +86,11 @@ for target in "${targets[@]}"; do
 
   if [[ -L "$target" ]] && [[ "$(readlink "$target")" == /nix/store/* ]]; then
     printf 'refusing to replace Home Manager target: %s\n' "$target" >&2
+    exit 1
+  fi
+
+  if [[ -L "$target" ]] && [[ "$(readlink "$target")" != "$source" ]] && [[ "$replace_links" == false ]]; then
+    printf 'refusing to replace symlink target: %s (rerun with --replace to take it over)\n' "$target" >&2
     exit 1
   fi
 done

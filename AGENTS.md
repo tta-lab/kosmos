@@ -13,7 +13,8 @@ Use `og clone <https-url>` to obtain and register project checkouts. Kosmos does
 **Adding or updating a shared agent skill:**
 Edit `skills/<name>/SKILL.md` → rebuild WSL, or run
 `scripts/sync-agent-config` from a Mac checkout. The script discovers all
-skills, so new skills need no per-skill wiring.
+skills, so new skills need no per-skill wiring. It refuses existing targets;
+use `--replace` only to adopt an existing symlink.
 
 **Adding a secret:**
 1) register in `secrets.nix`, 2) declare in `modules/wsl/secrets.nix`, 3) `agenix -e secrets/<name>.age`.
