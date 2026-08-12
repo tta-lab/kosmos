@@ -1,13 +1,6 @@
 {
   description = "Kosmos — NixOS configurations for NUC and WSL";
 
-  nixConfig = {
-    extra-substituters = ["https://cache.garnix.io"];
-    extra-trusted-public-keys = [
-      "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
-    ];
-  };
-
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
