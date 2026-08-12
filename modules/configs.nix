@@ -65,6 +65,10 @@ in {
           '';
           ".codex/AGENTS.md".source = ../AGENTS.user.md;
           ".pi/agent/AGENTS.md".source = ../AGENTS.user.md;
+          ".pi/sync-codex-auth.sh" = {
+            source = ../scripts/sync-codex-auth.sh;
+            executable = true;
+          };
         };
       };
 
