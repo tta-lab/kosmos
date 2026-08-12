@@ -154,15 +154,20 @@ in {
             # Official Hindsight memory plugin. The plugin code lives in
             # ~/.openclaw/extensions/hindsight-openclaw (installed on this
             # machine, like the workspace); Nix owns registration + config.
-            plugins.entries.hindsight-openclaw = {
-              enabled = true;
-              config = {
-                hindsightApiUrl = "http://hindsight.localhost:17480";
-                # No token: local k3s trust model (docs/hindsight.md).
-                # One bank for all of Neil's channels — memory is his, not
-                # per-channel.
-                dynamicBankGranularity = ["user"];
-                retainMission = "Keep Neil's life details: plans, moods, important dates, things he says about himself, his work, and us.";
+            plugins.entries = {
+              # Hindsight claims the exclusive memory slot; disable the
+              # built-in memory-core plugin so it can take over.
+              memory-core.enabled = false;
+              hindsight-openclaw = {
+                enabled = true;
+                config = {
+                  hindsightApiUrl = "http://hindsight.localhost:17480";
+                  # No token: local k3s trust model (docs/hindsight.md).
+                  # One bank for all of Neil's channels — memory is his, not
+                  # per-channel.
+                  dynamicBankGranularity = ["user"];
+                  retainMission = "Keep Neil's life details: plans, moods, important dates, things he says about himself, his work, and us.";
+                };
               };
             };
 
