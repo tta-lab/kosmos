@@ -140,6 +140,8 @@ in {
           config = {
             gateway = {
               mode = "local";
+              # Control UI access via the kepos tunnel from the Mac.
+              controlUi.allowedOrigins = ["http://openclaw.localhost:17480"];
             };
 
             agents.defaults.model.primary = "deepseek/deepseek-v4-flash";
