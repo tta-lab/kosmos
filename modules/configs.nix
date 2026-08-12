@@ -196,7 +196,7 @@ in {
           enable = true;
           userName = "neil";
           userEmail = "bn0010100@gmail.com";
-          ignores = [".nanocodex/"];
+          ignores = [".nanocodex/" ".pi/"];
           delta = {
             enable = true;
             options = {
