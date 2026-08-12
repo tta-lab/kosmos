@@ -154,11 +154,14 @@ in {
             # Official Hindsight memory plugin. The plugin code lives in
             # ~/.openclaw/extensions/hindsight-openclaw (installed on this
             # machine, like the workspace); Nix owns registration + config.
-            plugins.entries = {
-              # Hindsight claims the exclusive memory slot; disable the
-              # built-in memory-core plugin so it can take over.
-              memory-core.enabled = false;
-              hindsight-openclaw = {
+            plugins = {
+              # Hindsight is a kind=memory plugin; the memory slot defaults to
+              # memory-core. Declare the owner explicitly (OpenClaw schema:
+              # "Select which plugin owns the memory slot") and disable the
+              # built-in one so hindsight takes over.
+              slots.memory = "hindsight-openclaw";
+              entries.memory-core.enabled = false;
+              entries.hindsight-openclaw = {
                 enabled = true;
                 config = {
                   hindsightApiUrl = "http://hindsight.localhost:17480";
