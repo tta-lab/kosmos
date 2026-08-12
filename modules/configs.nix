@@ -141,8 +141,7 @@ in {
             channels.telegram = {
               # Read at runtime by the gateway; content stays out of the Nix store.
               tokenFile = "/home/neil/.config/openclaw/telegram-token";
-              # TODO(neil): replace with your Telegram user ID (ask @userinfobot).
-              allowFrom = [];
+              allowFrom = [845849177];
               groups."*".requireMention = true;
             };
           };
