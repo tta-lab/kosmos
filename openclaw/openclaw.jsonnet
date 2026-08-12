@@ -50,6 +50,9 @@
   },
   channels: {
     telegram: {
+      // Explicit enable: the runtime auto-enable for configured channels
+      // stopped firing once plugins.entries was populated, so set it directly.
+      enabled: true,
       allowFrom: [845849177],
       groups: { "*": { requireMention: true } },
     },
