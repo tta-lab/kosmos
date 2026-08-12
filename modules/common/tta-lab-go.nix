@@ -46,21 +46,6 @@
       ${proxyPrelude}
       exec ${command}
     '';
-  installScript = pkgs.writeShellScript "tta-lab-go-install" ''
-    set -eu
-
-    export GOPATH=${goPath}
-    export GOBIN=${goBin}
-    export GOMODCACHE=${goModCache}
-    export GOCACHE=${goCache}
-    export GOTELEMETRY=off
-    export PATH=${servicePath}:$PATH
-    ${proxyPrelude}
-
-    mkdir -p "$GOBIN"
-    export TTA_LAB_PROJECTS_ROOT=${projectsRoot}
-    exec ${pkgs.bash}/bin/bash ${../../scripts/install-tta-lab-go}
-  '';
 in {
   environment = {
     sessionVariables = {
@@ -70,25 +55,11 @@ in {
       GOCACHE = goCache;
       GOTELEMETRY = "off";
     };
-
-    systemPackages = [
-      (pkgs.writeShellScriptBin "tta-lab-go-install" ''
-        exec systemctl --user start tta-lab-go-install.service
-      '')
-    ];
   };
 
   users.users.neil.linger = true;
 
   home-manager.users.neil.systemd.user.services = {
-    tta-lab-go-install = {
-      Unit.Description = "Install tta-lab Go CLIs into ~/go/bin";
-      Service = {
-        Type = "oneshot";
-        ExecStart = installScript;
-      };
-    };
-
     temenos = {
       Unit = {
         Description = "Temenos sandbox daemon";

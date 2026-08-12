@@ -26,15 +26,7 @@ in {
   environment.systemPackages = [
     nodejs
     (pkgs.writeShellScriptBin "pi-install" ''
-      exec systemctl --user start pi-install.service
+      exec ${installScript}
     '')
   ];
-
-  home-manager.users.neil.systemd.user.services.pi-install = {
-    Unit.Description = "Install Pi coding agent with npm";
-    Service = {
-      Type = "oneshot";
-      ExecStart = installScript;
-    };
-  };
 }
