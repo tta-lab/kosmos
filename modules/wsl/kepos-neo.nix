@@ -83,18 +83,6 @@ in {
           targetPort = 8080;
           allow = [subscribers.mac];
         };
-        gascity-dolt = {
-          name = "Gas City Dolt";
-          # Gas City's managed-local allocator deterministically assigns this
-          # city path to 24930 and persists the selected port with the city.
-          targetPort = 24930;
-          allow = [subscribers.mac];
-        };
-        gascity-dashboard = {
-          name = "Gas City Dashboard";
-          targetPort = 8372;
-          allow = [subscribers.mac];
-        };
         ente = {
           name = "Ente Photos";
           targetPort = 17480;
@@ -133,11 +121,7 @@ in {
           name = "OpenClaw";
           # Control UI; gateway auth via OPENCLAW_GATEWAY_TOKEN.
           targetPort = 18789;
-          allow = [
-            subscribers.mac
-            subscribers.pixel7a
-            subscribers.aipaper
-          ];
+          allow = [subscribers.mac];
         };
         mihomo-dashboard = {
           name = "Mihomo Dashboard";
