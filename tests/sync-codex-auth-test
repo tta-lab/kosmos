@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+script="$repo_root/scripts/sync-codex-auth.ts"
+test_root="$(mktemp -d)"
+trap 'rm -rf "$test_root"' EXIT
+
+mkdir -p "$test_root/codex" "$test_root/pi/agent"
+printf '%s\n' '{"tokens":{"access_token":"codex-access","refresh_token":"codex-refresh","account_id":"account-123","id_token":"header.bm90LWpzb24.signature"}}' >"$test_root/codex/auth.json"
+printf '%s\n' '{"other-provider":{"type":"api"}}' >"$test_root/pi/agent/auth.json"
+
+sync_environment=(
+  CODEX_AUTH="$test_root/codex/auth.json"
+  PI_AUTH="$test_root/pi/agent/auth.json"
+  SYNC_STATE="$test_root/pi/codex-sync.json"
+)
+
+env "${sync_environment[@]}" bun "$script" codex-to-pi >"$test_root/codex-to-pi-output" 2>&1
+grep -q '^Warning: could not decode id_token exp, using 1 hour from now$' "$test_root/codex-to-pi-output"
+grep -q '^Synced Codex -> Pi$' "$test_root/codex-to-pi-output"
+jq -e '
+  .["other-provider"].type == "api" and
+  .["openai-codex"].type == "oauth" and
+  .["openai-codex"].access == "codex-access" and
+  .["openai-codex"].refresh == "codex-refresh" and
+  .["openai-codex"].accountId == "account-123" and
+  (.["openai-codex"].expires | type == "number")
+' "$test_root/pi/agent/auth.json" >/dev/null
+jq -e '.["openai-codex"].idToken == "header.bm90LWpzb24.signature"' "$test_root/pi/codex-sync.json" >/dev/null
+find "$test_root/pi/agent" -maxdepth 1 -type f -name 'auth.json.bak.*' | grep -q .
+
+jq '
+  .["openai-codex"] = {
+    type: "oauth",
+    access: "pi-access",
+    refresh: "pi-refresh",
+    expires: 1,
+    accountId: "account-456"
+  }
+' "$test_root/pi/agent/auth.json" >"$test_root/pi/agent/auth.json.next"
+mv "$test_root/pi/agent/auth.json.next" "$test_root/pi/agent/auth.json"
+
+env "${sync_environment[@]}" bun "$script" pi-to-codex >"$test_root/pi-to-codex-output"
+grep -q '^Synced Pi -> Codex$' "$test_root/pi-to-codex-output"
+jq -e '
+  .auth_mode == "chatgpt" and
+  .OPENAI_API_KEY == null and
+  .tokens.id_token == "header.bm90LWpzb24.signature" and
+  .tokens.access_token == "pi-access" and
+  .tokens.refresh_token == "pi-refresh" and
+  .tokens.account_id == "account-456" and
+  (.last_refresh | type == "string")
+' "$test_root/codex/auth.json" >/dev/null
+find "$test_root/codex" -maxdepth 1 -type f -name 'auth.json.bak.*' | grep -q .
+
+printf 'Codex and Pi auth sync preserves providers and handles an opaque id token without blocking writes\n'
