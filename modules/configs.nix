@@ -137,6 +137,17 @@ in {
           enable = true;
           package = nix-openclaw.packages.${pkgs.system}.openclaw;
 
+          # Yuki (whale girl) workspace, edited directly on this machine
+          # (not managed by the kosmos repo) for quick iteration.
+          workspace.bootstrapFiles = {
+            agents = /home/neil/openclaw-workspace/AGENTS.md;
+            soul = /home/neil/openclaw-workspace/SOUL.md;
+            tools = /home/neil/openclaw-workspace/TOOLS.md;
+            identity = /home/neil/openclaw-workspace/IDENTITY.md;
+            user = /home/neil/openclaw-workspace/USER.md;
+            heartbeat = /home/neil/openclaw-workspace/HEARTBEAT.md;
+          };
+
           config = {
             gateway = {
               mode = "local";
@@ -160,6 +171,30 @@ in {
               };
             };
 
+            # Same stdio MCP servers as codex/pi (~/.codex/config.toml).
+            mcp.servers = {
+              flicknote = {
+                command = "flicknote";
+                args = ["mcp"];
+              };
+              web = {
+                command = "web";
+                args = ["mcp"];
+              };
+              og = {
+                command = "og";
+                args = ["mcp"];
+              };
+              project = {
+                command = "project";
+                args = ["mcp"];
+              };
+              src = {
+                command = "src";
+                args = ["mcp"];
+              };
+            };
+
             channels.telegram = {
               allowFrom = [845849177];
               groups."*".requireMention = true;
@@ -176,6 +211,10 @@ in {
             OPENCLAW_GATEWAY_TOKEN = "/home/neil/.config/openclaw/gateway-token";
             DEEPSEEK_API_KEY = "/home/neil/.config/openclaw/deepseek-key";
             TELEGRAM_BOT_TOKEN = "/home/neil/.config/openclaw/telegram-token";
+            # systemd user services have a minimal default PATH; the MCP
+            # commands (flicknote/web/og/project/src) live in ~/.local/bin
+            # and ~/go/bin, so make them reachable.
+            PATH = "/home/neil/.local/bin:/home/neil/go/bin:/home/neil/.local/share/npm-global/bin:/run/current-system/sw/bin:$PATH";
           };
         };
 
