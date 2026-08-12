@@ -239,11 +239,12 @@ in {
             # commands (flicknote/web/og/project/src) live in ~/.local/bin
             # and ~/go/bin, so make them reachable.
             PATH = "/home/neil/.local/bin:/home/neil/go/bin:/home/neil/.local/share/npm-global/bin:/run/current-system/sw/bin:$PATH";
-            # Node fetch honors the env proxy; hindsight.localhost must bypass
-            # it (mihomo can't resolve the /etc/hosts name), and Caddy routes
-            # by Host header so 127.0.0.1 is not a substitute.
-            NO_PROXY = "localhost,127.0.0.1,::1,hindsight.localhost";
-            no_proxy = "localhost,127.0.0.1,::1,hindsight.localhost";
+            # Node fetch honors the env proxy; local k3s services live under
+            # *.localhost (/etc/hosts) and must bypass it — mihomo can't
+            # resolve those names, and Caddy routes by Host header so
+            # 127.0.0.1 is not a substitute.
+            NO_PROXY = "localhost,127.0.0.1,::1,*.localhost";
+            no_proxy = "localhost,127.0.0.1,::1,*.localhost";
           };
         };
 
