@@ -1,4 +1,9 @@
-{config, ...}: let
+{
+  config,
+  pkgs,
+  nix-openclaw,
+  ...
+}: let
   inherit (config.system) stateVersion;
 in {
   home-manager = {
@@ -20,6 +25,10 @@ in {
         "no_proxy=${noProxy}"
       ];
     in {
+      imports = [
+        nix-openclaw.homeManagerModules.openclaw
+      ];
+
       home = {
         username = "neil";
         homeDirectory = "/home/neil";
@@ -119,6 +128,33 @@ in {
 
       programs = {
         home-manager.enable = true;
+
+        openclaw = {
+          enable = true;
+          package = nix-openclaw.packages.${pkgs.system}.openclaw;
+
+          config = {
+            gateway = {
+              mode = "local";
+            };
+
+            channels.telegram = {
+              # Read at runtime by the gateway; content stays out of the Nix store.
+              tokenFile = "/home/neil/.config/openclaw/telegram-token";
+              # TODO(neil): replace with your Telegram user ID (ask @userinfobot).
+              allowFrom = [];
+              groups."*".requireMention = true;
+            };
+          };
+
+          # Values that point to existing files are read at runtime by the
+          # gateway wrapper, so secrets never land in the Nix store.
+          environment = {
+            OPENCLAW_GATEWAY_TOKEN = "/home/neil/.config/openclaw/gateway-token";
+            # Add your model provider key here, e.g.:
+            # ANTHROPIC_API_KEY = "/home/neil/.config/openclaw/anthropic-key";
+          };
+        };
 
         bash.enable = true;
 

@@ -17,4 +17,6 @@ in {
   "secrets/hindsight-env.age".publicKeys = users ++ systems;
   "secrets/openvpn-config.age".publicKeys = users ++ systems;
   "secrets/openvpn-auth.age".publicKeys = users ++ systems;
+  "secrets/openclaw-gateway-token.age".publicKeys = users ++ systems;
+  "secrets/openclaw-telegram-token.age".publicKeys = users ++ systems;
 }

@@ -1,6 +1,13 @@
 {
   description = "Kosmos — NixOS configurations for NUC and WSL";
 
+  nixConfig = {
+    extra-substituters = ["https://cache.garnix.io"];
+    extra-trusted-public-keys = [
+      "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
+    ];
+  };
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -23,6 +30,9 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
+    # Pinned: mirrors OpenClaw stable v2026.7.1-2 (2026-08-04).
+    # Keeps its own nixpkgs so the gateway builds against a recent Node 22.
+    nix-openclaw.url = "github:openclaw/nix-openclaw/e72fe70f6d23cf2efe8a2a693f0788090af9bde0";
   };
 
   outputs = {
@@ -37,6 +47,7 @@
     fenix,
     moonbit-overlay,
     kepos-neo,
+    nix-openclaw,
     ...
   }: let
     system = "x86_64-linux";
@@ -465,7 +476,7 @@
     nixosConfigurations.wsl = nixpkgs.lib.nixosSystem {
       inherit system;
       specialArgs = {
-        inherit agenix fenix kepos-neo moonbitToolchain nixpkgs-unstable pkgsUnstable;
+        inherit agenix fenix kepos-neo moonbitToolchain nix-openclaw nixpkgs-unstable pkgsUnstable;
       };
       modules = [
         nixos-wsl.nixosModules.default
