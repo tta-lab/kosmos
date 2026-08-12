@@ -108,6 +108,10 @@ in {
         "/home/neil/.local/share/npm-global/bin"
       ];
 
+      # nix-openclaw generates openclaw-gateway without an Install section;
+      # merge WantedBy in so the gateway starts with the user session.
+      systemd.user.services.openclaw-gateway.Install.WantedBy = ["default.target"];
+
       systemd.user.services.flicknote-sync = {
         Unit = {
           Description = "FlickNote sync daemon";
@@ -155,8 +159,6 @@ in {
             };
 
             channels.telegram = {
-              # Read at runtime by the gateway; content stays out of the Nix store.
-              tokenFile = "/home/neil/.config/openclaw/telegram-token";
               allowFrom = [845849177];
               groups."*".requireMention = true;
             };
@@ -164,9 +166,14 @@ in {
 
           # Values that point to existing files are read at runtime by the
           # gateway wrapper, so secrets never land in the Nix store.
+          # Values that point to existing files are read at runtime by the
+          # gateway wrapper, so secrets never land in the Nix store. Telegram
+          # token goes via env because OpenClaw rejects symlinked tokenFiles
+          # (agenix targets are symlinks).
           environment = {
             OPENCLAW_GATEWAY_TOKEN = "/home/neil/.config/openclaw/gateway-token";
             DEEPSEEK_API_KEY = "/home/neil/.config/openclaw/deepseek-key";
+            TELEGRAM_BOT_TOKEN = "/home/neil/.config/openclaw/telegram-token";
           };
         };
 
