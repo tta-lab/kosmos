@@ -110,7 +110,14 @@ in {
 
       # nix-openclaw generates openclaw-gateway without an Install section;
       # merge WantedBy in so the gateway starts with the user session.
-      systemd.user.services.openclaw-gateway.Install.WantedBy = ["default.target"];
+      # OPENCLAW_CONFIG_PATH is overridden to the jsonnet-generated file
+      # (openclaw/openclaw.jsonnet, deployed via 'just openclaw-deploy');
+      # the module's rendered store config is dead. HM merges Environment
+      # lists, so this value wins over the module's (later in the list).
+      systemd.user.services.openclaw-gateway = {
+        Install.WantedBy = ["default.target"];
+        Service.Environment = ["OPENCLAW_CONFIG_PATH=/home/neil/.config/openclaw/openclaw.json"];
+      };
 
       systemd.user.services.flicknote-sync = {
         Unit = {
@@ -142,90 +149,12 @@ in {
           # take effect on the next session without a switch.
           workspaceDir = "/home/neil/openclaw-workspace";
 
-          config = {
-            gateway = {
-              mode = "local";
-              # Control UI access via the kepos tunnel from the Mac.
-              controlUi.allowedOrigins = ["http://openclaw.localhost:17480"];
-            };
-
-            agents.defaults.model.primary = "deepseek/deepseek-v4-flash";
-
-            # Official Hindsight memory plugin. The plugin code lives in
-            # ~/.openclaw/extensions/hindsight-openclaw (installed on this
-            # machine, like the workspace); Nix owns registration + config.
-            plugins = {
-              # Hindsight is a kind=memory plugin; the memory slot defaults to
-              # memory-core. Declare the owner explicitly (OpenClaw schema:
-              # "Select which plugin owns the memory slot") and disable the
-              # built-in one so hindsight takes over.
-              # Note: plugins.allow was dropped — when non-empty it made the
-              # loader drop the bundled plugins (browser, telegram, ...),
-              # leaving only hindsight-openclaw. The untracked-code warning
-              # for the locally-installed extension is harmless.
-              slots.memory = "hindsight-openclaw";
-              entries.memory-core.enabled = false;
-              entries.hindsight-openclaw = {
-                enabled = true;
-                # agent_end hook powers auto-retention of conversations.
-                hooks.allowConversationAccess = true;
-                config = {
-                  hindsightApiUrl = "http://hindsight.localhost:17480";
-                  # No token: local k3s trust model (docs/hindsight.md).
-                  # One bank for all of Neil's channels — memory is his, not
-                  # per-channel.
-                  dynamicBankGranularity = ["user"];
-                  retainMission = "Keep Neil's life details: plans, moods, important dates, things he says about himself, his work, and us.";
-                };
-              };
-            };
-
-            # DeepSeek is OpenAI-compatible; declare it as a custom provider so
-            # no runtime plugin build is needed. The key is read at runtime from
-            # the DEEPSEEK_API_KEY env var, which the gateway wrapper populates
-            # from the agenix-decrypted file (see environment below).
-            models.providers.deepseek = {
-              api = "openai-completions";
-              baseUrl = "https://api.deepseek.com";
-              apiKey = {
-                source = "env";
-                provider = "default";
-                id = "DEEPSEEK_API_KEY";
-              };
-            };
-
-            # Same stdio MCP servers as codex/pi (~/.codex/config.toml).
-            # (No hindsight here: the official hindsight-openclaw plugin below
-            # supersedes the MCP server — it auto-retains sessions and exposes
-            # knowledge tools, so a duplicate MCP entry would be redundant.)
-            mcp.servers = {
-              flicknote = {
-                command = "flicknote";
-                args = ["mcp"];
-              };
-              web = {
-                command = "web";
-                args = ["mcp"];
-              };
-              og = {
-                command = "og";
-                args = ["mcp"];
-              };
-              project = {
-                command = "project";
-                args = ["mcp"];
-              };
-              src = {
-                command = "src";
-                args = ["mcp"];
-              };
-            };
-
-            channels.telegram = {
-              allowFrom = [845849177];
-              groups."*".requireMention = true;
-            };
-          };
+          # openclaw.json content is generated from openclaw/openclaw.jsonnet
+          # (deploy: just openclaw-deploy — jsonnet render, write the file,
+          # restart the gateway). The module still provides the systemd unit,
+          # wrapper, and env injection; its rendered config file is dead —
+          # OPENCLAW_CONFIG_PATH is overridden below to point at the jsonnet
+          # output instead.
 
           # Values that point to existing files are read at runtime by the
           # gateway wrapper, so secrets never land in the Nix store.
