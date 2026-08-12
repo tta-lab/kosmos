@@ -129,6 +129,16 @@ in {
           name = "Mihomo";
           targetPort = 7890;
         };
+        openclaw = {
+          name = "OpenClaw";
+          # Control UI; gateway auth via OPENCLAW_GATEWAY_TOKEN.
+          targetPort = 18789;
+          allow = [
+            subscribers.mac
+            subscribers.pixel7a
+            subscribers.aipaper
+          ];
+        };
         mihomo-dashboard = {
           name = "Mihomo Dashboard";
           targetPort = 9090;
