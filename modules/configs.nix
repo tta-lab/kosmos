@@ -159,10 +159,14 @@ in {
               # memory-core. Declare the owner explicitly (OpenClaw schema:
               # "Select which plugin owns the memory slot") and disable the
               # built-in one so hindsight takes over.
+              # allow: pin trust for the locally-installed extension.
+              allow = ["hindsight-openclaw"];
               slots.memory = "hindsight-openclaw";
               entries.memory-core.enabled = false;
               entries.hindsight-openclaw = {
                 enabled = true;
+                # agent_end hook powers auto-retention of conversations.
+                hooks.allowConversationAccess = true;
                 config = {
                   hindsightApiUrl = "http://hindsight.localhost:17480";
                   # No token: local k3s trust model (docs/hindsight.md).
