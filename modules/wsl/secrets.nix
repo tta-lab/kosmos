@@ -7,9 +7,6 @@
 }: let
   secretsDir = ../../secrets;
   haveForgejoSmokeToken = builtins.pathExists (secretsDir + "/forgejo-smoke-token.age");
-  haveOpenclawGatewayToken = builtins.pathExists (secretsDir + "/openclaw-gateway-token.age");
-  haveOpenclawTelegramToken = builtins.pathExists (secretsDir + "/openclaw-telegram-token.age");
-  haveOpenclawDeepseekKey = builtins.pathExists (secretsDir + "/openclaw-deepseek-key.age");
   userSecret = fileName: path: {
     file = secretsDir + "/${fileName}";
     owner = "neil";
@@ -88,18 +85,13 @@ in {
           mode = "0400";
           path = "/run/agenix/openvpn-auth";
         };
+        # OpenClaw secrets: committed .age files exist, so declare directly.
+        openclaw-gateway-token = userSecret "openclaw-gateway-token.age" "/home/neil/.config/openclaw/gateway-token";
+        openclaw-telegram-token = userSecret "openclaw-telegram-token.age" "/home/neil/.config/openclaw/telegram-token";
+        openclaw-deepseek-key = userSecret "openclaw-deepseek-key.age" "/home/neil/.config/openclaw/deepseek-key";
       }
       // lib.optionalAttrs haveForgejoSmokeToken {
         forgejo-smoke-token = userSecret "forgejo-smoke-token.age" "/home/neil/.config/kosmos/forgejo-smoke-token";
-      }
-      // lib.optionalAttrs haveOpenclawGatewayToken {
-        openclaw-gateway-token = userSecret "openclaw-gateway-token.age" "/home/neil/.config/openclaw/gateway-token";
-      }
-      // lib.optionalAttrs haveOpenclawTelegramToken {
-        openclaw-telegram-token = userSecret "openclaw-telegram-token.age" "/home/neil/.config/openclaw/telegram-token";
-      }
-      // lib.optionalAttrs haveOpenclawDeepseekKey {
-        openclaw-deepseek-key = userSecret "openclaw-deepseek-key.age" "/home/neil/.config/openclaw/deepseek-key";
       };
   };
 
