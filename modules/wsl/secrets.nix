@@ -9,6 +9,7 @@
   haveForgejoSmokeToken = builtins.pathExists (secretsDir + "/forgejo-smoke-token.age");
   haveOpenclawGatewayToken = builtins.pathExists (secretsDir + "/openclaw-gateway-token.age");
   haveOpenclawTelegramToken = builtins.pathExists (secretsDir + "/openclaw-telegram-token.age");
+  haveOpenclawDeepseekKey = builtins.pathExists (secretsDir + "/openclaw-deepseek-key.age");
   userSecret = fileName: path: {
     file = secretsDir + "/${fileName}";
     owner = "neil";
@@ -96,6 +97,9 @@ in {
       }
       // lib.optionalAttrs haveOpenclawTelegramToken {
         openclaw-telegram-token = userSecret "openclaw-telegram-token.age" "/home/neil/.config/openclaw/telegram-token";
+      }
+      // lib.optionalAttrs haveOpenclawDeepseekKey {
+        openclaw-deepseek-key = userSecret "openclaw-deepseek-key.age" "/home/neil/.config/openclaw/deepseek-key";
       };
   };
 

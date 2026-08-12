@@ -19,4 +19,5 @@ in {
   "secrets/openvpn-auth.age".publicKeys = users ++ systems;
   "secrets/openclaw-gateway-token.age".publicKeys = users ++ systems;
   "secrets/openclaw-telegram-token.age".publicKeys = users ++ systems;
+  "secrets/openclaw-deepseek-key.age".publicKeys = users ++ systems;
 }

@@ -138,6 +138,22 @@ in {
               mode = "local";
             };
 
+            agents.defaults.model.primary = "deepseek/deepseek-v4-flash";
+
+            # DeepSeek is OpenAI-compatible; declare it as a custom provider so
+            # no runtime plugin build is needed. The key is read at runtime from
+            # the DEEPSEEK_API_KEY env var, which the gateway wrapper populates
+            # from the agenix-decrypted file (see environment below).
+            models.providers.deepseek = {
+              api = "openai-completions";
+              baseUrl = "https://api.deepseek.com";
+              apiKey = {
+                source = "env";
+                provider = "default";
+                id = "DEEPSEEK_API_KEY";
+              };
+            };
+
             channels.telegram = {
               # Read at runtime by the gateway; content stays out of the Nix store.
               tokenFile = "/home/neil/.config/openclaw/telegram-token";
@@ -150,8 +166,7 @@ in {
           # gateway wrapper, so secrets never land in the Nix store.
           environment = {
             OPENCLAW_GATEWAY_TOKEN = "/home/neil/.config/openclaw/gateway-token";
-            # Add your model provider key here, e.g.:
-            # ANTHROPIC_API_KEY = "/home/neil/.config/openclaw/anthropic-key";
+            DEEPSEEK_API_KEY = "/home/neil/.config/openclaw/deepseek-key";
           };
         };
 
