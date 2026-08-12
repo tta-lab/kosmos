@@ -98,11 +98,14 @@ servers configured for Codex.
 
 ## TTA Lab Tools
 
-WSL installs the latest GitHub Releases of `flicknote` and the GuionAI fork of
-`taskwarrior` outside Nix. After applying the host, run:
+FlickNote and the GuionAI fork of `taskwarrior` are installed from GitHub
+Releases outside Nix (no systemd service — run the script directly). Requires
+the proxy env (e.g. mihomo's `http://127.0.0.1:7890`) in the shell:
 
 ```bash
-tta-lab-release-install
+bash scripts/install-tta-lab-releases
+# or, once executable:
+./scripts/install-tta-lab-releases
 ```
 
 The installer verifies each GitHub release asset's SHA-256 digest, atomically
