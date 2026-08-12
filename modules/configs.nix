@@ -151,6 +151,21 @@ in {
 
             agents.defaults.model.primary = "deepseek/deepseek-v4-flash";
 
+            # Official Hindsight memory plugin. The plugin code lives in
+            # ~/.openclaw/extensions/hindsight-openclaw (installed on this
+            # machine, like the workspace); Nix owns registration + config.
+            plugins.entries.hindsight-openclaw = {
+              enabled = true;
+              config = {
+                hindsightApiUrl = "http://hindsight.localhost:17480";
+                # No token: local k3s trust model (docs/hindsight.md).
+                # One bank for all of Neil's channels — memory is his, not
+                # per-channel.
+                dynamicBankGranularity = ["user"];
+                retainMission = "Keep Neil's life details: plans, moods, important dates, things he says about himself, his work, and us.";
+              };
+            };
+
             # DeepSeek is OpenAI-compatible; declare it as a custom provider so
             # no runtime plugin build is needed. The key is read at runtime from
             # the DEEPSEEK_API_KEY env var, which the gateway wrapper populates
@@ -166,13 +181,10 @@ in {
             };
 
             # Same stdio MCP servers as codex/pi (~/.codex/config.toml).
+            # (No hindsight here: the official hindsight-openclaw plugin below
+            # supersedes the MCP server — it auto-retains sessions and exposes
+            # knowledge tools, so a duplicate MCP entry would be redundant.)
             mcp.servers = {
-              # Hindsight lives in the local k3s cluster; its MCP endpoint is
-              # reached via the cluster entry port (17480) and the svc port 8888.
-              hindsight = {
-                url = "http://hindsight.localhost:17480/mcp/hermes/";
-                transport = "streamable-http";
-              };
               flicknote = {
                 command = "flicknote";
                 args = ["mcp"];
