@@ -167,6 +167,12 @@ in {
 
             # Same stdio MCP servers as codex/pi (~/.codex/config.toml).
             mcp.servers = {
+              # Hindsight lives in the local k3s cluster; its MCP endpoint is
+              # reached via the cluster entry port (17480) and the svc port 8888.
+              hindsight = {
+                url = "http://hindsight.localhost:17480/mcp/hermes/";
+                transport = "streamable-http";
+              };
               flicknote = {
                 command = "flicknote";
                 args = ["mcp"];
