@@ -159,8 +159,10 @@ in {
               # memory-core. Declare the owner explicitly (OpenClaw schema:
               # "Select which plugin owns the memory slot") and disable the
               # built-in one so hindsight takes over.
-              # allow: pin trust for the locally-installed extension.
-              allow = ["hindsight-openclaw"];
+              # Note: plugins.allow was dropped — when non-empty it made the
+              # loader drop the bundled plugins (browser, telegram, ...),
+              # leaving only hindsight-openclaw. The untracked-code warning
+              # for the locally-installed extension is harmless.
               slots.memory = "hindsight-openclaw";
               entries.memory-core.enabled = false;
               entries.hindsight-openclaw = {
