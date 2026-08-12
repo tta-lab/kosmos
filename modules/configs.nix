@@ -39,6 +39,10 @@ in {
           grep = "command rg";
           fn = "command flicknote";
           sc = "command spine-codex";
+          pis = "command pi --model openai-codex/gpt-5.6-sol --thinking medium";
+          pit = "command pi --model openai-codex/gpt-5.6-terra --thinking max";
+          pil = "command pi --model openai-codex/gpt-5.6-luna --thinking max";
+          pid = "command pi --model deepseek/deepseek-v4-flash --thinking high";
           ogv = "command og pr view";
           op = "command og push";
           ol = "command og pull";
@@ -61,6 +65,10 @@ in {
           '';
           ".codex/AGENTS.md".source = ../AGENTS.user.md;
           ".pi/agent/AGENTS.md".source = ../AGENTS.user.md;
+          ".pi/sync-codex-auth.sh" = {
+            source = ../scripts/sync-codex-auth.sh;
+            executable = true;
+          };
         };
       };
 
@@ -192,7 +200,7 @@ in {
           enable = true;
           userName = "neil";
           userEmail = "bn0010100@gmail.com";
-          ignores = [".nanocodex/"];
+          ignores = [".nanocodex/" ".pi/"];
           delta = {
             enable = true;
             options = {

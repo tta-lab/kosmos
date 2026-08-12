@@ -14,6 +14,7 @@ NixOS configuration for a headless dev/ops environment. It supports both the Int
 - `lenos/`, `temenos/` — non-secret tool config deployed by Home Manager
 - `scripts/install-tta-lab-go` — installs Go CLIs from existing local checkouts
 - `scripts/install-tta-lab-releases` — installs current FlickNote and Taskwarrior releases
+- `scripts/sync-codex-auth.sh` — converts OAuth credentials between `~/.codex/auth.json` and `~/.pi/agent/auth.json` (deployed to `~/.pi/sync-codex-auth.sh`); run `codex-to-pi` first to seed the id_token, then `pi-to-codex` works indefinitely
 - `packages/tta-lab/` — build helper for the tta-lab tmux project picker
 - `configuration.nix` — compatibility entry point for the `kosmos` host
 - `disko-config.nix` — declarative NVMe partition layout for bare-metal install
