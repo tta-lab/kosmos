@@ -41,6 +41,7 @@ in {
           sc = "command spine-codex";
           pis = "command pi --model openai-codex/gpt-5.6-sol --thinking medium";
           pit = "command pi --model openai-codex/gpt-5.6-terra --thinking xhigh";
+          pil = "command pi --model openai-codex/gpt-5.6-luna --thinking xhigh";
           pid = "command pi --model deepseek/deepseek-v4-flash --thinking high";
           ogv = "command og pr view";
           op = "command og push";
