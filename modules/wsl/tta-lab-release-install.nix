@@ -28,7 +28,9 @@ in {
     Unit.Description = "Install latest tta-lab release CLIs";
     Service = {
       Type = "oneshot";
-      ExecStart = installScript;
+      # writeShellApplication outputs $out/bin/<name>; the drv root is a
+      # directory and would make systemd fail with 203/EXEC "Is a directory".
+      ExecStart = "${installScript}/bin/tta-lab-release-install";
       WorkingDirectory = homeDirectory;
       Environment = [
         "HOME=${homeDirectory}"
