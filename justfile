@@ -122,6 +122,9 @@ kepos-subscriber-key:
 k3s-status:
   @systemctl status k3s --no-pager
 
+sync-codex-auth direction:
+  @bun scripts/sync-codex-auth.ts "{{ direction }}"
+
 [private]
 _local-k3s:
   @actual="$(KUBECONFIG="{{ kubeconfig }}" kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')"; \
