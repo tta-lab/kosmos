@@ -66,6 +66,13 @@ in {
             "$HOME/.kube"
         '';
 
+        # Copy Yuki's workspace (edited directly in /home/neil/openclaw-workspace)
+        # into the OpenClaw workspace. Runtime copy keeps the flake pure.
+        activation.yukiOpenclawWorkspace = lib.hm.dag.entryAfter ["writeBoundary"] ''
+          $DRY_RUN_CMD mkdir -p "$HOME/.openclaw/workspace"
+          $DRY_RUN_CMD cp /home/neil/openclaw-workspace/*.md "$HOME/.openclaw/workspace/"
+        '';
+
         file = {
           ".taskrc".text = ''
             data.location=/home/neil/.task
@@ -137,17 +144,10 @@ in {
           enable = true;
           package = nix-openclaw.packages.${pkgs.system}.openclaw;
 
-          # Yuki (whale girl) workspace, edited directly on this machine
-          # (not managed by the kosmos repo) for quick iteration.
-          workspace.bootstrapFiles = {
-            agents = /home/neil/openclaw-workspace/AGENTS.md;
-            soul = /home/neil/openclaw-workspace/SOUL.md;
-            tools = /home/neil/openclaw-workspace/TOOLS.md;
-            identity = /home/neil/openclaw-workspace/IDENTITY.md;
-            user = /home/neil/openclaw-workspace/USER.md;
-            heartbeat = /home/neil/openclaw-workspace/HEARTBEAT.md;
-          };
-
+          # Yuki (whale girl) workspace lives on this machine (not the kosmos
+          # repo) for quick edits. home.activation.yukiOpenclawWorkspace copies
+          # it into the OpenClaw workspace on each switch, keeping this flake
+          # pure (no machine paths referenced at eval time).
           config = {
             gateway = {
               mode = "local";
