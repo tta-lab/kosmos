@@ -20,4 +20,5 @@ in {
   "secrets/openclaw-gateway-token.age".publicKeys = users ++ systems;
   "secrets/openclaw-telegram-token.age".publicKeys = users ++ systems;
   "secrets/openclaw-deepseek-key.age".publicKeys = users ++ systems;
+  "secrets/openclaw-miniflux-password.age".publicKeys = users ++ systems;
 }

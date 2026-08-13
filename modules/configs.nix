@@ -165,6 +165,10 @@ in {
           environment = {
             OPENCLAW_GATEWAY_TOKEN = "/home/neil/.config/openclaw/gateway-token";
             DEEPSEEK_API_KEY = "/home/neil/.config/openclaw/deepseek-key";
+            # Miniflux admin password for the miniflux-mcp MCP server; the
+            # stdio child inherits it from the gateway env (mcp.servers env
+            # carries only the non-secret values in openclaw.jsonnet).
+            MINIFLUX_PASSWORD = "/home/neil/.config/openclaw/miniflux-password";
             TELEGRAM_BOT_TOKEN = "/home/neil/.config/openclaw/telegram-token";
             # systemd user services have a minimal default PATH; the MCP
             # commands (flicknote/web/og/project/src) live in ~/.local/bin

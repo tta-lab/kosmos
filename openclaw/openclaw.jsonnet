@@ -46,6 +46,18 @@
       og: { command: "og", args: ["mcp"] },
       project: { command: "project", args: ["mcp"] },
       src: { command: "src", args: ["mcp"] },
+      // miniflux-mcp (tssujt/miniflux-mcp v0.4.0, built into ~/go/bin).
+      // MINIFLUX_PASSWORD is deliberately absent: the gateway wrapper injects
+      // it from the agenix-decrypted file (~/.config/openclaw/miniflux-password)
+      // into the gateway env, and the stdio child inherits it.
+      miniflux: {
+        command: "miniflux-mcp",
+        args: [],
+        env: {
+          MINIFLUX_URL: "http://miniflux.localhost:17480",
+          MINIFLUX_USERNAME: "admin",
+        },
+      },
     },
   },
   channels: {
