@@ -89,6 +89,7 @@ in {
         openclaw-gateway-token = userSecret "openclaw-gateway-token.age" "/home/neil/.config/openclaw/gateway-token";
         openclaw-telegram-token = userSecret "openclaw-telegram-token.age" "/home/neil/.config/openclaw/telegram-token";
         openclaw-deepseek-key = userSecret "openclaw-deepseek-key.age" "/home/neil/.config/openclaw/deepseek-key";
+        openclaw-miniflux-password = userSecret "openclaw-miniflux-password.age" "/home/neil/.config/openclaw/miniflux-password";
       }
       // lib.optionalAttrs haveForgejoSmokeToken {
         forgejo-smoke-token = userSecret "forgejo-smoke-token.age" "/home/neil/.config/kosmos/forgejo-smoke-token";

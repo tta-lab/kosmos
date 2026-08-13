@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Wrapper for miniflux-mcp (tssujt/miniflux-mcp): OpenClaw spawns MCP stdio
+# children with only the configured server env, so the agenix-decrypted
+# MINIFLUX_PASSWORD cannot come from the gateway env. Read it here from the
+# agenix target file instead (strip the trailing newline; bash builtins only
+# so it works under whatever PATH the MCP runtime provides).
+set -euo pipefail
+export MINIFLUX_PASSWORD
+MINIFLUX_PASSWORD="$(< /home/neil/.config/openclaw/miniflux-password)"
+MINIFLUX_PASSWORD="${MINIFLUX_PASSWORD%$'\n'}"
+exec /home/neil/go/bin/miniflux-mcp "$@"
