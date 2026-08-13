@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# OpenClaw gateway wrapper (official install, --wrapper mode).
+# Injects agenix-decrypted secrets from ~/.config/openclaw/* (symlinks into
+# /run/agenix) into the gateway environment without persisting plaintext.
+# Then execs the real openclaw gateway with the original args.
+set -euo pipefail
+
+read_secret() {
+  local file="$1" var="$2"
+  if [ -f "$file" ]; then
+    local raw
+    raw="$(cat "$file")"
+    raw="${raw%$'\n'}"
+    export "$var=$raw"
+  fi
+}
+
+# Provider / channel / gateway secrets (agenix targets, plaintext never
+# written to disk outside /run/agenix).
+read_secret /home/neil/.config/openclaw/deepseek-key DEEPSEEK_API_KEY
+read_secret /home/neil/.config/openclaw/telegram-token TELEGRAM_BOT_TOKEN
+read_secret /home/neil/.config/openclaw/gateway-token OPENCLAW_GATEWAY_TOKEN
+
+# MCP commands (flicknote/web/og/project/src) live in ~/.local/bin and
+# ~/go/bin; systemd user services have a minimal default PATH.
+export PATH="$PATH:/home/neil/.local/bin:/home/neil/go/bin:/home/neil/.local/share/npm-global/bin:/run/current-system/sw/bin"
+
+# Node fetch honors the env proxy; local k3s services live under *.localhost
+# (/etc/hosts) and must bypass it — mihomo can't resolve those names.
+export NO_PROXY="localhost,127.0.0.1,::1,*.localhost"
+export no_proxy="localhost,127.0.0.1,::1,*.localhost"
+
+exec /home/neil/.local/share/npm-global/bin/openclaw "$@"

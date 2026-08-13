@@ -1,7 +1,8 @@
 // OpenClaw gateway config — SSOT, generated from jsonnet.
 // Deploy with: just openclaw-deploy
-// Not Nix-managed: the nix-openclaw module's store copy is dead config;
-// the gateway reads this file via OPENCLAW_CONFIG_PATH.
+// Installed via npm (official); gateway service managed by \`openclaw gateway
+// install --wrapper\` (scripts/openclaw-gateway-wrapper); the wrapper injects
+// agenix-decrypted secrets from ~/.config/openclaw/* into the gateway env.
 {
   gateway: {
     mode: "local",
@@ -10,20 +11,12 @@
   agents: {
     defaults: {
       model: { primary: "deepseek/deepseek-v4-flash" },
-      workspace: "/home/neil/openclaw-workspace",
+      workspace: "/home/neil/.openclaw/workspace",
     },
   },
-  models: {
-    providers: {
-      deepseek: {
-        api: "openai-completions",
-        baseUrl: "https://api.deepseek.com",
-        // Secret stays out of the file; injected by the gateway wrapper
-        // from the agenix-decrypted file into the env.
-        apiKey: { source: "env", provider: "default", id: "DEEPSEEK_API_KEY" },
-      },
-    },
-  },
+  // deepseek provider comes from the @openclaw/deepseek-provider plugin
+  // (installed via \`openclaw plugins install\`); its model catalog provides
+  // the correct context windows (deepseek-v4-flash: 1M ctx / 384K max).
   plugins: {
     slots: { memory: "hindsight-openclaw" },
     entries: {
