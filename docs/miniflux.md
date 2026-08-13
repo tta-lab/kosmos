@@ -3,7 +3,8 @@
 Miniflux is Neil's self-hosted RSS aggregator, running in the local k3s cluster
 under the `feeds` namespace and exposed to peers through Kepos via the
 canonical gateway. The KOReader plugin
-[AlgusDark/miniflux.koplugin](../research notes #1870) reads the same server.
+[AlgusDark/miniflux.koplugin](https://github.com/AlgusDark/miniflux.koplugin)
+reads the same server (selected in FlickNote #1870).
 
 Components:
 
