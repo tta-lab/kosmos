@@ -23,6 +23,9 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
+    # Pinned: mirrors OpenClaw stable v2026.7.1-2 (2026-08-04).
+    # Keeps its own nixpkgs so the gateway builds against a recent Node 22.
+    nix-openclaw.url = "github:openclaw/nix-openclaw/e72fe70f6d23cf2efe8a2a693f0788090af9bde0";
   };
 
   outputs = {
@@ -37,6 +40,7 @@
     fenix,
     moonbit-overlay,
     kepos-neo,
+    nix-openclaw,
     ...
   }: let
     system = "x86_64-linux";
@@ -391,12 +395,6 @@
         assert services.dagger.name == "Dagger";
         assert services.dagger.targetPort == 8080;
         assert services.dagger.allow != null;
-        assert services."gascity-dolt".name == "Gas City Dolt";
-        assert services."gascity-dolt".targetPort == 24930;
-        assert services."gascity-dolt".allow == services.dagger.allow;
-        assert services."gascity-dashboard".name == "Gas City Dashboard";
-        assert services."gascity-dashboard".targetPort == 8372;
-        assert services."gascity-dashboard".allow == services.dagger.allow;
         assert services.bookorbit.name == "BookOrbit";
         assert services.bookorbit.targetPort == 17480;
         assert services.anki.name == "Anki";
@@ -465,7 +463,7 @@
     nixosConfigurations.wsl = nixpkgs.lib.nixosSystem {
       inherit system;
       specialArgs = {
-        inherit agenix fenix kepos-neo moonbitToolchain nixpkgs-unstable pkgsUnstable;
+        inherit agenix fenix kepos-neo moonbitToolchain nix-openclaw nixpkgs-unstable pkgsUnstable;
       };
       modules = [
         nixos-wsl.nixosModules.default

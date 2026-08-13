@@ -22,15 +22,7 @@ in {
   environment.systemPackages = [
     nodejs
     (pkgs.writeShellScriptBin "openai-codex-install" ''
-      exec systemctl --user start openai-codex-install.service
+      exec ${installScript}
     '')
   ];
-
-  home-manager.users.neil.systemd.user.services.openai-codex-install = {
-    Unit.Description = "Install OpenAI Codex CLI with npm";
-    Service = {
-      Type = "oneshot";
-      ExecStart = installScript;
-    };
-  };
 }

@@ -122,6 +122,12 @@ kepos-subscriber-key:
 k3s-status:
   @systemctl status k3s --no-pager
 
+# Render openclaw/openclaw.jsonnet into the gateway config and restart it.
+openclaw-deploy:
+  @mkdir -p ~/.config/openclaw
+  @jsonnet -o ~/.config/openclaw/openclaw.json openclaw/openclaw.jsonnet
+  @systemctl --user restart openclaw-gateway
+
 sync-codex-auth direction:
   @bun scripts/sync-codex-auth.ts "{{ direction }}"
 

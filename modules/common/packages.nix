@@ -48,6 +48,7 @@ in {
   environment.systemPackages = with pkgs; [
     # Shells and editors
     helix
+    jsonnet
     fish
     bash
     bubblewrap
