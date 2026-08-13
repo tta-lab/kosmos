@@ -71,6 +71,7 @@
             ${./scripts/forgejo-https-git-smoke} \
             ${./scripts/forgejo-k8s-pull-secret-smoke} \
             ${./scripts/init-ebook-secrets} \
+            ${./scripts/init-miniflux-secrets} \
             ${./scripts/install-tta-lab-go} \
             ${./scripts/sync-anki-secret} \
             ${./scripts/sync-hindsight-secret} \
@@ -96,6 +97,8 @@
             ${./tests/anki-gateway-render-test} \
             ${./tests/notes-render-test} \
             ${./tests/notes-gateway-render-test} \
+            ${./tests/feeds-render-test} \
+            ${./tests/feeds-gateway-render-test} \
             ${./tests/sync-anki-secret-test} \
             ${./tests/sync-codex-auth-test} \
             ${./tests/sync-hindsight-secret-test} \
@@ -120,6 +123,8 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-gateway-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/feeds-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/feeds-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-anki-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-codex-auth-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-hindsight-secret-test}

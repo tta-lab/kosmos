@@ -12,6 +12,7 @@ objects. A NixOS switch never applies Tanka.
   `tcp://127.0.0.1:8080` for the local CLI
 - k3s API: `https://127.0.0.1:26443`
 - Anki Sync: `http://anki.localhost:17480/` through Kepos
+- Miniflux: `http://miniflux.localhost:17480` through Kepos
 - Hindsight API and MCP: `http://hindsight.localhost:17480` through Kepos
 - Hindsight Control Plane: `http://hindsightui.localhost:17480` through Kepos
 
@@ -34,6 +35,38 @@ Kepos publishes application service IDs including:
   gateway on port `17480`; the preserved Host header selects the API or Control
   Plane route. See [hindsight.md](hindsight.md) for deployment and storage
   details.
+- `miniflux` targets the canonical gateway on port `17480`; the preserved HTTP
+  Host header selects the RSS reader route. See [miniflux.md](miniflux.md) for
+  credentials and first login.
+
+## Kepos service model: HTTP web services vs raw TCP
+
+The publisher advertises every service as a TCP tunnel to a WSL loopback port
+(`targetPort`). How a peer reaches a service depends on the *kind* of
+service, decided on the subscriber side (Kepos Desktop / CLI), not by the
+publisher:
+
+- **HTTP web services** (`bookorbit`, `forgejo`, `woodpecker`, `memos`,
+  `anki`, `hindsight`, `hindsightui`, `miniflux`, `ente`, …): all target
+  the canonical gateway port `17480` and are routed by the preserved
+  `Host` header. Peers reach **every** HTTP service through the subscriber's
+  gateway port, `http://<id>.localhost:17480` (the subscriber gateway
+  defaults to `17480`, `DEFAULT_GATEWAY_PORT` in kepos-neo). **No
+  `[[subscriber.services]]` entry is needed.**
+- **Raw TCP/SSH services** (`dagger`, `mihomo`, `ssh`): the peer must add a
+  `[[subscriber.services]]` entry with a free `local_port` to its
+  `~/.config/kepos/config.toml` and restart Kepos Desktop; seeing the
+  service in the list alone does not create the local listener.
+
+The Kepos desktop UI shows HTTP services with an Open action and raw
+TCP/SSH services with a Copy command/URL action. The handler table lives in
+`kepos-neo` `src/runtime/service-handlers.ts` (`httpUrl` → HTTP,
+`localCommand` → TCP/SSH); unknown ids fall back to the HTTP handler.
+
+Do not add `[[subscriber.services]]` entries for HTTP web services — the
+subscriber gateway port already serves them all. Adding a new HTTP app to the
+stack is purely a publisher-side change (Tanka environment, gateway route,
+`modules/wsl/kepos-neo.nix` entry with `targetPort = 17480`).
 
 The separate Ente Photos stack publishes `ente` and `ente-storage`, both through
 the canonical gateway on port `17480`. See [ente-photos.md](ente-photos.md) for
@@ -163,7 +196,9 @@ The packaged Dagger 0.21.7 CLI defaults to the matching K3s engine at
 
 ## Mac Dagger client through Kepos
 
-On the Mac, add a raw TCP listener for the published `dagger` service to
+`dagger` is a raw TCP service, so it needs an explicit subscriber listener
+(HTTP web services do not; see the service model above). On the Mac, add a raw
+TCP listener for the published `dagger` service to
 `~/.config/kepos/config.toml` under the existing subscriber configuration:
 
 ```toml

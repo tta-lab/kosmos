@@ -103,6 +103,10 @@ in {
           name = "Memos";
           targetPort = 17480;
         };
+        miniflux = {
+          name = "Miniflux";
+          targetPort = 17480;
+        };
         hindsight = {
           name = "Hindsight";
           targetPort = 17480;

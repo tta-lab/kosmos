@@ -19,6 +19,18 @@ path. Only the portable agent rules (`AGENTS.user.md`) are synced by
 **Adding a secret:**
 1) register in `secrets.nix`, 2) declare in `modules/wsl/secrets.nix`, 3) `agenix -e secrets/<name>.age`.
 
+**Adding a Kepos-exposed service (WSL):**
+Add a Tanka environment + lib under `tanka/` (namespace/Service/Deployment),
+wire the route in `tanka/lib/gateway.libsonnet` (Caddy + CoreDNS rewrite),
+add the `<app>.localhost` hosts entry and storage dirs in
+`modules/wsl/k3s.nix`, register the service in `modules/wsl/kepos-neo.nix`,
+then `nh os switch` + `just <app>-deploy`. HTTP web services use
+`targetPort = 17480` (canonical gateway, Host-header routed) and peers reach
+them via the subscriber gateway port — never configure
+`[[subscriber.services]]` on peers for HTTP services; that is only for raw
+TCP/SSH services like `dagger`. See `docs/wsl-devops-runbook.md` for the
+full service model.
+
 ## Module Map
 
 | What you're changing | File(s) |
