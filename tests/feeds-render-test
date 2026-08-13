@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+rendered="$(mktemp)"
+trap 'rm -f "$rendered"' EXIT
+
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/feeds" \
+  | yq -s '.' >"$rendered"
+
+jq -e '
+  . as $resources |
+  def resource($kind; $name):
+    $resources | map(select(.kind == $kind and .metadata.name == $name)) | first;
+
+  (resource("Namespace"; "feeds").metadata.name == "feeds") and
+  (resource("Deployment"; "miniflux").spec.replicas == 1) and
+  (resource("Deployment"; "miniflux").spec.strategy.type == "Recreate") and
+  (resource("Deployment"; "miniflux").spec.template.spec.containers[0] as $container |
+    ($container.image | startswith("miniflux/miniflux:2.3.3@sha256:")) and
+    ($container.readinessProbe.httpGet.path == "/readyz") and
+    ($container.securityContext.runAsNonRoot == true) and
+    ($container.env | any(.name == "BASE_URL" and .value == "http://miniflux.localhost:17480")) and
+    ($container.env | any(.name == "DATABASE_URL" and .valueFrom.secretKeyRef.name == "miniflux-env"))
+  ) and
+  (resource("StatefulSet"; "miniflux-postgres").spec.replicas == 1) and
+  (resource("StatefulSet"; "miniflux-postgres").spec.template.spec.containers[0].image | startswith("postgres:18-alpine@sha256:")) and
+  (resource("Service"; "miniflux").spec.type == "ClusterIP") and
+  (resource("Service"; "miniflux").spec.ports[0].port == 8080) and
+  (resource("PersistentVolume"; "kosmos-miniflux-db").spec.persistentVolumeReclaimPolicy == "Retain") and
+  (resource("PersistentVolume"; "kosmos-miniflux-db").spec.hostPath.path == "/var/lib/kosmos-k3s/feeds/miniflux-db") and
+  (resource("PersistentVolumeClaim"; "miniflux-db").spec.storageClassName == "kosmos-static") and
+  (map(select(.kind == "Secret")) | length == 0)
+' "$rendered" >/dev/null
+
+printf 'feeds manifests expose a hardened Miniflux service with retained storage\n'

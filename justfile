@@ -5,6 +5,7 @@ photos_environment := "tanka/environments/photos"
 ebooks_environment := "tanka/environments/ebooks"
 anki_environment := "tanka/environments/anki"
 notes_environment := "tanka/environments/notes"
+feeds_environment := "tanka/environments/feeds"
 hindsight_environment := "tanka/environments/hindsight"
 kubeconfig := env_var_or_default("KUBECONFIG", "/etc/rancher/k3s/k3s.yaml")
 api_server := "https://127.0.0.1:26443"
@@ -103,6 +104,26 @@ hindsight-deploy: hindsight-apply
 
 hindsight-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n hindsight -o wide
+
+feeds-show:
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ feeds_environment }}"
+
+feeds-diff: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ feeds_environment }}"
+
+feeds-secrets: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" scripts/init-miniflux-secrets
+
+feeds-apply: _local-k3s feeds-secrets
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ feeds_environment }}"
+
+feeds-deploy: feeds-apply
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}"
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+
+feeds-status: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n feeds -o wide
 
 hindsight-logs: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl logs deployment/hindsight -n hindsight --tail=200

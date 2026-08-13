@@ -22,6 +22,7 @@ local gatewayLabels = labels('canonical-gateway');
         rewrite name exact bookorbit.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact anki.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact memos.localhost canonical-gateway.devops.svc.cluster.local
+        rewrite name exact miniflux.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact hindsight.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact hindsightui.localhost canonical-gateway.devops.svc.cluster.local
       |||,
@@ -82,6 +83,11 @@ local gatewayLabels = labels('canonical-gateway');
           @memos host memos.localhost
           handle @memos {
             reverse_proxy memos.notes.svc.cluster.local:5230
+          }
+
+          @miniflux host miniflux.localhost
+          handle @miniflux {
+            reverse_proxy miniflux.feeds.svc.cluster.local:8080
           }
 
           @hindsight host hindsight.localhost

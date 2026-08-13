@@ -12,6 +12,7 @@ objects. A NixOS switch never applies Tanka.
   `tcp://127.0.0.1:8080` for the local CLI
 - k3s API: `https://127.0.0.1:26443`
 - Anki Sync: `http://anki.localhost:17480/` through Kepos
+- Miniflux: `http://miniflux.localhost:17480` through Kepos
 - Hindsight API and MCP: `http://hindsight.localhost:17480` through Kepos
 - Hindsight Control Plane: `http://hindsightui.localhost:17480` through Kepos
 
@@ -34,6 +35,9 @@ Kepos publishes application service IDs including:
   gateway on port `17480`; the preserved Host header selects the API or Control
   Plane route. See [hindsight.md](hindsight.md) for deployment and storage
   details.
+- `miniflux` targets the canonical gateway on port `17480`; the preserved HTTP
+  Host header selects the RSS reader route. See [miniflux.md](miniflux.md) for
+  credentials and first login.
 
 The separate Ente Photos stack publishes `ente` and `ente-storage`, both through
 the canonical gateway on port `17480`. See [ente-photos.md](ente-photos.md) for
