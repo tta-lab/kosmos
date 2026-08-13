@@ -14,6 +14,17 @@
       workspace: "/home/neil/.openclaw/workspace",
     },
   },
+  // ACP: run external coding harnesses (pi via pi-acp adapter) as subagents.
+  // OpenClaw owns sessions/channels/delivery; the harness owns its tools.
+  acp: {
+    enabled: true,
+    dispatch: { enabled: true },
+    backend: "acpx",
+    defaultAgent: "pi",
+    allowedAgents: ["pi"],
+    maxConcurrentSessions: 4,
+    runtime: { ttlMinutes: 120 },
+  },
   // deepseek provider comes from the @openclaw/deepseek-provider plugin
   // (installed via \`openclaw plugins install\`); its model catalog provides
   // the correct context windows (deepseek-v4-flash: 1M ctx / 384K max).
@@ -21,6 +32,21 @@
     slots: { memory: "hindsight-openclaw" },
     entries: {
       "memory-core": { enabled: false },
+      // ACP runtime backend: runs pi (pi-acp adapter) as a harness subagent.
+      // Non-interactive sessions cannot click permission prompts, so approve
+      // writes/exec headlessly; deny degrades gracefully instead of crashing.
+      // No mcpServers here: pi-acp does not support ACP MCP injection. pi
+      // loads its own MCP servers (incl. miniflux RSS) via mcporter, which
+      // imports [mcp_servers.*] from ~/.codex/config.toml.
+      acpx: {
+        enabled: true,
+        config: {
+          permissionMode: "approve-all",
+          nonInteractivePermissions: "deny",
+          timeoutSeconds: 180,
+          probeAgent: "pi",
+        },
+      },
       "hindsight-openclaw": {
         enabled: true,
         hooks: { allowConversationAccess: true },
@@ -39,19 +65,10 @@
       og: { command: "og", args: ["mcp"] },
       project: { command: "project", args: ["mcp"] },
       src: { command: "src", args: ["mcp"] },
-      // miniflux-mcp (tssujt/miniflux-mcp v0.4.0, built into ~/go/bin).
-      // OpenClaw spawns MCP stdio children with only the configured server
-      // env (no gateway env inheritance), so MINIFLUX_PASSWORD is injected by
-      // scripts/miniflux-mcp-wrapper from the agenix-decrypted file
-      // (~/.config/openclaw/miniflux-password) — it never lands in this json.
-      miniflux: {
-        command: "miniflux-mcp-wrapper",
-        args: [],
-        env: {
-          MINIFLUX_URL: "http://miniflux.localhost:17480",
-          MINIFLUX_USERNAME: "admin",
-        },
-      },
+      // RSS (miniflux) is intentionally NOT an OpenClaw MCP server: queries
+      // go through the pi ACP harness (pi loads miniflux via mcporter from
+      // ~/.codex/config.toml), so full-content responses never enter Yuki's
+      // context — pi returns title-only lists.
     },
   },
   channels: {
