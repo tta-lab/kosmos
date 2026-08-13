@@ -21,12 +21,12 @@ read_secret /home/neil/.config/openclaw/deepseek-key DEEPSEEK_API_KEY
 read_secret /home/neil/.config/openclaw/telegram-token TELEGRAM_BOT_TOKEN
 read_secret /home/neil/.config/openclaw/gateway-token OPENCLAW_GATEWAY_TOKEN
 
-# MCP commands (flicknote/web/og/project/src) live in ~/.local/bin and
-# ~/go/bin; systemd user services have a minimal default PATH.
-export PATH="$PATH:/home/neil/.local/bin:/home/neil/go/bin:/home/neil/.local/share/npm-global/bin:/run/current-system/sw/bin"
+# MCP commands (web/og/project/src/miniflux-mcp) live in ~/go/bin, which the
+# gateway unit PATH does not include.
+export PATH="$PATH:/home/neil/go/bin"
 
-# Node fetch honors the env proxy; local k3s services live under *.localhost
-# (/etc/hosts) and must bypass it — mihomo can't resolve those names.
+# Extend the inherited no_proxy with *.localhost so local k3s services
+# (hindsight/flicknote) bypass the mihomo proxy; it can't resolve those names.
 export NO_PROXY="localhost,127.0.0.1,::1,*.localhost"
 export no_proxy="localhost,127.0.0.1,::1,*.localhost"
 
