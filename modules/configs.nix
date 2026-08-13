@@ -1,7 +1,6 @@
 {
   config,
   pkgs,
-  nix-openclaw,
   ...
 }: let
   inherit (config.system) stateVersion;
@@ -26,7 +25,6 @@ in {
       ];
     in {
       imports = [
-        nix-openclaw.homeManagerModules.openclaw
       ];
 
       home = {
@@ -108,17 +106,6 @@ in {
         "/home/neil/.local/share/npm-global/bin"
       ];
 
-      # nix-openclaw generates openclaw-gateway without an Install section;
-      # merge WantedBy in so the gateway starts with the user session.
-      # OPENCLAW_CONFIG_PATH is overridden to the jsonnet-generated file
-      # (openclaw/openclaw.jsonnet, deployed via 'just openclaw-deploy');
-      # the module's rendered store config is dead. HM merges Environment
-      # lists, so this value wins over the module's (later in the list).
-      systemd.user.services.openclaw-gateway = {
-        Install.WantedBy = ["default.target"];
-        Service.Environment = ["OPENCLAW_CONFIG_PATH=/home/neil/.config/openclaw/openclaw.json"];
-      };
-
       systemd.user.services.flicknote-sync = {
         Unit = {
           Description = "FlickNote sync daemon";
@@ -139,45 +126,6 @@ in {
 
       programs = {
         home-manager.enable = true;
-
-        openclaw = {
-          enable = true;
-          package = nix-openclaw.packages.${pkgs.system}.openclaw;
-
-          # Yuki (whale girl) workspace is edited directly on this machine
-          # (not the kosmos repo); make it the OpenClaw workspace so edits
-          # take effect on the next session without a switch.
-          workspaceDir = "/home/neil/openclaw-workspace";
-
-          # openclaw.json content is generated from openclaw/openclaw.jsonnet
-          # (deploy: just openclaw-deploy — jsonnet render, write the file,
-          # restart the gateway). The module still provides the systemd unit,
-          # wrapper, and env injection; its rendered config file is dead —
-          # OPENCLAW_CONFIG_PATH is overridden below to point at the jsonnet
-          # output instead.
-
-          # Values that point to existing files are read at runtime by the
-          # gateway wrapper, so secrets never land in the Nix store.
-          # Values that point to existing files are read at runtime by the
-          # gateway wrapper, so secrets never land in the Nix store. Telegram
-          # token goes via env because OpenClaw rejects symlinked tokenFiles
-          # (agenix targets are symlinks).
-          environment = {
-            OPENCLAW_GATEWAY_TOKEN = "/home/neil/.config/openclaw/gateway-token";
-            DEEPSEEK_API_KEY = "/home/neil/.config/openclaw/deepseek-key";
-            TELEGRAM_BOT_TOKEN = "/home/neil/.config/openclaw/telegram-token";
-            # systemd user services have a minimal default PATH; the MCP
-            # commands (flicknote/web/og/project/src) live in ~/.local/bin
-            # and ~/go/bin, so make them reachable.
-            PATH = "/home/neil/.local/bin:/home/neil/go/bin:/home/neil/.local/share/npm-global/bin:/run/current-system/sw/bin:$PATH";
-            # Node fetch honors the env proxy; local k3s services live under
-            # *.localhost (/etc/hosts) and must bypass it — mihomo can't
-            # resolve those names, and Caddy routes by Host header so
-            # 127.0.0.1 is not a substitute.
-            NO_PROXY = "localhost,127.0.0.1,::1,*.localhost";
-            no_proxy = "localhost,127.0.0.1,::1,*.localhost";
-          };
-        };
 
         bash.enable = true;
 

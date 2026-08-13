@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# OpenClaw gateway wrapper (official install, --wrapper mode).
+# Injects agenix-decrypted secrets from ~/.config/openclaw/* (symlinks into
+# /run/agenix) into the gateway environment without persisting plaintext.
+# Then execs the real openclaw gateway with the original args.
+set -euo pipefail
+
+read_secret() {
+  local file="$1" var="$2"
+  if [ -f "$file" ]; then
+    local raw
+    raw="$(cat "$file")"
+    raw="${raw%$'\n'}"
+    export "$var=$raw"
+  fi
+}
+
+# Provider / channel / gateway secrets (agenix targets, plaintext never
+# written to disk outside /run/agenix).
+read_secret /home/neil/.config/openclaw/deepseek-key DEEPSEEK_API_KEY
+read_secret /home/neil/.config/openclaw/telegram-token TELEGRAM_BOT_TOKEN
+read_secret /home/neil/.config/openclaw/gateway-token OPENCLAW_GATEWAY_TOKEN
+
+# MCP commands (web/og/project/src/miniflux-mcp) live in ~/go/bin, which the
+# gateway unit PATH does not include.
+export PATH="$PATH:/home/neil/go/bin"
+
+# Extend the inherited no_proxy with *.localhost so local k3s services
+# (hindsight/flicknote) bypass the mihomo proxy; it can't resolve those names.
+export NO_PROXY="localhost,127.0.0.1,::1,*.localhost"
+export no_proxy="localhost,127.0.0.1,::1,*.localhost"
+
+exec /home/neil/.local/share/npm-global/bin/openclaw "$@"
