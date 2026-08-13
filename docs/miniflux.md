@@ -29,31 +29,24 @@ Sign in at `http://miniflux.localhost:17480` (WSL host) with user `admin`.
 
 ## Mac access through Kepos
 
-The Mac subscribes to the published `miniflux` service through
-`~/.config/kepos/config.toml` (Kepos Desktop reads this file). Append a
-service entry to the existing `[subscriber]` section — keep its current
-`enabled`/`gateway_port`/`route` values:
+Miniflux is an HTTP web service, so it is exposed through the Kepos
+subscriber's gateway port — no per-service `[[subscriber.services]]` entry is
+needed (that mechanism is only for raw TCP/SSH services such as `dagger` or
+`ssh`, which get their own local listener).
 
-```toml
-[subscriber]
-enabled = true
-gateway_port = 17481
-route = "auto"
+Once the WSL publisher advertises `miniflux` (NixOS generation switched
+after the `kepos-neo.nix` change), the Mac Kepos Desktop shows it with an
+Open action. Access it at:
 
-[[subscriber.services]]
-id = "miniflux"
-local_port = 18093
+```text
+http://miniflux.localhost:17480
 ```
 
-If the `[subscriber]` section already exists, only append the
-`[[subscriber.services]]` block with a free `local_port` (the publisher
-advertises port `17480`; the Mac-side `local_port` is the local listener).
-Restart Kepos Desktop. Seeing `miniflux` in the service list alone does not
-create the local TCP listener.
-
-Access it as `http://miniflux.localhost:18093` — macOS resolves
-`.localhost` to loopback, so the browser sends `Host: miniflux.localhost`,
-which the canonical gateway uses to route to Miniflux.
+`17480` is the Kepos subscriber's default gateway port on the Mac; use the
+`gateway_port` from the Mac's `~/.config/kepos/config.toml` if it differs.
+macOS resolves `.localhost` to loopback, so the browser sends
+`Host: miniflux.localhost`, which Kepos routes to the publisher and the
+canonical gateway routes to Miniflux.
 
 ## Operations
 
