@@ -24,7 +24,9 @@ lowercase proxy variables from it. It feeds NixOS, `home.sessionVariables`,
 DSH, Temenos, and og; Tanka derives Pod workload proxy settings from the same
 data. K3s extends only the base bypass list with cluster-local hostnames. The
 self-managed OpenClaw gateway sources the non-secret generated
-`/etc/kosmos/proxy.env` and then adds its `*.localhost` bypass.
+`/etc/kosmos/proxy.env` and then adds its `*.localhost` bypass. That interface
+is mandatory: apply the WSL configuration before installing or restarting the
+gateway.
 
 `kosmos-wsl-proxy-env` is intentionally separate: it discovers a reachable WSL
 host proxy at runtime for manual bootstrap work. Do not use it as a second place

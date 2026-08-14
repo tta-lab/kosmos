@@ -26,18 +26,13 @@ read_secret /home/neil/.config/openclaw/gateway-token OPENCLAW_GATEWAY_TOKEN
 export PATH="$PATH:/home/neil/go/bin"
 
 # Source the non-secret, Nix-generated canonical proxy variables. The gateway
-# is self-managed, so it consumes this stable interface rather than hard-coding
-# a proxy endpoint. Keep the current unit restart-safe until the Nix activation
-# creates the file.
-if [[ -r /etc/kosmos/proxy.env ]]; then
-  # shellcheck disable=SC1091
-  source /etc/kosmos/proxy.env
-fi
+# is self-managed, so this interface is mandatory after the WSL configuration
+# has been activated.
+# shellcheck disable=SC1091
+source /etc/kosmos/proxy.env
 
 # Local k3s services bypass Mihomo because it cannot resolve *.localhost.
-upper_no_proxy="${NO_PROXY:-${no_proxy:-localhost,127.0.0.1,::1}}"
-lower_no_proxy="${no_proxy:-${NO_PROXY:-localhost,127.0.0.1,::1}}"
-export NO_PROXY="${upper_no_proxy},*.localhost"
-export no_proxy="${lower_no_proxy},*.localhost"
+export NO_PROXY="${NO_PROXY},*.localhost"
+export no_proxy="${no_proxy},*.localhost"
 
 exec /home/neil/.local/share/npm-global/bin/openclaw "$@"

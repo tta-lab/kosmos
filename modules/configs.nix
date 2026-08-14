@@ -11,7 +11,11 @@ in {
     useUserPackages = true;
     backupFileExtension = "hm-backup";
 
-    users.neil = {lib, ...}: {
+    users.neil = {
+      lib,
+      config,
+      ...
+    }: {
       imports = [
       ];
 
@@ -100,7 +104,12 @@ in {
       programs = {
         home-manager.enable = true;
 
-        zsh.enable = true;
+        zsh = {
+          enable = true;
+          initContent = ''
+            source ${config.home.sessionVariablesPackage}/etc/profile.d/hm-session-vars.sh
+          '';
+        };
 
         bash.enable = true;
 

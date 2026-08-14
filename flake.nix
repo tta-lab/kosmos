@@ -405,6 +405,33 @@
         assert nixpkgs.lib.hasSuffix "systemd-socket-proxyd ${expectedLocalEndpoint}" cniProxy.serviceConfig.ExecStart;
           pkgs.runCommand "wsl-mihomo-service-check" {} "touch $out";
 
+      wsl-proxy-environment-file = let
+        cfg = self.nixosConfigurations.wsl.config;
+        proxyFile = cfg.environment.etc."kosmos/proxy.env".source;
+      in
+        pkgs.runCommand "wsl-proxy-environment-file-check" {} ''
+          source ${nixpkgs.lib.escapeShellArg proxyFile}
+          test "$HTTP_PROXY" = http://127.0.0.1:7890
+          test "$http_proxy" = "$HTTP_PROXY"
+          test "$NO_PROXY" = localhost,127.0.0.1,::1
+          test "$no_proxy" = "$NO_PROXY"
+          touch "$out"
+        '';
+
+      wsl-zsh-session-variables = let
+        cfg = self.nixosConfigurations.wsl.config;
+        inherit (self.nixosConfigurations.wsl.pkgs) zsh;
+      in
+        pkgs.runCommand "wsl-zsh-session-variables-check" {} ''
+          unset __HM_SESS_VARS_SOURCED
+          ${zsh}/bin/zsh -dfc '
+            source "$1"
+            test "$PI_RETRY_STALL_TIMEOUT_MS" = 0
+            test "$HTTP_PROXY" = http://127.0.0.1:7890
+          ' zsh ${nixpkgs.lib.escapeShellArg cfg.home-manager.users.neil.home.file.".zshrc".source}
+          touch "$out"
+        '';
+
       nix-cache-policy = let
         cfg = self.nixosConfigurations.wsl.config;
         has = value: list: builtins.elem value list;
