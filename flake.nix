@@ -379,6 +379,7 @@
       kepos-publisher-services = let
         cfg = self.nixosConfigurations.wsl.config;
         inherit (cfg.home-manager.users.neil.services.kepos.publisher) services;
+        dshUnit = cfg.home-manager.users.neil.systemd.user.services.dsh;
         loopbackHosts = cfg.networking.hosts."127.0.0.1";
       in
         assert builtins.all (service: services.${service}.allow == null) [
@@ -396,6 +397,13 @@
         assert services.dagger.name == "Dagger";
         assert services.dagger.targetPort == 8080;
         assert services.dagger.allow != null;
+        assert services.dsh.name == "DeepSeek Harness";
+        assert services.dsh.targetPort == 3080;
+        assert services.dsh.allow == services.dagger.allow;
+        assert dshUnit.Install.WantedBy == ["default.target"];
+        assert dshUnit.Service.WorkingDirectory == "/home/neil/code/projects/tta-lab/deepseek-harness";
+        assert builtins.elem "DSH_HOME=/home/neil/.local/state/dsh" dshUnit.Service.Environment;
+        assert nixpkgs.lib.hasInfix "--host 127.0.0.1 --port 3080 --trusted-host dsh.localhost:17480" dshUnit.Service.ExecStart;
         assert services.bookorbit.name == "BookOrbit";
         assert services.bookorbit.targetPort == 17480;
         assert services.anki.name == "Anki";

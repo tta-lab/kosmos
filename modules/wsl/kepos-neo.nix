@@ -78,6 +78,11 @@ in {
           name = "Navidrome";
           targetPort = 4533;
         };
+        dsh = {
+          name = "DeepSeek Harness";
+          targetPort = 3080;
+          allow = [subscribers.mac];
+        };
         dagger = {
           name = "Dagger";
           targetPort = 8080;
