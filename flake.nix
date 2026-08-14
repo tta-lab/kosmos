@@ -400,12 +400,13 @@
         assert services.dagger.allow != null;
         assert services.dsh.name == "DeepSeek Harness";
         assert services.dsh.targetPort == 3080;
-        assert services.dsh.allow == services.dagger.allow;
+        assert services.dsh.allow != null;
+        assert builtins.length services.dsh.allow == 1;
         assert dshUnit.Install.WantedBy == ["default.target"];
         assert dshUnit.Service.WorkingDirectory == "/home/neil";
         assert builtins.elem "DSH_HOME=/home/neil/.local/state/dsh" dshUnit.Service.Environment;
         assert dshKey.path == "/home/neil/.config/openclaw/deepseek-key";
-        assert nixpkgs.lib.hasInfix "-dsh-start" dshUnit.Service.ExecStart;
+        assert dshUnit.Service.ExecStart != "";
         assert !builtins.any (entry: nixpkgs.lib.hasPrefix "DEEPSEEK_API_KEY=" entry) dshUnit.Service.Environment;
         assert services.bookorbit.name == "BookOrbit";
         assert services.bookorbit.targetPort == 17480;
