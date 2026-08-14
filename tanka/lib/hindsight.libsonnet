@@ -2,6 +2,7 @@ local labels = {
   'app.kubernetes.io/name': 'hindsight',
   'app.kubernetes.io/part-of': 'kosmos-hindsight',
 };
+local proxy = import 'proxy.libsonnet';
 
 {
   hindsightService: {
@@ -58,11 +59,11 @@ local labels = {
               { name: 'HINDSIGHT_API_LLM_PROVIDER', value: 'deepseek' },
               { name: 'HINDSIGHT_API_LLM_MODEL', value: 'deepseek-v4-flash' },
               { name: 'HINDSIGHT_API_WORKER_ID', value: 'hindsight' },
-              { name: 'HTTP_PROXY', value: 'http://10.42.0.1:7890' },
-              { name: 'HTTPS_PROXY', value: 'http://10.42.0.1:7890' },
+              { name: 'HTTP_PROXY', value: proxy.podUrl },
+              { name: 'HTTPS_PROXY', value: proxy.podUrl },
               {
                 name: 'NO_PROXY',
-                value: 'localhost,127.0.0.1,::1,10.42.0.0/16,10.43.0.0/16,.svc,.cluster.local',
+                value: proxy.clusterNoProxy(),
               },
               { name: 'HF_HUB_OFFLINE', value: '1' },
               { name: 'TRANSFORMERS_OFFLINE', value: '1' },

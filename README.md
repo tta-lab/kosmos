@@ -21,6 +21,7 @@ NixOS configuration for a headless dev/ops environment. It supports both the Int
 - `disko-config.nix` — declarative NVMe partition layout for bare-metal install
 - `install-guide.md` — step-by-step install instructions
 - `wsl-guide.md` — NixOS-WSL setup notes
+- `docs/environment.md` — environment-variable ownership and scope
 - `docs/k3d-dev-cluster.html` — Podman + k3d local cluster setup for WSL
 
 ## Quick Start
@@ -55,16 +56,20 @@ at the loopback-only controller on port `9090` and is published to the Mac as
 the Kepos `mihomo-dashboard` service. The standalone DNS listener is disabled;
 Mihomo still applies the inherited DNS configuration internally to proxied
 hostnames.
-Mihomo binds the mixed port to loopback so the systemd CNI forwarder can own
-`10.42.0.1:7890` for Pods. This address split gives Pods a stable proxy endpoint;
-it is not intended as a general policy against user-configured LAN listeners.
-`10.42.0.1` depends on this single-node cluster's default `10.42.0.0/16` Pod
-CIDR, so the socket and Pod proxy URLs must change together if it changes. The
-NixOS firewall stays masked on WSL by design.
+Mihomo binds the mixed port to loopback so the systemd CNI forwarder can own a
+stable Pod proxy endpoint. `modules/wsl/proxy-topology.json` is the shared
+topology source for that endpoint, the Pod and Service CIDRs, and the local
+listener; both Nix and Tanka consume it. This address split is not intended as
+a general policy against user-configured LAN listeners. The NixOS firewall stays
+masked on WSL by design.
 Mihomo loads the generated Clash Verge runtime configuration from the mounted
 Windows profile through systemd credentials; the configuration is never copied
-into the Nix store. The `kosmos-wsl-proxy-env` helper remains available for
-manual bootstrap fallback.
+into the Nix store. The WSL URL and base bypass list have one owner:
+`kosmos.wsl.proxy` in `modules/wsl/proxy.nix`, derived from that topology. It
+generates both proxy variable cases for shells and managed services, plus
+`/etc/kosmos/proxy.env` for self-managed services such as OpenClaw. K3s adds
+its cluster-only bypasses on top. The `kosmos-wsl-proxy-env` helper remains a
+separate dynamic manual bootstrap fallback. See [environment ownership](docs/environment.md).
 
 ## Codex CLI
 
@@ -124,9 +129,8 @@ This starts the `tta-lab-go-install.service` oneshot user unit. It installs `tem
 
 The Home Manager user services `temenos.service` and `og.service` are defined in `modules/common/tta-lab-go.nix`. They only start after their binary exists in `~/go/bin`.
 
-Fish and the user services use the local Mihomo systemd service through
-`HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY` (and lowercase equivalents) at
-`http://127.0.0.1:7890`.
+Fish, Zsh, and the Home Manager user services derive their proxy environment
+from `kosmos.wsl.proxy`; see [environment ownership](docs/environment.md).
 
 For a fresh machine, bootstrap the public Organon repository anonymously, install
 the repository tools, and start the Home Manager-managed daemon:

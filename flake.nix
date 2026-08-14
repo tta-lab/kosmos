@@ -72,6 +72,7 @@
             ${./scripts/sync-anki-secret} \
             ${./scripts/sync-hindsight-secret} \
             ${./scripts/prepare-mihomo-config} \
+            ${./scripts/openclaw-gateway-wrapper} \
             ${./scripts/ttal-tmux-project-picker} \
             ${./scripts/wsl-devops-smoke} \
             ${./tests/temenos-env-test} \
@@ -310,13 +311,50 @@
       wsl-mihomo-service = let
         cfg = self.nixosConfigurations.wsl.config;
         expectedConfig = "/mnt/c/Users/white/AppData/Roaming/io.github.clash-verge-rev.clash-verge-rev/clash-verge.yaml";
-        expectedProxy = "http://127.0.0.1:7890";
-        expectedNoProxy = "localhost,127.0.0.1,::1";
+        expectedLocalEndpoint = "127.0.0.1:7890";
+        expectedPodEndpoint = "10.42.0.1:7890";
+        expectedPodCidr = "10.42.0.0/16";
+        expectedServiceCidr = "10.43.0.0/16";
+        expectedProxy = "http://${expectedLocalEndpoint}";
+        expectedNoProxyEntries = [
+          "localhost"
+          "127.0.0.1"
+          "::1"
+        ];
+        expectedNoProxy = nixpkgs.lib.concatStringsSep "," expectedNoProxyEntries;
+        expectedProxyEnvironment = {
+          HTTP_PROXY = expectedProxy;
+          HTTPS_PROXY = expectedProxy;
+          ALL_PROXY = expectedProxy;
+          NO_PROXY = expectedNoProxy;
+          http_proxy = expectedProxy;
+          https_proxy = expectedProxy;
+          all_proxy = expectedProxy;
+          no_proxy = expectedNoProxy;
+        };
+        expectedK3sNoProxy = nixpkgs.lib.concatStringsSep "," (
+          expectedNoProxyEntries
+          ++ [
+            expectedPodCidr
+            expectedServiceCidr
+            ".svc"
+            ".cluster.local"
+            "forgejo.localhost"
+            "woodpecker.localhost"
+          ]
+        );
         has = value: list: builtins.elem value list;
         unit = cfg.systemd.services.mihomo;
         cniSocket = cfg.systemd.sockets.mihomo-cni-proxy;
         cniProxy = cfg.systemd.services.mihomo-cni-proxy;
         nixDaemonEnvironment = cfg.systemd.services.nix-daemon.environment;
+        proxyEnvironment = cfg.kosmos.wsl.proxy.environment;
+        k3sEnvironment = cfg.systemd.services.k3s.environment;
+        homeSessionVariables = cfg.home-manager.users.neil.home.sessionVariables;
+        dshEnvironment = cfg.home-manager.users.neil.systemd.user.services.dsh.Service.Environment;
+        temenosEnvironment = cfg.home-manager.users.neil.systemd.user.services.temenos.Service.Environment;
+        ogEnvironment = cfg.home-manager.users.neil.systemd.user.services.og.Service.Environment;
+        proxyEnvironmentEntries = nixpkgs.lib.mapAttrsToList (name: value: "${name}=${value}") expectedProxyEnvironment;
       in
         assert cfg.services.mihomo.enable;
         assert cfg.services.mihomo.configFile == expectedConfig;
@@ -330,22 +368,41 @@
         assert unit.serviceConfig ? ExecStartPre;
         assert nixpkgs.lib.hasInfix "\${RUNTIME_DIRECTORY}/config.yaml" unit.serviceConfig.ExecStart;
         assert nixpkgs.lib.hasInfix "-ext-ui " unit.serviceConfig.ExecStart;
-        assert cfg.kosmos.wsl.k3sProxyUrl == expectedProxy;
+        assert cfg.kosmos.wsl.proxy.url == expectedProxy;
+        assert cfg.kosmos.wsl.proxy.localEndpoint == expectedLocalEndpoint;
+        assert cfg.kosmos.wsl.proxy.podEndpoint == expectedPodEndpoint;
+        assert cfg.kosmos.wsl.proxy.podCidr == expectedPodCidr;
+        assert cfg.kosmos.wsl.proxy.serviceCidr == expectedServiceCidr;
+        assert cfg.kosmos.wsl.proxy.noProxy == expectedNoProxyEntries;
+        assert proxyEnvironment == expectedProxyEnvironment;
         assert cfg.environment.variables.HTTP_PROXY == expectedProxy;
         assert cfg.networking.proxy.default == expectedProxy;
         assert cfg.networking.proxy.noProxy == expectedNoProxy;
         assert nixDaemonEnvironment.http_proxy == expectedProxy;
         assert nixDaemonEnvironment.https_proxy == expectedProxy;
         assert nixDaemonEnvironment.no_proxy == expectedNoProxy;
+        assert homeSessionVariables.PI_RETRY_STALL_TIMEOUT_MS == "0";
+        assert builtins.all (name: homeSessionVariables.${name} == expectedProxyEnvironment.${name}) (builtins.attrNames expectedProxyEnvironment);
+        assert k3sEnvironment.HTTP_PROXY == expectedProxy;
+        assert k3sEnvironment.HTTPS_PROXY == expectedProxy;
+        assert k3sEnvironment.ALL_PROXY == expectedProxy;
+        assert k3sEnvironment.http_proxy == expectedProxy;
+        assert k3sEnvironment.https_proxy == expectedProxy;
+        assert k3sEnvironment.all_proxy == expectedProxy;
+        assert k3sEnvironment.NO_PROXY == expectedK3sNoProxy;
+        assert k3sEnvironment.no_proxy == expectedK3sNoProxy;
+        assert builtins.all (entry: has entry dshEnvironment) proxyEnvironmentEntries;
+        assert builtins.all (entry: has entry temenosEnvironment) proxyEnvironmentEntries;
+        assert builtins.all (entry: has entry ogEnvironment) proxyEnvironmentEntries;
         assert has "mihomo.service" cfg.systemd.services.k3s.wants;
         assert has "mihomo.service" cfg.systemd.services.k3s.after;
         assert !cfg.systemd.services.firewall.enable;
         assert !has 7890 cfg.networking.firewall.interfaces.cni0.allowedTCPPorts;
-        assert cniSocket.listenStreams == ["10.42.0.1:7890"];
+        assert cniSocket.listenStreams == [expectedPodEndpoint];
         assert cniSocket.socketConfig.FreeBind;
         assert has "mihomo.service" cniProxy.requires;
         assert has "mihomo.service" cniProxy.after;
-        assert nixpkgs.lib.hasSuffix "systemd-socket-proxyd 127.0.0.1:7890" cniProxy.serviceConfig.ExecStart;
+        assert nixpkgs.lib.hasSuffix "systemd-socket-proxyd ${expectedLocalEndpoint}" cniProxy.serviceConfig.ExecStart;
           pkgs.runCommand "wsl-mihomo-service-check" {} "touch $out";
 
       nix-cache-policy = let

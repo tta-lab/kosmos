@@ -4,6 +4,7 @@
   ...
 }: let
   inherit (config.system) stateVersion;
+  proxyEnvironment = config.kosmos.wsl.proxy.environment;
 in {
   home-manager = {
     useGlobalPkgs = true;
@@ -81,12 +82,14 @@ in {
         };
       };
 
-      home.sessionVariables = {
-        NPM_CONFIG_PREFIX = "/home/neil/.local/share/npm-global";
-        EDITOR = "hx";
-        VISUAL = "hx";
-        PI_RETRY_STALL_TIMEOUT_MS = "0";
-      };
+      home.sessionVariables =
+        {
+          NPM_CONFIG_PREFIX = "/home/neil/.local/share/npm-global";
+          EDITOR = "hx";
+          VISUAL = "hx";
+          PI_RETRY_STALL_TIMEOUT_MS = "0";
+        }
+        // proxyEnvironment;
 
       home.sessionPath = [
         "/home/neil/.local/bin"
@@ -107,14 +110,6 @@ in {
             if test -r "$HOME/.config/env"
               source "$HOME/.config/env"
             end
-            set -gx HTTP_PROXY http://127.0.0.1:7890
-            set -gx HTTPS_PROXY http://127.0.0.1:7890
-            set -gx ALL_PROXY http://127.0.0.1:7890
-            set -gx http_proxy http://127.0.0.1:7890
-            set -gx https_proxy http://127.0.0.1:7890
-            set -gx all_proxy http://127.0.0.1:7890
-            set -gx NO_PROXY localhost,127.0.0.1,::1
-            set -gx no_proxy localhost,127.0.0.1,::1
           '';
           functions = {
             p = ''

@@ -25,9 +25,19 @@ read_secret /home/neil/.config/openclaw/gateway-token OPENCLAW_GATEWAY_TOKEN
 # gateway unit PATH does not include.
 export PATH="$PATH:/home/neil/go/bin"
 
-# Extend the inherited no_proxy with *.localhost so local k3s services
-# (hindsight/flicknote) bypass the mihomo proxy; it can't resolve those names.
-export NO_PROXY="localhost,127.0.0.1,::1,*.localhost"
-export no_proxy="localhost,127.0.0.1,::1,*.localhost"
+# Source the non-secret, Nix-generated canonical proxy variables. The gateway
+# is self-managed, so it consumes this stable interface rather than hard-coding
+# a proxy endpoint. Keep the current unit restart-safe until the Nix activation
+# creates the file.
+if [[ -r /etc/kosmos/proxy.env ]]; then
+  # shellcheck disable=SC1091
+  source /etc/kosmos/proxy.env
+fi
+
+# Local k3s services bypass Mihomo because it cannot resolve *.localhost.
+upper_no_proxy="${NO_PROXY:-${no_proxy:-localhost,127.0.0.1,::1}}"
+lower_no_proxy="${no_proxy:-${NO_PROXY:-localhost,127.0.0.1,::1}}"
+export NO_PROXY="${upper_no_proxy},*.localhost"
+export no_proxy="${lower_no_proxy},*.localhost"
 
 exec /home/neil/.local/share/npm-global/bin/openclaw "$@"

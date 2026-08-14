@@ -5,6 +5,7 @@
   ...
 }: let
   cfg = config.kosmos.wsl.mihomo;
+  inherit (config.kosmos.wsl) proxy;
   prepareMihomoConfig = pkgs.writeShellApplication {
     name = "kosmos-prepare-mihomo-config";
     runtimeInputs = [pkgs.yq];
@@ -38,12 +39,10 @@ in {
         Restart = "on-failure";
       };
 
-      # 10.42.0.1 is the cni0 gateway for this single-node cluster's default
-      # 10.42.0.0/16 Pod CIDR. Keep this address and the Pod proxy URLs aligned.
       sockets.mihomo-cni-proxy = {
         description = "Mihomo proxy listener for k3s Pods";
         wantedBy = ["sockets.target"];
-        listenStreams = ["10.42.0.1:7890"];
+        listenStreams = [proxy.podEndpoint];
         socketConfig.FreeBind = true;
       };
 
@@ -51,7 +50,7 @@ in {
         description = "Forward k3s Pod proxy traffic to Mihomo";
         requires = ["mihomo.service"];
         after = ["mihomo.service"];
-        serviceConfig.ExecStart = "${pkgs.systemd}/lib/systemd/systemd-socket-proxyd 127.0.0.1:7890";
+        serviceConfig.ExecStart = "${pkgs.systemd}/lib/systemd/systemd-socket-proxyd ${proxy.localEndpoint}";
       };
     };
   };
