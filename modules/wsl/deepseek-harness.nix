@@ -6,7 +6,9 @@
   ...
 }: let
   cfg = config.kosmos.wsl.deepseekHarness;
-  repository = "/home/neil/code/projects/tta-lab/deepseek-harness";
+  # The packed tree gives bare plugins a resolvable npm dependency base.
+  runtime = "/home/neil/.local/share/dsh-runtime";
+  entrypoint = "${runtime}/node_modules/@deepseek-ai/dsh/lib/bin.js";
   stateDirectory = "/home/neil/.local/state/dsh";
   proxyUrl = config.kosmos.wsl.k3sProxyUrl;
   noProxy = "localhost,127.0.0.1,::1";
@@ -28,7 +30,7 @@ in {
       Unit.Description = "DeepSeek Harness web UI";
       Install.WantedBy = ["default.target"];
       Service = {
-        WorkingDirectory = repository;
+        WorkingDirectory = "/home/neil";
         ExecStartPre = lib.escapeShellArgs [
           "${pkgs.coreutils}/bin/install"
           "-d"
@@ -37,8 +39,9 @@ in {
           stateDirectory
         ];
         ExecStart = lib.escapeShellArgs [
-          (lib.getExe pkgsUnstable.pnpm)
-          "dsh"
+          (lib.getExe pkgsUnstable.nodejs_24)
+          "--expose-internals"
+          entrypoint
           "web"
           "--host"
           "127.0.0.1"
