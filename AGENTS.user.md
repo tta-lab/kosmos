@@ -80,7 +80,7 @@ anno = annotate (task annotation)
 
 ## FlickNote Projects
 
-Use FlickNote MCP `note_*` and `project_*` tools for all agent-initiated note and project operations. Do not invoke FlickNote note-management CLI commands through the shell. If MCP is unavailable or lacks the required operation, report the blocker instead of falling back to the CLI. Starting the MCP server and managing `flicknote-sync` are operational exceptions.
+Use FlickNote MCP `note_*` and `project_*` tools for all agent-initiated note and project operations. Do not invoke FlickNote note-management CLI commands through the shell. If MCP is unavailable or lacks the required operation, report the blocker instead of falling back to the CLI. Starting the MCP server and managing the FlickNote daemon are operational exceptions.
 
 Use only these three projects for all agent-written notes:
 

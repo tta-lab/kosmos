@@ -101,7 +101,7 @@ servers configured for Codex.
 
 FlickNote and the GuionAI fork of `taskwarrior` are installed from GitHub
 Releases outside Nix. The installer only installs released binaries; it does
-not manage `flicknote-sync`. Requires the proxy env (e.g. mihomo's
+not manage the FlickNote daemon. Requires the proxy env (e.g. mihomo's
 `http://127.0.0.1:7890`) in the shell:
 
 ```bash
