@@ -85,6 +85,7 @@ in {
         NPM_CONFIG_PREFIX = "/home/neil/.local/share/npm-global";
         EDITOR = "hx";
         VISUAL = "hx";
+        PI_RETRY_STALL_TIMEOUT_MS = "0";
       };
 
       home.sessionPath = [
@@ -95,6 +96,8 @@ in {
 
       programs = {
         home-manager.enable = true;
+
+        zsh.enable = true;
 
         bash.enable = true;
 
