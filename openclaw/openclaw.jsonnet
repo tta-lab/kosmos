@@ -8,6 +8,13 @@
   gateway: {
     mode: "local",
     controlUi: { allowedOrigins: ["http://openclaw.localhost:17480"] },
+    auth: {
+      token: {
+        source: "env",
+        provider: "default",
+        id: "OPENCLAW_GATEWAY_TOKEN",
+      },
+    },
   },
   // Give each DM peer a stable identity for user-scoped Hindsight banks.
   session: { dmScope: "per-peer" },

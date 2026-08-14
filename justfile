@@ -148,7 +148,8 @@ k3s-status:
 # restart the gateway (managed by \`openclaw gateway install\`).
 openclaw-deploy:
   @install -m 0700 scripts/miniflux-mcp-wrapper ~/.local/bin/miniflux-mcp-wrapper
-  @jsonnet openclaw/openclaw.jsonnet | openclaw config patch --stdin
+  @export OPENCLAW_GATEWAY_TOKEN="$(< ~/.config/openclaw/gateway-token)"; \
+    jsonnet openclaw/openclaw.jsonnet | openclaw config patch --stdin
   @systemctl --user restart openclaw-gateway
 
 sync-codex-auth direction:
