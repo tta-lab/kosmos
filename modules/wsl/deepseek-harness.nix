@@ -28,6 +28,7 @@
     "--trusted-host"
     "dsh.localhost:17480"
   ];
+  # The launcher handles the secret; systemd retains the non-secret DSH command.
   dshStart = pkgs.writeShellScript "dsh-start" ''
     set -eu
     key="$( ${pkgs.coreutils}/bin/cat -- ${lib.escapeShellArg deepseekKey} )"
@@ -36,7 +37,7 @@
       exit 1
     fi
     export DEEPSEEK_API_KEY="$key"
-    exec ${lib.escapeShellArgs dshCommand}
+    exec "$@"
   '';
   proxyUrl = config.kosmos.wsl.k3sProxyUrl;
   noProxy = "localhost,127.0.0.1,::1";
@@ -66,7 +67,7 @@ in {
           "0700"
           stateDirectory
         ];
-        ExecStart = dshStart;
+        ExecStart = lib.escapeShellArgs ([dshStart] ++ dshCommand);
         Restart = "on-failure";
         RestartSec = 5;
         UMask = "0077";

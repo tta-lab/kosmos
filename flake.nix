@@ -408,7 +408,7 @@
         assert dshUnit.Service.WorkingDirectory == "/home/neil";
         assert builtins.elem "DSH_HOME=/home/neil/.local/state/dsh" dshUnit.Service.Environment;
         assert dshKey.path == "/home/neil/.config/openclaw/deepseek-key";
-        assert dshUnit.Service.ExecStart != "";
+        assert nixpkgs.lib.hasInfix "--patch" dshUnit.Service.ExecStart;
         assert !builtins.any (entry: nixpkgs.lib.hasPrefix "DEEPSEEK_API_KEY=" entry) dshUnit.Service.Environment;
         assert services.bookorbit.name == "BookOrbit";
         assert services.bookorbit.targetPort == 17480;
