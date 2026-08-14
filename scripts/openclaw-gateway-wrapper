@@ -35,4 +35,8 @@ source /etc/kosmos/proxy.env
 export NO_PROXY="${NO_PROXY},*.localhost"
 export no_proxy="${no_proxy},*.localhost"
 
+# The canonical K3s gateway listens on IPv4 loopback; Node otherwise tries ::1
+# first for *.localhost, which makes Hindsight's external API health check fail.
+export NODE_OPTIONS="${NODE_OPTIONS:+${NODE_OPTIONS} }--dns-result-order=ipv4first"
+
 exec /home/neil/.local/share/npm-global/bin/openclaw "$@"
