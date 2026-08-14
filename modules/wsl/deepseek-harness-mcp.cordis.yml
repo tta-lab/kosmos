@@ -1,0 +1,21 @@
+# Declarative DSH MCP clients. Server credentials remain outside this file.
+- insert:
+    - id: mcp-flicknote
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: flicknote
+        transport: stdio
+        command: flicknote
+        args: [mcp]
+        cwd: !!js process.cwd()
+
+    - id: mcp-miniflux
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: miniflux
+        transport: stdio
+        command: /home/neil/.local/bin/miniflux-mcp-wrapper
+        cwd: !!js process.cwd()
+        env:
+          MINIFLUX_URL: !!js process.env.MINIFLUX_URL
+          MINIFLUX_USERNAME: !!js process.env.MINIFLUX_USERNAME

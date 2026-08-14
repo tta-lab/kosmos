@@ -1,6 +1,6 @@
 # DeepSeek Harness MCP integration (Kosmos Web profile)
 
-**Scope.** Research only, against the installed local DeepSeek Harness (DSH) checkout at [`47f943859bef60e4160492346772ded9b24f765a`](https://github.com/tta-lab/deepseek-harness/tree/47f943859bef60e4160492346772ded9b24f765a). No server or configuration was installed or changed.
+**Scope.** Primary-source research against the installed local DeepSeek Harness (DSH) checkout at [`47f943859bef60e4160492346772ded9b24f765a`](https://github.com/tta-lab/deepseek-harness/tree/47f943859bef60e4160492346772ded9b24f765a), used to select the Miniflux and FlickNote integration. It describes the integration interface rather than a server manifest.
 
 ## Findings
 

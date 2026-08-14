@@ -10,6 +10,36 @@
   runtime = "/home/neil/.local/share/dsh-runtime";
   entrypoint = "${runtime}/node_modules/@deepseek-ai/dsh/lib/bin.js";
   stateDirectory = "/home/neil/.local/state/dsh";
+  mcpPatch = ./deepseek-harness-mcp.cordis.yml;
+  codexConfig = "/home/neil/.codex/config.toml";
+  minifluxEnvironment = pkgs.writeText "dsh-miniflux-environment.py" ''
+    import os
+    import sys
+    import tomllib
+
+    def fail() -> None:
+        print("dsh: cannot load Miniflux MCP settings from ~/.codex/config.toml", file=sys.stderr)
+        raise SystemExit(1)
+
+    if len(sys.argv) < 3:
+        fail()
+
+    try:
+        with open(sys.argv[1], "rb") as source:
+            config = tomllib.load(source)
+        environment = config["mcp_servers"]["miniflux"]["env"]
+        url = environment["MINIFLUX_URL"]
+        username = environment["MINIFLUX_USERNAME"]
+    except (KeyError, OSError, TypeError, tomllib.TOMLDecodeError):
+        fail()
+
+    if not all(isinstance(value, str) and value and "\n" not in value and "\r" not in value for value in (url, username)):
+        fail()
+
+    os.environ["MINIFLUX_URL"] = url
+    os.environ["MINIFLUX_USERNAME"] = username
+    os.execvpe(sys.argv[2], sys.argv[2:], os.environ)
+  '';
   # Remote DSH credential writes stay loopback-only by design. Reuse the
   # existing agenix-managed DeepSeek key instead of weakening that boundary.
   deepseekKey = config.age.secrets."openclaw-deepseek-key".path;
@@ -18,6 +48,8 @@
     "--expose-internals"
     entrypoint
     "web"
+    "--patch"
+    (toString mcpPatch)
     "--host"
     "127.0.0.1"
     "--port"
@@ -33,7 +65,7 @@
       exit 1
     fi
     export DEEPSEEK_API_KEY="$key"
-    exec ${lib.escapeShellArgs dshCommand}
+    exec ${pkgs.python3}/bin/python3 ${minifluxEnvironment} ${lib.escapeShellArg codexConfig} ${lib.escapeShellArgs dshCommand}
   '';
   proxyUrl = config.kosmos.wsl.k3sProxyUrl;
   noProxy = "localhost,127.0.0.1,::1";
