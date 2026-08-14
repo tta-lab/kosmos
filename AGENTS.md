@@ -35,6 +35,9 @@ reach every HTTP service through the subscriber gateway port — never configure
 `[[subscriber.services]]` for HTTP; that is only for raw TCP/SSH services like
 `dagger`. See `docs/wsl-devops-runbook.md` for the full service model.
 
+**Changing DSH MCP clients:** Read `docs/dsh-mcp-integration.md` before changing
+the overlay, stdio command, or credential handoff.
+
 ## Module Map
 
 | What you're changing | File(s) |

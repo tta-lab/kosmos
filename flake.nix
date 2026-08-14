@@ -402,6 +402,8 @@
         assert services.dsh.targetPort == 3080;
         assert services.dsh.allow != null;
         assert builtins.length services.dsh.allow == 1;
+        # Dagger and DSH share macOnlyServicesAllow in kepos-neo.nix.
+        assert services.dsh.allow == services.dagger.allow;
         assert dshUnit.Install.WantedBy == ["default.target"];
         assert dshUnit.Service.WorkingDirectory == "/home/neil";
         assert builtins.elem "DSH_HOME=/home/neil/.local/state/dsh" dshUnit.Service.Environment;
