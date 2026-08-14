@@ -20,6 +20,7 @@ _: {
     ../../modules/wsl/kepos-neo.nix
     ../../modules/wsl/kepos-tunnel.nix
     ../../modules/wsl/navidrome.nix
+    ../../modules/wsl/deepseek-harness.nix
     ../../modules/wsl/apt-cacher-ng.nix
     ../../modules/wsl/openvpn.nix
     ../../modules/configs.nix
@@ -41,6 +42,7 @@ _: {
     keposTunnel.enable = true;
     mihomo.enable = true;
     navidrome.enable = true;
+    deepseekHarness.enable = true;
   };
   system.stateVersion = "25.05";
 }

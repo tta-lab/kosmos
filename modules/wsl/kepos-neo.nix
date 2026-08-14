@@ -45,6 +45,7 @@
     subscribers.guion-worker-2
     subscribers.sw-server
   ];
+  macOnlyServicesAllow = [subscribers.mac];
 in {
   home-manager.users.neil = {
     imports = [kepos-neo.homeManagerModules.default];
@@ -78,10 +79,15 @@ in {
           name = "Navidrome";
           targetPort = 4533;
         };
+        dsh = {
+          name = "DeepSeek Harness";
+          targetPort = 3080;
+          allow = macOnlyServicesAllow;
+        };
         dagger = {
           name = "Dagger";
           targetPort = 8080;
-          allow = [subscribers.mac];
+          allow = macOnlyServicesAllow;
         };
         ente = {
           name = "Ente Photos";
@@ -110,12 +116,12 @@ in {
         hindsight = {
           name = "Hindsight";
           targetPort = 17480;
-          allow = [subscribers.mac];
+          allow = macOnlyServicesAllow;
         };
         hindsightui = {
           name = "Hindsight UI";
           targetPort = 17480;
-          allow = [subscribers.mac];
+          allow = macOnlyServicesAllow;
         };
         mihomo = {
           name = "Mihomo";
@@ -125,12 +131,12 @@ in {
           name = "OpenClaw";
           # Control UI; gateway auth via OPENCLAW_GATEWAY_TOKEN.
           targetPort = 18789;
-          allow = [subscribers.mac];
+          allow = macOnlyServicesAllow;
         };
         mihomo-dashboard = {
           name = "Mihomo Dashboard";
           targetPort = 9090;
-          allow = [subscribers.mac];
+          allow = macOnlyServicesAllow;
         };
         ssh = {
           name = "SSH";

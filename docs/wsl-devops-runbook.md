@@ -10,22 +10,27 @@ objects. A NixOS switch never applies Tanka.
 - Woodpecker: `http://woodpecker.localhost:17480`
 - Dagger: `tcp://dagger.devops.svc.cluster.local:8080` in-cluster and
   `tcp://127.0.0.1:8080` for the local CLI
+- DeepSeek Harness: `http://dsh.localhost:17480` through Kepos (Mac-only)
 - k3s API: `https://127.0.0.1:26443`
 - Anki Sync: `http://anki.localhost:17480/` through Kepos
 - Miniflux: `http://miniflux.localhost:17480` through Kepos
 - Hindsight API and MCP: `http://hindsight.localhost:17480` through Kepos
 - Hindsight Control Plane: `http://hindsightui.localhost:17480` through Kepos
 
-Caddy binds the host gateway only on `127.0.0.1:17480`. CoreDNS rewrites the
-canonical `.localhost` names to that same gateway inside the cluster. This
-keeps browser, Git, Woodpecker OAuth, webhooks, and container-registry URLs
-consistent.
+For Kubernetes-backed HTTP apps, Caddy binds the host gateway only on
+`127.0.0.1:17480`. CoreDNS rewrites their canonical `.localhost` names to that
+same gateway inside the cluster. This keeps browser, Git, Woodpecker OAuth,
+webhooks, and container-registry URLs consistent. Direct loopback HTTP services
+bypass Caddy and CoreDNS; see the service model below.
 
 Kepos publishes application service IDs including:
 
 - `forgejo` and `woodpecker` both target port `17480`; the preserved HTTP Host
   header selects the Caddy route.
 - `navidrome` targets port `4533`.
+- `dsh` targets its loopback-only Home Manager user service on port `3080` and
+  is restricted to the named Mac subscriber. Kepos exposes it as
+  `http://dsh.localhost:17480`; it has no Caddy or CoreDNS route.
 - `dagger` targets the Dagger engine on port `8080` and is restricted to the
   named Mac subscriber. Other allowed subscribers neither see nor can open it.
 - `ssh` targets port `22`.
@@ -46,33 +51,39 @@ The publisher advertises every service as a TCP tunnel to a WSL loopback port
 service, decided on the subscriber side (Kepos Desktop / CLI), not by the
 publisher:
 
-- **HTTP web services** (`bookorbit`, `forgejo`, `woodpecker`, `memos`,
-  `anki`, `hindsight`, `hindsightui`, `miniflux`, `ente`, …): all target
-  the canonical gateway port `17480` and are routed by the preserved
-  `Host` header. Peers reach **every** HTTP service through the subscriber's
-  gateway port, `http://<id>.localhost:17480` (the subscriber gateway
-  defaults to `17480`, `DEFAULT_GATEWAY_PORT` in kepos-neo). **No
-  `[[subscriber.services]]` entry is needed.**
+- **Gateway-routed HTTP web services** (`bookorbit`, `forgejo`,
+  `woodpecker`, `memos`, `anki`, `hindsight`, `hindsightui`, `miniflux`,
+  `ente`, …): target the canonical gateway port `17480` and are routed by the
+  preserved `Host` header.
+- **Direct loopback HTTP services** (`dsh`): a Home Manager user service binds
+  its own `127.0.0.1` port and Kepos publishes that port directly. It has no
+  Tanka environment, Caddy route, or CoreDNS rewrite.
 - **Raw TCP/SSH services** (`dagger`, `mihomo`, `ssh`): the peer must add a
   `[[subscriber.services]]` entry with a free `local_port` to its
-  `~/.config/kepos/config.toml` and restart Kepos Desktop; seeing the
-  service in the list alone does not create the local listener.
+  `~/.config/kepos/config.toml` and restart Kepos Desktop; seeing the service
+  in the list alone does not create the local listener.
 
-The Kepos desktop UI shows HTTP services with an Open action and raw
+Both kinds of HTTP service reach the peer through the subscriber gateway at
+`http://<id>.localhost:17480` (the default is `17480`,
+`DEFAULT_GATEWAY_PORT` in kepos-neo). **No `[[subscriber.services]]` entry is
+needed.** The Kepos desktop UI shows HTTP services with an Open action and raw
 TCP/SSH services with a Copy command/URL action. The handler table lives in
 `kepos-neo` `src/runtime/service-handlers.ts` (`httpUrl` → HTTP,
 `localCommand` → TCP/SSH); unknown ids fall back to the HTTP handler.
 
-Do not add `[[subscriber.services]]` entries for HTTP web services — the
-subscriber gateway port already serves them all. Adding a new HTTP app to the
-stack is purely a publisher-side change (Tanka environment, gateway route,
-`modules/wsl/kepos-neo.nix` entry with `targetPort = 17480`).
+Do not add `[[subscriber.services]]` entries for any HTTP service — the
+subscriber gateway port already serves them all. Adding a gateway-routed HTTP
+app needs a Tanka environment, gateway route, and
+`modules/wsl/kepos-neo.nix` entry with `targetPort = 17480`. Adding a direct
+loopback HTTP app needs a Home Manager user service bound to `127.0.0.1` plus
+its direct-port publisher entry in `modules/wsl/kepos-neo.nix`.
 
 The separate Ente Photos stack publishes `ente` and `ente-storage`, both through
 the canonical gateway on port `17480`. See [ente-photos.md](ente-photos.md) for
 its deployment order and mobile acceptance checks.
 
-Local WSL clients connect directly to the loopback Caddy endpoint. They do not
+Local WSL clients connect directly to their loopback target: Caddy for
+gateway-routed apps or the service port for direct loopback apps. They do not
 traverse Kepos.
 
 ## Configuration checks

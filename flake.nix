@@ -379,6 +379,8 @@
       kepos-publisher-services = let
         cfg = self.nixosConfigurations.wsl.config;
         inherit (cfg.home-manager.users.neil.services.kepos.publisher) services;
+        dshUnit = cfg.home-manager.users.neil.systemd.user.services.dsh;
+        dshKey = cfg.age.secrets."openclaw-deepseek-key";
         loopbackHosts = cfg.networking.hosts."127.0.0.1";
       in
         assert builtins.all (service: services.${service}.allow == null) [
@@ -396,6 +398,18 @@
         assert services.dagger.name == "Dagger";
         assert services.dagger.targetPort == 8080;
         assert services.dagger.allow != null;
+        assert services.dsh.name == "DeepSeek Harness";
+        assert services.dsh.targetPort == 3080;
+        assert services.dsh.allow != null;
+        assert builtins.length services.dsh.allow == 1;
+        # Dagger and DSH share macOnlyServicesAllow in kepos-neo.nix.
+        assert services.dsh.allow == services.dagger.allow;
+        assert dshUnit.Install.WantedBy == ["default.target"];
+        assert dshUnit.Service.WorkingDirectory == "/home/neil";
+        assert builtins.elem "DSH_HOME=/home/neil/.local/state/dsh" dshUnit.Service.Environment;
+        assert dshKey.path == "/home/neil/.config/openclaw/deepseek-key";
+        assert nixpkgs.lib.hasInfix "--patch" dshUnit.Service.ExecStart;
+        assert !builtins.any (entry: nixpkgs.lib.hasPrefix "DEEPSEEK_API_KEY=" entry) dshUnit.Service.Environment;
         assert services.bookorbit.name == "BookOrbit";
         assert services.bookorbit.targetPort == 17480;
         assert services.anki.name == "Anki";
