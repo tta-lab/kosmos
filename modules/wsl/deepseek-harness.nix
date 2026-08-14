@@ -10,6 +10,31 @@
   runtime = "/home/neil/.local/share/dsh-runtime";
   entrypoint = "${runtime}/node_modules/@deepseek-ai/dsh/lib/bin.js";
   stateDirectory = "/home/neil/.local/state/dsh";
+  # Remote DSH credential writes stay loopback-only by design. Reuse the
+  # existing agenix-managed DeepSeek key instead of weakening that boundary.
+  deepseekKey = config.age.secrets."openclaw-deepseek-key".path;
+  dshCommand = [
+    (lib.getExe pkgsUnstable.nodejs_24)
+    "--expose-internals"
+    entrypoint
+    "web"
+    "--host"
+    "127.0.0.1"
+    "--port"
+    "3080"
+    "--trusted-host"
+    "dsh.localhost:17480"
+  ];
+  dshStart = pkgs.writeShellScript "dsh-start" ''
+    set -eu
+    key="$( ${pkgs.coreutils}/bin/cat -- ${lib.escapeShellArg deepseekKey} )"
+    if [ -z "$key" ]; then
+      echo "dsh: DeepSeek credential is empty" >&2
+      exit 1
+    fi
+    export DEEPSEEK_API_KEY="$key"
+    exec ${lib.escapeShellArgs dshCommand}
+  '';
   proxyUrl = config.kosmos.wsl.k3sProxyUrl;
   noProxy = "localhost,127.0.0.1,::1";
   proxyEnvironment = [
@@ -38,18 +63,7 @@ in {
           "0700"
           stateDirectory
         ];
-        ExecStart = lib.escapeShellArgs [
-          (lib.getExe pkgsUnstable.nodejs_24)
-          "--expose-internals"
-          entrypoint
-          "web"
-          "--host"
-          "127.0.0.1"
-          "--port"
-          "3080"
-          "--trusted-host"
-          "dsh.localhost:17480"
-        ];
+        ExecStart = dshStart;
         Restart = "on-failure";
         RestartSec = 5;
         UMask = "0077";

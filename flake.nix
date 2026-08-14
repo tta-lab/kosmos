@@ -380,6 +380,7 @@
         cfg = self.nixosConfigurations.wsl.config;
         inherit (cfg.home-manager.users.neil.services.kepos.publisher) services;
         dshUnit = cfg.home-manager.users.neil.systemd.user.services.dsh;
+        dshKey = cfg.age.secrets."openclaw-deepseek-key";
         loopbackHosts = cfg.networking.hosts."127.0.0.1";
       in
         assert builtins.all (service: services.${service}.allow == null) [
@@ -403,8 +404,9 @@
         assert dshUnit.Install.WantedBy == ["default.target"];
         assert dshUnit.Service.WorkingDirectory == "/home/neil";
         assert builtins.elem "DSH_HOME=/home/neil/.local/state/dsh" dshUnit.Service.Environment;
-        assert nixpkgs.lib.hasInfix "--expose-internals /home/neil/.local/share/dsh-runtime/node_modules/@deepseek-ai/dsh/lib/bin.js web" dshUnit.Service.ExecStart;
-        assert nixpkgs.lib.hasInfix "--host 127.0.0.1 --port 3080 --trusted-host dsh.localhost:17480" dshUnit.Service.ExecStart;
+        assert dshKey.path == "/home/neil/.config/openclaw/deepseek-key";
+        assert nixpkgs.lib.hasInfix "-dsh-start" dshUnit.Service.ExecStart;
+        assert !builtins.any (entry: nixpkgs.lib.hasPrefix "DEEPSEEK_API_KEY=" entry) dshUnit.Service.Environment;
         assert services.bookorbit.name == "BookOrbit";
         assert services.bookorbit.targetPort == 17480;
         assert services.anki.name == "Anki";
