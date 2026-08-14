@@ -50,16 +50,20 @@ controller on port `9090` and published to the Mac through the Kepos
 `mihomo-dashboard` service. Enter the controller secret from Clash Verge when
 the dashboard asks for it; agents must not read that value. The standalone DNS
 listener is disabled while Mihomo's internal DNS processing remains enabled.
-Mihomo binds the mixed port to loopback so the systemd CNI forwarder can own
-`10.42.0.1:7890` for Pods. This address split gives Pods a stable proxy endpoint;
-it is not intended as a general policy against user-configured LAN listeners.
-`10.42.0.1` depends on this single-node cluster's default `10.42.0.0/16` Pod
-CIDR, so the socket and Pod proxy URLs must change together if it changes. The
-NixOS firewall stays masked on WSL by design.
+Mihomo binds the mixed port to loopback so the systemd CNI forwarder can own a
+stable Pod proxy endpoint. `modules/wsl/proxy-topology.json` is the shared
+topology source for that endpoint, the Pod and Service CIDRs, and the local
+listener; both Nix and Tanka consume it. This address split is not intended as
+a general policy against user-configured LAN listeners. The NixOS firewall stays
+masked on WSL by design.
 The service loads Clash Verge's generated runtime YAML from the mounted Windows
 profile through systemd credentials, so the secret-bearing file does not enter
-Git or the Nix store. The `kosmos-wsl-proxy-env` helper remains available for
-manual bootstrap fallback.
+Git or the Nix store. `kosmos.wsl.proxy` in `modules/wsl/proxy.nix`, derived
+from `modules/wsl/proxy-topology.json`, is the WSL source of truth for the URL
+and base bypass list. It generates the shell and service proxy variables and
+`/etc/kosmos/proxy.env` for self-managed services. The
+`kosmos-wsl-proxy-env` helper remains a separate dynamic manual bootstrap
+fallback. See [environment ownership](docs/environment.md).
 
 Verify both proxy protocols locally:
 
@@ -111,9 +115,8 @@ The Go binaries live in `~/go/bin`, which is added to Fish and to the user servi
 
 The user services are managed by Home Manager. NixOS only enables `linger` for `neil` so the user manager can keep running without an active login shell.
 
-Fish and the user services use the local Mihomo systemd service through
-`HTTP_PROXY`/`HTTPS_PROXY`/`ALL_PROXY` (and lowercase equivalents) at
-`http://127.0.0.1:7890`.
+Fish, Zsh, and the Home Manager user services derive their proxy environment
+from `kosmos.wsl.proxy`; see [environment ownership](docs/environment.md).
 
 ## Keep WSL Running After SSH Disconnect
 

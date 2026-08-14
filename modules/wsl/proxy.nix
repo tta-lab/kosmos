@@ -3,32 +3,86 @@
   lib,
   ...
 }: let
-  mihomoProxyUrl = "http://127.0.0.1:7890";
-  noProxy = "localhost,127.0.0.1,::1";
+  topology = builtins.fromJSON (builtins.readFile ./proxy-topology.json);
+  localEndpoint = "${topology.listener.host}:${toString topology.listener.port}";
+  podEndpoint = "${topology.podProxyHost}:${toString topology.listener.port}";
+  cfg = config.kosmos.wsl.proxy;
+  noProxy = lib.concatStringsSep "," cfg.noProxy;
+  proxyEnvironment = {
+    HTTP_PROXY = cfg.url;
+    HTTPS_PROXY = cfg.url;
+    ALL_PROXY = cfg.url;
+    NO_PROXY = noProxy;
+    http_proxy = cfg.url;
+    https_proxy = cfg.url;
+    all_proxy = cfg.url;
+    no_proxy = noProxy;
+  };
+  shellEnvironment = lib.concatStringsSep "\n" (
+    lib.mapAttrsToList (name: value: "export ${name}=${lib.escapeShellArg value}") proxyEnvironment
+  );
 in {
-  options.kosmos.wsl = {
-    k3sProxyUrl = lib.mkOption {
+  options.kosmos.wsl.proxy = {
+    url = lib.mkOption {
       type = lib.types.str;
-      default = mihomoProxyUrl;
-      description = "HTTP proxy URL injected into K3s containerd environment (default: local Mihomo on 127.0.0.1:7890)";
+      readOnly = true;
+      description = "HTTP proxy URL for the local Mihomo listener";
+    };
+
+    noProxy = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      readOnly = true;
+      description = "Base addresses that bypass the local HTTP proxy";
+    };
+
+    localEndpoint = lib.mkOption {
+      type = lib.types.str;
+      readOnly = true;
+      description = "Local Mihomo listener endpoint";
+    };
+
+    podEndpoint = lib.mkOption {
+      type = lib.types.str;
+      readOnly = true;
+      description = "Mihomo endpoint reachable from k3s Pods";
+    };
+
+    podCidr = lib.mkOption {
+      type = lib.types.str;
+      readOnly = true;
+      description = "k3s Pod CIDR";
+    };
+
+    serviceCidr = lib.mkOption {
+      type = lib.types.str;
+      readOnly = true;
+      description = "k3s Service CIDR";
+    };
+
+    environment = lib.mkOption {
+      type = lib.types.attrsOf lib.types.str;
+      readOnly = true;
+      description = "Canonical upper- and lowercase HTTP proxy environment variables";
     };
   };
 
   config = {
+    kosmos.wsl.proxy = {
+      url = "http://${localEndpoint}";
+      noProxy = topology.baseNoProxy;
+      inherit localEndpoint podEndpoint;
+      inherit (topology) podCidr serviceCidr;
+      environment = proxyEnvironment;
+    };
+
     networking.proxy = {
-      default = mihomoProxyUrl;
+      default = cfg.url;
       inherit noProxy;
     };
 
-    environment.variables = {
-      HTTP_PROXY = mihomoProxyUrl;
-      HTTPS_PROXY = mihomoProxyUrl;
-      ALL_PROXY = mihomoProxyUrl;
-      NO_PROXY = noProxy;
-      http_proxy = mihomoProxyUrl;
-      https_proxy = mihomoProxyUrl;
-      all_proxy = mihomoProxyUrl;
-      no_proxy = noProxy;
+    environment = {
+      variables = proxyEnvironment;
+      etc."kosmos/proxy.env".text = "${shellEnvironment}\n";
     };
   };
 }

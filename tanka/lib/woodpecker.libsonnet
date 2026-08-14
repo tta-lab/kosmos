@@ -5,6 +5,7 @@ local labels(name) = {
 
 local serverLabels = labels('woodpecker');
 local agentLabels = labels('woodpecker-agent');
+local proxy = import 'proxy.libsonnet';
 
 {
   woodpeckerServer: {
@@ -44,8 +45,9 @@ local agentLabels = labels('woodpecker-agent');
               { name: 'WOODPECKER_ADMIN', value: 'neil' },
               {
                 name: 'WOODPECKER_ENVIRONMENT',
-                // 10.42.0.1 is cni0 for the current single-node 10.42.0.0/16 Pod CIDR.
-                value: '_EXPERIMENTAL_DAGGER_RUNNER_HOST:tcp://dagger:8080,GIT_CONFIG_COUNT:1,GIT_CONFIG_KEY_0:http.http://forgejo.localhost:17480.proxy,GIT_CONFIG_VALUE_0:http://canonical-gateway.devops.svc.cluster.local:17480,HTTPS_PROXY:http://10.42.0.1:7890',
+                value:
+                  '_EXPERIMENTAL_DAGGER_RUNNER_HOST:tcp://dagger:8080,GIT_CONFIG_COUNT:1,GIT_CONFIG_KEY_0:http.http://forgejo.localhost:17480.proxy,GIT_CONFIG_VALUE_0:http://canonical-gateway.devops.svc.cluster.local:17480,HTTPS_PROXY:'
+                  + proxy.podUrl,
               },
             ],
             ports: [

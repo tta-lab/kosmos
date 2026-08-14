@@ -1,9 +1,22 @@
 {
   config,
+  lib,
   pkgs,
   ...
 }: let
   k3sNodeAddress = "10.255.255.1";
+  inherit (config.kosmos.wsl) proxy;
+  k3sNoProxy = lib.concatStringsSep "," (
+    proxy.noProxy
+    ++ [
+      proxy.podCidr
+      proxy.serviceCidr
+      ".svc"
+      ".cluster.local"
+      "forgejo.localhost"
+      "woodpecker.localhost"
+    ]
+  );
 in {
   networking.hosts."127.0.0.1" = [
     "forgejo.localhost"
@@ -69,11 +82,12 @@ in {
         "k3s-node-address.service"
         "mihomo.service"
       ];
-      environment = {
-        HTTP_PROXY = config.kosmos.wsl.k3sProxyUrl;
-        HTTPS_PROXY = config.kosmos.wsl.k3sProxyUrl;
-        NO_PROXY = "localhost,127.0.0.1,::1,10.42.0.0/16,10.43.0.0/16,.svc,.cluster.local,forgejo.localhost,woodpecker.localhost";
-      };
+      environment =
+        proxy.environment
+        // {
+          NO_PROXY = k3sNoProxy;
+          no_proxy = k3sNoProxy;
+        };
     };
   };
 

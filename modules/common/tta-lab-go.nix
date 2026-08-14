@@ -20,12 +20,7 @@
     pkgs.openssh
     pkgs.tmux
   ]}:/run/current-system/sw/bin";
-  proxyPrelude = ''
-    export HTTP_PROXY=http://127.0.0.1:7890
-    export HTTPS_PROXY=http://127.0.0.1:7890
-    export ALL_PROXY=http://127.0.0.1:7890
-    export NO_PROXY=localhost,127.0.0.1,::1
-  '';
+  proxyEnvironment = lib.mapAttrsToList (name: value: "${name}=${value}") config.kosmos.wsl.proxy.environment;
   goEnv = [
     "GOPATH=${goPath}"
     "GOBIN=${goBin}"
@@ -39,13 +34,6 @@
       "HOME=/home/neil"
       "PATH=${servicePath}"
     ];
-  withProxy = name: command:
-    pkgs.writeShellScript name ''
-      set -eu
-      export PATH=/run/current-system/sw/bin:${servicePath}:$PATH
-      ${proxyPrelude}
-      exec ${command}
-    '';
 in {
   environment = {
     sessionVariables = {
@@ -67,9 +55,9 @@ in {
       };
       Install.WantedBy = ["default.target"];
       Service = {
-        ExecStart = withProxy "temenos-with-proxy" "${goBin}/temenos daemon";
+        ExecStart = "${goBin}/temenos daemon";
         Restart = "on-failure";
-        Environment = serviceEnv;
+        Environment = serviceEnv ++ proxyEnvironment;
         WorkingDirectory = "/home/neil";
       };
     };
@@ -81,17 +69,10 @@ in {
       };
       Install.WantedBy = ["default.target"];
       Service = {
-        ExecStart = withProxy "og-with-proxy" "${goBin}/og daemon run";
+        ExecStart = "${goBin}/og daemon run";
         Restart = "on-failure";
         EnvironmentFile = "-/home/neil/.config/ttal/.env";
-        Environment =
-          serviceEnv
-          ++ [
-            "HTTP_PROXY=http://127.0.0.1:7890"
-            "HTTPS_PROXY=http://127.0.0.1:7890"
-            "ALL_PROXY=http://127.0.0.1:7890"
-            "NO_PROXY=localhost,127.0.0.1,::1"
-          ];
+        Environment = serviceEnv ++ proxyEnvironment;
         WorkingDirectory = "/home/neil";
       };
     };

@@ -39,18 +39,7 @@
     export DEEPSEEK_API_KEY="$key"
     exec "$@"
   '';
-  proxyUrl = config.kosmos.wsl.k3sProxyUrl;
-  noProxy = "localhost,127.0.0.1,::1";
-  proxyEnvironment = [
-    "HTTP_PROXY=${proxyUrl}"
-    "HTTPS_PROXY=${proxyUrl}"
-    "ALL_PROXY=${proxyUrl}"
-    "NO_PROXY=${noProxy}"
-    "http_proxy=${proxyUrl}"
-    "https_proxy=${proxyUrl}"
-    "all_proxy=${proxyUrl}"
-    "no_proxy=${noProxy}"
-  ];
+  proxyEnvironment = lib.mapAttrsToList (name: value: "${name}=${value}") config.kosmos.wsl.proxy.environment;
 in {
   options.kosmos.wsl.deepseekHarness.enable = lib.mkEnableOption "the DeepSeek Harness web UI";
 

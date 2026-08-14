@@ -4,26 +4,18 @@
   ...
 }: let
   inherit (config.system) stateVersion;
+  proxyEnvironment = config.kosmos.wsl.proxy.environment;
 in {
   home-manager = {
     useGlobalPkgs = true;
     useUserPackages = true;
     backupFileExtension = "hm-backup";
 
-    users.neil = {lib, ...}: let
-      proxyUrl = "http://127.0.0.1:7890";
-      noProxy = "localhost,127.0.0.1,::1";
-      flicknoteProxyEnvironment = [
-        "HTTP_PROXY=${proxyUrl}"
-        "HTTPS_PROXY=${proxyUrl}"
-        "ALL_PROXY=${proxyUrl}"
-        "NO_PROXY=${noProxy}"
-        "http_proxy=${proxyUrl}"
-        "https_proxy=${proxyUrl}"
-        "all_proxy=${proxyUrl}"
-        "no_proxy=${noProxy}"
-      ];
-    in {
+    users.neil = {
+      lib,
+      config,
+      ...
+    }: {
       imports = [
       ];
 
@@ -94,11 +86,14 @@ in {
         };
       };
 
-      home.sessionVariables = {
-        NPM_CONFIG_PREFIX = "/home/neil/.local/share/npm-global";
-        EDITOR = "hx";
-        VISUAL = "hx";
-      };
+      home.sessionVariables =
+        {
+          NPM_CONFIG_PREFIX = "/home/neil/.local/share/npm-global";
+          EDITOR = "hx";
+          VISUAL = "hx";
+          PI_RETRY_STALL_TIMEOUT_MS = "0";
+        }
+        // proxyEnvironment;
 
       home.sessionPath = [
         "/home/neil/.local/bin"
@@ -106,26 +101,15 @@ in {
         "/home/neil/.local/share/npm-global/bin"
       ];
 
-      systemd.user.services.flicknote-sync = {
-        Unit = {
-          Description = "FlickNote sync daemon";
-          ConditionPathExists = "/home/neil/.local/bin/flicknote-sync";
-        };
-        Install.WantedBy = ["default.target"];
-        Service = {
-          ExecStart = "/home/neil/.local/bin/flicknote-sync";
-          Restart = "on-failure";
-          RestartSec = 5;
-          Environment =
-            [
-              "RUST_LOG=flicknote_sync=info,powersync=debug"
-            ]
-            ++ flicknoteProxyEnvironment;
-        };
-      };
-
       programs = {
         home-manager.enable = true;
+
+        zsh = {
+          enable = true;
+          initContent = ''
+            source ${config.home.sessionVariablesPackage}/etc/profile.d/hm-session-vars.sh
+          '';
+        };
 
         bash.enable = true;
 
@@ -135,14 +119,6 @@ in {
             if test -r "$HOME/.config/env"
               source "$HOME/.config/env"
             end
-            set -gx HTTP_PROXY http://127.0.0.1:7890
-            set -gx HTTPS_PROXY http://127.0.0.1:7890
-            set -gx ALL_PROXY http://127.0.0.1:7890
-            set -gx http_proxy http://127.0.0.1:7890
-            set -gx https_proxy http://127.0.0.1:7890
-            set -gx all_proxy http://127.0.0.1:7890
-            set -gx NO_PROXY localhost,127.0.0.1,::1
-            set -gx no_proxy localhost,127.0.0.1,::1
           '';
           functions = {
             p = ''

@@ -25,9 +25,14 @@ read_secret /home/neil/.config/openclaw/gateway-token OPENCLAW_GATEWAY_TOKEN
 # gateway unit PATH does not include.
 export PATH="$PATH:/home/neil/go/bin"
 
-# Extend the inherited no_proxy with *.localhost so local k3s services
-# (hindsight/flicknote) bypass the mihomo proxy; it can't resolve those names.
-export NO_PROXY="localhost,127.0.0.1,::1,*.localhost"
-export no_proxy="localhost,127.0.0.1,::1,*.localhost"
+# Source the non-secret, Nix-generated canonical proxy variables. The gateway
+# is self-managed, so this interface is mandatory after the WSL configuration
+# has been activated.
+# shellcheck disable=SC1091
+source /etc/kosmos/proxy.env
+
+# Local k3s services bypass Mihomo because it cannot resolve *.localhost.
+export NO_PROXY="${NO_PROXY},*.localhost"
+export no_proxy="${no_proxy},*.localhost"
 
 exec /home/neil/.local/share/npm-global/bin/openclaw "$@"

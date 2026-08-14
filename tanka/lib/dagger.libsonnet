@@ -2,6 +2,7 @@ local labels = {
   'app.kubernetes.io/name': 'dagger',
   'app.kubernetes.io/part-of': 'kosmos-devops',
 };
+local proxy = import 'proxy.libsonnet';
 
 {
   daggerConfig: {
@@ -51,12 +52,16 @@ local labels = {
             name: 'engine',
             image: 'registry.dagger.io/engine:v0.21.7',
             env: [
-              // 10.42.0.1 is cni0 for the current single-node 10.42.0.0/16 Pod CIDR.
-              { name: 'HTTP_PROXY', value: 'http://10.42.0.1:7890' },
-              { name: 'HTTPS_PROXY', value: 'http://10.42.0.1:7890' },
+              { name: 'HTTP_PROXY', value: proxy.podUrl },
+              { name: 'HTTPS_PROXY', value: proxy.podUrl },
               {
                 name: 'NO_PROXY',
-                value: 'localhost,127.0.0.1,::1,10.42.0.0/16,10.43.0.0/16,10.89.0.0/16,10.90.0.0/16,.svc,.cluster.local,forgejo.localhost,woodpecker.localhost',
+                value: proxy.clusterNoProxy([
+                  '10.89.0.0/16',
+                  '10.90.0.0/16',
+                  'forgejo.localhost',
+                  'woodpecker.localhost',
+                ]),
               },
             ],
             args: [

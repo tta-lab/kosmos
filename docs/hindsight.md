@@ -37,8 +37,8 @@ The manifest owns the non-secret policy: DeepSeek, `deepseek-v4-flash`, and the 
 worker ID `hindsight`. The NixOS unit synchronizes only the validated key into
 the local `hindsight/hindsight-env` Kubernetes Secret.
 
-Outbound LLM traffic uses the Mihomo listener exposed to Pods at
-`10.42.0.1:7890`; cluster and loopback traffic bypasses it.
+Outbound LLM traffic uses the Mihomo Pod endpoint from
+`modules/wsl/proxy-topology.json`; cluster and loopback traffic bypass it.
 
 ## Deploy
 
