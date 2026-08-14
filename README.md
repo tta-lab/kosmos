@@ -100,8 +100,9 @@ servers configured for Codex.
 ## TTA Lab Tools
 
 FlickNote and the GuionAI fork of `taskwarrior` are installed from GitHub
-Releases outside Nix (no systemd service — run the script directly). Requires
-the proxy env (e.g. mihomo's `http://127.0.0.1:7890`) in the shell:
+Releases outside Nix. The installer only installs released binaries; it does
+not manage `flicknote-sync`. Requires the proxy env (e.g. mihomo's
+`http://127.0.0.1:7890`) in the shell:
 
 ```bash
 bash scripts/install-tta-lab-releases
@@ -109,9 +110,8 @@ bash scripts/install-tta-lab-releases
 ./scripts/install-tta-lab-releases
 ```
 
-The installer verifies each GitHub release asset's SHA-256 digest, atomically
-installs binaries and shell completions to `~/.local`, and restarts
-`flicknote-sync`.
+The installer verifies each GitHub release asset's SHA-256 digest and
+atomically installs binaries and shell completions to `~/.local`.
 
 Frequently updated Go CLIs stay outside Nix for now and install from local
 checkouts into `~/go/bin`:

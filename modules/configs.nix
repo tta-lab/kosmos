@@ -10,20 +10,7 @@ in {
     useUserPackages = true;
     backupFileExtension = "hm-backup";
 
-    users.neil = {lib, ...}: let
-      proxyUrl = "http://127.0.0.1:7890";
-      noProxy = "localhost,127.0.0.1,::1";
-      flicknoteProxyEnvironment = [
-        "HTTP_PROXY=${proxyUrl}"
-        "HTTPS_PROXY=${proxyUrl}"
-        "ALL_PROXY=${proxyUrl}"
-        "NO_PROXY=${noProxy}"
-        "http_proxy=${proxyUrl}"
-        "https_proxy=${proxyUrl}"
-        "all_proxy=${proxyUrl}"
-        "no_proxy=${noProxy}"
-      ];
-    in {
+    users.neil = {lib, ...}: {
       imports = [
       ];
 
@@ -105,24 +92,6 @@ in {
         "/home/neil/go/bin"
         "/home/neil/.local/share/npm-global/bin"
       ];
-
-      systemd.user.services.flicknote-sync = {
-        Unit = {
-          Description = "FlickNote sync daemon";
-          ConditionPathExists = "/home/neil/.local/bin/flicknote-sync";
-        };
-        Install.WantedBy = ["default.target"];
-        Service = {
-          ExecStart = "/home/neil/.local/bin/flicknote-sync";
-          Restart = "on-failure";
-          RestartSec = 5;
-          Environment =
-            [
-              "RUST_LOG=flicknote_sync=info,powersync=debug"
-            ]
-            ++ flicknoteProxyEnvironment;
-        };
-      };
 
       programs = {
         home-manager.enable = true;

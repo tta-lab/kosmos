@@ -134,7 +134,6 @@ mv -f "$stage_dir/share/zsh/site-functions/_task" \
 mv -f "$stage_dir/share/fish/vendor_completions.d/task.fish" \
   "$install_root/share/fish/vendor_completions.d/task.fish"
 
-systemctl --user restart flicknote-sync.service
 printf 'Installed FlickNote %s and Taskwarrior %s\n' \
   "$(jq -r '.tag_name' <<<"$flicknote_release")" \
   "$(jq -r '.tag_name' <<<"$task_release")"

@@ -312,22 +312,11 @@
         expectedConfig = "/mnt/c/Users/white/AppData/Roaming/io.github.clash-verge-rev.clash-verge-rev/clash-verge.yaml";
         expectedProxy = "http://127.0.0.1:7890";
         expectedNoProxy = "localhost,127.0.0.1,::1";
-        expectedProxyEnvironment = [
-          "HTTP_PROXY=${expectedProxy}"
-          "HTTPS_PROXY=${expectedProxy}"
-          "ALL_PROXY=${expectedProxy}"
-          "NO_PROXY=${expectedNoProxy}"
-          "http_proxy=${expectedProxy}"
-          "https_proxy=${expectedProxy}"
-          "all_proxy=${expectedProxy}"
-          "no_proxy=${expectedNoProxy}"
-        ];
         has = value: list: builtins.elem value list;
         unit = cfg.systemd.services.mihomo;
         cniSocket = cfg.systemd.sockets.mihomo-cni-proxy;
         cniProxy = cfg.systemd.services.mihomo-cni-proxy;
         nixDaemonEnvironment = cfg.systemd.services.nix-daemon.environment;
-        flicknoteEnvironment = cfg.home-manager.users.neil.systemd.user.services.flicknote-sync.Service.Environment;
       in
         assert cfg.services.mihomo.enable;
         assert cfg.services.mihomo.configFile == expectedConfig;
@@ -357,7 +346,6 @@
         assert has "mihomo.service" cniProxy.requires;
         assert has "mihomo.service" cniProxy.after;
         assert nixpkgs.lib.hasSuffix "systemd-socket-proxyd 127.0.0.1:7890" cniProxy.serviceConfig.ExecStart;
-        assert builtins.all (value: has value flicknoteEnvironment) expectedProxyEnvironment;
           pkgs.runCommand "wsl-mihomo-service-check" {} "touch $out";
 
       nix-cache-policy = let
