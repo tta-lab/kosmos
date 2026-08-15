@@ -50,15 +50,10 @@
       audio: { enabled: true },
     },
   },
-  // ACP: run external coding harnesses (pi via pi-acp adapter) as subagents.
-  // OpenClaw owns sessions/channels/delivery; the harness owns its tools.
-  acp: {
-    enabled: true,
-    dispatch: { enabled: true },
-    backend: "acpx",
-    defaultAgent: "pi",
-    allowedAgents: ["pi"],
-  },
+  // ACP (pi subagent harness) is intentionally not used. Explicit null keeps
+  // the key pruned from the live config on every deploy (config patch treats
+  // null as delete; plain absence would leave stale keys behind).
+  acp: null,
   // deepseek provider comes from the @openclaw/deepseek-provider plugin
   // (installed via \`openclaw plugins install\`); its model catalog provides
   // the correct context windows (deepseek-v4-flash: 1M ctx / 384K max).
@@ -66,21 +61,9 @@
     slots: { memory: "hindsight-openclaw" },
     entries: {
       "memory-core": { enabled: false },
-      // ACP runtime backend: runs pi (pi-acp adapter) as a harness subagent.
-      // Non-interactive sessions cannot click permission prompts, so approve
-      // writes/exec headlessly; deny degrades gracefully instead of crashing.
-      // No mcpServers here: pi-acp does not support ACP MCP injection. pi
-      // loads its own MCP servers (incl. miniflux RSS) via mcporter, which
-      // imports [mcp_servers.*] from ~/.codex/config.toml.
-      acpx: {
-        enabled: true,
-        config: {
-          permissionMode: "approve-all",
-          nonInteractivePermissions: "deny",
-          timeoutSeconds: 180,
-          probeAgent: "pi",
-        },
-      },
+      // ACP runtime backend: bundled in 2026.8.1; explicitly disabled (same
+      // pattern as memory-core) since the ACP to pi subagent wiring is unused.
+      acpx: { enabled: false },
       "hindsight-openclaw": {
         enabled: true,
         hooks: { allowConversationAccess: true },
