@@ -24,27 +24,32 @@
       workspace: "/home/neil/.openclaw/workspace",
     },
   },
-  // Soniox TTS through the ziguijia-video-srt Bun CLI (tts-local-cli provider).
-  // Batch synthesis: OpenClaw waits for the CLI, imports the audio file, then
-  // plays/sends it (voice-note targets are transcoded to Opus via ffmpeg).
+  // Soniox TTS via the bundled @openclaw/soniox-provider plugin (2026.7.1-2
+  // ships TTS config under messages.tts; root `tts` key requires a newer build).
+  // MP3 audio files, native Opus voice notes, 16 kHz PCM telephony.
   // The API key is injected by scripts/openclaw-gateway-wrapper from the
   // agenix secret ~/.config/openclaw/soniox-key.
-  tts: {
-    auto: "always",
-    provider: "tts-local-cli",
-    providers: {
-      "tts-local-cli": {
-        command: "/run/current-system/sw/bin/bun",
-        args: [
-          "run",
-          "/home/neil/code/projects/tta-lab/kosmos/ziguijia-video-srt/src/tts.ts",
-          "{{Text}}",
-          "{{OutputPath}}",
-        ],
-        outputFormat: "mp3",
-        timeoutMs: 60000,
-        env: { SONIOX_API_KEY: "${SONIOX_API_KEY}" },
+  messages: {
+    tts: {
+      auto: "always",
+      provider: "soniox",
+      providers: {
+        soniox: {
+          apiKey: "${SONIOX_API_KEY}",
+          voice: "Adrian",
+          language: "en",
+        },
       },
+    },
+  },
+  // Soniox async speech-to-text (media-understanding) for inbound voice
+  // messages and attachments; same SONIOX_API_KEY as TTS.
+  tools: {
+    media: {
+      models: [
+        { provider: "soniox", model: "stt-async-v5", capabilities: ["audio"] },
+      ],
+      audio: { enabled: true },
     },
   },
   // ACP: run external coding harnesses (pi via pi-acp adapter) as subagents.
