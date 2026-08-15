@@ -16,11 +16,7 @@ instructions. It is outside this repository and untouched by
 
 ## GitHub & Forgejo
 
-- **Use a branch and PR for repository changes.** Never push directly to `main` or `master`.
-- **Use `og` for guarded git network operations** — `og push`, `og pull`, and `og tag`; never use `git push` directly. Commands resolve the current repo from git metadata and handle forge auth through the daemon.
-- **Prefer no amend, no force-push.** `og push --force` is force-with-lease and exists only for rebase/amend workflows. Avoid it unless you explicitly need to rewrite a remote branch you own.
-- **Use the `og` tool for repository cloning and PR operations.** Never use `gh`, `tea`, `curl`, or direct forge APIs for this work.
-- **Only humans merge pull requests.** Agents stop after creating and checking the PR, leaving the merge to the user.
+- Use the `og` tool for repository and forge operations.
 
 ## Tools
 
@@ -43,10 +39,6 @@ ordinary word. List projects only when discovery is needed.
   discovery, fetch primary pages, docs for library documentation, and sgraph
   for public source code. Prefer repository context and prior FlickNote notes
   when they already answer the question.
-- `og`: use for registered-repository clone, guarded push/pull, auth, and pull
-  request operations. Pass the exact project alias. Do not substitute raw
-  `git push`, gh, tea, curl, or provider APIs. Use the CLI only for operations
-  the tool intentionally omits, such as tag and daemon lifecycle.
 
 ## Deployment
 
