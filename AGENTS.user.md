@@ -16,7 +16,9 @@ instructions. It is outside this repository and untouched by
 
 ## GitHub & Forgejo
 
-- Use the `og` tool for repository and forge operations.
+- Use the `og` tool instead of `git` for clone, pull, and push, and instead
+  of `gh` or `tea` for forge authentication status, pull request lifecycle,
+  comments, and CI status or logs.
 
 ## Tools
 
