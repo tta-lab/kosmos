@@ -42,8 +42,8 @@
         provider: "volcengine",
         providers: {
           volcengine: {
-            resourceId: "volc.service_type.10029",
-            speakerVoice: "zh_female_cancan_mars_bigtts",
+            resourceId: "seed-tts-2.0",
+            speakerVoice: "zh_female_sajiaoxuemei_uranus_bigtts",
           },
         },
       },
@@ -52,18 +52,15 @@
     providers: {
       volcengine: {
         apiKey: "${VOLCENGINE_TTS_API_KEY}",
-        // 大陆端点 + 大陆资源 ID（实测可用）。音色可换：zh_female_qingxinnvsheng_mars_bigtts。
+        // 大陆端点 + TTS2.0 资源（实测可用）。音色：撒娇学妹；
+        // 备用：VV / saturn_zh_female_cancan_tob；旧资源 10029 下有灿灿/清新女生。
         baseUrl: "https://openspeech.bytedance.com/api/v3/tts/unidirectional",
-        resourceId: "volc.service_type.10029",
-        speakerVoice: "zh_female_cancan_mars_bigtts",
+        resourceId: "seed-tts-2.0",
+        speakerVoice: "zh_female_sajiaoxuemei_uranus_bigtts",
       },
-      // Soniox 保留为 fallback（英文 TTS / STT 继续用）。
-      soniox: {
-        apiKey: "${SONIOX_API_KEY}",
-        speakerVoice: "Mina",
-        language: "zh",
-        voice: null,
-      },
+      // Soniox 已完全退出 TTS（只用 Volcengine）；null 清除 live 配置残留。
+      // Soniox STT 继续走 tools.media（stt-async-v5）。
+      soniox: null,
     },
   },
   // Soniox async speech-to-text (media-understanding) for inbound voice
