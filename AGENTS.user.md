@@ -54,6 +54,11 @@ ordinary word. List projects only when discovery is needed.
 
 ## Testing
 
+- Tests must not read, write, replace, or delete live state, including a CLI’s
+  real data or config directories, installed executables, credentials, or
+  production services. Use test-owned temporary directories, fixtures, fakes,
+  or injected paths. Cleanup may remove only artifacts created by that test
+  inside its test-owned location.
 - Test observable behavior and stable contracts, not source shape. Use the smallest check that can catch a plausible regression.
 - Do not add tests for source text, prompts, documentation, or pure deletion/stale cleanup. Add a test only for runtime behavior, parsing or schema validity, a machine-consumed artifact, or an externally promised contract.
 
