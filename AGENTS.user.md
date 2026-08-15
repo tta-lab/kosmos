@@ -20,7 +20,7 @@ instructions. It is outside this repository and untouched by
 - **Use `og` for guarded git network operations** — `og push`, `og pull`, and `og tag`; never use `git push` directly. Commands resolve the current repo from git metadata and handle forge auth through the daemon.
 - **Prefer no amend, no force-push.** `og push --force` is force-with-lease and exists only for rebase/amend workflows. Avoid it unless you explicitly need to rewrite a remote branch you own.
 - **Use the `og` tool for repository cloning and PR operations.** Never use `gh`, `tea`, `curl`, or direct forge APIs for this work.
-- **The `og` tool does not merge** — if a merge is required, use the approved repo workflow/tool for merge rather than inventing a forge API call.
+- **Only humans merge pull requests.** Agents stop after creating and checking the PR, leaving the merge to the user.
 
 ## Tools
 
