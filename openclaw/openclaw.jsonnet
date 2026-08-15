@@ -24,21 +24,19 @@
       workspace: "/home/neil/.openclaw/workspace",
     },
   },
-  // Soniox TTS via the bundled @openclaw/soniox-provider plugin (2026.7.1-2
-  // ships TTS config under messages.tts; root `tts` key requires a newer build).
-  // MP3 audio files, native Opus voice notes, 16 kHz PCM telephony.
+  // Soniox TTS via the bundled soniox plugin (gateway runs from the openclaw
+  // fork checkout; root `tts` key requires 2026.8+). MP3 audio files, native
+  // Opus voice notes, 16 kHz PCM telephony.
   // The API key is injected by scripts/openclaw-gateway-wrapper from the
   // agenix secret ~/.config/openclaw/soniox-key.
-  messages: {
-    tts: {
-      auto: "always",
-      provider: "soniox",
-      providers: {
-        soniox: {
-          apiKey: "${SONIOX_API_KEY}",
-          voice: "Adrian",
-          language: "en",
-        },
+  tts: {
+    auto: "always",
+    provider: "soniox",
+    providers: {
+      soniox: {
+        apiKey: "${SONIOX_API_KEY}",
+        voice: "Adrian",
+        language: "en",
       },
     },
   },
@@ -60,8 +58,6 @@
     backend: "acpx",
     defaultAgent: "pi",
     allowedAgents: ["pi"],
-    maxConcurrentSessions: 4,
-    runtime: { ttlMinutes: 120 },
   },
   // deepseek provider comes from the @openclaw/deepseek-provider plugin
   // (installed via \`openclaw plugins install\`); its model catalog provides
