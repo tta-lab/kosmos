@@ -16,38 +16,31 @@ instructions. It is outside this repository and untouched by
 
 ## GitHub & Forgejo
 
-- **Use a branch and PR for repository changes.** Never push directly to `main` or `master`.
-- **Use `og` for guarded git network operations** — `og push`, `og pull`, and `og tag`; never use `git push` directly. Commands resolve the current repo from git metadata and handle forge auth through the daemon.
-- **Prefer no amend, no force-push.** `og push --force` is force-with-lease and exists only for rebase/amend workflows. Avoid it unless you explicitly need to rewrite a remote branch you own.
-- **Use the `og` MCP server for repository cloning and PR operations.** Never use `gh`, `tea`, `curl`, or Forgejo MCP for this work.
-- **The `og` MCP server does not merge** — if a merge is required, use the approved repo workflow/tool for merge rather than inventing a forge API call.
+- Use the `og` tool instead of `git` for clone, pull, and push, and instead
+  of `gh` or `tea` for forge authentication status, pull request lifecycle,
+  comments, and CI status or logs.
 
-## Organon MCPs
+## Tools
+
+These tools are available to you. When you need to use one, use the current
+harness’s tool discovery rather than guessing how to call it.
 
 When a short token is presented as a project or repository target—for example,
-“in ko” or “project ko”—treat it as a possible registered alias. Call project
-MCP `project_get` with that exact alias before interpreting it as a directory or
-ordinary word. Use `project_list` only when discovery is needed.
+“in ko” or “project ko”—treat it as a possible registered alias. Use the
+`project` tool with that exact alias before interpreting it as a directory or
+ordinary word. List projects only when discovery is needed.
 
-- `project` MCP: discover registered projects. Project-scoped MCP calls take the
+- `project`: discover registered projects. Project-scoped tool calls take the
   alias; do not reconstruct an absolute path for them.
-- `src` MCP: inspect a known file in a registered project by alias and
+- `src`: inspect a known file in a registered project by alias and
   repository-relative path. Use `symbols` for structure and IDs, then `read`
   for a symbol/section or bounded text. It is read-only. Use `rg` for
   repository-wide filename/text search and normal workspace editing tools for
   changes.
-- `skill` MCP: use `skill_get` when the user names a skill or the task clearly
-  matches an advertised skill. Use find/list only for discovery. Pass a project
-  alias when project-local skills should take precedence; do not preload
-  unrelated skills.
-- `web` MCP: use when the answer depends on external or current facts. Search for
+- `web`: use when the answer depends on external or current facts. Search for
   discovery, fetch primary pages, docs for library documentation, and sgraph
   for public source code. Prefer repository context and prior FlickNote notes
   when they already answer the question.
-- `og` MCP: use for registered-repository clone, guarded push/pull, auth, and pull
-  request operations. Pass the exact project alias. Do not substitute raw
-  `git push`, gh, tea, curl, or provider APIs. Use the CLI only for operations
-  MCP intentionally omits, such as tag and daemon lifecycle.
 
 ## Deployment
 
@@ -55,6 +48,11 @@ ordinary word. Use `project_list` only when discovery is needed.
 
 ## Testing
 
+- Tests must not read, write, replace, or delete live state, including a CLI’s
+  real data or config directories, installed executables, credentials, or
+  production services. Use test-owned temporary directories, fixtures, fakes,
+  or injected paths. Cleanup may remove only artifacts created by that test
+  inside its test-owned location.
 - Test observable behavior and stable contracts, not source shape. Use the smallest check that can catch a plausible regression.
 - Do not add tests for source text, prompts, documentation, or pure deletion/stale cleanup. Add a test only for runtime behavior, parsing or schema validity, a machine-consumed artifact, or an externally promised contract.
 
