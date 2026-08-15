@@ -24,6 +24,29 @@
       workspace: "/home/neil/.openclaw/workspace",
     },
   },
+  // Soniox TTS through the ziguijia-video-srt Bun CLI (tts-local-cli provider).
+  // Batch synthesis: OpenClaw waits for the CLI, imports the audio file, then
+  // plays/sends it (voice-note targets are transcoded to Opus via ffmpeg).
+  // The API key is injected by scripts/openclaw-gateway-wrapper from the
+  // agenix secret ~/.config/openclaw/soniox-key.
+  tts: {
+    auto: "always",
+    provider: "tts-local-cli",
+    providers: {
+      "tts-local-cli": {
+        command: "/run/current-system/sw/bin/bun",
+        args: [
+          "run",
+          "/home/neil/code/projects/tta-lab/kosmos/ziguijia-video-srt/src/tts.ts",
+          "{{Text}}",
+          "{{OutputPath}}",
+        ],
+        outputFormat: "mp3",
+        timeoutMs: 60000,
+        env: { SONIOX_API_KEY: "${SONIOX_API_KEY}" },
+      },
+    },
+  },
   // ACP: run external coding harnesses (pi via pi-acp adapter) as subagents.
   // OpenClaw owns sessions/channels/delivery; the harness owns its tools.
   acp: {
