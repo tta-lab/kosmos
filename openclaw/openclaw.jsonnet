@@ -1,4 +1,5 @@
-// OpenClaw gateway config — SSOT, generated from jsonnet.
+// Declarative OpenClaw gateway config patch — generated from Jsonnet.
+// The deploy target preserves OpenClaw-managed metadata and credentials.
 // Deploy with: just openclaw-deploy
 // Installed via npm (official); gateway service managed by \`openclaw gateway
 // install --wrapper\` (scripts/openclaw-gateway-wrapper); the wrapper injects
@@ -7,7 +8,16 @@
   gateway: {
     mode: "local",
     controlUi: { allowedOrigins: ["http://openclaw.localhost:17480"] },
+    auth: {
+      token: {
+        source: "env",
+        provider: "default",
+        id: "OPENCLAW_GATEWAY_TOKEN",
+      },
+    },
   },
+  // Give each DM peer a stable identity for user-scoped Hindsight banks.
+  session: { dmScope: "per-peer" },
   agents: {
     defaults: {
       model: { primary: "deepseek/deepseek-v4-flash" },
