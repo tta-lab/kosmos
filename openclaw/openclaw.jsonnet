@@ -38,12 +38,12 @@
     personas: {
       yuki: {
         label: "Yuki",
-        description: "24 岁鲸鱼妹妹。中文短句，嘴硬但暖，深水安静 vs 撒娇活泼。用 Volcengine 豆包 TTS；情绪靠 [[tts:emotion=...]] 指令（happy/sad/angry/surprised/fearful/disgusted/neutral 等）+ 文字表情（标点/拖音/语气词）塑造；中文为主，必要时切英文。",
+        description: "24 岁鲸鱼妹妹。中文短句，嘴硬但暖，深水安静 vs 撒娇活泼；情绪靠文字本身自然流露（标点、拖音、语气词），不堆表演。",
         provider: "volcengine",
         providers: {
           volcengine: {
-            resourceId: "seed-tts-1.0",
-            speakerVoice: "zh_female_xiaohe_uranus_bigtts",
+            resourceId: "volc.service_type.10029",
+            speakerVoice: "zh_female_cancan_mars_bigtts",
           },
         },
       },
@@ -52,9 +52,10 @@
     providers: {
       volcengine: {
         apiKey: "${VOLCENGINE_TTS_API_KEY}",
-        resourceId: "seed-tts-1.0",
-        // 豆包中文女声（晓禾）；换音色改这一行（控制台看音色 ID）。
-        speakerVoice: "zh_female_xiaohe_uranus_bigtts",
+        // 大陆端点 + 大陆资源 ID（实测可用）。音色可换：zh_female_qingxinnvsheng_mars_bigtts。
+        baseUrl: "https://openspeech.bytedance.com/api/v3/tts/unidirectional",
+        resourceId: "volc.service_type.10029",
+        speakerVoice: "zh_female_cancan_mars_bigtts",
       },
       // Soniox 保留为 fallback（英文 TTS / STT 继续用）。
       soniox: {
