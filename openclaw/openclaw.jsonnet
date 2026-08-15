@@ -29,8 +29,10 @@
   // Opus voice notes, 16 kHz PCM telephony.
   // The API key is injected by scripts/openclaw-gateway-wrapper from the
   // agenix secret ~/.config/openclaw/soniox-key.
+  // auto "off": only synthesize when the user explicitly asks for audio
+  // (e.g. /tts or a direct request); no per-reply auto synthesis.
   tts: {
-    auto: "always",
+    auto: "off",
     provider: "soniox",
     providers: {
       soniox: {
