@@ -8,6 +8,7 @@
   secretsDir = ../../secrets;
   haveForgejoSmokeToken = builtins.pathExists (secretsDir + "/forgejo-smoke-token.age");
   haveSonioxKey = builtins.pathExists (secretsDir + "/soniox-key.age");
+  haveVolcengineKey = builtins.pathExists (secretsDir + "/volcengine-key.age");
   userSecret = fileName: path: {
     file = secretsDir + "/${fileName}";
     owner = "neil";
@@ -97,6 +98,11 @@ in {
       # Create it with: agenix -e secrets/soniox-key.age
       // lib.optionalAttrs haveSonioxKey {
         soniox-key = userSecret "soniox-key.age" "/home/neil/.config/openclaw/soniox-key";
+      }
+      # Volcengine (豆包) TTS key: same pattern.
+      # Create it with: agenix -e secrets/volcengine-key.age
+      // lib.optionalAttrs haveVolcengineKey {
+        volcengine-key = userSecret "volcengine-key.age" "/home/neil/.config/openclaw/volcengine-key";
       }
       // lib.optionalAttrs haveForgejoSmokeToken {
         forgejo-smoke-token = userSecret "forgejo-smoke-token.age" "/home/neil/.config/kosmos/forgejo-smoke-token";

@@ -19,6 +19,7 @@ read_secret() {
 # written to disk outside /run/agenix).
 read_secret /home/neil/.config/openclaw/deepseek-key DEEPSEEK_API_KEY
 read_secret /home/neil/.config/openclaw/soniox-key SONIOX_API_KEY
+read_secret /home/neil/.config/openclaw/volcengine-key VOLCENGINE_TTS_API_KEY
 read_secret /home/neil/.config/openclaw/telegram-token TELEGRAM_BOT_TOKEN
 read_secret /home/neil/.config/openclaw/gateway-token OPENCLAW_GATEWAY_TOKEN
 
