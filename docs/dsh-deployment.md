@@ -21,6 +21,11 @@ The service command line, environment, and restart policy live in
 do not duplicate it here. The launcher reads the agenix key at process start
 and exports `DEEPSEEK_API_KEY` only inside the service process.
 
+All commands below use paths verbatim. The runtime path
+`/home/neil/.local/share/dsh-runtime` is defined once, in the Component map
+and in `modules/wsl/deepseek-harness.nix` — keep both in sync and do not
+introduce variant spellings.
+
 DSH is an upstream **developer preview** (`npx @deepseek-ai/dsh web` is the
 official install per its README); breaking changes are expected, so runtime
 upgrades are routine maintenance, not incidents.
@@ -74,9 +79,9 @@ metadata, the service never reads them.
 
 ## Plugins (profile tree)
 
-- Install: `DSH_HOME=/home/neil/.local/state/dsh /home/neil/.local/share/dsh-runtime/node_modules/@deepseek-ai/dsh/lib/bin.js plugin --profile web add <pkg>`
-  (or the `dsh` binary from the runtime `node_modules/.bin`). Packages land in
-  `$DSH_HOME/profiles/web/node_modules` via pnpm — a tree independent of the runtime.
+- Install: `DSH_HOME=/home/neil/.local/state/dsh ~/.local/share/dsh-runtime/node_modules/.bin/dsh plugin --profile web add <pkg>`
+  Packages land in `$DSH_HOME/profiles/web/node_modules` via pnpm — a tree
+  independent of the runtime.
 - A plugin registers its client bundle by the **exact package name** via
   `window.__ModuleLoader__.load({ id, factory })`; a mismatch surfaces in the
   browser console as `loaded without registering "<pkg>" via __ModuleLoader__.load`.
