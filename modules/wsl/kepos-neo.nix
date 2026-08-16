@@ -37,7 +37,6 @@
     guion-worker-1 = "ff9e2bee88a324ccf9ccdcc680a597e8798d008d57b54a4ae2873d26ddfea43e";
     guion-worker-2 = "682276873f44fd590054f68af34798651089b34d5dc70d9ecd151e8bd1a03a90";
     sw-server = "de087b86a5ced0d4f85e63463b8508e42ede89d2d4c9c9a64efd52697b1ce78b";
-    lemon = "f8bcb7c20d24d3a295fdec2a5a250adef59b3d7e70b21592a01de99b63cae6de";
   };
   forgeServicesAllow = [
     subscribers.mac
@@ -61,7 +60,6 @@ in {
         subscribers.aipaper
         subscribers.guion-worker-1
         subscribers.guion-worker-2
-        subscribers.lemon
         subscribers.sw-server
       ];
       services = {
@@ -82,7 +80,11 @@ in {
         dsh = {
           name = "DeepSeek Harness";
           targetPort = 3080;
-          allow = macOnlyServicesAllow;
+          # Mac + Pixel 7a phone.
+          allow = [
+            subscribers.mac
+            subscribers.pixel7a
+          ];
         };
         dagger = {
           name = "Dagger";
