@@ -10,7 +10,7 @@ objects. A NixOS switch never applies Tanka.
 - Woodpecker: `http://woodpecker.localhost:17480`
 - Dagger: `tcp://dagger.devops.svc.cluster.local:8080` in-cluster and
   `tcp://127.0.0.1:8080` for the local CLI
-- DeepSeek Harness: `http://dsh.localhost:17480` through Kepos (Mac-only)
+- DeepSeek Harness: `http://dsh.localhost:17480` through Kepos (Mac + Pixel 7a)
 - k3s API: `https://127.0.0.1:26443`
 - Anki Sync: `http://anki.localhost:17480/` through Kepos
 - Miniflux: `http://miniflux.localhost:17480` through Kepos
@@ -29,7 +29,7 @@ Kepos publishes application service IDs including:
   header selects the Caddy route.
 - `navidrome` targets port `4533`.
 - `dsh` targets its loopback-only Home Manager user service on port `3080` and
-  is restricted to the named Mac subscriber. Kepos exposes it as
+  is restricted to the Mac and Pixel 7a subscribers. Kepos exposes it as
   `http://dsh.localhost:17480`; it has no Caddy or CoreDNS route.
 - `dagger` targets the Dagger engine on port `8080` and is restricted to the
   named Mac subscriber. Other allowed subscribers neither see nor can open it.
