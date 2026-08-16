@@ -1,6 +1,6 @@
 # DeepSeek Harness MCP integration (Kosmos Web profile)
 
-**Scope.** Primary-source research against the installed local DeepSeek Harness (DSH) checkout at [`47f943859bef60e4160492346772ded9b24f765a`](https://github.com/tta-lab/deepseek-harness/tree/47f943859bef60e4160492346772ded9b24f765a), used to select the Miniflux and FlickNote integration. It describes the integration interface and the current deployment boundary, not a general server manifest.
+**Scope.** Primary-source research against the tta-lab DeepSeek Harness (DSH) checkout at [`47f943859bef60e4160492346772ded9b24f765a`](https://github.com/tta-lab/deepseek-harness/tree/47f943859bef60e4160492346772ded9b24f765a), used to select the Miniflux and FlickNote integration. The installed runtime is the npm-published package `@deepseek-ai/dsh` (public registry, see `../modules/wsl/deepseek-harness.nix`); the checkout is a research reference only, not what the service runs. It describes the integration interface and the current deployment boundary, not a general server manifest.
 
 ## Findings
 

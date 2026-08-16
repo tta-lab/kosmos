@@ -6,7 +6,9 @@
   ...
 }: let
   cfg = config.kosmos.wsl.deepseekHarness;
-  # The packed tree gives bare plugins a resolvable npm dependency base.
+  # Standalone dependency tree at ~/.local/share/dsh-runtime, installed from
+  # the npm registry (e.g. bun add @deepseek-ai/dsh@<version>), outside the Nix
+  # closure; only the pinned entrypoint below is consumed.
   runtime = "/home/neil/.local/share/dsh-runtime";
   entrypoint = "${runtime}/node_modules/@deepseek-ai/dsh/lib/bin.js";
   stateDirectory = "/home/neil/.local/state/dsh";
