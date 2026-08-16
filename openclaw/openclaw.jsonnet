@@ -57,13 +57,11 @@
       },
     },
   },
-  // Soniox TTS via the bundled soniox plugin (gateway runs from the openclaw
-  // fork checkout; root `tts` key requires 2026.8+). MP3 audio files, native
-  // Opus voice notes, 16 kHz PCM telephony.
-  // The API key is injected by scripts/openclaw-gateway-wrapper from the
-  // agenix secret ~/.config/openclaw/soniox-key.
-  // auto "off": only synthesize when the user explicitly asks for audio
-  // (e.g. /tts or a direct request); no per-reply auto synthesis.
+  // TTS: Volcengine (豆包) via the ClawHub volcengine-tts-provider plugin.
+  // API key injected by scripts/openclaw-gateway-wrapper from the agenix
+  // secret ~/.config/openclaw/volcengine-key.
+  // auto "tagged": synthesize only when replies carry [[tts:...]] directives
+  // (voice-text skill) — no per-reply auto synthesis.
   tts: {
     // tagged: 仅当回复含 [[tts:...]] 指令或 [[tts:text]] 块时合成（配合 voice-text skill）
     auto: "tagged",
@@ -97,7 +95,8 @@
     },
   },
   // Soniox async speech-to-text (media-understanding) for inbound voice
-  // messages and attachments; same SONIOX_API_KEY as TTS.
+  // messages and attachments (ClawHub soniox-stt-provider). Key injected by
+  // scripts/openclaw-gateway-wrapper from ~/.config/openclaw/soniox-key.
   tools: {
     media: {
       models: [
