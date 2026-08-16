@@ -165,6 +165,12 @@ just status
 Forgejo and Woodpecker use static local PVs with a `Retain` reclaim policy.
 Dagger starts with a fresh cache at `/var/lib/kosmos-k3s/dagger`.
 
+## DeepSeek Harness runtime
+
+The `dsh` Web profile runtime is a standalone npm tree outside the Nix
+closure. Install, upgrade, swap, rollback, and plugin troubleshooting:
+[`docs/dsh-deployment.md`](dsh-deployment.md).
+
 ## Recover
 
 Reapplying NixOS or Tanka does not delete the retained Forgejo and Woodpecker
