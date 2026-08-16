@@ -452,7 +452,14 @@
         cfg = self.nixosConfigurations.wsl.config;
         inherit (cfg.home-manager.users.neil.services.kepos.publisher) services allow;
         # Services that must never be exposed without an allow list.
-        restricted = ["dsh" "dagger" "hindsight" "hindsightui" "openclaw" "mihomo-dashboard"];
+        restricted = [
+          "dsh"
+          "dagger"
+          "hindsight"
+          "hindsightui"
+          "openclaw"
+          "mihomo-dashboard"
+        ];
         dshEnv = cfg.home-manager.users.neil.systemd.user.services.dsh.Service.Environment;
         # A service allow key the publisher does not admit can never connect.
         allowKeysConsistent =
@@ -464,6 +471,10 @@
       in
         assert builtins.all (name: services.${name}.allow != null) restricted;
         assert allowKeysConsistent;
+        # Cross-file contract: the DSH service binds 127.0.0.1:3080
+        # (deepseek-harness.nix) and is published on the same port here and in
+        # docs/dsh-deployment.md — keep the port machine-enforced.
+        assert services.dsh.targetPort == 3080;
         # The DSH unit reads its key from the agenix file, never hardcodes it.
         assert !builtins.any (entry: nixpkgs.lib.hasPrefix "DEEPSEEK_API_KEY=" entry) dshEnv;
           pkgs.runCommand "kepos-publisher-services-check" {} "touch $out";
