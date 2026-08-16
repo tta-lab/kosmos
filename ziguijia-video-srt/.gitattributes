@@ -1,3 +1,0 @@
-# Supplied reference text files: preserve original line endings and trailing spaces.
-materials/references/**/*.txt -text whitespace=-trailing-space
-materials/terminology/keywords_v2.txt -text whitespace=-trailing-space
