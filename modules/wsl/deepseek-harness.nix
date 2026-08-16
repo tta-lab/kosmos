@@ -7,8 +7,9 @@
 }: let
   cfg = config.kosmos.wsl.deepseekHarness;
   # Standalone dependency tree at ~/.local/share/dsh-runtime, installed from
-  # the npm registry (e.g. bun add @deepseek-ai/dsh@<version>), outside the Nix
-  # closure; only the pinned entrypoint below is consumed.
+  # the npm registry with bun, outside the Nix closure; only the pinned
+  # entrypoint below is consumed. Install/upgrade/rollback:
+  # docs/dsh-deployment.md.
   runtime = "/home/neil/.local/share/dsh-runtime";
   entrypoint = "${runtime}/node_modules/@deepseek-ai/dsh/lib/bin.js";
   stateDirectory = "/home/neil/.local/state/dsh";

@@ -39,6 +39,9 @@ never reads, stores, or forwards a Miniflux password. Before restarting
 `dsh.service`, ensure both host commands and the wrapper's independent credential
 setup are present. This is intentionally not a reproducible Nix closure.
 
+For install, upgrade, swap, rollback, and plugin troubleshooting, see
+[`docs/dsh-deployment.md`](dsh-deployment.md).
+
 ## Recommended Kosmos approach
 
 Keep the remote configuration plane closed. Add a reviewed, non-secret MCP overlay to this repository and pass its immutable deployed path as an early `--patch` argument in `dsh.service`; do **not** rely on the remote Web Settings UI or a writable `$DSH_HOME` patch. For a new or migrated integration, declare/pin a stdio server executable as a Nix package (preferred), or run an independently managed loopback HTTP server when HTTP is required. The current FlickNote/Miniflux host-managed exception above must not be mistaken for Nix reproducibility. Treat each stdio command, argument list, environment mapping, and working directory as trusted host configuration: DSH runs that child outside the agent sandbox, so neither the model nor a remote UI should choose it. A dedicated DSH bundle is optional: use one only when it genuinely packages a Cordis patch; it does not replace the server package or its lifecycle. [CLI security note](https://github.com/tta-lab/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/reference/README.md)
