@@ -25,35 +25,37 @@ DSH is an upstream **developer preview** (`npx @deepseek-ai/dsh web` is the
 official install per its README); breaking changes are expected, so runtime
 upgrades are routine maintenance, not incidents.
 
-## Install / upgrade the runtime
+## Build a new runtime tree
 
 Distribution channel is the public npm registry — the fork's "packed tree"
 (230 `file:` tarball deps into a deleted `/tmp` dir) is obsolete. Use **bun**,
 not npm: npm 11 hangs CPU-bound on the dsh dependency graph (see
 Troubleshooting). Same `node_modules` shape either way; the service runs under
-the Nix-pinned node regardless.
+the Nix-pinned node regardless. Always build a **fresh staging tree** and swap
+it in — never `bun add` into the live tree.
 
 1. Check the latest published version:
    ```bash
    npm view @deepseek-ai/dsh version
    ```
-2. Install into the existing tree:
+2. Build the staging tree:
    ```bash
-   cd /home/neil/.local/share/dsh-runtime
+   mkdir -p /home/neil/.local/share/dsh-runtime.new
+   cd /home/neil/.local/share/dsh-runtime.new
    bun add @deepseek-ai/dsh@<version>
    bun pm trust --all   # required: koffi native binding + dsh-subprocess-local helper
    ```
-3. **Done when:** `node -e "console.log(require('./node_modules/@deepseek-ai/dsh/package.json').version)"`
+3. **Done when** `node -e "console.log(require('./node_modules/@deepseek-ai/dsh/package.json').version)"`
    prints the target version, and `node -e "require('koffi')"` succeeds.
 
-`bun` writes `bun.lock` + `package.json` into the tree; harmless metadata, the
-service never reads them.
+`bun` writes `bun.lock` + `package.json` into the staging tree; harmless
+metadata, the service never reads them.
 
 ## Deploy a new runtime tree (swap)
 
 1. `systemctl --user stop dsh`
 2. Back up: `mv /home/neil/.local/share/dsh-runtime /home/neil/.local/share/dsh-runtime.<old-version>.bak`
-3. Move the fresh tree in: `mv <fresh-tree> /home/neil/.local/share/dsh-runtime && chmod 0700 /home/neil/.local/share/dsh-runtime`
+3. Move the staging tree in: `mv /home/neil/.local/share/dsh-runtime.new /home/neil/.local/share/dsh-runtime && chmod 0700 /home/neil/.local/share/dsh-runtime`
 4. `systemctl --user start dsh`
 5. **Done when** all of:
    - `systemctl --user is-active dsh` prints `active`
@@ -88,8 +90,11 @@ service never reads them.
   Caveat: the profile file is hardlinked into the pnpm store (link count 2);
   a later `dsh plugin` operation may restore the store copy, so a fix must
   eventually ship upstream (registry still has only 0.1.0 as of 2026-08).
-- MCP servers are **not** plugins: stdio executables are host-managed and only
-  configured via the `--patch` overlay (see `docs/dsh-mcp-integration.md`).
+- MCP servers are configured independently of plugin installation: Kosmos's
+  stdio executables are host-managed and wired through the immutable `--patch`
+  overlay (see `docs/dsh-mcp-integration.md`). A DSH bundle plugin can package
+  a Cordis patch (including MCP config), but that does not install or
+  supervise the server executable.
 
 ## Troubleshooting
 
