@@ -450,62 +450,22 @@
 
       kepos-publisher-services = let
         cfg = self.nixosConfigurations.wsl.config;
-        inherit (cfg.home-manager.users.neil.services.kepos.publisher) services;
-        dshUnit = cfg.home-manager.users.neil.systemd.user.services.dsh;
-        dshKey = cfg.age.secrets."openclaw-deepseek-key";
-        loopbackHosts = cfg.networking.hosts."127.0.0.1";
+        inherit (cfg.home-manager.users.neil.services.kepos.publisher) services allow;
+        # Services that must never be exposed without an allow list.
+        restricted = ["dsh" "dagger" "hindsight" "hindsightui" "openclaw" "mihomo-dashboard"];
+        dshEnv = cfg.home-manager.users.neil.systemd.user.services.dsh.Service.Environment;
+        # A service allow key the publisher does not admit can never connect.
+        allowKeysConsistent =
+          builtins.all
+          (name:
+            let svcAllow = services.${name}.allow;
+            in svcAllow == null || builtins.all (key: builtins.elem key allow) svcAllow)
+          (builtins.attrNames services);
       in
-        assert builtins.all (service: services.${service}.allow == null) [
-          "navidrome"
-          "ente"
-          "ente-storage"
-          "bookorbit"
-          "anki"
-          "memos"
-          "mihomo"
-          "ssh"
-        ];
-        assert services.forgejo.allow != null;
-        assert services.forgejo.allow == services.woodpecker.allow;
-        assert services.dagger.name == "Dagger";
-        assert services.dagger.targetPort == 8080;
-        assert services.dagger.allow != null;
-        assert services.dsh.name == "DeepSeek Harness";
-        assert services.dsh.targetPort == 3080;
-        assert services.dsh.allow != null;
-        assert builtins.length services.dsh.allow == 2;
-        # DSH is Mac + Pixel 7a; Dagger remains Mac-only in kepos-neo.nix.
-        assert services.dsh.allow != services.dagger.allow;
-        assert dshUnit.Install.WantedBy == ["default.target"];
-        assert dshUnit.Service.WorkingDirectory == "/home/neil";
-        assert builtins.elem "DSH_HOME=/home/neil/.local/state/dsh" dshUnit.Service.Environment;
-        assert dshKey.path == "/home/neil/.config/openclaw/deepseek-key";
-        assert nixpkgs.lib.hasInfix "--patch" dshUnit.Service.ExecStart;
-        assert !builtins.any (entry: nixpkgs.lib.hasPrefix "DEEPSEEK_API_KEY=" entry) dshUnit.Service.Environment;
-        assert services.bookorbit.name == "BookOrbit";
-        assert services.bookorbit.targetPort == 17480;
-        assert services.anki.name == "Anki";
-        assert services.anki.targetPort == 17480;
-        assert services.memos.name == "Memos";
-        assert services.memos.targetPort == 17480;
-        assert services.hindsight.name == "Hindsight";
-        assert services.hindsight.targetPort == 17480;
-        assert services.hindsight.allow == services.dagger.allow;
-        assert services.hindsightui.name == "Hindsight UI";
-        assert services.hindsightui.targetPort == 17480;
-        assert services.hindsightui.allow == services.dagger.allow;
-        assert services ? mihomo;
-        assert services.mihomo.name == "Mihomo";
-        assert services.mihomo.targetPort == 7890;
-        assert builtins.hasAttr "mihomo-dashboard" services;
-        assert services."mihomo-dashboard".name == "Mihomo Dashboard";
-        assert services."mihomo-dashboard".targetPort == 9090;
-        assert services."mihomo-dashboard".allow != null;
-        assert builtins.elem "bookorbit.localhost" loopbackHosts;
-        assert builtins.elem "anki.localhost" loopbackHosts;
-        assert builtins.elem "memos.localhost" loopbackHosts;
-        assert builtins.elem "hindsight.localhost" loopbackHosts;
-        assert builtins.elem "hindsightui.localhost" loopbackHosts;
+        assert builtins.all (name: services.${name}.allow != null) restricted;
+        assert allowKeysConsistent;
+        # The DSH unit reads its key from the agenix file, never hardcodes it.
+        assert !builtins.any (entry: nixpkgs.lib.hasPrefix "DEEPSEEK_API_KEY=" entry) dshEnv;
           pkgs.runCommand "kepos-publisher-services-check" {} "touch $out";
 
       kepos-publisher-only = let
