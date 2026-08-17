@@ -22,15 +22,16 @@
     defaults: {
       model: { primary: "deepseek/deepseek-v4-flash" },
       workspace: "/home/neil/.openclaw/workspace",
-      // 每小时只做一次“要不要出现”的判断；07:22 早安继续由独立 cron 负责。
+      // 内建 heartbeat monitor 会强制落到 agent:main:main，忽略下方的 direct session。
+      // 先禁用它；同频率的 persistent direct-session automation 由 OpenClaw 管理。
       heartbeat: {
-        every: "1h",
+        every: "0m",
         activeHours: {
           start: "11:00",
           end: "23:00",
           timezone: "Asia/Taipei",
         },
-        // dmScope=per-peer 时显式固定 Neil 的 Telegram 私聊历史；投递只走 owner DM。
+        // 保留目标声明作为路由意图；当前 beta 的 system monitor 不遵守它。
         session: "agent:main:direct:845849177",
         target: "owner",
         directPolicy: "allow",

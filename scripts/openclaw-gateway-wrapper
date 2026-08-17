@@ -23,6 +23,9 @@ read_secret /home/neil/.config/openclaw/volcengine-key VOLCENGINE_TTS_API_KEY
 read_secret /home/neil/.config/openclaw/telegram-token TELEGRAM_BOT_TOKEN
 read_secret /home/neil/.config/openclaw/gateway-token OPENCLAW_GATEWAY_TOKEN
 
+# Force agent exec commands through zsh instead of the account login shell (fish).
+export SHELL=/etc/profiles/per-user/neil/bin/zsh
+
 # MCP commands (web/og/project/src/miniflux-mcp) live in ~/go/bin, which the
 # gateway unit PATH does not include.
 export PATH="$PATH:/home/neil/go/bin"
