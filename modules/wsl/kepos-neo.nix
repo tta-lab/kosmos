@@ -32,6 +32,7 @@
   };
   subscribers = {
     mac = "c5a2168e17a53b699ced7e3f3c8470afd7f91b97a1582076c9797c3e024311a2";
+    nuc-win = "a811aef2afaa177edfb51e250f8137fdad43c77b9d7a47a008b027b9ab2b337c";
     pixel7a = "d1c8e7bad4f0468a12d54c5b80d175677ff58c833f9e666f8a838b0d6b9256bc";
     aipaper = "0d88922a7b6de68ca5011398c846f60de49129bc0d9592e0437b580c41a7e625";
     guion-worker-1 = "ff9e2bee88a324ccf9ccdcc680a597e8798d008d57b54a4ae2873d26ddfea43e";
@@ -40,11 +41,15 @@
   };
   forgeServicesAllow = [
     subscribers.mac
+    subscribers.nuc-win
     subscribers.guion-worker-1
     subscribers.guion-worker-2
     subscribers.sw-server
   ];
-  macOnlyServicesAllow = [subscribers.mac];
+  fullTrustServicesAllow = [
+    subscribers.mac
+    subscribers.nuc-win
+  ];
 in {
   home-manager.users.neil = {
     imports = [kepos-neo.homeManagerModules.default];
@@ -56,6 +61,7 @@ in {
       displayName = "kosmos-wsl";
       allow = [
         subscribers.mac
+        subscribers.nuc-win
         subscribers.pixel7a
         subscribers.aipaper
         subscribers.guion-worker-1
@@ -80,16 +86,17 @@ in {
         dsh = {
           name = "DeepSeek Harness";
           targetPort = 3080;
-          # Mac + Pixel 7a phone.
+          # Full-trust devices + Pixel 7a phone.
           allow = [
             subscribers.mac
+            subscribers.nuc-win
             subscribers.pixel7a
           ];
         };
         dagger = {
           name = "Dagger";
           targetPort = 8080;
-          allow = macOnlyServicesAllow;
+          allow = fullTrustServicesAllow;
         };
         ente = {
           name = "Ente Photos";
@@ -118,12 +125,12 @@ in {
         hindsight = {
           name = "Hindsight";
           targetPort = 17480;
-          allow = macOnlyServicesAllow;
+          allow = fullTrustServicesAllow;
         };
         hindsightui = {
           name = "Hindsight UI";
           targetPort = 17480;
-          allow = macOnlyServicesAllow;
+          allow = fullTrustServicesAllow;
         };
         mihomo = {
           name = "Mihomo";
@@ -133,12 +140,12 @@ in {
           name = "OpenClaw";
           # Control UI; gateway auth via OPENCLAW_GATEWAY_TOKEN.
           targetPort = 18789;
-          allow = macOnlyServicesAllow;
+          allow = fullTrustServicesAllow;
         };
         mihomo-dashboard = {
           name = "Mihomo Dashboard";
           targetPort = 9090;
-          allow = macOnlyServicesAllow;
+          allow = fullTrustServicesAllow;
         };
         ssh = {
           name = "SSH";
