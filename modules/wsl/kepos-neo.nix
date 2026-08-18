@@ -38,18 +38,27 @@
     guion-worker-1 = "ff9e2bee88a324ccf9ccdcc680a597e8798d008d57b54a4ae2873d26ddfea43e";
     guion-worker-2 = "682276873f44fd590054f68af34798651089b34d5dc70d9ecd151e8bd1a03a90";
     sw-server = "de087b86a5ced0d4f85e63463b8508e42ede89d2d4c9c9a64efd52697b1ce78b";
+    baihe = "90165d47b541faad464be6c0718b15e16be5b170ec5616210c6b17ffdbf607c4";
   };
-  forgeServicesAllow = [
-    subscribers.mac
-    subscribers.nuc-win
-    subscribers.guion-worker-1
-    subscribers.guion-worker-2
-    subscribers.sw-server
-  ];
-  fullTrustServicesAllow = [
+  fullTrustAllow = [
     subscribers.mac
     subscribers.nuc-win
   ];
+  personalDevicesAllow =
+    fullTrustAllow
+    ++ [
+      subscribers.pixel7a
+      subscribers.aipaper
+    ];
+  forgeClientsAllow =
+    fullTrustAllow
+    ++ [
+      subscribers.guion-worker-1
+      subscribers.guion-worker-2
+      subscribers.sw-server
+    ];
+  baiheAllow = [subscribers.baihe];
+  publisherAllow = lib.unique (personalDevicesAllow ++ forgeClientsAllow ++ baiheAllow);
 in {
   home-manager.users.neil = {
     imports = [kepos-neo.homeManagerModules.default];
@@ -59,97 +68,94 @@ in {
       inherit package bootstrap;
       stateDir = "/home/neil/.local/state/kepos-neo/mux-publisher";
       displayName = "kosmos-wsl";
-      allow = [
-        subscribers.mac
-        subscribers.nuc-win
-        subscribers.pixel7a
-        subscribers.aipaper
-        subscribers.guion-worker-1
-        subscribers.guion-worker-2
-        subscribers.sw-server
-      ];
+      allow = publisherAllow;
       services = {
         forgejo = {
           name = "Forgejo";
           targetPort = 17480;
-          allow = forgeServicesAllow;
+          allow = forgeClientsAllow ++ baiheAllow;
         };
         woodpecker = {
           name = "Woodpecker";
           targetPort = 17480;
-          allow = forgeServicesAllow;
+          allow = forgeClientsAllow ++ baiheAllow;
         };
         navidrome = {
           name = "Navidrome";
           targetPort = 4533;
+          allow = personalDevicesAllow;
         };
         dsh = {
           name = "DeepSeek Harness";
           targetPort = 3080;
           # Full-trust devices + Pixel 7a phone.
-          allow = [
-            subscribers.mac
-            subscribers.nuc-win
-            subscribers.pixel7a
-          ];
+          allow = fullTrustAllow ++ [subscribers.pixel7a];
         };
         dagger = {
           name = "Dagger";
           targetPort = 8080;
-          allow = fullTrustServicesAllow;
+          allow = fullTrustAllow;
         };
         ente = {
           name = "Ente Photos";
           targetPort = 17480;
+          allow = personalDevicesAllow ++ baiheAllow;
         };
         ente-storage = {
           name = "Ente Storage";
           targetPort = 17480;
+          allow = personalDevicesAllow ++ baiheAllow;
         };
         bookorbit = {
           name = "BookOrbit";
           targetPort = 17480;
+          allow = personalDevicesAllow ++ baiheAllow;
         };
         anki = {
           name = "Anki";
           targetPort = 17480;
+          allow = personalDevicesAllow;
         };
         memos = {
           name = "Memos";
           targetPort = 17480;
+          allow = personalDevicesAllow ++ baiheAllow;
         };
         miniflux = {
           name = "Miniflux";
           targetPort = 17480;
+          allow = personalDevicesAllow;
         };
         hindsight = {
           name = "Hindsight";
           targetPort = 17480;
-          allow = fullTrustServicesAllow;
+          allow = fullTrustAllow;
         };
         hindsightui = {
           name = "Hindsight UI";
           targetPort = 17480;
-          allow = fullTrustServicesAllow;
+          allow = fullTrustAllow;
         };
         mihomo = {
           name = "Mihomo";
           targetPort = 7890;
+          allow = personalDevicesAllow;
         };
         openclaw = {
           name = "OpenClaw";
           # Control UI; gateway auth via OPENCLAW_GATEWAY_TOKEN.
           targetPort = 18789;
-          allow = fullTrustServicesAllow;
+          allow = fullTrustAllow;
         };
         mihomo-dashboard = {
           name = "Mihomo Dashboard";
           targetPort = 9090;
-          allow = fullTrustServicesAllow;
+          allow = fullTrustAllow;
         };
         ssh = {
           name = "SSH";
           targetPort = 22;
+          allow = personalDevicesAllow;
         };
       };
     };
