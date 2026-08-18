@@ -106,6 +106,10 @@ in {
     };
   };
 
+  security.pki.certificateFiles = [
+    ../../certs/seafarer-root-ca.pem
+  ];
+
   environment = {
     systemPackages = with pkgs; [
       daggerCli

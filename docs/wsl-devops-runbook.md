@@ -165,6 +165,21 @@ just status
 Forgejo and Woodpecker use static local PVs with a `Retain` reclaim policy.
 Dagger starts with a fresh cache at `/var/lib/kosmos-k3s/dagger`.
 
+## Seafarer CA trust
+
+The public Seafarer Root CA is declarative WSL trust policy in
+`certs/seafarer-root-ca.pem`; Node receives the evaluated NixOS CA bundle via
+the managed `NODE_EXTRA_CA_CERTS` session variable. Apply it with the normal
+WSL rebuild:
+
+```bash
+nh os switch . -H wsl --ask
+```
+
+Open a fresh shell after activation so Node receives the session variable. To
+replace the Root CA, update that PEM in a reviewed configuration change and
+rebuild; do not retain a mutable `/usr/local` copy or disable TLS verification.
+
 ## DeepSeek Harness runtime
 
 The `dsh` Web profile runtime is a standalone npm tree outside the Nix
