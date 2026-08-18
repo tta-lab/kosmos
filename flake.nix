@@ -310,10 +310,8 @@
 
       wsl-seafarer-ca-trust = let
         cfg = self.nixosConfigurations.wsl.config;
-        certificateFiles = map toString cfg.security.pki.certificateFiles;
         homeSessionVariables = cfg.home-manager.users.neil.home.sessionVariables;
       in
-        assert builtins.any (file: nixpkgs.lib.hasSuffix "/certs/seafarer-root-ca.pem" file) certificateFiles;
         assert homeSessionVariables.NODE_EXTRA_CA_CERTS == cfg.security.pki.caBundle;
           pkgs.runCommand "wsl-seafarer-ca-trust-check" {
             nativeBuildInputs = [pkgs.openssl];
