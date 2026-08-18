@@ -308,6 +308,21 @@
         assert cfg.environment.variables._EXPERIMENTAL_DAGGER_RUNNER_HOST == "tcp://127.0.0.1:8080";
           pkgs.runCommand "wsl-devops-cli-check" {} "touch $out";
 
+      wsl-seafarer-ca-trust = let
+        cfg = self.nixosConfigurations.wsl.config;
+        homeSessionVariables = cfg.home-manager.users.neil.home.sessionVariables;
+      in
+        assert homeSessionVariables.NODE_EXTRA_CA_CERTS == cfg.security.pki.caBundle;
+          pkgs.runCommand "wsl-seafarer-ca-trust-check" {
+            nativeBuildInputs = [pkgs.openssl];
+          } ''
+            openssl verify \
+              -no_check_time \
+              -CAfile ${cfg.security.pki.caBundle} \
+              ${./certs/seafarer-root-ca.pem}
+            touch "$out"
+          '';
+
       wsl-mihomo-service = let
         cfg = self.nixosConfigurations.wsl.config;
         expectedConfig = "/mnt/c/Users/white/AppData/Roaming/io.github.clash-verge-rev.clash-verge-rev/clash-verge.yaml";

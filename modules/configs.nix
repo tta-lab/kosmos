@@ -4,6 +4,7 @@
   ...
 }: let
   inherit (config.system) stateVersion;
+  systemCaBundle = config.security.pki.caBundle;
   proxyEnvironment = config.kosmos.wsl.proxy.environment;
 in {
   home-manager = {
@@ -92,6 +93,7 @@ in {
           EDITOR = "hx";
           VISUAL = "hx";
           PI_RETRY_STALL_TIMEOUT_MS = "0";
+          NODE_EXTRA_CA_CERTS = systemCaBundle;
         }
         // proxyEnvironment;
 
