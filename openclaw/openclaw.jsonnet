@@ -18,6 +18,9 @@
   },
   // Give each DM peer a stable identity for user-scoped Hindsight banks.
   session: { dmScope: "per-peer" },
+  // Hindsight owns semantic memory. Avoid initializing the stale built-in
+  // OpenAI vector index during startup; FTS-only retains lexical fallback.
+  memory: { search: { provider: "none" } },
   agents: {
     defaults: {
       model: { primary: "deepseek/deepseek-v4-flash" },
