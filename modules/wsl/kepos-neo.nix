@@ -39,6 +39,8 @@
     guion-worker-2 = "682276873f44fd590054f68af34798651089b34d5dc70d9ecd151e8bd1a03a90";
     sw-server = "de087b86a5ced0d4f85e63463b8508e42ede89d2d4c9c9a64efd52697b1ce78b";
     baihe = "90165d47b541faad464be6c0718b15e16be5b170ec5616210c6b17ffdbf607c4";
+    # Replace with Guazi's 64-character Kepos subscriber public key.
+    guazi = "0000000000000000000000000000000000000000000000000000000000000000";
   };
   fullTrustAllow = [
     subscribers.mac
@@ -58,7 +60,8 @@
       subscribers.sw-server
     ];
   baiheAllow = [subscribers.baihe];
-  publisherAllow = lib.unique (personalDevicesAllow ++ forgeClientsAllow ++ baiheAllow);
+  guaziAllow = [subscribers.guazi];
+  publisherAllow = lib.unique (personalDevicesAllow ++ forgeClientsAllow ++ baiheAllow ++ guaziAllow);
 in {
   home-manager.users.neil = {
     imports = [kepos-neo.homeManagerModules.default];
@@ -83,7 +86,7 @@ in {
         navidrome = {
           name = "Navidrome";
           targetPort = 4533;
-          allow = personalDevicesAllow;
+          allow = personalDevicesAllow ++ guaziAllow;
         };
         dsh = {
           name = "DeepSeek Harness";
@@ -99,12 +102,12 @@ in {
         ente = {
           name = "Ente Photos";
           targetPort = 17480;
-          allow = personalDevicesAllow ++ baiheAllow;
+          allow = personalDevicesAllow ++ baiheAllow ++ guaziAllow;
         };
         ente-storage = {
           name = "Ente Storage";
           targetPort = 17480;
-          allow = personalDevicesAllow ++ baiheAllow;
+          allow = personalDevicesAllow ++ baiheAllow ++ guaziAllow;
         };
         bookorbit = {
           name = "BookOrbit";
@@ -114,12 +117,12 @@ in {
         anki = {
           name = "Anki";
           targetPort = 17480;
-          allow = personalDevicesAllow;
+          allow = personalDevicesAllow ++ guaziAllow;
         };
         memos = {
           name = "Memos";
           targetPort = 17480;
-          allow = personalDevicesAllow ++ baiheAllow;
+          allow = personalDevicesAllow ++ baiheAllow ++ guaziAllow;
         };
         miniflux = {
           name = "Miniflux";
@@ -145,7 +148,7 @@ in {
           name = "OpenClaw";
           # Control UI; gateway auth via OPENCLAW_GATEWAY_TOKEN.
           targetPort = 18789;
-          allow = fullTrustAllow;
+          allow = fullTrustAllow ++ [subscribers.pixel7a];
         };
         mihomo-dashboard = {
           name = "Mihomo Dashboard";
