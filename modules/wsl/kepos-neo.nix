@@ -32,7 +32,7 @@
   };
   subscribers = {
     mac = "c5a2168e17a53b699ced7e3f3c8470afd7f91b97a1582076c9797c3e024311a2";
-    nuc-win = "a811aef2afaa177edfb51e250f8137fdad43c77b9d7a47a008b027b9ab2b337c";
+    nuc-win = "c30b93a9864a8f33dffedf9816a6554de9acdf91a4a1e0cf85ca08747aeb7636";
     pixel7a = "d1c8e7bad4f0468a12d54c5b80d175677ff58c833f9e666f8a838b0d6b9256bc";
     aipaper = "0d88922a7b6de68ca5011398c846f60de49129bc0d9592e0437b580c41a7e625";
     guion-worker-1 = "ff9e2bee88a324ccf9ccdcc680a597e8798d008d57b54a4ae2873d26ddfea43e";
