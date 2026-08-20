@@ -16,7 +16,7 @@ This document records the local OpenClaw choices that differ from upstream defau
 | --- | --- | --- |
 | Gateway config | `openclaw/openclaw.jsonnet` | `~/.openclaw/openclaw.json` after `just openclaw-deploy` |
 | Gateway environment and secrets | `scripts/openclaw-gateway-wrapper` | `openclaw-gateway.service` process environment |
-| Morning and direct heartbeat schedules | Gateway automation database | `openclaw automations list --json` |
+| Morning greeting and heartbeat automation | Gateway automation database | `openclaw automations list --all --json` |
 | Conversation transcripts and session rows | OpenClaw agent SQLite store | `~/.openclaw/agents/main/agent/openclaw-agent.sqlite` |
 
 Do not hand-edit the generated JSON or SQLite database. Use the Jsonnet deploy path and OpenClaw automation commands.
@@ -56,29 +56,15 @@ agent:main:direct:845849177
 
 Changing `dmScope` to `main` would route future DMs to `agent:main:main` and strand the current direct conversation history. Do not use that as a shortcut for heartbeat routing.
 
-## Why built-in heartbeat is disabled
+## Heartbeat is disabled
 
-On OpenClaw `2026.8.1-beta.2`, `agents.defaults.heartbeat.session` accepts the direct session key, but the system-owned heartbeat automation is materialized with `sessionTarget: "main"`. Its replies therefore use `agent:main:main`. System-owned heartbeat jobs reject manual edits.
-
-That caused a heartbeat to conclude that Neil had been absent for two days even though the Telegram direct session had recent messages.
-
-The declarative config therefore sets:
+The declarative config disables OpenClaw's built-in heartbeat monitor and clears obsolete monitor-only settings:
 
 ```json
 { "agents": { "defaults": { "heartbeat": { "every": "0m" } } } }
 ```
 
-A user-owned automation named `Heartbeat (direct)` replaces it:
-
-- declaration key: `yuki-heartbeat-direct`
-- schedule: hourly from 11:00 through 22:00, `Asia/Taipei`
-- payload: `agentTurn`
-- session target: `session:agent:main:direct:845849177`
-- delivery: Telegram DM `845849177`, best effort
-
-The normal reply layer suppresses a response consisting only of `HEARTBEAT_OK`.
-
-This is a version-specific workaround. After an OpenClaw upgrade, test whether a built-in heartbeat with an explicit `heartbeat.session` actually writes to the direct session. Only then remove the custom automation and restore `heartbeat.every`.
+The user-owned direct heartbeat automation (`yuki-heartbeat-direct`) is disabled in the Gateway as well. No periodic heartbeat runs.
 
 ## Morning greeting
 
@@ -121,32 +107,34 @@ jq '{dmScope:.session.dmScope, heartbeat:.agents.defaults.heartbeat}' \
   ~/.openclaw/openclaw.json
 ```
 
-Inspect the relevant automation contracts:
+Inspect automation state:
 
 ```sh
-scripts/openclaw-gateway-wrapper automations list --json |
+scripts/openclaw-gateway-wrapper automations list --all --json |
   jq '.jobs[] |
       select(.declarationKey == "yuki-heartbeat-direct" or .name == "早安问候") |
       {name, declarationKey, enabled, schedule, sessionTarget, sessionKey,
        payloadKind: .payload.kind, delivery}'
 ```
 
-Expected for both user-facing schedules:
+Expected state:
 
 ```text
-sessionTarget = session:agent:main:direct:845849177
-sessionKey    = agent:main:direct:845849177
-payloadKind   = agentTurn
+yuki-heartbeat-direct: enabled = false
+早安问候:
+  sessionTarget = session:agent:main:direct:845849177
+  sessionKey    = agent:main:direct:845849177
+  payloadKind   = agentTurn
 ```
 
-Check recent run routing:
+Check morning greeting routing:
 
 ```sh
-scripts/openclaw-gateway-wrapper automations runs --id <job-id> --json |
+scripts/openclaw-gateway-wrapper automations runs --id <morning-job-id> --json |
   jq '.entries[] | {runAtIso, status, sessionKey, deliveryStatus, error}'
 ```
 
-A new run must not have a session key containing `:cron:`.
+A new morning-greeting run must not have a session key containing `:cron:`.
 
 ## Delivery caveat
 
@@ -162,6 +150,5 @@ journalctl --user -u openclaw-gateway.service --since today --no-pager |
 ## Rollback
 
 - Remove the zsh override to restore inherited-shell behavior.
-- Disable or delete `Heartbeat (direct)` before re-enabling built-in heartbeat, otherwise both schedules can run.
-- Restore `heartbeat.every: "1h"` only after verifying explicit direct-session routing on the installed OpenClaw version.
+- Keep `yuki-heartbeat-direct` disabled while heartbeat is off.
 - Keep `dmScope: "per-peer"` unless conversation history is deliberately migrated.

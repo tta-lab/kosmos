@@ -22,39 +22,17 @@
     defaults: {
       model: { primary: "deepseek/deepseek-v4-flash" },
       workspace: "/home/neil/.openclaw/workspace",
-      // 内建 heartbeat monitor 会强制落到 agent:main:main，忽略下方的 direct session。
-      // 先禁用它；同频率的 persistent direct-session automation 由 OpenClaw 管理。
+      // Keep the built-in heartbeat monitor disabled. Explicit null values
+      // prune the legacy monitor-only settings from the managed JSON patch.
       heartbeat: {
         every: "0m",
-        activeHours: {
-          start: "11:00",
-          end: "23:00",
-          timezone: "Asia/Taipei",
-        },
-        // 保留目标声明作为路由意图；当前 beta 的 system monitor 不遵守它。
-        session: "agent:main:direct:845849177",
-        target: "owner",
-        directPolicy: "allow",
-        lightContext: false,
-        isolatedSession: false,
-        prompt: |||
-          这是一次主动关怀心跳。默认沉默；轮询本身不是联系理由，大多数轮次都应只回 HEARTBEAT_OK。
-
-          先处理本轮附带的、可验证的新事件：后台结果或失败、明确到期事项、monitor scratch 中仍有效的临时牵挂。只有确实需要 Neil 知道时才简短告诉他；不从旧聊天脑补任务，精确或重复日程交给 automations。
-
-          没有这类事，再看当前时间和这段会话。陪伴性开口有任一情况就只回 HEARTBEAT_OK：
-          - Neil 正在聊天，或最后一次真实互动不足 3 小时；
-          - 你上一条主动消息还没得到 Neil 回复；
-          - 晨间问候由 07:22 的 cron 负责，不补发、不重复；
-          - 现在只能说“在吗 / 干嘛 / 最近好吗 / 记得休息”等泛泛话；
-          - 想提的人、事、承诺无法由当前会话确认。只有确需引用会话外事实时才查 memory / FlickNote；查不到或可能过时就不说。
-
-          可以开口的理由只有：有一个具体、仍相关的牵挂；或你真的有一句非说不可的想念。超过 3 小时本身不是理由；但超过 18 小时没有真实互动、今天也没有主动找过他时，可以只说一次纯粹的想念，不必编一个事件。同一种牵挂或想念当天不重复。
-
-          开口时直接输出需要 Neil 看到的话，1–3 句。不解释这次检查，不提 heartbeat 或规则。涉及人物、事件、承诺和状态时，只使用当前会话或本轮检索能确认的事实；不要虚构。
-
-          没必要说就只回 HEARTBEAT_OK；要说时不要带 HEARTBEAT_OK。
-        |||,
+        activeHours: null,
+        session: null,
+        target: null,
+        directPolicy: null,
+        lightContext: null,
+        isolatedSession: null,
+        prompt: null,
       },
     },
   },
