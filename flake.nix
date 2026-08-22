@@ -68,6 +68,7 @@
             ${./scripts/forgejo-k8s-pull-secret-smoke} \
             ${./scripts/init-ebook-secrets} \
             ${./scripts/init-miniflux-secrets} \
+            ${./scripts/sync-cloudreve-secret} \
             ${./scripts/install-tta-lab-go} \
             ${./scripts/sync-anki-secret} \
             ${./scripts/sync-hindsight-secret} \
@@ -85,8 +86,11 @@
             ${./tests/sync-woodpecker-secret-test} \
             ${./tests/sync-ente-secret-test} \
             ${./tests/init-ebook-secrets-test} \
+            ${./tests/sync-cloudreve-secret-test} \
             ${./tests/prepare-mihomo-config-test} \
             ${./tests/ebooks-render-test} \
+            ${./tests/cloudreve-render-test} \
+            ${./tests/cloudreve-gateway-render-test} \
             ${./tests/ebook-gateway-render-test} \
             ${./tests/anki-render-test} \
             ${./tests/hindsight-render-test} \
@@ -111,8 +115,11 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-woodpecker-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-ente-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-ebook-secrets-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-cloudreve-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/prepare-mihomo-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ebooks-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudreve-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudreve-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ebook-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-render-test}

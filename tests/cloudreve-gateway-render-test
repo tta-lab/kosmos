@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+rendered="$(mktemp)"
+trap 'rm -f "$rendered"' EXIT
+
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/devops" \
+  | yq -s '.' >"$rendered"
+
+jq -e '
+  (map(select(.kind == "ConfigMap" and .metadata.name == "canonical-gateway")) | first | .data.Caddyfile) as $caddy |
+  (map(select(.kind == "ConfigMap" and .metadata.name == "coredns-custom")) | first | .data["kosmos.override"]) as $dns |
+  ($caddy | contains("@cloudreve host cloudreve.localhost")) and
+  ($caddy | contains("reverse_proxy cloudreve.cloudreve.svc.cluster.local:5212")) and
+  ($dns | contains("rewrite name exact cloudreve.localhost canonical-gateway.devops.svc.cluster.local"))
+' "$rendered" >/dev/null
+
+printf 'canonical gateway routes the private Cloudreve host\n'

@@ -41,6 +41,8 @@
     baihe = "90165d47b541faad464be6c0718b15e16be5b170ec5616210c6b17ffdbf607c4";
     # Replace with Guazi's 64-character Kepos subscriber public key.
     guazi = "fb9782436a1d150879f65ec7d4a2281376499011df9fc45830c5459a92540d32";
+    # Replace this disposable valid key with Sven's actual Kepos subscriber key.
+    sven-mac = "b1e5e5fd757e682f167d4aa68098368d8c7fe09372a14e90eb7154ddf63c4fd1";
   };
   fullTrustAllow = [
     subscribers.mac
@@ -61,7 +63,8 @@
     ];
   baiheAllow = [subscribers.baihe];
   guaziAllow = [subscribers.guazi];
-  publisherAllow = lib.unique (personalDevicesAllow ++ forgeClientsAllow ++ baiheAllow ++ guaziAllow);
+  svenMacAllow = [subscribers."sven-mac"];
+  publisherAllow = lib.unique (personalDevicesAllow ++ forgeClientsAllow ++ baiheAllow ++ guaziAllow ++ svenMacAllow);
 in {
   home-manager.users.neil = {
     imports = [kepos-neo.homeManagerModules.default];
@@ -113,6 +116,11 @@ in {
           name = "BookOrbit";
           targetPort = 17480;
           allow = personalDevicesAllow ++ baiheAllow;
+        };
+        cloudreve = {
+          name = "Cloudreve";
+          targetPort = 17480;
+          allow = personalDevicesAllow ++ svenMacAllow;
         };
         anki = {
           name = "Anki";

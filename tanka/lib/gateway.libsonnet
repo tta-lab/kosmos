@@ -20,6 +20,7 @@ local gatewayLabels = labels('canonical-gateway');
         rewrite name exact ente.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact ente-storage.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact bookorbit.localhost canonical-gateway.devops.svc.cluster.local
+        rewrite name exact cloudreve.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact anki.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact memos.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact miniflux.localhost canonical-gateway.devops.svc.cluster.local
@@ -69,6 +70,11 @@ local gatewayLabels = labels('canonical-gateway');
           @bookorbit host bookorbit.localhost
           handle @bookorbit {
             reverse_proxy bookorbit.ebooks.svc.cluster.local:3000
+          }
+
+          @cloudreve host cloudreve.localhost
+          handle @cloudreve {
+            reverse_proxy cloudreve.cloudreve.svc.cluster.local:5212
           }
 
           @anki host anki.localhost

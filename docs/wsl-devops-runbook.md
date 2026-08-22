@@ -13,6 +13,7 @@ objects. A NixOS switch never applies Tanka.
 - DeepSeek Harness: `http://dsh.localhost:17480` through Kepos (Mac + Pixel 7a)
 - k3s API: `https://127.0.0.1:26443`
 - Anki Sync: `http://anki.localhost:17480/` through Kepos
+- Cloudreve: `http://cloudreve.localhost:17480` through Kepos
 - Miniflux: `http://miniflux.localhost:17480` through Kepos
 - Hindsight API and MCP: `http://hindsight.localhost:17480` through Kepos
 - Hindsight Control Plane: `http://hindsightui.localhost:17480` through Kepos
@@ -36,6 +37,9 @@ Kepos publishes application service IDs including:
 - `ssh` targets port `22`.
 - `anki` targets the canonical gateway on port `17480`; see
   [anki-sync.md](anki-sync.md) for credentials, deployment, and first sync.
+- `cloudreve` targets the canonical gateway on port `17480`; see
+  [cloudreve.md](cloudreve.md) for the Micron-backed storage, deployment, and
+  Sven subscriber placeholder.
 - `hindsight` and `hindsightui` are Mac-only services targeting the canonical
   gateway on port `17480`; the preserved Host header selects the API or Control
   Plane route. See [hindsight.md](hindsight.md) for deployment and storage
