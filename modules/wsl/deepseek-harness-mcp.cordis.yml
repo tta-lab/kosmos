@@ -1,4 +1,4 @@
-# Declarative DSH MCP clients. The Miniflux password remains outside this file.
+# Declarative DSH Web configuration. The Miniflux password remains outside this file.
 - insert:
     - id: mcp-flicknote
       name: '@deepseek-ai/dsh-mcp-client'
@@ -19,3 +19,21 @@
         env:
           MINIFLUX_URL: "http://miniflux.localhost:17480"
           MINIFLUX_USERNAME: "admin"
+
+- id: agent-default-model
+  config:
+    provider: deepseek-official
+    model: deepseek-v4-flash-vision-exp
+
+- id: llm-deepseek
+  config:
+    models:
+      - id: deepseek-v4-flash
+        name: DeepSeek-V4-Flash
+        contextWindow: 1000000
+      - id: deepseek-v4-pro
+        name: DeepSeek-V4-Pro
+        contextWindow: 1000000
+      - id: deepseek-v4-flash-vision-exp
+        name: DeepSeek-V4-Flash-Vision-Exp
+        inputModalities: [text, image]
