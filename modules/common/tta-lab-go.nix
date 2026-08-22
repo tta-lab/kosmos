@@ -61,20 +61,5 @@ in {
         WorkingDirectory = "/home/neil";
       };
     };
-
-    og = {
-      Unit = {
-        Description = "Organon forge operations daemon";
-        ConditionPathExists = "${goBin}/og";
-      };
-      Install.WantedBy = ["default.target"];
-      Service = {
-        ExecStart = "${goBin}/og daemon run";
-        Restart = "on-failure";
-        EnvironmentFile = "-/home/neil/.config/ttal/.env";
-        Environment = serviceEnv ++ proxyEnvironment;
-        WorkingDirectory = "/home/neil";
-      };
-    };
   };
 }

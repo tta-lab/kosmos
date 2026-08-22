@@ -368,7 +368,6 @@
         homeSessionVariables = cfg.home-manager.users.neil.home.sessionVariables;
         dshEnvironment = cfg.home-manager.users.neil.systemd.user.services.dsh.Service.Environment;
         temenosEnvironment = cfg.home-manager.users.neil.systemd.user.services.temenos.Service.Environment;
-        ogEnvironment = cfg.home-manager.users.neil.systemd.user.services.og.Service.Environment;
         proxyEnvironmentEntries = nixpkgs.lib.mapAttrsToList (name: value: "${name}=${value}") expectedProxyEnvironment;
       in
         assert cfg.services.mihomo.enable;
@@ -408,7 +407,6 @@
         assert k3sEnvironment.no_proxy == expectedK3sNoProxy;
         assert builtins.all (entry: has entry dshEnvironment) proxyEnvironmentEntries;
         assert builtins.all (entry: has entry temenosEnvironment) proxyEnvironmentEntries;
-        assert builtins.all (entry: has entry ogEnvironment) proxyEnvironmentEntries;
         assert has "mihomo.service" cfg.systemd.services.k3s.wants;
         assert has "mihomo.service" cfg.systemd.services.k3s.after;
         assert !cfg.systemd.services.firewall.enable;
