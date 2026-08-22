@@ -93,6 +93,7 @@ in {
 
     # Media
     pkgsUnstable.ffmpeg
+    imagemagick
     poppler_utils
     typst
     source-han-serif-simplified-chinese
