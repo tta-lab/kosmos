@@ -40,7 +40,7 @@
     sw-server = "de087b86a5ced0d4f85e63463b8508e42ede89d2d4c9c9a64efd52697b1ce78b";
     baihe = "90165d47b541faad464be6c0718b15e16be5b170ec5616210c6b17ffdbf607c4";
     # Replace with Guazi's 64-character Kepos subscriber public key.
-    guazi = "0000000000000000000000000000000000000000000000000000000000000000";
+    guazi = "fb9782436a1d150879f65ec7d4a2281376499011df9fc45830c5459a92540d32";
   };
   fullTrustAllow = [
     subscribers.mac
