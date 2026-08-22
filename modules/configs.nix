@@ -94,6 +94,7 @@ in {
           VISUAL = "hx";
           PI_RETRY_STALL_TIMEOUT_MS = "0";
           NODE_EXTRA_CA_CERTS = systemCaBundle;
+          AGENT_BROWSER_EXECUTABLE_PATH = "/run/current-system/sw/bin/chromium";
         }
         // proxyEnvironment;
 

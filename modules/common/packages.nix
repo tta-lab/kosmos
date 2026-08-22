@@ -143,6 +143,9 @@ in {
     pkgsUnstable.vscode-langservers-extracted
     pkgsUnstable.biome
     pkgsUnstable.shfmt
+
+    # Browser automation
+    chromium
     pkgsUnstable.playwright
 
     # Recording
