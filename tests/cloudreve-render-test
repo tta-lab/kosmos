@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+rendered="$(mktemp)"
+trap 'rm -f "$rendered"' EXIT
+
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/cloudreve" \
+  | yq -s '.' >"$rendered"
+
+jq -e '
+  . as $resources |
+  def resource($kind; $name):
+    $resources | map(select(.kind == $kind and .metadata.name == $name)) | first;
+
+  (resource("Namespace"; "cloudreve").metadata.name == "cloudreve") and
+  (resource("Deployment"; "cloudreve").spec.replicas == 1) and
+  (resource("Deployment"; "cloudreve").spec.strategy.type == "Recreate") and
+  (resource("Deployment"; "cloudreve").spec.template.spec.containers[0] as $container |
+    ($container.image == "cloudreve/cloudreve:4.18.0@sha256:f7a464100bf6325e9ba58cb2b0ee60f9a24c58fc2eb90647720bc4b8f3cddd9a") and
+    ($container.readinessProbe.httpGet.path == "/api/v4/site/ping") and
+    (($container.env // []) | all(.name | startswith("CR_CONF_") | not)) and
+    ($container.volumeMounts | any(.name == "data" and .mountPath == "/cloudreve/data")) and
+    ($container.volumeMounts | any(.name == "config" and .mountPath == "/cloudreve/data/conf.ini" and .subPath == "conf.ini" and .readOnly == true))
+  ) and
+  (resource("Deployment"; "cloudreve").spec.template.spec.initContainers[0] as $waiter |
+    ($waiter.name == "wait-for-postgres") and
+    ($waiter.image == "postgres:17-alpine@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73") and
+    ($waiter.command | join(" ") | contains("pg_isready"))
+  ) and
+  (resource("Deployment"; "cloudreve").spec.template.spec.volumes | any(
+    .name == "config" and
+    .secret.secretName == "cloudreve-env" and
+    (.secret.items | any(.key == "conf.ini" and .path == "conf.ini"))
+  )) and
+  (resource("StatefulSet"; "cloudreve-postgres").spec.replicas == 1) and
+  (resource("StatefulSet"; "cloudreve-postgres").spec.template.spec.securityContext.fsGroup == 70) and
+  (resource("StatefulSet"; "cloudreve-postgres").spec.template.spec.containers[0].image == "postgres:17-alpine@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73") and
+  (resource("Deployment"; "cloudreve-redis").spec.template.spec.containers[0].image == "redis:8-alpine@sha256:becdda6c7f4b3fb42e42fd7f120bbf5c54c4caaaf16f26da24e4563d2c1f0576") and
+  (resource("Service"; "cloudreve").spec.type == "ClusterIP") and
+  (resource("Service"; "cloudreve").spec.ports[0].port == 5212) and
+  (["kosmos-cloudreve-data", "kosmos-cloudreve-postgres"] | map(. as $name |
+    (resource("PersistentVolume"; $name).spec.persistentVolumeReclaimPolicy == "Retain") and
+    (resource("PersistentVolume"; $name).spec.hostPath.type == "Directory") and
+    (resource("PersistentVolume"; $name).spec.hostPath.path | startswith("/mnt/kosmos-cloudreve/cloudreve/"))
+  ) | all) and
+  (["cloudreve-data", "cloudreve-postgres"] | map(. as $name |
+    resource("PersistentVolumeClaim"; $name).spec.storageClassName == "kosmos-static"
+  ) | all) and
+  (map(select(.kind == "Secret")) | length == 0)
+' "$rendered" >/dev/null
+
+printf 'Cloudreve manifests use pinned images, external credentials, and retained Micron-backed storage\n'

@@ -6,6 +6,7 @@ ebooks_environment := "tanka/environments/ebooks"
 anki_environment := "tanka/environments/anki"
 notes_environment := "tanka/environments/notes"
 feeds_environment := "tanka/environments/feeds"
+cloudreve_environment := "tanka/environments/cloudreve"
 hindsight_environment := "tanka/environments/hindsight"
 kubeconfig := env_var_or_default("KUBECONFIG", "/etc/rancher/k3s/k3s.yaml")
 api_server := "https://127.0.0.1:26443"
@@ -124,6 +125,26 @@ feeds-deploy: feeds-apply
 
 feeds-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n feeds -o wide
+
+cloudreve-show:
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ cloudreve_environment }}"
+
+cloudreve-diff: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ cloudreve_environment }}"
+
+cloudreve-secrets: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" scripts/init-cloudreve-secrets
+
+cloudreve-apply: _local-k3s cloudreve-secrets
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ cloudreve_environment }}"
+
+cloudreve-deploy: cloudreve-apply
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}"
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+
+cloudreve-status: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n cloudreve -o wide
 
 hindsight-logs: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl logs deployment/hindsight -n hindsight --tail=200

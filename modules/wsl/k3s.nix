@@ -24,6 +24,7 @@ in {
     "ente.localhost"
     "ente-storage.localhost"
     "bookorbit.localhost"
+    "cloudreve.localhost"
     "anki.localhost"
     "memos.localhost"
     "miniflux.localhost"
