@@ -79,12 +79,12 @@ in {
         forgejo = {
           name = "Forgejo";
           targetPort = 17480;
-          allow = forgeClientsAllow ++ baiheAllow;
+          allow = forgeClientsAllow ++ baiheAllow ++ svenMacAllow;
         };
         woodpecker = {
           name = "Woodpecker";
           targetPort = 17480;
-          allow = forgeClientsAllow ++ baiheAllow;
+          allow = forgeClientsAllow ++ baiheAllow ++ svenMacAllow;
         };
         navidrome = {
           name = "Navidrome";
@@ -100,7 +100,7 @@ in {
         dagger = {
           name = "Dagger";
           targetPort = 8080;
-          allow = fullTrustAllow;
+          allow = fullTrustAllow ++ svenMacAllow;
         };
         ente = {
           name = "Ente Photos";
