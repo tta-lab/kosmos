@@ -105,12 +105,12 @@ in {
         ente = {
           name = "Ente Photos";
           targetPort = 17480;
-          allow = personalDevicesAllow ++ baiheAllow ++ guaziAllow;
+          allow = personalDevicesAllow ++ baiheAllow ++ guaziAllow ++ svenMacAllow;
         };
         ente-storage = {
           name = "Ente Storage";
           targetPort = 17480;
-          allow = personalDevicesAllow ++ baiheAllow ++ guaziAllow;
+          allow = personalDevicesAllow ++ baiheAllow ++ guaziAllow ++ svenMacAllow;
         };
         bookorbit = {
           name = "BookOrbit";
