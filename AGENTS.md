@@ -85,7 +85,6 @@ before the commit as usual.
 - For tmux clipboard on kosmos-wsl, use tmux clipboard/OSC 52 commands such as `copy-selection` or `copy-selection-and-cancel`; do not pipe copy bindings to platform clipboard tools like `pbcopy`, `clip.exe`, or `wl-copy`.
 - Use `og clone` for normal project additions. Edit the unmanaged `~/.config/ttal/projects.toml` directly only for archive or migration work that og does not expose.
 - NixOS/Home Manager deploys managed config files, including agent rules.
-- On kosmos, `og daemon` is managed by a Home Manager systemd user service. Use `systemctl --user status|start|restart og`; do not run `og daemon install`.
 - **Home Manager** owns managed `~/.config/*` files, shell, editor, and git config. The legacy project registry is unmanaged. **NixOS modules** own system packages, daemons, networking, hardware.
 - Do not use `systemd.tmpfiles` for user dotfiles unless Home Manager can't express the file.
 - Name new modules by purpose: `modules/common/editors.nix`, `modules/wsl/backup.nix`, etc.
