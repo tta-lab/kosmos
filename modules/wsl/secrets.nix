@@ -36,6 +36,14 @@
     runtimeInputs = [pkgs.kubectl];
     text = builtins.readFile ../../scripts/sync-hindsight-secret;
   };
+  cloudreveSecretSync = pkgs.writeShellApplication {
+    name = "kosmos-sync-cloudreve-secret";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.kubectl
+    ];
+    text = builtins.readFile ../../scripts/sync-cloudreve-secret;
+  };
 in {
   age = {
     identityPaths = ["/etc/ssh/ssh_host_ed25519_key"];
@@ -72,6 +80,13 @@ in {
           group = "root";
           mode = "0400";
           path = "/run/agenix/hindsight-env";
+        };
+        cloudreve-env = {
+          file = secretsDir + "/cloudreve-env.age";
+          owner = "root";
+          group = "root";
+          mode = "0400";
+          path = "/run/agenix/cloudreve-env";
         };
         openvpn-config = {
           file = secretsDir + "/openvpn-config.age";
@@ -168,6 +183,20 @@ in {
         Restart = "on-failure";
         RestartSec = "5s";
         ExecStart = "${hindsightSecretSync}/bin/kosmos-sync-hindsight-secret ${config.age.secrets.hindsight-env.path}";
+      };
+    };
+    cloudreve-secret-sync = {
+      description = "Synchronize the Cloudreve environment Secret to local K3s";
+      wantedBy = ["multi-user.target"];
+      wants = ["k3s.service"];
+      after = ["k3s.service"];
+      restartTriggers = [config.age.secrets.cloudreve-env.file];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        Restart = "on-failure";
+        RestartSec = "5s";
+        ExecStart = "${cloudreveSecretSync}/bin/kosmos-sync-cloudreve-secret ${config.age.secrets.cloudreve-env.path}";
       };
     };
   };

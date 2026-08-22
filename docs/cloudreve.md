@@ -56,21 +56,23 @@ curl --fail --header 'Host: cloudreve.localhost' \
   http://127.0.0.1:17480/api/v4/site/ping
 ```
 
-`cloudreve-deploy` creates `cloudreve-env` once with a random PostgreSQL
-password and a mounted `conf.ini`. Cloudreve receives no `CR_CONF_*`
-environment variables because it logs configuration overrides. It keeps an
-existing Secret unchanged on later deployments.
+`cloudreve-env` is the agenix source of truth. Its root-only decrypted file is
+`/run/agenix/cloudreve-env`; it contains exactly:
 
-To rotate after a suspected exposure, scale the application down, rotate the
-credentials, then deploy again:
-
-```bash
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
-  kubectl scale deployment/cloudreve -n cloudreve --replicas=0
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
-  scripts/init-cloudreve-secrets --rotate
-just cloudreve-deploy
+```dotenv
+POSTGRES_PASSWORD=<64 lowercase hexadecimal characters>
+SESSION_SECRET=<128 lowercase hexadecimal characters>
 ```
 
-Rotation replaces the Secret while the application is scaled down, then changes
-the PostgreSQL role through its local in-Pod socket.
+`cloudreve-secret-sync.service` validates that file after k3s starts, creates
+or updates the `cloudreve/cloudreve-env` Kubernetes Secret, and restarts
+Cloudreve only when its Secret changes. A password change also updates the
+PostgreSQL role through its local in-Pod socket. Cloudreve receives no
+`CR_CONF_*` environment variables because it logs configuration overrides.
+
+To change the credentials, edit the encrypted source and activate NixOS:
+
+```bash
+agenix -e secrets/cloudreve-env.age
+nh os switch . -H wsl --ask
+```

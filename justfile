@@ -132,10 +132,7 @@ cloudreve-show:
 cloudreve-diff: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ cloudreve_environment }}"
 
-cloudreve-secrets: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" scripts/init-cloudreve-secrets
-
-cloudreve-apply: _local-k3s cloudreve-secrets
+cloudreve-apply: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ cloudreve_environment }}"
 
 cloudreve-deploy: cloudreve-apply
