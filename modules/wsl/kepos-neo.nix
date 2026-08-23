@@ -39,6 +39,7 @@
     guion-worker-2 = "682276873f44fd590054f68af34798651089b34d5dc70d9ecd151e8bd1a03a90";
     sw-server = "de087b86a5ced0d4f85e63463b8508e42ede89d2d4c9c9a64efd52697b1ce78b";
     baihe = "90165d47b541faad464be6c0718b15e16be5b170ec5616210c6b17ffdbf607c4";
+    baihe-laptop = "21feb5140d9099a5589ffb6ddd5c29155346d9eb868991cd3fcce459fe24dbf3";
     # Replace with Guazi's 64-character Kepos subscriber public key.
     guazi = "fb9782436a1d150879f65ec7d4a2281376499011df9fc45830c5459a92540d32";
     # Replace this disposable valid key with Sven's actual Kepos subscriber key.
@@ -61,7 +62,10 @@
       subscribers.guion-worker-2
       subscribers.sw-server
     ];
-  baiheAllow = [subscribers.baihe];
+  baiheAllow = [
+    subscribers.baihe
+    subscribers."baihe-laptop"
+  ];
   guaziAllow = [subscribers.guazi];
   svenMacAllow = [subscribers."sven-mac"];
   publisherAllow = lib.unique (personalDevicesAllow ++ forgeClientsAllow ++ baiheAllow ++ guaziAllow ++ svenMacAllow);
