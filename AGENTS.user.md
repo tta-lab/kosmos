@@ -5,7 +5,7 @@
 - Build larger changes as working end-to-end slices. Add each capability on top of a working system; do not leave the main path dependent on unfinished infrastructure.
 - Prefer capabilities already in the project. Use a well-maintained dependency only when it lowers overall complexity or improves reliability; check its documentation and types first.
 - Complete the stated work and verify the observable outcome with the smallest relevant check.
-- Do not implement optional improvements. Record concrete, useful ones in `.scratch/defered/`.
+- Do not implement high effort optional improvements. Record concrete, useful ones in `.scratch/defered/`.
 
 ## Host-local instructions
 
@@ -84,7 +84,5 @@ Use only these two projects for all agent-written notes:
 
 - **orientation** — plan-like notes: task plans, design decisions, implementation strategies, orientation context
 - **research** — research and knowledge notes: findings, reference material, discoveries, accumulated knowledge
-
-Deferred improvements are not FlickNote notes; record them in `.scratch/defered/` (see Implementation principles).
 
 Create a new project only when explicitly asked by the user. If in doubt, use `orientation` for structured plans and `research` for collected information.
