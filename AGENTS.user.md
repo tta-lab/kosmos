@@ -5,7 +5,7 @@
 - Build larger changes as working end-to-end slices. Add each capability on top of a working system; do not leave the main path dependent on unfinished infrastructure.
 - Prefer capabilities already in the project. Use a well-maintained dependency only when it lowers overall complexity or improves reliability; check its documentation and types first.
 - Complete the stated work and verify the observable outcome with the smallest relevant check.
-- Do not implement optional improvements. Record concrete, useful ones in FlickNote project `deferable`.
+- Do not implement optional improvements. Record concrete, useful ones in `.scratch/defered/`.
 
 ## Host-local instructions
 
@@ -80,10 +80,11 @@ anno = annotate (task annotation)
 
 Use FlickNote MCP `note_*` and `project_*` tools for all agent-initiated note and project operations. Do not invoke FlickNote note-management CLI commands through the shell. If MCP is unavailable or lacks the required operation, report the blocker instead of falling back to the CLI. Starting the MCP server and managing the FlickNote daemon are operational exceptions.
 
-Use only these three projects for all agent-written notes:
+Use only these two projects for all agent-written notes:
 
 - **orientation** — plan-like notes: task plans, design decisions, implementation strategies, orientation context
 - **research** — research and knowledge notes: findings, reference material, discoveries, accumulated knowledge
-- **deferable** — optional improvements worth retaining but intentionally left outside the current task
+
+Deferred improvements are not FlickNote notes; record them in `.scratch/defered/` (see Implementation principles).
 
 Create a new project only when explicitly asked by the user. If in doubt, use `orientation` for structured plans and `research` for collected information.
