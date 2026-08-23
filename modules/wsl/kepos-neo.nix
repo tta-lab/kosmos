@@ -124,7 +124,7 @@ in {
         cloudreve = {
           name = "Cloudreve";
           targetPort = 17480;
-          allow = personalDevicesAllow ++ svenMacAllow;
+          allow = personalDevicesAllow ++ baiheAllow ++ svenMacAllow;
         };
         anki = {
           name = "Anki";
