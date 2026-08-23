@@ -9,7 +9,7 @@ end
 
 set --local selection (
     $project_bin list --json |
-        /run/current-system/sw/bin/jq --raw-output '.[] | [.alias, .name, .path] | @tsv' |
+        /run/current-system/sw/bin/jq --raw-output '.projects[] | [.alias, .name, .path] | @tsv' |
         /run/current-system/sw/bin/fzf \
             --delimiter='\t' \
             --with-nth=1,2,3 \
@@ -25,7 +25,7 @@ set --local fields (string split (printf '\t') -- $selection)
 set --local project_alias $fields[1]
 set --local project_path $fields[3]
 
-if test -z "$project_alias" -o -z "$project_path" -o not -d "$project_path"
+if test -z "$project_alias" -o -z "$project_path"; or not test -d "$project_path"
     echo "Invalid Organon project selection" >&2
     exit 1
 end
