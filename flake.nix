@@ -173,11 +173,12 @@
           ];
         };
         cfg = eval.config;
-        secret = cfg.age.secrets.woodpecker-server-env;
+        serverSecret = cfg.age.secrets.woodpecker-server-env;
+        postgresSecret = cfg.age.secrets.woodpecker-postgres-env;
         unit = cfg.systemd.services.woodpecker-secret-sync;
         has = value: list: builtins.elem value list;
       in
-        assert unit.restartTriggers == [secret.file];
+        assert unit.restartTriggers == [serverSecret.file postgresSecret.file];
         assert has "k3s.service" unit.after;
         assert has "k3s.service" unit.wants;
         assert has "multi-user.target" unit.wantedBy;

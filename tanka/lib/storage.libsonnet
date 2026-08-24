@@ -34,33 +34,33 @@ local labels(name) = {
       resources: { requests: { storage: '20Gi' } },
     },
   },
-  woodpeckerPv: {
+  woodpeckerPostgresPv: {
     apiVersion: 'v1',
     kind: 'PersistentVolume',
-    metadata: { name: 'kosmos-woodpecker' },
+    metadata: { name: 'kosmos-woodpecker-postgres' },
     spec: {
       capacity: { storage: '5Gi' },
       accessModes: ['ReadWriteOnce'],
       persistentVolumeReclaimPolicy: 'Retain',
       storageClassName: 'kosmos-static',
       hostPath: {
-        path: '/var/lib/kosmos-k3s/woodpecker',
+        path: '/var/lib/kosmos-k3s/woodpecker-postgres',
         type: 'Directory',
       },
     },
   },
-  woodpeckerPvc: {
+  woodpeckerPostgresPvc: {
     apiVersion: 'v1',
     kind: 'PersistentVolumeClaim',
     metadata: {
-      name: 'woodpecker-data',
+      name: 'woodpecker-postgres',
       namespace: 'devops',
-      labels: labels('woodpecker'),
+      labels: labels('woodpecker-postgres'),
     },
     spec: {
       accessModes: ['ReadWriteOnce'],
       storageClassName: 'kosmos-static',
-      volumeName: 'kosmos-woodpecker',
+      volumeName: 'kosmos-woodpecker-postgres',
       resources: { requests: { storage: '5Gi' } },
     },
   },

@@ -5,6 +5,8 @@ local labels(name) = {
 
 local serverLabels = labels('woodpecker');
 local agentLabels = labels('woodpecker-agent');
+local postgresLabels = labels('woodpecker-postgres');
+local postgresImage = 'postgres:18-alpine@sha256:b6a16ed0eb96e2c362811f7eeb951eac8b459e7b40be4149ea5444aa7c65569b';
 local proxy = import 'proxy.libsonnet';
 
 {
@@ -31,9 +33,14 @@ local proxy = import 'proxy.libsonnet';
           },
           containers: [{
             name: 'server',
-            image: 'woodpeckerci/woodpecker-server:v3.16.0',
+            image: 'woodpeckerci/woodpecker-server:v3.18.0',
             envFrom: [{ secretRef: { name: 'woodpecker-server-env' } }],
             env: [
+              { name: 'WOODPECKER_DATABASE_DRIVER', value: 'postgres' },
+              {
+                name: 'WOODPECKER_DATABASE_DATASOURCE',
+                valueFrom: { secretKeyRef: { name: 'woodpecker-postgres-env', key: 'WOODPECKER_DATABASE_DATASOURCE' } },
+              },
               { name: 'WOODPECKER_HOST', value: 'http://woodpecker.localhost:17480' },
               { name: 'WOODPECKER_SERVER_ADDR', value: ':8000' },
               { name: 'WOODPECKER_GRPC_ADDR', value: ':9000' },
@@ -63,9 +70,7 @@ local proxy = import 'proxy.libsonnet';
               requests: { cpu: '50m', memory: '128Mi' },
               limits: { cpu: '1', memory: '1Gi' },
             },
-            volumeMounts: [{ name: 'data', mountPath: '/var/lib/woodpecker' }],
           }],
-          volumes: [{ name: 'data', persistentVolumeClaim: { claimName: 'woodpecker-data' } }],
         },
       },
     },
@@ -84,6 +89,20 @@ local proxy = import 'proxy.libsonnet';
         { name: 'http', port: 8000, targetPort: 'http' },
         { name: 'grpc', port: 9000, targetPort: 'grpc' },
       ],
+    },
+  },
+  woodpeckerPostgresService: {
+    apiVersion: 'v1',
+    kind: 'Service',
+    metadata: {
+      name: 'woodpecker-postgres',
+      namespace: 'devops',
+      labels: postgresLabels,
+    },
+    spec: {
+      type: 'ClusterIP',
+      selector: postgresLabels,
+      ports: [{ name: 'postgres', port: 5432, targetPort: 'postgres' }],
     },
   },
   woodpeckerAgentServiceAccount: {
@@ -133,7 +152,7 @@ local proxy = import 'proxy.libsonnet';
       labels: agentLabels,
     },
     spec: {
-      replicas: 3,
+      replicas: 2,
       serviceName: 'woodpecker-agent',
       selector: { matchLabels: agentLabels },
       template: {
@@ -158,7 +177,7 @@ local proxy = import 'proxy.libsonnet';
           }],
           containers: [{
             name: 'agent',
-            image: 'woodpeckerci/woodpecker-agent:v3.16.0',
+            image: 'woodpeckerci/woodpecker-agent:v3.18.0',
             env: [
               { name: 'WOODPECKER_SERVER', value: 'woodpecker:9000' },
               { name: 'WOODPECKER_BACKEND', value: 'kubernetes' },
@@ -184,6 +203,53 @@ local proxy = import 'proxy.libsonnet';
               limits: { cpu: '1', memory: '1Gi' },
             },
           }],
+        },
+      },
+    },
+  },
+  woodpeckerPostgres: {
+    apiVersion: 'apps/v1',
+    kind: 'StatefulSet',
+    metadata: {
+      name: 'woodpecker-postgres',
+      namespace: 'devops',
+      labels: postgresLabels,
+    },
+    spec: {
+      serviceName: 'woodpecker-postgres',
+      replicas: 1,
+      selector: { matchLabels: postgresLabels },
+      template: {
+        metadata: { labels: postgresLabels },
+        spec: {
+          securityContext: { fsGroup: 70 },
+          containers: [{
+            name: 'postgres',
+            image: postgresImage,
+            ports: [{ name: 'postgres', containerPort: 5432 }],
+            env: [
+              { name: 'POSTGRES_USER', value: 'woodpecker' },
+              { name: 'POSTGRES_DB', value: 'woodpecker' },
+              {
+                name: 'POSTGRES_PASSWORD',
+                valueFrom: { secretKeyRef: { name: 'woodpecker-postgres-env', key: 'POSTGRES_PASSWORD' } },
+              },
+              { name: 'PGDATA', value: '/var/lib/postgresql/data/pgdata' },
+            ],
+            readinessProbe: {
+              exec: { command: ['pg_isready', '-U', 'woodpecker', '-d', 'woodpecker'] },
+              initialDelaySeconds: 10,
+              periodSeconds: 5,
+              timeoutSeconds: 5,
+              failureThreshold: 12,
+            },
+            resources: {
+              requests: { cpu: '50m', memory: '256Mi' },
+              limits: { cpu: '1', memory: '1Gi' },
+            },
+            volumeMounts: [{ name: 'data', mountPath: '/var/lib/postgresql/data' }],
+          }],
+          volumes: [{ name: 'data', persistentVolumeClaim: { claimName: 'woodpecker-postgres' } }],
         },
       },
     },
