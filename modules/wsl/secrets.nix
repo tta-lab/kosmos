@@ -60,6 +60,13 @@ in {
           mode = "0400";
           path = "/run/agenix/woodpecker-server-env";
         };
+        woodpecker-postgres-env = {
+          file = secretsDir + "/woodpecker-postgres-env.age";
+          owner = "root";
+          group = "root";
+          mode = "0400";
+          path = "/run/agenix/woodpecker-postgres-env";
+        };
         ente-stack-env = {
           file = secretsDir + "/ente-stack-env.age";
           owner = "root";
@@ -134,13 +141,16 @@ in {
       wantedBy = ["multi-user.target"];
       wants = ["k3s.service"];
       after = ["k3s.service"];
-      restartTriggers = [config.age.secrets.woodpecker-server-env.file];
+      restartTriggers = [
+        config.age.secrets.woodpecker-server-env.file
+        config.age.secrets.woodpecker-postgres-env.file
+      ];
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
         Restart = "on-failure";
         RestartSec = "5s";
-        ExecStart = "${woodpeckerSecretSync}/bin/kosmos-sync-woodpecker-secret ${config.age.secrets.woodpecker-server-env.path}";
+        ExecStart = "${woodpeckerSecretSync}/bin/kosmos-sync-woodpecker-secret ${config.age.secrets.woodpecker-server-env.path} ${config.age.secrets.woodpecker-postgres-env.path}";
       };
     };
     ente-secret-sync = {

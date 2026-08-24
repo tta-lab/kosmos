@@ -12,6 +12,7 @@ in {
   "secrets/cloudflared-kepos-credentials.age".publicKeys = users ++ systems;
   "secrets/forgejo-smoke-token.age".publicKeys = users ++ systems;
   "secrets/woodpecker-server-env.age".publicKeys = users ++ systems;
+  "secrets/woodpecker-postgres-env.age".publicKeys = users ++ systems;
   "secrets/ente-stack-env.age".publicKeys = users ++ systems;
   "secrets/anki-sync-env.age".publicKeys = users ++ systems;
   "secrets/hindsight-env.age".publicKeys = users ++ systems;

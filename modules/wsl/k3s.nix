@@ -96,7 +96,7 @@ in {
   systemd.tmpfiles.rules = [
     "d /var/lib/kosmos-k3s 0750 root root - -"
     "d /var/lib/kosmos-k3s/forgejo 0750 1000 1000 - -"
-    "d /var/lib/kosmos-k3s/woodpecker 0750 1000 1000 - -"
+    "d /var/lib/kosmos-k3s/woodpecker-postgres 0700 70 70 - -"
     "d /var/lib/kosmos-k3s/dagger 0750 root root - -"
     "d /var/lib/kosmos-k3s/ente 0750 root root - -"
     "d /var/lib/kosmos-k3s/ente/postgres 0700 999 999 - -"
