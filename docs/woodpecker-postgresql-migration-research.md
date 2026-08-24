@@ -218,8 +218,51 @@ A no-data-loss migration is feasible, but **Woodpecker itself only supplies the 
 - **Official Forgejo upgrade/backup guidance:** Forgejo's upgrade guide says to perform a **full backup before upgrading**; it treats that as a requirement for upgrades to a new stable release, recommends a synchronized point-in-time snapshot of **all** Forgejo storage as the reliable backup method, says multi-storage deployments may require shutting Forgejo down for a consistent backup, and warns that although `forgejo dump` can collect files and database into a zip, the SQL dump inside has long-standing reinjection bugs. Sources: <https://forgejo.org/docs/latest/admin/upgrade/>, <https://forgejo.org/docs/latest/admin/command-line/>.
 - **Official Forgejo upgrade mechanics:** Forgejo says normal upgrades are done by replacing the binary or container image and letting the upgrade procedure handle migrations; it also says the database version is stored in the database specifically to prevent accidental downgrades. Sources: <https://forgejo.org/docs/latest/admin/upgrade/>.
 - **Conservative recommendation for this repo:**
-  - **Woodpecker:** first upgrade from `v3.16.0` to `v3.17.0`, validate Kubernetes-agent and Forgejo behavior there, then consider a second step to current latest `v3.18.0`. This is the smallest forward move from the current pin, and Woodpecker's own docs say DB upgrades are automatic unless release notes say otherwise. Sources: <https://github.com/woodpecker-ci/woodpecker/releases/tag/v3.17.0>, <https://github.com/woodpecker-ci/woodpecker/releases/tag/v3.18.0>, <https://woodpecker-ci.org/docs/3.17/administration/configuration/server>.
-  - **Forgejo:** do a **patch-only** move first from `15.0.3-rootless` to `15.0.7-rootless`; treat the move from Forgejo 15 LTS to Forgejo 16 (`16.0.3-rootless` today) as a **separate major-upgrade change** with its own backup, verification, and rollback plan. Forgejo's Docker install docs explicitly say upgrading from `X` to `X+1` requires manual operation and human verification, while the upgrade guide requires full backup before new stable-release upgrades. Sources: <https://forgejo.org/docs/latest/admin/installation/docker/>, <https://forgejo.org/docs/latest/admin/upgrade/>, <https://codeberg.org/forgejo/-/packages/container/forgejo/versions>.
+  - **Woodpecker:** because the PostgreSQL database is intentionally fresh, initialize the new deployment directly on `v3.18.0`; server and agents must use the same tag. Do not add a separate `v3.17.0` migration step. Source: <https://github.com/woodpecker-ci/woodpecker/releases/tag/v3.18.0>.
+  - **Forgejo:** leave the current `15.0.3-rootless` deployment unchanged for this migration. Any Forgejo patch or major upgrade is a separate later change; the Forgejo PV and repository data are not reset.
 - **Woodpecker v3.17 notes relevant here:** the official `v3.17.0` release notes include Kubernetes-agent/backend items (`Gate Kubernetes nodeSelector backend step config behind agent config`, `refactor: rework k8s utils to handle resource names and labels`, `Stamp trusted commit-branch and event pod labels`, `Use toLabelValue instead of toDNSName in Kubernetes step label`) and Forgejo-integration fixes (`fix(forgejo): treat 404 on empty repos as empty pull request list`, `Correct forge_id and org handling on user/repo`). Source: <https://github.com/woodpecker-ci/woodpecker/releases/tag/v3.17.0>.
 - **Woodpecker v3.18 compatibility:** its official release notes rename `WOODPECKER_GRPC_VERIFY` to `WOODPECKER_GRPC_SKIP_VERIFY` and reject incompatible gRPC-protocol agents. This repo does not set the renamed variable, but server and all agents must be upgraded together, not independently. Source: <https://github.com/woodpecker-ci/woodpecker/releases/tag/v3.18.0>.
 - **Reset / data-loss guardrails:** Woodpecker's own schema includes Woodpecker-side objects such as agents, pipelines, repos, secrets, users, and related metadata, so resetting the Woodpecker database can discard Woodpecker metadata/history/state. But that does **not** delete Forgejo-hosted Git repositories, because Forgejo stores repository data under its own repository root (`%(APP_DATA_PATH)s/gitea-repositories` in Forgejo 15 by default) and the rootless container uses Forgejo data under `/var/lib/gitea`. Therefore: resetting Woodpecker's DB is still a metadata-loss event, but **Forgejo data must not be reset unless explicitly authorized**. Sources: <https://github.com/woodpecker-ci/woodpecker/blob/v3.16.0/server/store/datastore/migration/migration.go>, <https://forgejo.org/docs/v15.0/admin/config-cheat-sheet/>, <https://forgejo.org/docs/v15.0/admin/installation/docker/>.
+
+## Chosen fresh-PostgreSQL migration policy
+
+This is the operator-approved variant of the proposal above. It intentionally does **not** copy the existing SQLite data.
+
+### Service and agent sequence
+
+- Keep the old SQLite PV at `/var/lib/kosmos-k3s/woodpecker` untouched as a rollback/archive artifact; do not delete or overwrite it during the cutover.
+- Create the new PostgreSQL workload and initialize an empty `woodpecker` database.
+- Start Woodpecker Server directly on `v3.18.0` with the new PostgreSQL database. The Server and Agent images must use the same `v3.18.0` tag.
+- Keep the live agent baseline at **1** during the database cutover and initial reconfiguration. After PostgreSQL is healthy, the repositories and secrets have been recreated, and one complete test pipeline succeeds, scale the StatefulSet to **2** and verify `2/2 Ready`.
+- The committed manifest currently says `replicas: 3`, while live K3s currently has `1/1`; the implementation must make the two-step target explicit rather than letting an apply silently change the count.
+
+### PostgreSQL and agenix secret handling
+
+- Generate PostgreSQL credentials once during provisioning using a cryptographically secure random hex password; do not derive them from the repository or print them in logs.
+- Encrypt the generated environment with agenix as a new file, proposed name `secrets/woodpecker-postgres-env.age`. The plaintext payload should contain only the PostgreSQL bootstrap values and Woodpecker's server-side database settings, for example `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `WOODPECKER_DATABASE_DRIVER=postgres`, and `WOODPECKER_DATABASE_DATASOURCE`.
+- The generation/encryption step is a one-time bootstrap operation, not a value regenerated on every NixOS switch. The encrypted `.age` file is the source of truth; declare it in `secrets.nix` and `modules/wsl/secrets.nix`, then sync a Kubernetes Secret before starting the new Server.
+- Keep the PostgreSQL DSN in a server-only Kubernetes Secret or mounted datasource file. Do not add the DSN to the agent environment or to a checked-in manifest. The existing `WOODPECKER_AGENT_SECRET` remains the shared Server/Agent credential and must not be replaced by the database password.
+- Do not put the existing Woodpecker `deployment` secret value into this document or Git. A Woodpecker database reset removes its stored secret. Before the reset, record only its scope/name and event allowlist; after the new Server is healthy, recreate/rotate the secret with name `deployment` and the same allowed events: `manual`, `push`, and `tag`. If the old value is not already held in an external secret source, the owner must provide a new value; Woodpecker cannot reveal a masked old value for automatic recovery.
+
+### Fresh-Server reconfiguration inventory
+
+After the new empty database starts, re-enable and test these repositories in Woodpecker:
+
+- `GuionAI/flick-backend` — `fix (web): reply to block comment root`
+- `GuionAI/slias-services` — `feat (payments): require approval cards for payment mutations (#82)`
+- `GuionAI/document-service` — `MANUAL PIPELINE @ main`
+- `GuionAI/flicknote-services` — `fix (gateway): route Ycloud webhook to Slias agent (#124)`
+- `GuionAI/seafarer` — `MANUAL PIPELINE @ main`
+
+For each repository, verify activation, Forgejo webhook delivery, branch/event filters, repository Secrets, and at least one representative pipeline. The listed commit/PR labels are the planning inventory, not a substitute for checking the current default branch after reset.
+
+### Cutover order
+
+1. Generate and encrypt the PostgreSQL secret; deploy the PostgreSQL workload and verify readiness.
+2. Record the current Woodpecker/Forgejo endpoints and the one-agent baseline; take a cold backup of the old SQLite PV even though it will not be imported.
+3. Stop new Woodpecker work, scale agents to `0`, and stop the old Server.
+4. Apply the new Server configuration with Woodpecker `v3.18.0` and the PostgreSQL Secret; allow the empty database schema to initialize.
+5. Verify Server health, Forgejo OAuth, repository activation, and the recreated `deployment` Secret.
+6. Restore **1** agent and run a test pipeline.
+7. Scale agents to **2**, verify `2/2 Ready`, and test one manual, one push, and one tag-triggered path where applicable.
+8. Keep the old SQLite PV for the agreed retention period; schedule PostgreSQL backups before declaring the migration complete.
