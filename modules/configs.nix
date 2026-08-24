@@ -90,6 +90,7 @@ in {
       home.sessionVariables =
         {
           NPM_CONFIG_PREFIX = "/home/neil/.local/share/npm-global";
+          DSH_HOME = "/home/neil/.local/state/dsh";
           EDITOR = "hx";
           VISUAL = "hx";
           PI_RETRY_STALL_TIMEOUT_MS = "0";
