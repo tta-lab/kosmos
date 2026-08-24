@@ -476,6 +476,7 @@
         # Services that must never be exposed without an allow list.
         restricted = [
           "dsh"
+          "codex-bridge"
           "dagger"
           "hindsight"
           "hindsightui"
@@ -483,12 +484,14 @@
           "mihomo-dashboard"
         ];
         dshEnv = cfg.home-manager.users.neil.systemd.user.services.dsh.Service.Environment;
+        bridgeUnit = cfg.home-manager.users.neil.systemd.user.services.kepos-codex-bridge;
         # A service allow key the publisher does not admit can never connect.
         allowKeysConsistent =
           builtins.all
-          (name:
-            let svcAllow = services.${name}.allow;
-            in svcAllow == null || builtins.all (key: builtins.elem key allow) svcAllow)
+          (name: let
+            svcAllow = services.${name}.allow;
+          in
+            svcAllow == null || builtins.all (key: builtins.elem key allow) svcAllow)
           (builtins.attrNames services);
       in
         assert builtins.all (name: services.${name}.allow != null) restricted;
@@ -497,6 +500,8 @@
         # (deepseek-harness.nix) and is published on the same port here and in
         # docs/dsh-deployment.md — keep the port machine-enforced.
         assert services.dsh.targetPort == 3080;
+        assert services."codex-bridge".targetPort == 8787;
+        assert bridgeUnit.Install.WantedBy == ["default.target"];
         assert services.erpnext.targetPort == 17480;
         # The DSH unit reads its key from the agenix file, never hardcodes it.
         assert !builtins.any (entry: nixpkgs.lib.hasPrefix "DEEPSEEK_API_KEY=" entry) dshEnv;
@@ -514,7 +519,7 @@
         assert home.services.kepos.publisher.enable;
         assert home.services.kepos.publisher.stateDir == "/home/neil/.local/state/kepos-neo/mux-publisher";
         assert home.systemd.user.startServices;
-        assert keposServiceNames == ["kepos-publisher"];
+        assert keposServiceNames == ["kepos-codex-bridge" "kepos-publisher"];
           pkgs.runCommand "kepos-publisher-only-check" {
             nativeBuildInputs = [package];
           } ''

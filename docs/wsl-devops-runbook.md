@@ -11,6 +11,7 @@ objects. A NixOS switch never applies Tanka.
 - Dagger: `tcp://dagger.devops.svc.cluster.local:8080` in-cluster and
   `tcp://127.0.0.1:8080` for the local CLI
 - DeepSeek Harness: `http://dsh.localhost:17480` through Kepos (Mac + Pixel 7a)
+- Codex Bridge: `http://codex-bridge.localhost:17480` through Kepos (Mac + Baihe)
 - k3s API: `https://127.0.0.1:26443`
 - Anki Sync: `http://anki.localhost:17480/` through Kepos
 - Cloudreve: `http://cloudreve.localhost:17480` through Kepos
@@ -33,6 +34,11 @@ Kepos publishes application service IDs including:
 - `dsh` targets its loopback-only Home Manager user service on port `3080` and
   is restricted to the Mac and Pixel 7a subscribers. Kepos exposes it as
   `http://dsh.localhost:17480`; it has no Caddy or CoreDNS route.
+- `codex-bridge` targets the loopback-only Home Manager user service on port
+  `8787` and is restricted to the Mac and Baihe subscribers. It runs
+  `/home/neil/.local/bin/kepos-codex-bridge serve --auth-file
+  /home/neil/.codex/auth.json`; use its `login` subcommand manually if the
+  owner-only auth file needs setup.
 - `dagger` targets the Dagger engine on port `8080` and is restricted to the
   named Mac subscriber. Other allowed subscribers neither see nor can open it.
 - `ssh` targets port `22`.
@@ -62,7 +68,8 @@ publisher:
   `woodpecker`, `memos`, `anki`, `hindsight`, `hindsightui`, `miniflux`,
   `ente`, `erpnext`, …): target the canonical gateway port `17480` and are
   routed by the preserved `Host` header.
-- **Direct loopback HTTP services** (`dsh`): a Home Manager user service binds
+- **Direct loopback HTTP services** (`dsh`, `codex-bridge`): a Home Manager
+  user service binds
   its own `127.0.0.1` port and Kepos publishes that port directly. It has no
   Tanka environment, Caddy route, or CoreDNS rewrite.
 - **Raw TCP/SSH services** (`dagger`, `mihomo`, `ssh`): the peer must add a
