@@ -100,6 +100,7 @@
             ${./tests/notes-gateway-render-test} \
             ${./tests/feeds-render-test} \
             ${./tests/feeds-gateway-render-test} \
+            ${./tests/erpnext-gateway-render-test} \
             ${./tests/sync-anki-secret-test} \
             ${./tests/sync-codex-auth-test} \
             ${./tests/sync-hindsight-secret-test} \
@@ -129,6 +130,7 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/feeds-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/feeds-gateway-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/erpnext-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-anki-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-codex-auth-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-hindsight-secret-test}
@@ -495,6 +497,7 @@
         # (deepseek-harness.nix) and is published on the same port here and in
         # docs/dsh-deployment.md — keep the port machine-enforced.
         assert services.dsh.targetPort == 3080;
+        assert services.erpnext.targetPort == 17480;
         # The DSH unit reads its key from the agenix file, never hardcodes it.
         assert !builtins.any (entry: nixpkgs.lib.hasPrefix "DEEPSEEK_API_KEY=" entry) dshEnv;
           pkgs.runCommand "kepos-publisher-services-check" {} "touch $out";
