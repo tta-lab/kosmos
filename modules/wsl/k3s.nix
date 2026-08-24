@@ -30,6 +30,7 @@ in {
     "miniflux.localhost"
     "hindsight.localhost"
     "hindsightui.localhost"
+    "erpnext.localhost"
   ];
 
   networking.firewall.interfaces.cni0.allowedTCPPorts = [

@@ -17,6 +17,7 @@ objects. A NixOS switch never applies Tanka.
 - Miniflux: `http://miniflux.localhost:17480` through Kepos
 - Hindsight API and MCP: `http://hindsight.localhost:17480` through Kepos
 - Hindsight Control Plane: `http://hindsightui.localhost:17480` through Kepos
+- ERPNext: `http://erpnext.localhost:17480` through Kepos
 
 For Kubernetes-backed HTTP apps, Caddy binds the host gateway only on
 `127.0.0.1:17480`. CoreDNS rewrites their canonical `.localhost` names to that
@@ -47,6 +48,8 @@ Kepos publishes application service IDs including:
 - `miniflux` targets the canonical gateway on port `17480`; the preserved HTTP
   Host header selects the RSS reader route. See [miniflux.md](miniflux.md) for
   credentials and first login.
+- `erpnext` targets the canonical gateway port `17480`; the preserved HTTP Host
+  header selects the ERPNext service route.
 
 ## Kepos service model: HTTP web services vs raw TCP
 
@@ -57,8 +60,8 @@ publisher:
 
 - **Gateway-routed HTTP web services** (`bookorbit`, `forgejo`,
   `woodpecker`, `memos`, `anki`, `hindsight`, `hindsightui`, `miniflux`,
-  `ente`, …): target the canonical gateway port `17480` and are routed by the
-  preserved `Host` header.
+  `ente`, `erpnext`, …): target the canonical gateway port `17480` and are
+  routed by the preserved `Host` header.
 - **Direct loopback HTTP services** (`dsh`): a Home Manager user service binds
   its own `127.0.0.1` port and Kepos publishes that port directly. It has no
   Tanka environment, Caddy route, or CoreDNS rewrite.

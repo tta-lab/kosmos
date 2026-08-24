@@ -151,6 +151,11 @@ in {
           targetPort = 17480;
           allow = fullTrustAllow;
         };
+        erpnext = {
+          name = "ERPNext";
+          targetPort = 17480;
+          allow = fullTrustAllow ++ svenMacAllow;
+        };
         mihomo = {
           name = "Mihomo";
           targetPort = 7890;
