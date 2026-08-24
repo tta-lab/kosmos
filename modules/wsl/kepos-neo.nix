@@ -101,6 +101,11 @@ in {
           # Full-trust devices + Pixel 7a phone.
           allow = fullTrustAllow ++ [subscribers.pixel7a];
         };
+        codex-bridge = {
+          name = "Codex Bridge";
+          targetPort = 8787;
+          allow = [subscribers.mac] ++ baiheAllow;
+        };
         dagger = {
           name = "Dagger";
           targetPort = 8080;
