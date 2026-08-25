@@ -32,33 +32,34 @@
     keys = [${lib.concatMapStringsSep ", " (k: ''"${k}"'') b.keys}]
   '';
 in {
-  home-manager.users.neil.systemd.user.services.kepos-tact-memory = {
-    Unit = {
-      Description = "Kepos Tact remote memory (SQLite)";
-      After = ["network-online.target"];
+  home-manager.users.neil = {
+    systemd.user.services.kepos-tact-memory = {
+      Unit = {
+        Description = "Kepos Tact remote memory (SQLite)";
+        After = ["network-online.target"];
+      };
+      Install.WantedBy = ["default.target"];
+      Service = {
+        Type = "simple";
+        WorkingDirectory = "/home/neil";
+        ExecStart = lib.escapeShellArgs [executable "--config" configFile];
+        Restart = "on-failure";
+        RestartSec = 5;
+        UMask = "0077";
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+      };
     };
-    Install.WantedBy = ["default.target"];
-    Service = {
-      Type = "simple";
-      WorkingDirectory = "/home/neil";
-      ExecStart = lib.escapeShellArgs [executable "--config" configFile];
-      Restart = "on-failure";
-      RestartSec = 5;
-      UMask = "0077";
-      NoNewPrivileges = true;
-      PrivateTmp = true;
-    };
-  };
 
-  # Server policy: the binding table (public keys only, no secrets).
-  home.file."${configFile}" = {
-    text =
-      ''
-        [server]
-        bind = "127.0.0.1:${toString serverPort}"
-        db = "${stateDir}/memory.sqlite3"
-      ''
-      + lib.concatMapStringsSep "" renderBinding bindings;
-    mode = "0600";
+    # Server policy: the binding table (public keys only, no secrets).
+    home.file."${configFile}" = {
+      text =
+        ''
+          [server]
+          bind = "127.0.0.1:${toString serverPort}"
+          db = "${stateDir}/memory.sqlite3"
+        ''
+        + lib.concatMapStringsSep "" renderBinding bindings;
+    };
   };
 }

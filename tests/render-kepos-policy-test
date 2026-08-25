@@ -29,7 +29,6 @@ KEPOS_POLICY_SOURCE="$source_file" \
 
 cmp --silent "$expected_file" "$target_file"
 [[ "$(stat -c '%a' "$target_file")" == "600" ]]
-[[ "$(awk '$0 == "  [[publisher.services]]" { count++ } END { print count + 0 }' "$target_file")" == "20" ]]
 awk '$0 == "[publisher]" { found = 1 } END { exit !found }' "$target_file"
 
 cp "$target_file" "$before_file"

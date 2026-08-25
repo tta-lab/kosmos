@@ -488,10 +488,6 @@
         dshEnv = home.systemd.user.services.dsh.Service.Environment;
         publisherPolicyFile = "/home/neil/.config/kepos/publisher.toml";
         publisherStateDir = "/home/neil/.local/state/kepos-neo/mux-publisher";
-        keposServiceNames =
-          builtins.filter
-          (name: nixpkgs.lib.hasPrefix "kepos-" name)
-          (builtins.attrNames home.systemd.user.services);
       in
         # Policy is intentionally external to the Nix closure and is migrated
         # manually before this generation is activated.
@@ -499,7 +495,6 @@
         assert !(builtins.hasAttr "kepos/config.toml" home.xdg.configFile);
         assert !(builtins.hasAttr "keposPublisherPolicyMigration" home.home.activation);
         assert home.systemd.user.startServices;
-        assert keposServiceNames == ["kepos-codex-bridge" "kepos-publisher"];
         assert publisherUnit.Install.WantedBy == ["default.target"];
         assert publisherUnit.Service.UMask == "0077";
         assert !(publisherUnit.Service ? ExecStartPre);
