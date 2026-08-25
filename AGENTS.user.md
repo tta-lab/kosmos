@@ -42,6 +42,33 @@ ordinary word. List projects only when discovery is needed.
   for public source code. Prefer repository context and prior FlickNote notes
   when they already answer the question.
 
+### Explicit skill invocation
+
+- When the user writes a `$query` token in prose, treat it as an explicit
+  request to discover and use a skill whose frontmatter `name` contains
+  `query`, case-insensitively.
+- Use the current harness's skill discovery mechanism, then filter matches by
+  skill name. A match only in the description or category does not qualify.
+- Prefer an exact name match. Otherwise, use the surrounding request to choose
+  among substring matches. Ask only when multiple matches remain materially
+  ambiguous.
+- Read the selected skill's complete `SKILL.md` before acting and follow it for
+  that turn. If no matching skill exists, report that instead of silently
+  substituting another skill.
+- Do not interpret `$...` inside code, shell snippets, paths, or monetary
+  expressions as a skill invocation.
+
+### Waiting for delegated agents
+
+- When waiting for delegated agents, use a 10-minute wait window (600,000 ms)
+  by default. The wait should return immediately when an agent finishes; it
+  must not delay a completed result until the window expires.
+- If no agent finishes, continue with another 10-minute window. Do not poll at
+  short intervals merely to report unchanged status.
+- Wait on all relevant agent IDs in one call when the harness supports it. Use
+  a shorter window only when the user requests frequent updates or the harness
+  imposes a lower hard limit.
+
 ## Deployment
 
 - Merging a PR does not deploy it. If the task includes deployment, run and verify the repository's documented deploy step.
