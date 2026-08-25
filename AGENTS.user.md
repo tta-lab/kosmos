@@ -42,6 +42,23 @@ ordinary word. List projects only when discovery is needed.
   for public source code. Prefer repository context and prior FlickNote notes
   when they already answer the question.
 
+### Explicit skill invocation
+
+- A `$query` token in user prose explicitly invokes a skill whose frontmatter
+  `name` contains `query`, case-insensitively. Ignore tokens in code, shell
+  snippets, paths, and monetary expressions.
+- Prefer an exact name match; otherwise use context and ask only when the choice
+  remains materially ambiguous. Report no match instead of substituting.
+- Load the selected skill's complete instructions through the current harness
+  and follow them for that turn.
+
+### Waiting for delegated agents
+
+- Wait on all relevant active agent IDs in one call with a 290-second timeout.
+  On timeout, repeat; when agents become terminal, process their results and
+  continue only with the remaining active IDs. Shorten the timeout only when
+  the user requests frequent updates or the tool requires a lower maximum.
+
 ## Deployment
 
 - Merging a PR does not deploy it. If the task includes deployment, run and verify the repository's documented deploy step.
