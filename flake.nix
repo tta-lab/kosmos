@@ -409,6 +409,7 @@
         assert nixDaemonEnvironment.https_proxy == expectedProxy;
         assert nixDaemonEnvironment.no_proxy == expectedNoProxy;
         assert homeSessionVariables.PI_RETRY_STALL_TIMEOUT_MS == "0";
+        assert homeSessionVariables.TACT_MODEL == "terra";
         assert builtins.all (name: homeSessionVariables.${name} == expectedProxyEnvironment.${name}) (builtins.attrNames expectedProxyEnvironment);
         assert k3sEnvironment.HTTP_PROXY == expectedProxy;
         assert k3sEnvironment.HTTPS_PROXY == expectedProxy;

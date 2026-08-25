@@ -10,6 +10,10 @@ Use `pkgsUnstable.<name>` for bleeding-edge, `pkgs.<name>` for stable.
 Edit source dir (`helix/`, `lenos/`, `temenos/`) → rebuild WSL.
 Use `og clone <https-url>` to obtain and register project checkouts. Kosmos does not sync repositories.
 
+**Adding a user session variable:**
+For non-secret interactive variables, edit `modules/configs.nix` → `home.sessionVariables`.
+See `docs/environment.md` for scope-specific ownership.
+
 **Adding or updating agent skills:**
 Agent skills are no longer managed by Kosmos. Each machine owns its own
 `~/.agents/skills/` — deploy a skill by copying its directory into that
