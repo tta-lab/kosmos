@@ -12,7 +12,9 @@ PostgreSQL data on the 2 TiB Micron SATA disk rather than the WSL root disk.
 Kepos publishes `cloudreve` through the canonical HTTP gateway. It is available
 to personal devices plus the `sven-mac` placeholder subscriber. The placeholder
 is a deliberately unusable generated public key; replace it with Sven's actual
-Kepos subscriber public key in `modules/wsl/kepos-neo.nix`, then rebuild WSL.
+Kepos subscriber public key in `kepos/publisher-policy.jsonnet`, then run
+`just kepos-policy-render`. Kepos hot-reloads the valid rendered ACL; do not
+rebuild WSL for that policy change.
 
 The first Cloudreve account to register becomes the administrator. Register the
 owner account before replacing the Sven placeholder or sharing the endpoint.

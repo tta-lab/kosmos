@@ -27,17 +27,26 @@ path. Only the portable agent rules (`AGENTS.user.md`) are synced by
 For a Kubernetes-backed HTTP app, add a Tanka environment + lib under `tanka/`
 (namespace/Service/Deployment), wire the route in `tanka/lib/gateway.libsonnet`
 (Caddy + CoreDNS rewrite), add the `<app>.localhost` hosts entry and storage
-dirs in `modules/wsl/k3s.nix`, register the service in
-`modules/wsl/kepos-neo.nix`, then `nh os switch` + `just <app>-deploy`. These
-services use `targetPort = 17480` (canonical gateway, Host-header routed).
+dirs in `modules/wsl/k3s.nix`, then add the publisher service and ACL in the
+Jsonnet source `kepos/publisher-policy.jsonnet`, then run
+`just kepos-policy-render`. Run `nh os switch` + `just <app>-deploy` for the
+infrastructure; rendering a valid policy takes effect within one second without
+a rebuild or Kepos restart. These services normally use `target_port = 17480`
+(canonical gateway, Host-header routed).
 
 A loopback-only user service that Kepos exposes directly uses a Home Manager
 `systemd.user` unit bound to `127.0.0.1` and publishes that port in
-`modules/wsl/kepos-neo.nix`; it needs no Tanka, Caddy, or CoreDNS route.
+`kepos/publisher-policy.jsonnet`; it needs no Tanka, Caddy, or CoreDNS route.
 Configure any app-level trusted authority as `<id>.localhost:17480`. Peers
 reach every HTTP service through the subscriber gateway port — never configure
 `[[subscriber.services]]` for HTTP; that is only for raw TCP/SSH services like
 `dagger`. See `docs/wsl-devops-runbook.md` for the full service model.
+
+`~/.config/kepos/publisher.toml` is an intentional unmanaged runtime output,
+not a Home Manager file. Do not edit it directly: keep subscriber keys, ACLs,
+and publisher service entries in `kepos/publisher-policy.jsonnet`, then render
+atomically with `just kepos-policy-render`. Rendering does not require the
+Jsonnet edit to be committed or a NixOS switch.
 
 **Changing DSH MCP clients:** Read `docs/dsh-mcp-integration.md` before changing
 the overlay, stdio command, or credential handoff.
@@ -87,7 +96,7 @@ before the commit as usual.
 
 ## Editing Rules
 
-- **Never edit managed `~/.config/*` files directly** — edit the repo source and rebuild WSL. The project registry in `~/.config/ttal/` is unmanaged; use `og clone` for additions and direct edits only for archive/migration work.
+- **Never edit managed `~/.config/*` files directly** — edit the repo source and rebuild WSL. The project registry in `~/.config/ttal/` is unmanaged; use `og clone` for normal project additions and edit the registry directly only for archive/migration work. Kepos's unmanaged `~/.config/kepos/publisher.toml` is generated output: edit `kepos/publisher-policy.jsonnet` and run `just kepos-policy-render` instead.
 - `~/.agents/skills/*` is **not** managed by Kosmos — each machine owns its skills directly; deploy by copying skill directories into `~/.agents/skills/`.
 - For tmux clipboard on kosmos-wsl, use tmux clipboard/OSC 52 commands such as `copy-selection` or `copy-selection-and-cancel`; do not pipe copy bindings to platform clipboard tools like `pbcopy`, `clip.exe`, or `wl-copy`.
 - Use `og clone` for normal project additions. Edit the unmanaged `~/.config/ttal/projects.toml` directly only for archive or migration work that og does not expose.

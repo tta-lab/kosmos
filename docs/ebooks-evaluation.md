@@ -13,11 +13,15 @@ The database has a ClusterIP service only and is not published through Kepos.
 ## Deploy
 
 Deploy the NixOS generation first. It creates the retained host directories,
-adds the local hostname, and publishes the Kepos service ID:
+adds the local hostname, and installs the Kepos publisher service:
 
 ```bash
 nh os switch . -H wsl --ask
 ```
+
+Then add the `bookorbit` service and its ACL to
+`kepos/publisher-policy.jsonnet` and run `just kepos-policy-render`; Kepos
+hot-reloads that rendered policy without a rebuild or restart.
 
 Then create missing credentials and apply the Tanka environments:
 
