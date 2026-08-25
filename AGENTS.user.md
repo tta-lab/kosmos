@@ -60,10 +60,10 @@ ordinary word. List projects only when discovery is needed.
 
 ### Waiting for delegated agents
 
-- When waiting for delegated agents, use a 10-minute wait window (600,000 ms)
+- When waiting for delegated agents, use a 290-second wait window (290,000 ms)
   by default. The wait should return immediately when an agent finishes; it
   must not delay a completed result until the window expires.
-- If no agent finishes, continue with another 10-minute window. Do not poll at
+- If no agent finishes, continue with another 290-second window. Do not poll at
   short intervals merely to report unchanged status.
 - Wait on all relevant agent IDs in one call when the harness supports it. Use
   a shorter window only when the user requests frequent updates or the harness
