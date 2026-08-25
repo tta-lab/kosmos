@@ -44,30 +44,20 @@ ordinary word. List projects only when discovery is needed.
 
 ### Explicit skill invocation
 
-- When the user writes a `$query` token in prose, treat it as an explicit
-  request to discover and use a skill whose frontmatter `name` contains
-  `query`, case-insensitively.
-- Use the current harness's skill discovery mechanism, then filter matches by
-  skill name. A match only in the description or category does not qualify.
-- Prefer an exact name match. Otherwise, use the surrounding request to choose
-  among substring matches. Ask only when multiple matches remain materially
-  ambiguous.
-- Read the selected skill's complete `SKILL.md` before acting and follow it for
-  that turn. If no matching skill exists, report that instead of silently
-  substituting another skill.
-- Do not interpret `$...` inside code, shell snippets, paths, or monetary
-  expressions as a skill invocation.
+- A `$query` token in user prose explicitly invokes a skill whose frontmatter
+  `name` contains `query`, case-insensitively. Ignore tokens in code, shell
+  snippets, paths, and monetary expressions.
+- Prefer an exact name match; otherwise use context and ask only when the choice
+  remains materially ambiguous. Report no match instead of substituting.
+- Load the selected skill's complete instructions through the current harness
+  and follow them for that turn.
 
 ### Waiting for delegated agents
 
-- When waiting for delegated agents, use a 290-second wait window (290,000 ms)
-  by default. The wait should return immediately when an agent finishes; it
-  must not delay a completed result until the window expires.
-- If no agent finishes, continue with another 290-second window. Do not poll at
-  short intervals merely to report unchanged status.
-- Wait on all relevant agent IDs in one call when the harness supports it. Use
-  a shorter window only when the user requests frequent updates or the harness
-  imposes a lower hard limit.
+- Wait on all relevant active agent IDs in one call with a 290-second timeout.
+  On timeout, repeat; when agents become terminal, process their results and
+  continue only with the remaining active IDs. Shorten the timeout only when
+  the user requests frequent updates or the tool requires a lower maximum.
 
 ## Deployment
 
