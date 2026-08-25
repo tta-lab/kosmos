@@ -20,6 +20,7 @@ _: {
     ../../modules/wsl/cloudreve-storage.nix
     ../../modules/wsl/kepos-neo.nix
     ../../modules/wsl/kepos-codex-bridge.nix
+    ../../modules/wsl/kepos-tact-memory.nix
     ../../modules/wsl/kepos-tunnel.nix
     ../../modules/wsl/navidrome.nix
     ../../modules/wsl/deepseek-harness.nix
