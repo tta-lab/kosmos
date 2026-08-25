@@ -13,7 +13,7 @@ upgraded, swapped, rolled back, and how plugins are managed — the steps that
 | Service unit | Home Manager user service `dsh.service` | `modules/wsl/deepseek-harness.nix` |
 | Profile/plugin tree | `/home/neil/.local/state/dsh/profiles/web/node_modules` (`DSH_HOME` = `/home/neil/.local/state/dsh`) | `dsh plugin --profile web add …` (pnpm) |
 | Secret | agenix `openclaw-deepseek-key` → `/home/neil/.config/openclaw/deepseek-key` | `secrets/` + `modules/wsl/secrets.nix` |
-| Exposure | loopback `127.0.0.1:3080` only; Kepos publishes service `dsh` → `http://dsh.localhost:17480` (Mac + Pixel 7a) | `modules/wsl/kepos-neo.nix` |
+| Exposure | loopback `127.0.0.1:3080` only; Kepos publishes service `dsh` → `http://dsh.localhost:17480` (Mac + Pixel 7a) | `modules/wsl/deepseek-harness.nix` (listener); `kepos/publisher-policy.jsonnet` + `just kepos-policy-render` (Kepos policy) |
 | MCP overlay | `modules/wsl/deepseek-harness-mcp.cordis.yml`, passed as immutable `--patch` | this repo |
 
 The service command line, environment, and restart policy live in

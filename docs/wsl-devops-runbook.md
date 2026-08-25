@@ -1,8 +1,10 @@
 # WSL DevOps Runbook
 
 The WSL DevOps stack runs in the single-node NixOS k3s cluster. Nix manages
-k3s and the Kepos publisher and subscriber; Tanka manages the Kubernetes
-objects. A NixOS switch never applies Tanka.
+k3s and the Kepos publisher and subscriber lifecycle; the publisher's live
+service and ACL policy is modeled in Jsonnet and rendered into an unmanaged
+TOML file. Tanka manages the Kubernetes objects. A NixOS switch never applies
+Tanka.
 
 ## Endpoints
 
@@ -59,10 +61,10 @@ Kepos publishes application service IDs including:
 
 ## Kepos service model: HTTP web services vs raw TCP
 
-The publisher advertises every service as a TCP tunnel to a WSL loopback port
-(`targetPort`). How a peer reaches a service depends on the *kind* of
-service, decided on the subscriber side (Kepos Desktop / CLI), not by the
-publisher:
+The current live policy leaves publisher `kind` unset, so every service is a
+TCP tunnel to a WSL loopback port (`target_port`). How a peer reaches a service
+depends on the *kind* of service, decided on the subscriber side (Kepos
+Desktop / CLI), not by the publisher:
 
 - **Gateway-routed HTTP web services** (`bookorbit`, `forgejo`,
   `woodpecker`, `memos`, `anki`, `hindsight`, `hindsightui`, `miniflux`,
@@ -88,9 +90,9 @@ TCP/SSH services with a Copy command/URL action. The handler table lives in
 Do not add `[[subscriber.services]]` entries for any HTTP service — the
 subscriber gateway port already serves them all. Adding a gateway-routed HTTP
 app needs a Tanka environment, gateway route, and
-`modules/wsl/kepos-neo.nix` entry with `targetPort = 17480`. Adding a direct
-loopback HTTP app needs a Home Manager user service bound to `127.0.0.1` plus
-its direct-port publisher entry in `modules/wsl/kepos-neo.nix`.
+`[[publisher.services]]` entry in the live policy with `target_port = 17480`.
+Adding a direct loopback HTTP app needs a Home Manager user service bound to
+`127.0.0.1` plus its direct-port publisher entry in the live policy.
 
 The separate Ente Photos stack publishes `ente` and `ente-storage`, both through
 the canonical gateway on port `17480`. See [ente-photos.md](ente-photos.md) for
@@ -99,6 +101,57 @@ its deployment order and mobile acceptance checks.
 Local WSL clients connect directly to their loopback target: Caddy for
 gateway-routed apps or the service port for direct loopback apps. They do not
 traverse Kepos.
+
+## Kepos live publisher policy
+
+`kepos/publisher-policy.jsonnet` is the complete publisher policy source. It
+keeps named subscriber keys, reusable ACL groups, and service declarations in
+code. Render it with:
+
+```bash
+just kepos-policy-render
+```
+
+The renderer writes `~/.config/kepos/publisher.toml` privately and atomically
+in the same directory; that TOML is the unmanaged runtime output, not a file to
+edit by hand. The source is versioned in this checkout, but rendering an
+uncommitted policy edit neither requires a Git commit nor a NixOS switch.
+A fresh publisher needs a complete rendered policy and initialized publisher
+state before its user service is enabled.
+
+Kepos reads a valid save within about one second. An invalid or incomplete TOML
+keeps the last valid policy active and reports the reload failure in
+`journalctl --user -u kepos-publisher.service -n 100 --no-pager`; no Nix
+switch, Git commit, or Kepos restart is needed. Removing a key from the global
+`publisher.allow` list disconnects that subscriber; service and per-service ACL
+changes apply to new registry requests and newly opened tunnels while existing
+tunnels drain.
+
+The global allowlist is the outer gate and each service `allow` list can only
+narrow it. A service with no `allow` inherits the global list; an explicit
+empty list denies that service to everyone. Define those relationships in
+Jsonnet rather than copying keys between service entries:
+
+```jsonnet
+local subscribers = {mac: '<subscriber-public-key>'};
+local trusted = [subscribers.mac];
+local service(id, name, port, allow) = {
+  id: id,
+  name: name,
+  target_port: port,
+  allow: allow,
+};
+```
+
+Leave `kind` unset for the current TCP-tunnel behavior. `kind = "http"` is an
+optional publisher-side HTTP/1.1 adapter that removes caller-provided
+`Authorization` and injects `Authorization: Kepos <subscriber-public-key>` at
+the target; use it only for a private plaintext HTTP target that explicitly
+authorizes that header. It is not a TLS, HTTP/2, or generic reverse-proxy mode.
+
+Keep a private backup of the source and its rendered output. Because the unit
+passes the output explicitly with `--config`, a missing policy makes the
+service fail closed rather than falling back to state-owned policy.
 
 ## Configuration checks
 
@@ -139,9 +192,12 @@ Verify the sync before applying the workloads:
 systemctl status woodpecker-secret-sync.service --no-pager
 ```
 
-The upstream Kepos Home Manager module reuses the publisher state at
-`~/.local/state/kepos-neo/mux-publisher`. If the state is absent, the module
-initializes it before starting the publisher.
+The custom Kepos user unit reuses publisher state at
+`~/.local/state/kepos-neo/mux-publisher` and reads the rendered live policy at
+`~/.config/kepos/publisher.toml`. It deliberately does not create or modify
+either. Render `kepos/publisher-policy.jsonnet` before starting a fresh
+publisher. The live policy is intentionally not a Home Manager-managed
+`~/.config` file.
 
 Print the WSL publisher public key without exposing its private state:
 

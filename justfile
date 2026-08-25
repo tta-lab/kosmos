@@ -152,6 +152,9 @@ bookorbit-bootstrap-token: _local-k3s
 kepos-status:
   @systemctl --user status kepos-publisher.service --no-pager
 
+kepos-policy-render:
+  @bash scripts/render-kepos-policy
+
 kepos-publisher-key:
   @kepos publisher key --state ~/.local/state/kepos-neo/mux-publisher
 

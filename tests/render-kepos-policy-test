@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+test_root="$(mktemp -d)"
+trap 'rm -rf "$test_root"' EXIT
+
+source_file="$repo_root/kepos/publisher-policy.jsonnet"
+renderer="$repo_root/scripts/render-kepos-policy"
+target_file="$test_root/publisher.toml"
+expected_file="$test_root/expected.toml"
+before_file="$test_root/before.toml"
+broken_source="$test_root/broken.jsonnet"
+
+if [[ ! -f "$source_file" ]]; then
+  echo "Kepos Jsonnet source is missing" >&2
+  exit 1
+fi
+
+if [[ ! -f "$renderer" ]]; then
+  echo "Kepos renderer is missing" >&2
+  exit 1
+fi
+
+jsonnet -S "$source_file" >"$expected_file"
+KEPOS_POLICY_SOURCE="$source_file" \
+  KEPOS_PUBLISHER_POLICY_FILE="$target_file" \
+  bash "$renderer"
+
+cmp --silent "$expected_file" "$target_file"
+[[ "$(stat -c '%a' "$target_file")" == "600" ]]
+[[ "$(awk '$0 == "  [[publisher.services]]" { count++ } END { print count + 0 }' "$target_file")" == "20" ]]
+awk '$0 == "[publisher]" { found = 1 } END { exit !found }' "$target_file"
+
+cp "$target_file" "$before_file"
+printf '%s\n' '{ this is not valid Jsonnet' >"$broken_source"
+if KEPOS_POLICY_SOURCE="$broken_source" \
+  KEPOS_PUBLISHER_POLICY_FILE="$target_file" \
+  bash "$renderer" >/dev/null 2>&1; then
+  echo 'Kepos renderer accepted invalid Jsonnet' >&2
+  exit 1
+fi
+cmp --silent "$before_file" "$target_file"
+[[ -z "$(find "$test_root" -maxdepth 1 -name '.publisher.toml.*' -print -quit)" ]]
+
+printf 'Kepos Jsonnet policy renders atomically as a private TOML file\n'

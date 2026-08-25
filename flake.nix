@@ -53,6 +53,7 @@
             gawk
             gnused
             jq
+            jsonnet
             python3
             shellcheck
             tanka
@@ -74,6 +75,7 @@
             ${./scripts/sync-anki-secret} \
             ${./scripts/sync-hindsight-secret} \
             ${./scripts/prepare-mihomo-config} \
+            ${./scripts/render-kepos-policy} \
             ${./scripts/openclaw-gateway-wrapper} \
             ${./scripts/ttal-tmux-project-picker} \
             ${./scripts/wsl-devops-smoke} \
@@ -89,6 +91,7 @@
             ${./tests/init-ebook-secrets-test} \
             ${./tests/sync-cloudreve-secret-test} \
             ${./tests/prepare-mihomo-config-test} \
+            ${./tests/render-kepos-policy-test} \
             ${./tests/ebooks-render-test} \
             ${./tests/cloudreve-render-test} \
             ${./tests/cloudreve-gateway-render-test} \
@@ -120,6 +123,7 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-ebook-secrets-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-cloudreve-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/prepare-mihomo-config-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/render-kepos-policy-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ebooks-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudreve-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudreve-gateway-render-test}
@@ -475,63 +479,45 @@
         assert cfg.nix.settings.trusted-users == ["root"];
           pkgs.runCommand "nix-cache-policy-check" {} "touch $out";
 
-      kepos-publisher-services = let
-        cfg = self.nixosConfigurations.wsl.config;
-        inherit (cfg.home-manager.users.neil.services.kepos.publisher) services allow;
-        # Services that must never be exposed without an allow list.
-        restricted = [
-          "dsh"
-          "codex-bridge"
-          "dagger"
-          "hindsight"
-          "hindsightui"
-          "openclaw"
-          "mihomo-dashboard"
-        ];
-        dshEnv = cfg.home-manager.users.neil.systemd.user.services.dsh.Service.Environment;
-        bridgeUnit = cfg.home-manager.users.neil.systemd.user.services.kepos-codex-bridge;
-        # A service allow key the publisher does not admit can never connect.
-        allowKeysConsistent =
-          builtins.all
-          (name: let
-            svcAllow = services.${name}.allow;
-          in
-            svcAllow == null || builtins.all (key: builtins.elem key allow) svcAllow)
-          (builtins.attrNames services);
-      in
-        assert builtins.all (name: services.${name}.allow != null) restricted;
-        assert allowKeysConsistent;
-        # Cross-file contract: the DSH service binds 127.0.0.1:3080
-        # (deepseek-harness.nix) and is published on the same port here and in
-        # docs/dsh-deployment.md — keep the port machine-enforced.
-        assert services.dsh.targetPort == 3080;
-        assert services."codex-bridge".targetPort == 8787;
-        assert bridgeUnit.Install.WantedBy == ["default.target"];
-        assert services.erpnext.targetPort == 17480;
-        # The DSH unit reads its key from the agenix file, never hardcodes it.
-        assert !builtins.any (entry: nixpkgs.lib.hasPrefix "DEEPSEEK_API_KEY=" entry) dshEnv;
-          pkgs.runCommand "kepos-publisher-services-check" {} "touch $out";
-
-      kepos-publisher-only = let
+      kepos-live-policy = let
         cfg = self.nixosConfigurations.wsl.config;
         home = cfg.home-manager.users.neil;
         package = kepos-neo.packages.${system}.kepos;
+        publisherUnit = home.systemd.user.services.kepos-publisher;
+        bridgeUnit = home.systemd.user.services.kepos-codex-bridge;
+        dshEnv = home.systemd.user.services.dsh.Service.Environment;
+        publisherPolicyFile = "/home/neil/.config/kepos/publisher.toml";
+        publisherStateDir = "/home/neil/.local/state/kepos-neo/mux-publisher";
         keposServiceNames =
           builtins.filter
           (name: nixpkgs.lib.hasPrefix "kepos-" name)
           (builtins.attrNames home.systemd.user.services);
       in
-        assert home.services.kepos.publisher.enable;
-        assert home.services.kepos.publisher.stateDir == "/home/neil/.local/state/kepos-neo/mux-publisher";
+        # Policy is intentionally external to the Nix closure and is migrated
+        # manually before this generation is activated.
+        assert !(builtins.hasAttr "kepos" home.services);
+        assert !(builtins.hasAttr "kepos/config.toml" home.xdg.configFile);
+        assert !(builtins.hasAttr "keposPublisherPolicyMigration" home.home.activation);
         assert home.systemd.user.startServices;
         assert keposServiceNames == ["kepos-codex-bridge" "kepos-publisher"];
-          pkgs.runCommand "kepos-publisher-only-check" {
-            nativeBuildInputs = [package];
+        assert publisherUnit.Install.WantedBy == ["default.target"];
+        assert publisherUnit.Service.UMask == "0077";
+        assert !(publisherUnit.Service ? ExecStartPre);
+        assert !(publisherUnit.Service ? Environment);
+        assert nixpkgs.lib.hasInfix "--state ${publisherStateDir}" publisherUnit.Service.ExecStart;
+        assert nixpkgs.lib.hasInfix "--config ${publisherPolicyFile}" publisherUnit.Service.ExecStart;
+        assert bridgeUnit.Install.WantedBy == ["default.target"];
+        # The DSH unit reads its key from the agenix file, never hardcodes it.
+        assert !builtins.any (entry: nixpkgs.lib.hasPrefix "DEEPSEEK_API_KEY=" entry) dshEnv;
+          pkgs.runCommand "kepos-live-policy-check" {
+            nativeBuildInputs = [package pkgs.jsonnet];
           } ''
+            set -euo pipefail
+
+            policy="$TMPDIR/publisher.toml"
             state_dir="$TMPDIR/publisher"
-            kepos setup publisher \
-              --state "$state_dir" \
-              --display-name test >/dev/null
+            jsonnet -S ${./kepos/publisher-policy.jsonnet} > "$policy"
+            kepos setup publisher --state "$state_dir" --config "$policy" >/dev/null
             key_output="$(kepos publisher key --state "$state_dir")"
             [[ "$key_output" =~ ^Publisher\ key:\ [0-9a-f]{64}$ ]]
             touch "$out"
