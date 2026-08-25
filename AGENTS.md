@@ -84,7 +84,8 @@ before the commit as usual.
 - `~/.agents/skills/*` is **not** managed by Kosmos — each machine owns its skills directly; deploy by copying skill directories into `~/.agents/skills/`.
 - For tmux clipboard on kosmos-wsl, use tmux clipboard/OSC 52 commands such as `copy-selection` or `copy-selection-and-cancel`; do not pipe copy bindings to platform clipboard tools like `pbcopy`, `clip.exe`, or `wl-copy`.
 - Use `og clone` for normal project additions. Edit the unmanaged `~/.config/ttal/projects.toml` directly only for archive or migration work that og does not expose.
-- NixOS/Home Manager deploys managed config files, including agent rules.
+- Portable agent rules are not managed by NixOS or Home Manager. Run
+  `scripts/sync-agent-config` from the desired checkout on both WSL and Mac.
 - **Home Manager** owns managed `~/.config/*` files, shell, editor, and git config. The legacy project registry is unmanaged. **NixOS modules** own system packages, daemons, networking, hardware.
 - Do not use `systemd.tmpfiles` for user dotfiles unless Home Manager can't express the file.
 - Name new modules by purpose: `modules/common/editors.nix`, `modules/wsl/backup.nix`, etc.
@@ -124,7 +125,7 @@ to use a cache.
 ## AGENTS.user.md
 
 `AGENTS.user.md` in the repo root is the SSOT for portable user-scope agent
-instructions. Home Manager sources it to `.codex/AGENTS.md` on WSL;
-`scripts/sync-agent-config` links it from a Mac checkout.
+instructions. On both WSL and Mac, run `scripts/sync-agent-config` from the
+desired checkout to link it into the Codex and Pi agent directories.
 Host-specific rules belong in `~/.codex/AGENTS.machine.md`, outside this
 repository. Edit `AGENTS.user.md` directly in this repo.

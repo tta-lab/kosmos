@@ -69,6 +69,7 @@
             ${./scripts/init-ebook-secrets} \
             ${./scripts/init-miniflux-secrets} \
             ${./scripts/sync-cloudreve-secret} \
+            ${./scripts/sync-agent-config} \
             ${./scripts/install-tta-lab-go} \
             ${./scripts/sync-anki-secret} \
             ${./scripts/sync-hindsight-secret} \
@@ -103,6 +104,7 @@
             ${./tests/erpnext-gateway-render-test} \
             ${./tests/sync-anki-secret-test} \
             ${./tests/sync-codex-auth-test} \
+            ${./tests/sync-agent-config-test} \
             ${./tests/sync-hindsight-secret-test} \
             ${./tests/wsl-devops-smoke-test} \
             ${./tests/orga-cli-service-test}
@@ -133,6 +135,7 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/erpnext-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-anki-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-codex-auth-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-agent-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-hindsight-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/wsl-devops-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}

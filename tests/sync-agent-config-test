@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+script="$repo_root/scripts/sync-agent-config"
+rules_source="$repo_root/AGENTS.user.md"
+test_root="$(mktemp -d)"
+trap 'rm -rf "$test_root"' EXIT
+
+test_home="$test_root/home"
+mkdir -p "$test_home/.codex" "$test_home/.pi/agent"
+ln -s /nix/store/legacy-codex-agents "$test_home/.codex/AGENTS.md"
+ln -s /nix/store/legacy-pi-agents "$test_home/.pi/agent/AGENTS.md"
+printf 'machine rules\n' >"$test_home/.codex/AGENTS.machine.md"
+
+HOME="$test_home" bash "$script" >"$test_root/initial-output"
+
+[[ "$(readlink "$test_home/.codex/AGENTS.md")" == "$rules_source" ]]
+[[ "$(readlink "$test_home/.pi/agent/AGENTS.md")" == "$rules_source" ]]
+grep -q '^machine rules$' "$test_home/.codex/AGENTS.machine.md"
+grep -q '^replacing legacy Home Manager target:' "$test_root/initial-output"
+
+other_rules="$test_root/other-rules"
+printf 'other rules\n' >"$other_rules"
+ln -sfn "$other_rules" "$test_home/.codex/AGENTS.md"
+
+if HOME="$test_home" bash "$script" >"$test_root/refusal-output" 2>&1; then
+  printf 'sync should refuse an unrelated symlink without --replace\n' >&2
+  exit 1
+fi
+
+[[ "$(readlink "$test_home/.codex/AGENTS.md")" == "$other_rules" ]]
+HOME="$test_home" bash "$script" --replace >"$test_root/replace-output"
+[[ "$(readlink "$test_home/.codex/AGENTS.md")" == "$rules_source" ]]
+
+printf 'agent config sync replaces legacy Nix links and protects unrelated targets\n'

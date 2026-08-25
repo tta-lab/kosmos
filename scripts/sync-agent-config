@@ -71,8 +71,8 @@ symlink_agent_rules() {
   fi
 
   if [[ -L "$target" ]] && [[ "$(readlink "$target")" == /nix/store/* ]]; then
-    printf 'skipping Home Manager target: %s\n' "$target" >&2
-    return 0
+    printf 'replacing legacy Home Manager target: %s\n' "$target"
+    rm -f "$target"
   fi
 
   if [[ -L "$target" ]] && [[ "$(readlink "$target")" != "$rules_source" ]] && [[ "$replace_links" == false ]]; then

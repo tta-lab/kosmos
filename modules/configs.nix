@@ -63,8 +63,6 @@ in {
             powersync.db_path=/home/neil/.local/share/flicknote/flicknote.db
             news.version=3.4.2
           '';
-          ".codex/AGENTS.md".source = ../AGENTS.user.md;
-          ".pi/agent/AGENTS.md".source = ../AGENTS.user.md;
           ".pi/sync-codex-auth.ts" = {
             source = ../scripts/sync-codex-auth.ts;
             executable = true;
