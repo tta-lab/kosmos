@@ -21,9 +21,29 @@
   // Hindsight owns semantic memory. Avoid initializing the stale built-in
   // OpenAI vector index during startup; FTS-only retains lexical fallback.
   memory: { search: { provider: "none" } },
+  // The installed DeepSeek plugin predates the vision preview catalog entry.
+  // Merge this exact upstream model into its provider catalog so OpenClaw
+  // admits image attachments and routes them with the native DeepSeek adapter.
+  models: {
+    mode: "merge",
+    providers: {
+      deepseek: {
+        models: [
+          {
+            id: "deepseek-v4-flash-vision-exp",
+            name: "DeepSeek V4 Flash Vision Exp",
+            reasoning: true,
+            input: ["text", "image"],
+            contextWindow: 1000000,
+            maxTokens: 256000,
+          },
+        ],
+      },
+    },
+  },
   agents: {
     defaults: {
-      model: { primary: "deepseek/deepseek-v4-flash" },
+      model: { primary: "deepseek/deepseek-v4-flash-vision-exp" },
       workspace: "/home/neil/.openclaw/workspace",
       // Keep the built-in heartbeat monitor disabled. Explicit null values
       // prune the legacy monitor-only settings from the managed JSON patch.
