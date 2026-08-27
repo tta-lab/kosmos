@@ -21,7 +21,7 @@ The service command line, environment, and restart policy live in
 do not duplicate it here. The launcher reads the agenix key at process start
 and exports `DEEPSEEK_API_KEY` only inside the service process.
 
-All commands below use paths verbatim. The runtime path
+The managed WSL session PATH exposes the runtime CLI as `dsh`. The runtime path
 `/home/neil/.local/share/dsh-runtime` is defined once, in the Component map
 and in `modules/wsl/deepseek-harness.nix` — keep both in sync and do not
 introduce variant spellings.
@@ -79,7 +79,7 @@ metadata, the service never reads them.
 
 ## Plugins (profile tree)
 
-- Install: `DSH_HOME=/home/neil/.local/state/dsh ~/.local/share/dsh-runtime/node_modules/.bin/dsh plugin --profile web add <pkg>`
+- Install: `dsh plugin --profile web add <pkg>`
   Packages land in `$DSH_HOME/profiles/web/node_modules` via pnpm — a tree
   independent of the runtime.
 - A plugin registers its client bundle by the **exact package name** via

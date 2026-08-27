@@ -11,6 +11,7 @@
   # entrypoint below is consumed. Install/upgrade/swap/rollback and plugin
   # troubleshooting: docs/dsh-deployment.md.
   runtime = "/home/neil/.local/share/dsh-runtime";
+  runtimeBin = "${runtime}/node_modules/.bin";
   entrypoint = "${runtime}/node_modules/@deepseek-ai/dsh/lib/bin.js";
   stateDirectory = "/home/neil/.local/state/dsh";
   mcpPatch = ./deepseek-harness-mcp.cordis.yml;
@@ -47,6 +48,8 @@ in {
   options.kosmos.wsl.deepseekHarness.enable = lib.mkEnableOption "the DeepSeek Harness web UI";
 
   config = lib.mkIf cfg.enable {
+    home-manager.users.neil.home.sessionPath = [runtimeBin];
+
     home-manager.users.neil.systemd.user.services.dsh = {
       Unit.Description = "DeepSeek Harness web UI";
       Install.WantedBy = ["default.target"];
