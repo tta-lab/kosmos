@@ -21,13 +21,15 @@
   // Hindsight owns semantic memory. Avoid initializing the stale built-in
   // OpenAI vector index during startup; FTS-only retains lexical fallback.
   memory: { search: { provider: "none" } },
-  // The installed DeepSeek plugin predates the vision preview catalog entry.
-  // Merge this exact upstream model into its provider catalog so OpenClaw
-  // admits image attachments and routes them with the native DeepSeek adapter.
+  // The official DeepSeek plugin does not yet list this vision preview.
+  // Keep its provider route explicit: an empty persisted baseUrl falls back
+  // to OpenAI's transport instead of the plugin's native DeepSeek route.
   models: {
     mode: "merge",
     providers: {
       deepseek: {
+        baseUrl: "https://api.deepseek.com",
+        api: "openai-completions",
         models: [
           {
             id: "deepseek-v4-flash-vision-exp",
@@ -35,7 +37,7 @@
             reasoning: true,
             input: ["text", "image"],
             contextWindow: 1000000,
-            maxTokens: 256000,
+            maxTokens: 384000,
           },
         ],
       },
