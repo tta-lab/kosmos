@@ -136,6 +136,7 @@ in {
               body = ''
                 env \
                   NANOCODEX_MCP_DEFAULTS=false \
+                  NANOCODEX_MCP_CODEX_CONFIG=true \
                   NANOCODEX_BROWSER=none \
                   NANOCODEX_BROWSER_COOKIES=none \
                   NANOCODEX_WEB_SEARCH=false \
