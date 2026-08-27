@@ -19,6 +19,7 @@ local subscribers = {
   'baihe-laptop': '21feb5140d9099a5589ffb6ddd5c29155346d9eb868991cd3fcce459fe24dbf3',
   guazi: 'fb9782436a1d150879f65ec7d4a2281376499011df9fc45830c5459a92540d32',
   'sven-mac': 'b1e5e5fd757e682f167d4aa68098368d8c7fe09372a14e90eb7154ddf63c4fd1',
+  'codex-bridge': '7cee61458c3a5dcc59027feebc855d540c97e4d09bcca6c6cfcf13ce0457bc62',
 };
 
 local fullTrustAllow = [
@@ -40,13 +41,14 @@ local baiheAllow = [
 ];
 local guaziAllow = [subscribers.guazi];
 local svenMacAllow = [subscribers['sven-mac']];
+local codexBridgeAllow = [subscribers['codex-bridge']];
 local unique(values) = std.foldl(
   function(acc, value) if std.member(acc, value) then acc else acc + [value],
   values,
   []
 );
 local publisherAllow = unique(
-  personalDevicesAllow + forgeClientsAllow + baiheAllow + guaziAllow + svenMacAllow
+  personalDevicesAllow + forgeClientsAllow + baiheAllow + guaziAllow + svenMacAllow + codexBridgeAllow
 );
 local service(id, name, targetPort, allow, kind = null) = {
   id: id,
@@ -64,7 +66,7 @@ std.manifestTomlEx({
       service('anki', 'Anki', 17480, personalDevicesAllow + guaziAllow),
       service('bookorbit', 'BookOrbit', 17480, personalDevicesAllow + baiheAllow),
       service('cloudreve', 'Cloudreve', 17480, personalDevicesAllow + baiheAllow + svenMacAllow),
-      service('codex-bridge', 'Codex Bridge', 8787, [subscribers.mac] + baiheAllow),
+      service('codex-bridge', 'Codex Bridge', 8787, [subscribers.mac] + baiheAllow + codexBridgeAllow),
       // Tact remote memory over local SQLite; kind=http so the publisher injects the
       // per-device "Authorization: Kepos <subscriber-public-key>" header.
       service('tact-memory', 'Tact Memory', 8788, [subscribers.mac], 'http'),
