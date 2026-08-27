@@ -7,7 +7,16 @@
 {
   gateway: {
     mode: "local",
-    controlUi: { allowedOrigins: ["http://openclaw.localhost:17480"] },
+    controlUi: {
+      // Kepos peers use the subscriber HTTP gateway. The local WSL/Windows
+      // browser reaches this loopback-only gateway directly through WSL
+      // localhost forwarding, rather than the K3s Caddy gateway on :17480.
+      allowedOrigins: [
+        "http://openclaw.localhost:17480",
+        "http://localhost:18789",
+        "http://127.0.0.1:18789",
+      ],
+    },
     auth: {
       token: {
         source: "env",
@@ -93,21 +102,15 @@
         resourceId: "seed-tts-2.0",
         speakerVoice: "zh_female_sajiaoxuemei_uranus_bigtts",
       },
-      // Soniox 已完全退出 TTS（只用 Volcengine）；null 清除 live 配置残留。
-      // Soniox STT 继续走 tools.media（stt-async-v5）。
+      // Soniox 已完全退出 TTS；null 清除 live 配置残留。
       soniox: null,
     },
   },
-  // Soniox async speech-to-text (media-understanding) for inbound voice
-  // messages and attachments (ClawHub soniox-stt-provider). Key injected by
-  // scripts/openclaw-gateway-wrapper from ~/.config/openclaw/soniox-key.
+  // The Soniox STT plugin does not support the requested 2026.8.1-beta.3
+  // core release. Prune its media model and plugin entry, otherwise OpenClaw
+  // refuses gateway readiness and the reverse proxy returns 503.
   tools: {
-    media: {
-      models: [
-        { provider: "soniox", model: "stt-async-v5", capabilities: ["audio"] },
-      ],
-      audio: { enabled: true },
-    },
+    media: null,
   },
   // ACP (pi subagent harness) is intentionally not used. Explicit null keeps
   // the key pruned from the live config on every deploy (config patch treats
@@ -120,9 +123,10 @@
     slots: { memory: "hindsight-openclaw" },
     entries: {
       "memory-core": { enabled: false },
-      // ACP runtime backend: bundled in 2026.8.1; explicitly disabled (same
-      // pattern as memory-core) since the ACP to pi subagent wiring is unused.
-      acpx: { enabled: false },
+      // ACP runtime is unused; remove stale live configuration as the plugin
+      // is not installed on this host.
+      acpx: null,
+      soniox: null,
       // Volcengine TTS provider（豆包，bundled plugin）。
       volcengine: { enabled: true },
       "hindsight-openclaw": {
