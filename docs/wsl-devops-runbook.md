@@ -37,7 +37,7 @@ Kepos publishes application service IDs including:
   is restricted to the Mac and Pixel 7a subscribers. Kepos exposes it as
   `http://dsh.localhost:17480`; it has no Caddy or CoreDNS route.
 - `codex-bridge` targets the loopback-only Home Manager user service on port
-  `8787` and is restricted to the Mac and Baihe subscribers. It runs
+  `8787` and is restricted to the Mac, NUC Windows, and Baihe subscribers. It runs
   `/home/neil/.local/bin/kepos-codex-bridge serve --auth-file
   /home/neil/.codex/auth.json`; use its `login` subcommand manually if the
   owner-only auth file needs setup.
