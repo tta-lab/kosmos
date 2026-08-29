@@ -1,6 +1,6 @@
 # Hindsight
 
-Hindsight 0.8.6 runs as one local k3s workload with its embedded pg0 database.
+Hindsight 0.9.2 runs as one local k3s workload with its embedded pg0 database.
 The canonical gateway and Kepos publish two distinct endpoints:
 
 - API and MCP: `http://hindsight.localhost:17480`
@@ -59,7 +59,7 @@ just kepos-status
 ```
 
 The first image pull is large. The image is pinned to the signed Hindsight
-0.8.6 multi-architecture digest and already contains its default embedding and
+0.9.2 multi-architecture digest and already contains its default embedding and
 reranker models. Offline model flags prevent runtime model drift; do not mount
 an empty volume over `/home/hindsight/.cache/huggingface`.
 

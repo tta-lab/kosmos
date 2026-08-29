@@ -97,8 +97,6 @@
             ${./tests/cloudreve-gateway-render-test} \
             ${./tests/ebook-gateway-render-test} \
             ${./tests/anki-render-test} \
-            ${./tests/hindsight-render-test} \
-            ${./tests/hindsight-gateway-render-test} \
             ${./tests/anki-gateway-render-test} \
             ${./tests/notes-render-test} \
             ${./tests/notes-gateway-render-test} \
@@ -129,8 +127,14 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudreve-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ebook-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-render-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-render-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-gateway-render-test}
+          tk fmt --test ${./.}/tests/jsonnet
+          tk lint ${./.}/tests/jsonnet
+          tk eval ${./.}/tests/jsonnet/hindsight.test.jsonnet >/dev/null
+          tk eval ${./.}/tests/jsonnet/codex-bridge.test.jsonnet >/dev/null
+          tk eval ${./.}/tests/jsonnet/gateway.test.jsonnet >/dev/null
+          tk show --dangerous-allow-redirect ${./.}/tanka/environments/hindsight >/dev/null
+          tk show --dangerous-allow-redirect ${./.}/tanka/environments/codex-bridge >/dev/null
+          tk show --dangerous-allow-redirect ${./.}/tanka/environments/devops >/dev/null
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-gateway-render-test}
@@ -314,6 +318,7 @@
         assert builtins.elem "d /var/lib/kosmos-k3s/anki 0750 1000 1000 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/notes/memos 0750 10001 10001 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/hindsight 0750 1000 1000 - -" rules;
+        assert builtins.elem "d /var/lib/kosmos-k3s/codex-bridge 0700 10001 10001 - -" rules;
           pkgs.runCommand "k3s-state-directories-check" {} "touch $out";
 
       wsl-devops-cli = let

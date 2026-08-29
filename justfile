@@ -8,6 +8,7 @@ notes_environment := "tanka/environments/notes"
 feeds_environment := "tanka/environments/feeds"
 cloudreve_environment := "tanka/environments/cloudreve"
 hindsight_environment := "tanka/environments/hindsight"
+codex_bridge_environment := "tanka/environments/codex-bridge"
 kubeconfig := env_var_or_default("KUBECONFIG", "/etc/rancher/k3s/k3s.yaml")
 api_server := "https://127.0.0.1:26443"
 
@@ -16,6 +17,16 @@ default:
 
 show target=environment:
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ target }}"
+
+tanka-test:
+  @tk fmt --test tests/jsonnet
+  @tk lint tests/jsonnet
+  @tk eval tests/jsonnet/hindsight.test.jsonnet >/dev/null
+  @tk eval tests/jsonnet/codex-bridge.test.jsonnet >/dev/null
+  @tk eval tests/jsonnet/gateway.test.jsonnet >/dev/null
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ hindsight_environment }}" >/dev/null
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ codex_bridge_environment }}" >/dev/null
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ environment }}" >/dev/null
 
 diff target=environment: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ target }}"
@@ -106,6 +117,23 @@ hindsight-deploy: hindsight-apply
 hindsight-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n hindsight -o wide
 
+codex-bridge-show:
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ codex_bridge_environment }}"
+
+codex-bridge-diff: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ codex_bridge_environment }}"
+
+codex-bridge-apply: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ codex_bridge_environment }}"
+
+codex-bridge-deploy: codex-bridge-apply
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}"
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+
+codex-bridge-status: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n codex-bridge -o wide
+
 feeds-show:
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ feeds_environment }}"
 
@@ -146,6 +174,9 @@ cloudreve-status: _local-k3s
 
 hindsight-logs: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl logs deployment/hindsight -n hindsight --tail=200
+
+codex-bridge-logs: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl logs deployment/codex-bridge -n codex-bridge -c bridge --tail=200
 
 bookorbit-bootstrap-token: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get secret bookorbit-env -n ebooks -o jsonpath='{.data.SETUP_BOOTSTRAP_TOKEN}' | base64 --decode; echo

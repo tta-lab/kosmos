@@ -30,6 +30,7 @@ in {
     "miniflux.localhost"
     "hindsight.localhost"
     "hindsightui.localhost"
+    "codex-bridge.localhost"
     "erpnext.localhost"
   ];
 
@@ -112,5 +113,6 @@ in {
     "d /var/lib/kosmos-k3s/feeds 0750 root root - -"
     "d /var/lib/kosmos-k3s/feeds/miniflux-db 0700 70 70 - -"
     "d /var/lib/kosmos-k3s/hindsight 0750 1000 1000 - -"
+    "d /var/lib/kosmos-k3s/codex-bridge 0700 10001 10001 - -"
   ];
 }
