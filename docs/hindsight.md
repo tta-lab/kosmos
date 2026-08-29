@@ -19,6 +19,7 @@ The manifest owns the complete non-secret LLM policy:
 - base URL: `http://codex-bridge.localhost:17480/hindsight`;
 - model: `gpt-5.6-luna`;
 - reasoning effort: `xhigh`;
+- retain and consolidation LLM timeout: 300 seconds per attempt;
 - recall reranker: `rrf`.
 
 The OpenAI SDK appends `/responses`, so requests reach the Bridge's fixed
@@ -26,6 +27,12 @@ The OpenAI SDK appends `/responses`, so requests reach the Bridge's fixed
 in the manifest is deliberately a non-secret initializer placeholder. The
 Bridge removes caller authorization and injects its own managed OAuth identity;
 Hindsight has no OpenAI or DeepSeek credential.
+
+Only the asynchronous retain and consolidation paths receive the longer
+timeout. Their larger prompts can legitimately keep `luna` at `xhigh` busy for
+more than Hindsight's 120-second global default; allowing them to finish avoids
+paying for retries of the same request. Other LLM operations retain the global
+default so an interactive failure cannot occupy a request for five minutes.
 
 Outbound LLM traffic uses the Mihomo Pod endpoint from
 `modules/wsl/proxy-topology.json`; cluster and loopback traffic bypass it.

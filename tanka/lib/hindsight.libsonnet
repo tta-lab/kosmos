@@ -61,6 +61,8 @@ local proxy = import 'proxy.libsonnet';
               { name: 'HINDSIGHT_API_LLM_MODEL', value: 'gpt-5.6-luna' },
               { name: 'HINDSIGHT_API_LLM_REASONING_EFFORT', value: 'xhigh' },
               { name: 'HINDSIGHT_API_LLM_API_KEY', value: 'bridge-managed-oauth' },
+              { name: 'HINDSIGHT_API_RETAIN_LLM_TIMEOUT', value: '300' },
+              { name: 'HINDSIGHT_API_CONSOLIDATION_LLM_TIMEOUT', value: '300' },
               { name: 'HINDSIGHT_API_RERANKER_PROVIDER', value: 'rrf' },
               { name: 'HINDSIGHT_API_WORKER_ID', value: 'hindsight' },
               { name: 'HTTP_PROXY', value: proxy.podUrl },
