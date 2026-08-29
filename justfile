@@ -136,6 +136,7 @@ cloudreve-apply: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ cloudreve_environment }}"
 
 cloudreve-deploy: cloudreve-apply
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/cloudreve -n cloudreve --timeout=300s
   @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}"
   @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
   @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s

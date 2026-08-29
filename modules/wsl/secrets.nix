@@ -44,6 +44,17 @@
     ];
     text = builtins.readFile ../../scripts/sync-cloudreve-secret;
   };
+  cloudreveSecretReconciler = pkgs.writeShellApplication {
+    name = "kosmos-reconcile-cloudreve-secret";
+    runtimeInputs = [
+      pkgs.coreutils
+      cloudreveSecretSync
+    ];
+    text = ''
+      kosmos-sync-cloudreve-secret "$@"
+      exec sleep infinity
+    '';
+  };
 in {
   age = {
     identityPaths = ["/etc/ssh/ssh_host_ed25519_key"];
@@ -202,11 +213,10 @@ in {
       after = ["k3s.service"];
       restartTriggers = [config.age.secrets.cloudreve-env.file];
       serviceConfig = {
-        Type = "oneshot";
-        RemainAfterExit = true;
+        Type = "simple";
         Restart = "on-failure";
         RestartSec = "5s";
-        ExecStart = "${cloudreveSecretSync}/bin/kosmos-sync-cloudreve-secret ${config.age.secrets.cloudreve-env.path}";
+        ExecStart = "${cloudreveSecretReconciler}/bin/kosmos-reconcile-cloudreve-secret ${config.age.secrets.cloudreve-env.path}";
       };
     };
   };

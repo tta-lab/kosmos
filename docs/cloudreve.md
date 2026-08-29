@@ -71,6 +71,11 @@ or updates the `cloudreve/cloudreve-env` Kubernetes Secret, and restarts
 Cloudreve only when its Secret changes. A password change also updates the
 PostgreSQL role through its local in-Pod socket. Cloudreve receives no
 `CR_CONF_*` environment variables because it logs configuration overrides.
+The synchronizer does not wait for the Cloudreve rollout: Kubernetes reconciles
+the workload and its storage independently. `just cloudreve-deploy` is the
+explicit operation that waits for rollout readiness. The systemd reconciler is
+also asynchronous, so a pending PostgreSQL password rotation retries without
+blocking `nh os switch`.
 
 To change the credentials, edit the encrypted source and activate NixOS:
 
