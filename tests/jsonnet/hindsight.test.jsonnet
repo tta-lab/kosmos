@@ -36,8 +36,11 @@ std.assertEqual([port for port in container.ports if port.name == 'ui'][0], {
 std.assertEqual(env.HINDSIGHT_API_LLM_PROVIDER.value, 'openai-responses') &&
 std.assertEqual(env.HINDSIGHT_API_LLM_BASE_URL.value, 'http://codex-bridge.localhost:17480/hindsight') &&
 std.assertEqual(env.HINDSIGHT_API_LLM_MODEL.value, 'gpt-5.6-luna') &&
-std.assertEqual(env.HINDSIGHT_API_LLM_REASONING_EFFORT.value, 'xhigh') &&
+std.assertEqual(env.HINDSIGHT_API_LLM_REASONING_EFFORT.value, 'high') &&
 std.assertEqual(env.HINDSIGHT_API_LLM_API_KEY.value, 'bridge-managed-oauth') &&
+std.assertEqual(env.HINDSIGHT_API_LLM_TIMEOUT.value, '300') &&
+!std.objectHas(env, 'HINDSIGHT_API_RETAIN_LLM_TIMEOUT') &&
+!std.objectHas(env, 'HINDSIGHT_API_CONSOLIDATION_LLM_TIMEOUT') &&
 std.assertEqual(env.HINDSIGHT_API_WORKER_ID.value, 'hindsight') &&
 std.assertEqual(env.HTTPS_PROXY.value, 'http://10.42.0.1:7890') &&
 std.assertEqual(std.findSubstr('localhost', env.NO_PROXY.value) != [], true) &&
