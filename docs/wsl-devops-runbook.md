@@ -178,12 +178,14 @@ Open a new WSL shell after the switch so the session picks up membership in
 the `k3s` group.
 
 The root-owned `woodpecker-secret-sync.service` reads
-`/run/agenix/woodpecker-server-env` and creates or updates
-`devops/woodpecker-server-env`. It always uses
-`/etc/rancher/k3s/k3s.yaml` and refuses an API server other than
+`/run/agenix/woodpecker-server-env` and
+`/run/agenix/woodpecker-postgres-env`, then creates or updates the matching
+`devops/woodpecker-server-env` and `devops/woodpecker-postgres-env` Secrets. It
+always uses `/etc/rancher/k3s/k3s.yaml` and refuses an API server other than
 `https://127.0.0.1:26443`. The unit runs at boot, retries if k3s is not ready,
-restarts when the encrypted agenix file changes, and rolls the Woodpecker
-server and agents when the Kubernetes Secret is updated.
+restarts when either encrypted agenix file changes, and rolls the Woodpecker
+server, agents, and PostgreSQL StatefulSet when either Kubernetes Secret is
+updated.
 
 Verify the sync before applying the workloads:
 
@@ -258,7 +260,8 @@ closure. Install, upgrade, swap, rollback, and plugin troubleshooting:
 ## Recover
 
 Reapplying NixOS or Tanka does not delete the retained Forgejo and Woodpecker
-data under `/var/lib/kosmos-k3s`. There is no legacy-systemd rollback command.
+PostgreSQL data under `/var/lib/kosmos-k3s`. There is no legacy-systemd rollback
+command and no SQLite database to restore.
 
 If the Woodpecker Secret is missing or stale, repair the encrypted secret,
 rebuild NixOS, and verify the sync unit. To retry without changing the secret:
@@ -269,10 +272,85 @@ sudo journalctl -u woodpecker-secret-sync.service -n 100 --no-pager
 just apply
 ```
 
-If application data must be restored, scale the affected workload down before
-restoring its retained directory in `/var/lib/kosmos-k3s`, preserve the file
-ownership documented by the NixOS tmpfiles rules, then run `just apply`. Do not
-copy data back to the removed legacy services.
+### Back up Woodpecker PostgreSQL
+
+Woodpecker does not back up its database. Create a private custom-format dump
+from the PostgreSQL pod and validate that the archive can be listed. The dump
+contains operational metadata and must be handled as a secret:
+
+```bash
+woodpecker_backup_dir=/home/neil/backups/woodpecker
+install -d -m 0700 "$woodpecker_backup_dir"
+woodpecker_dump_name="woodpecker-$(date -u +%Y%m%dT%H%M%SZ).dump"
+woodpecker_dump="$woodpecker_backup_dir/$woodpecker_dump_name"
+
+KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
+  kubectl -n devops exec statefulset/woodpecker-postgres -- \
+    pg_dump --username=woodpecker --dbname=woodpecker --format=custom \
+    > "$woodpecker_dump"
+
+test -s "$woodpecker_dump"
+KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
+  kubectl -n devops exec -i statefulset/woodpecker-postgres -- \
+    pg_restore --list < "$woodpecker_dump" >/dev/null
+(
+  cd "$woodpecker_backup_dir"
+  sha256sum "$woodpecker_dump_name" > "$woodpecker_dump_name.sha256"
+)
+chmod 0600 "$woodpecker_dump" "$woodpecker_dump.sha256"
+```
+
+Copy both files to separate protected storage. A dump left only on this WSL
+filesystem does not protect against host or disk loss.
+
+### Restore Woodpecker PostgreSQL
+
+Restore only from a validated custom-format dump. First take a fresh safety
+backup of the current database with the procedure above. Then set the explicit
+archive path, stop Woodpecker writers, and restore in one transaction:
+
+```bash
+woodpecker_backup_dir=/home/neil/backups/woodpecker
+woodpecker_dump_name=woodpecker-YYYYMMDDTHHMMSSZ.dump
+woodpecker_dump="$woodpecker_backup_dir/$woodpecker_dump_name"
+test -s "$woodpecker_dump"
+(
+  cd "$woodpecker_backup_dir"
+  sha256sum --check "$woodpecker_dump_name.sha256"
+)
+KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
+  kubectl -n devops exec -i statefulset/woodpecker-postgres -- \
+    pg_restore --list < "$woodpecker_dump" >/dev/null
+
+KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
+  kubectl -n devops scale statefulset/woodpecker-agent --replicas=0
+KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
+  kubectl -n devops scale deployment/woodpecker --replicas=0
+KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
+  kubectl -n devops rollout status deployment/woodpecker --timeout=120s
+KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
+  kubectl -n devops rollout status statefulset/woodpecker-agent --timeout=120s
+
+KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
+  kubectl -n devops exec -i statefulset/woodpecker-postgres -- \
+    pg_restore --username=woodpecker --dbname=woodpecker \
+      --clean --if-exists --no-owner --exit-on-error --single-transaction \
+      < "$woodpecker_dump"
+
+just apply
+KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
+  kubectl -n devops rollout status deployment/woodpecker --timeout=120s
+KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
+  kubectl -n devops rollout status statefulset/woodpecker-agent --timeout=120s
+curl --fail http://woodpecker.localhost:17480/healthz
+```
+
+After restore, verify Forgejo login, repository activation, historical builds,
+and one representative pipeline before accepting new CI work. For a physical
+directory restore instead, stop the PostgreSQL StatefulSet before touching
+`/var/lib/kosmos-k3s/woodpecker-postgres`, preserve the ownership declared by
+the NixOS tmpfiles rule, then run `just apply`. Never copy live PostgreSQL data
+or restore data into a removed legacy service.
 
 ## Runtime checks
 
