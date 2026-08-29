@@ -37,7 +37,6 @@ Encrypted files live in `secrets/` and are safe to commit:
 - `secrets/kube-config.age`
 - `secrets/sops-age-keys.age`
 - `secrets/woodpecker-server-env.age`
-- `secrets/hindsight-env.age`
 - `secrets/openclaw-deepseek-key.age`
 
 They decrypt to:
@@ -49,8 +48,6 @@ They decrypt to:
 - `/run/agenix/woodpecker-server-env` (root-owned, synchronized to the local
   K3s `devops/woodpecker-server-env` Secret by
   `woodpecker-secret-sync.service`)
-- `/run/agenix/hindsight-env` (root-owned, synchronized to the local K3s
-  `hindsight/hindsight-env` Secret by `hindsight-secret-sync.service`)
 - `/home/neil/.config/openclaw/deepseek-key` (a raw DeepSeek key, injected into
   `dsh.service` as `DEEPSEEK_API_KEY`)
 
@@ -77,7 +74,6 @@ agenix -e secrets/env.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/kube-config.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/sops-age-keys.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/woodpecker-server-env.age -i ~/.ssh/agenix_ed25519
-agenix -e secrets/hindsight-env.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/openclaw-deepseek-key.age -i ~/.ssh/agenix_ed25519
 ```
 

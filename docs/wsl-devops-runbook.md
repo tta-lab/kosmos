@@ -25,8 +25,8 @@ Tanka.
 For Kubernetes-backed HTTP apps, Caddy binds the host gateway only on
 `127.0.0.1:17480`. CoreDNS rewrites their canonical `.localhost` names to that
 same gateway inside the cluster. This keeps browser, Git, Woodpecker OAuth,
-webhooks, and container-registry URLs consistent. Direct loopback HTTP services
-bypass Caddy and CoreDNS; see the service model below.
+webhooks, and container-registry URLs consistent. The remaining direct
+loopback HTTP service bypasses Caddy and CoreDNS; see the service model below.
 
 Kepos publishes application service IDs including:
 
@@ -36,11 +36,11 @@ Kepos publishes application service IDs including:
 - `dsh` targets its loopback-only Home Manager user service on port `3080` and
   is restricted to the Mac and Pixel 7a subscribers. Kepos exposes it as
   `http://dsh.localhost:17480`; it has no Caddy or CoreDNS route.
-- `codex-bridge` targets the loopback-only Home Manager user service on port
-  `8787` and is restricted to the Mac, NUC Windows, and Baihe subscribers. It runs
-  `/home/neil/.local/bin/kepos-codex-bridge serve --auth-file
-  /home/neil/.codex/auth.json`; use its `login` subcommand manually if the
-  owner-only auth file needs setup.
+- `codex-bridge` targets the canonical gateway on port `17480` and is
+  restricted to the Mac, NUC Windows, Baihe, and the named Bridge subscriber.
+  Caddy routes `codex-bridge.localhost` to the Kubernetes Bridge Service. The
+  Pod runs as Neil's UID/GID and mounts `/home/neil/.codex` read-write so the
+  Bridge and Codex CLI share the same atomically refreshed `auth.json`.
 - `dagger` targets the Dagger engine on port `8080` and is restricted to the
   named Mac subscriber. Other allowed subscribers neither see nor can open it.
 - `ssh` targets port `22`.
@@ -67,11 +67,10 @@ depends on the *kind* of service, decided on the subscriber side (Kepos
 Desktop / CLI), not by the publisher:
 
 - **Gateway-routed HTTP web services** (`bookorbit`, `forgejo`,
-  `woodpecker`, `memos`, `anki`, `hindsight`, `hindsightui`, `miniflux`,
-  `ente`, `erpnext`, …): target the canonical gateway port `17480` and are
+  `woodpecker`, `memos`, `anki`, `hindsight`, `hindsightui`, `codex-bridge`,
+  `miniflux`, `ente`, `erpnext`, …): target the canonical gateway port `17480` and are
   routed by the preserved `Host` header.
-- **Direct loopback HTTP services** (`dsh`, `codex-bridge`): a Home Manager
-  user service binds
+- **Direct loopback HTTP services** (`dsh`): a Home Manager user service binds
   its own `127.0.0.1` port and Kepos publishes that port directly. It has no
   Tanka environment, Caddy route, or CoreDNS rewrite.
 - **Raw TCP/SSH services** (`dagger`, `mihomo`, `ssh`): the peer must add a

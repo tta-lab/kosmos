@@ -7,8 +7,6 @@ local containers = {
 local bridge = containers.bridge;
 local relay = containers['loopback-relay'];
 local service = resources.codexBridgeService;
-local pv = resources.codexBridgePv;
-local pvc = resources.codexBridgePvc;
 local secrets = [
   resources[field]
   for field in std.objectFields(resources)
@@ -16,21 +14,33 @@ local secrets = [
 ];
 
 std.assertEqual(resources.namespace.metadata.name, 'codex-bridge') &&
-std.assertEqual(deployment.spec.replicas, 0) &&
+std.assertEqual(deployment.spec.replicas, 1) &&
 std.assertEqual(deployment.spec.strategy.type, 'Recreate') &&
 std.assertEqual(deployment.spec.template.spec.automountServiceAccountToken, false) &&
-std.assertEqual(bridge.image, 'ghcr.io/lamplitisles/kepos-codex-bridge:ghcr-placeholder') &&
+std.assertEqual(
+  bridge.image,
+  'ghcr.io/lamplitisles/kepos-codex-bridge:sha-255a4638ca6476a0f4fe5b79eeb54ebe0ae7280b@sha256:ab8c98c458155a0d5e08d9a611c2291b2f30eca5f0d24b27f3a58fcd8a860ba6'
+) &&
 std.assertEqual(bridge.args, [
   'serve',
   '--auth-file',
-  '/var/lib/kepos-codex-bridge/auth.json',
+  '/home/neil/.codex/auth.json',
   '--port',
   '8787',
 ]) &&
-std.assertEqual(bridge.securityContext.runAsUser, 10001) &&
+std.assertEqual(bridge.imagePullPolicy, 'IfNotPresent') &&
+std.assertEqual(bridge.securityContext.runAsUser, 1000) &&
+std.assertEqual(bridge.securityContext.runAsGroup, 100) &&
 std.assertEqual(
-  [mount for mount in bridge.volumeMounts if mount.name == 'state'][0].mountPath,
-  '/var/lib/kepos-codex-bridge'
+  [mount for mount in bridge.volumeMounts if mount.name == 'codex-home'][0].mountPath,
+  '/home/neil/.codex'
+) &&
+std.assertEqual(
+  [volume for volume in deployment.spec.template.spec.volumes if volume.name == 'codex-home'][0].hostPath,
+  {
+    path: '/home/neil/.codex',
+    type: 'Directory',
+  }
 ) &&
 std.assertEqual(
   relay.image,
@@ -51,7 +61,4 @@ std.assertEqual([port for port in service.spec.ports if port.name == 'http'][0],
   port: 8787,
   targetPort: 'proxy',
 }) &&
-std.assertEqual(pv.spec.persistentVolumeReclaimPolicy, 'Retain') &&
-std.assertEqual(pv.spec.hostPath.path, '/var/lib/kosmos-k3s/codex-bridge') &&
-std.assertEqual(pvc.spec.volumeName, 'kosmos-codex-bridge') &&
 std.assertEqual(std.length(secrets), 0)

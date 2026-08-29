@@ -31,11 +31,6 @@
     runtimeInputs = [pkgs.kubectl];
     text = builtins.readFile ../../scripts/sync-anki-secret;
   };
-  hindsightSecretSync = pkgs.writeShellApplication {
-    name = "kosmos-sync-hindsight-secret";
-    runtimeInputs = [pkgs.kubectl];
-    text = builtins.readFile ../../scripts/sync-hindsight-secret;
-  };
   cloudreveSecretSync = pkgs.writeShellApplication {
     name = "kosmos-sync-cloudreve-secret";
     runtimeInputs = [
@@ -91,13 +86,6 @@ in {
           group = "root";
           mode = "0400";
           path = "/run/agenix/anki-sync-env";
-        };
-        hindsight-env = {
-          file = secretsDir + "/hindsight-env.age";
-          owner = "root";
-          group = "root";
-          mode = "0400";
-          path = "/run/agenix/hindsight-env";
         };
         cloudreve-env = {
           file = secretsDir + "/cloudreve-env.age";
@@ -190,20 +178,6 @@ in {
         Restart = "on-failure";
         RestartSec = "5s";
         ExecStart = "${ankiSecretSync}/bin/kosmos-sync-anki-secret ${config.age.secrets.anki-sync-env.path}";
-      };
-    };
-    hindsight-secret-sync = {
-      description = "Synchronize the Hindsight environment Secret to local K3s";
-      wantedBy = ["multi-user.target"];
-      wants = ["k3s.service"];
-      after = ["k3s.service"];
-      restartTriggers = [config.age.secrets.hindsight-env.file];
-      serviceConfig = {
-        Type = "oneshot";
-        RemainAfterExit = true;
-        Restart = "on-failure";
-        RestartSec = "5s";
-        ExecStart = "${hindsightSecretSync}/bin/kosmos-sync-hindsight-secret ${config.age.secrets.hindsight-env.path}";
       };
     };
     cloudreve-secret-sync = {

@@ -66,7 +66,7 @@ std.manifestTomlEx({
       service('anki', 'Anki', 17480, personalDevicesAllow + guaziAllow),
       service('bookorbit', 'BookOrbit', 17480, personalDevicesAllow + baiheAllow),
       service('cloudreve', 'Cloudreve', 17480, personalDevicesAllow + baiheAllow + svenMacAllow),
-      service('codex-bridge', 'Codex Bridge', 8787, fullTrustAllow + baiheAllow + codexBridgeAllow),
+      service('codex-bridge', 'Codex Bridge', 17480, fullTrustAllow + baiheAllow + codexBridgeAllow),
       // Tact remote memory over local SQLite; kind=http so the publisher injects the
       // per-device "Authorization: Kepos <subscriber-public-key>" header.
       service('tact-memory', 'Tact Memory', 8788, [subscribers.mac], 'http'),

@@ -4,9 +4,7 @@ local labels = {
 };
 local proxy = import 'proxy.libsonnet';
 
-// The GHCR workflow is still being prepared. Keeping replicas at zero makes
-// this manifest safe to land and render before the immutable image is ready.
-local bridgeImage = 'ghcr.io/lamplitisles/kepos-codex-bridge:ghcr-placeholder';
+local bridgeImage = 'ghcr.io/lamplitisles/kepos-codex-bridge:sha-255a4638ca6476a0f4fe5b79eeb54ebe0ae7280b@sha256:ab8c98c458155a0d5e08d9a611c2291b2f30eca5f0d24b27f3a58fcd8a860ba6';
 local relayImage = 'docker.io/alpine/socat:1.8.0.3@sha256:beb4a68d9e4fe6b0f21ea774a0fde6c31f580dde6368939ed70100c5385b015e';
 
 {
@@ -33,7 +31,7 @@ local relayImage = 'docker.io/alpine/socat:1.8.0.3@sha256:beb4a68d9e4fe6b0f21ea7
       labels: labels,
     },
     spec: {
-      replicas: 0,
+      replicas: 1,
       strategy: { type: 'Recreate' },
       selector: { matchLabels: labels },
       template: {
@@ -41,18 +39,15 @@ local relayImage = 'docker.io/alpine/socat:1.8.0.3@sha256:beb4a68d9e4fe6b0f21ea7
         spec: {
           automountServiceAccountToken: false,
           terminationGracePeriodSeconds: 30,
-          securityContext: {
-            fsGroup: 10001,
-            fsGroupChangePolicy: 'OnRootMismatch',
-          },
           containers: [
             {
               name: 'bridge',
               image: bridgeImage,
+              imagePullPolicy: 'IfNotPresent',
               args: [
                 'serve',
                 '--auth-file',
-                '/var/lib/kepos-codex-bridge/auth.json',
+                '/home/neil/.codex/auth.json',
                 '--port',
                 '8787',
               ],
@@ -69,13 +64,13 @@ local relayImage = 'docker.io/alpine/socat:1.8.0.3@sha256:beb4a68d9e4fe6b0f21ea7
                 allowPrivilegeEscalation: false,
                 readOnlyRootFilesystem: true,
                 runAsNonRoot: true,
-                runAsUser: 10001,
-                runAsGroup: 10001,
+                runAsUser: 1000,
+                runAsGroup: 100,
                 capabilities: { drop: ['ALL'] },
                 seccompProfile: { type: 'RuntimeDefault' },
               },
               volumeMounts: [
-                { name: 'state', mountPath: '/var/lib/kepos-codex-bridge' },
+                { name: 'codex-home', mountPath: '/home/neil/.codex' },
                 { name: 'tmp', mountPath: '/tmp' },
               ],
             },
@@ -144,7 +139,13 @@ local relayImage = 'docker.io/alpine/socat:1.8.0.3@sha256:beb4a68d9e4fe6b0f21ea7
             },
           ],
           volumes: [
-            { name: 'state', persistentVolumeClaim: { claimName: 'codex-bridge-state' } },
+            {
+              name: 'codex-home',
+              hostPath: {
+                path: '/home/neil/.codex',
+                type: 'Directory',
+              },
+            },
             { name: 'tmp', emptyDir: { sizeLimit: '64Mi' } },
           ],
         },

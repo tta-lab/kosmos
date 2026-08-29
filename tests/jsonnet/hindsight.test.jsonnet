@@ -33,18 +33,18 @@ std.assertEqual([port for port in container.ports if port.name == 'ui'][0], {
   name: 'ui',
   containerPort: 9999,
 }) &&
-std.assertEqual(env.HINDSIGHT_API_LLM_PROVIDER.value, 'deepseek') &&
-std.assertEqual(env.HINDSIGHT_API_LLM_MODEL.value, 'deepseek-v4-flash') &&
+std.assertEqual(env.HINDSIGHT_API_LLM_PROVIDER.value, 'openai-responses') &&
+std.assertEqual(env.HINDSIGHT_API_LLM_BASE_URL.value, 'http://codex-bridge.localhost:17480/hindsight') &&
+std.assertEqual(env.HINDSIGHT_API_LLM_MODEL.value, 'gpt-5.6-luna') &&
+std.assertEqual(env.HINDSIGHT_API_LLM_REASONING_EFFORT.value, 'xhigh') &&
+std.assertEqual(env.HINDSIGHT_API_LLM_API_KEY.value, 'bridge-managed-oauth') &&
 std.assertEqual(env.HINDSIGHT_API_WORKER_ID.value, 'hindsight') &&
 std.assertEqual(env.HTTPS_PROXY.value, 'http://10.42.0.1:7890') &&
 std.assertEqual(std.findSubstr('localhost', env.NO_PROXY.value) != [], true) &&
 std.assertEqual(std.findSubstr('.cluster.local', env.NO_PROXY.value) != [], true) &&
+std.assertEqual(std.findSubstr('.localhost', env.NO_PROXY.value) != [], true) &&
 std.assertEqual(env.HF_HUB_OFFLINE.value, '1') &&
 std.assertEqual(env.TRANSFORMERS_OFFLINE.value, '1') &&
-std.assertEqual(env.HINDSIGHT_API_LLM_API_KEY.valueFrom.secretKeyRef, {
-  name: 'hindsight-env',
-  key: 'HINDSIGHT_API_LLM_API_KEY',
-}) &&
 std.assertEqual(
   [mount for mount in container.volumeMounts if mount.name == 'data'][0].mountPath,
   '/home/hindsight/.pg0'

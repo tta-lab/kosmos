@@ -11,50 +11,40 @@ and both Kepos service IDs allow only the named Mac subscriber. Hindsight has
 no application API key because the local k3s network and that Mac-only Kepos
 boundary are the intended trust model.
 
-## Secret
+## LLM provider
 
-Agents must not read or decrypt the LLM key. Create or replace the encrypted
-secret interactively:
+The manifest owns the complete non-secret LLM policy:
 
-```bash
-agenix -e secrets/hindsight-env.age -i ~/.ssh/agenix_ed25519
-```
+- provider: `openai-responses`;
+- base URL: `http://codex-bridge.localhost:17480/hindsight`;
+- model: `gpt-5.6-luna`;
+- reasoning effort: `xhigh`;
+- recall reranker: `rrf`.
 
-Enter exactly one env-file line:
-
-```text
-HINDSIGHT_API_LLM_API_KEY=<DeepSeek API key>
-```
-
-Validate the encrypted file without printing the key:
-
-```bash
-agenix -d secrets/hindsight-env.age -i ~/.ssh/agenix_ed25519 \
-  | bash scripts/sync-hindsight-secret --validate-only -
-```
-
-The manifest owns the non-secret policy: DeepSeek, `deepseek-v4-flash`, the
-fast RRF recall reranker, and the stable worker ID `hindsight`. The NixOS unit
-synchronizes only the validated key into
-the local `hindsight/hindsight-env` Kubernetes Secret.
+The OpenAI SDK appends `/responses`, so requests reach the Bridge's fixed
+`/hindsight/responses` route through the canonical Caddy gateway. The API-key value
+in the manifest is deliberately a non-secret initializer placeholder. The
+Bridge removes caller authorization and injects its own managed OAuth identity;
+Hindsight has no OpenAI or DeepSeek credential.
 
 Outbound LLM traffic uses the Mihomo Pod endpoint from
 `modules/wsl/proxy-topology.json`; cluster and loopback traffic bypass it.
 
 ## Deploy
 
-NixOS owns the retained host directory and agenix Secret synchronization.
-Tanka owns the canonical gateway and Kubernetes workload. Deploy in this order:
+NixOS owns the Hindsight data directory. Tanka owns the canonical gateway and
+Kubernetes workloads. Deploy in this order:
 
 ```bash
 nh os switch . -H wsl --ask
-sudo systemctl restart hindsight-secret-sync.service
-sudo systemctl status hindsight-secret-sync.service --no-pager
+just codex-bridge-diff
+just codex-bridge-deploy
 just diff
 just apply
 just hindsight-diff
 just hindsight-deploy
 just hindsight-status
+just kepos-policy-render
 just kepos-status
 ```
 

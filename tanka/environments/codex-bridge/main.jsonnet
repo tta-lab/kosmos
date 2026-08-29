@@ -1,4 +1,3 @@
-local storage = import '../../lib/codex-bridge-storage.libsonnet';
 local bridge = import '../../lib/codex-bridge.libsonnet';
 
 {
@@ -9,4 +8,4 @@ local bridge = import '../../lib/codex-bridge.libsonnet';
       name: 'codex-bridge',
     },
   },
-} + storage + bridge
+} + bridge

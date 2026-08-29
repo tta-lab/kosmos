@@ -56,27 +56,21 @@ local proxy = import 'proxy.libsonnet';
               },
             ],
             env: [
-              { name: 'HINDSIGHT_API_LLM_PROVIDER', value: 'deepseek' },
-              { name: 'HINDSIGHT_API_LLM_MODEL', value: 'deepseek-v4-flash' },
+              { name: 'HINDSIGHT_API_LLM_PROVIDER', value: 'openai-responses' },
+              { name: 'HINDSIGHT_API_LLM_BASE_URL', value: 'http://codex-bridge.localhost:17480/hindsight' },
+              { name: 'HINDSIGHT_API_LLM_MODEL', value: 'gpt-5.6-luna' },
+              { name: 'HINDSIGHT_API_LLM_REASONING_EFFORT', value: 'xhigh' },
+              { name: 'HINDSIGHT_API_LLM_API_KEY', value: 'bridge-managed-oauth' },
               { name: 'HINDSIGHT_API_RERANKER_PROVIDER', value: 'rrf' },
               { name: 'HINDSIGHT_API_WORKER_ID', value: 'hindsight' },
               { name: 'HTTP_PROXY', value: proxy.podUrl },
               { name: 'HTTPS_PROXY', value: proxy.podUrl },
               {
                 name: 'NO_PROXY',
-                value: proxy.clusterNoProxy(),
+                value: proxy.clusterNoProxy(['.localhost']),
               },
               { name: 'HF_HUB_OFFLINE', value: '1' },
               { name: 'TRANSFORMERS_OFFLINE', value: '1' },
-              {
-                name: 'HINDSIGHT_API_LLM_API_KEY',
-                valueFrom: {
-                  secretKeyRef: {
-                    name: 'hindsight-env',
-                    key: 'HINDSIGHT_API_LLM_API_KEY',
-                  },
-                },
-              },
             ],
             startupProbe: {
               httpGet: { path: '/health', port: 'api' },
