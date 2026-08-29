@@ -58,6 +58,7 @@ local proxy = import 'proxy.libsonnet';
             env: [
               { name: 'HINDSIGHT_API_LLM_PROVIDER', value: 'deepseek' },
               { name: 'HINDSIGHT_API_LLM_MODEL', value: 'deepseek-v4-flash' },
+              { name: 'HINDSIGHT_API_RERANKER_PROVIDER', value: 'rrf' },
               { name: 'HINDSIGHT_API_WORKER_ID', value: 'hindsight' },
               { name: 'HTTP_PROXY', value: proxy.podUrl },
               { name: 'HTTPS_PROXY', value: proxy.podUrl },

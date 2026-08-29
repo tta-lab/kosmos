@@ -33,8 +33,9 @@ agenix -d secrets/hindsight-env.age -i ~/.ssh/agenix_ed25519 \
   | bash scripts/sync-hindsight-secret --validate-only -
 ```
 
-The manifest owns the non-secret policy: DeepSeek, `deepseek-v4-flash`, and the stable
-worker ID `hindsight`. The NixOS unit synchronizes only the validated key into
+The manifest owns the non-secret policy: DeepSeek, `deepseek-v4-flash`, the
+fast RRF recall reranker, and the stable worker ID `hindsight`. The NixOS unit
+synchronizes only the validated key into
 the local `hindsight/hindsight-env` Kubernetes Secret.
 
 Outbound LLM traffic uses the Mihomo Pod endpoint from
