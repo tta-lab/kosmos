@@ -111,11 +111,13 @@ local proxy = import 'proxy.libsonnet';
             volumeMounts: [
               { name: 'data', mountPath: '/home/hindsight/.pg0' },
               { name: 'tmp', mountPath: '/tmp' },
+              { name: 'shm', mountPath: '/dev/shm' },
             ],
           }],
           volumes: [
             { name: 'data', persistentVolumeClaim: { claimName: 'hindsight-data' } },
             { name: 'tmp', emptyDir: { sizeLimit: '1Gi' } },
+            { name: 'shm', emptyDir: { medium: 'Memory', sizeLimit: '1Gi' } },
           ],
         },
       },
