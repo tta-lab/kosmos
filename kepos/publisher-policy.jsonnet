@@ -83,7 +83,6 @@ std.manifestTomlEx({
       service('mihomo-dashboard', 'Mihomo Dashboard', 9090, fullTrustAllow),
       service('miniflux', 'Miniflux', 17480, personalDevicesAllow),
       service('navidrome', 'Navidrome', 4533, personalDevicesAllow + guaziAllow),
-      service('openclaw', 'OpenClaw', 18789, fullTrustAllow + [subscribers.pixel7a]),
       service('ssh', 'SSH', 22, personalDevicesAllow),
       service('woodpecker', 'Woodpecker', 17480, forgeClientsAllow + baiheAllow + svenMacAllow),
     ],

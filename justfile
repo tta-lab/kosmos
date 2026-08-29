@@ -196,15 +196,6 @@ kepos-subscriber-key:
 k3s-status:
   @systemctl status k3s --no-pager
 
-# Merge declarative OpenClaw settings through its CLI so auto-managed metadata
-# and credentials survive; install the miniflux-mcp credential wrapper, then
-# restart the gateway (managed by \`openclaw gateway install\`).
-openclaw-deploy:
-  @install -m 0700 scripts/miniflux-mcp-wrapper ~/.local/bin/miniflux-mcp-wrapper
-  @export OPENCLAW_GATEWAY_TOKEN="$(< ~/.config/openclaw/gateway-token)"; \
-    jsonnet openclaw/openclaw.jsonnet | openclaw config patch --stdin
-  @systemctl --user restart openclaw-gateway
-
 sync-codex-auth direction:
   @bun scripts/sync-codex-auth.ts "{{ direction }}"
 

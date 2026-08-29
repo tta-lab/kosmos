@@ -75,7 +75,6 @@
             ${./scripts/sync-anki-secret} \
             ${./scripts/prepare-mihomo-config} \
             ${./scripts/render-kepos-policy} \
-            ${./scripts/openclaw-gateway-wrapper} \
             ${./scripts/ttal-tmux-project-picker} \
             ${./scripts/wsl-devops-smoke} \
             ${./tests/temenos-env-test} \

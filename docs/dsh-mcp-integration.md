@@ -32,19 +32,19 @@
 
 The checked-in overlay deliberately uses existing host-managed stdio clients rather
 than Nix-packaged executables: FlickNote is resolved from the DSH service `PATH`,
-and Miniflux uses `/home/neil/.local/bin/miniflux-mcp-wrapper`. Neither command is
-installed by this Nix module. DSH passes Miniflux's non-secret URL and username
+and the Miniflux executable remains in `/home/neil/go/bin`. Home Manager deploys
+the credential wrapper at `/home/neil/.local/bin/miniflux-mcp-wrapper`, the stable
+command path used by the overlay. DSH passes Miniflux's non-secret URL and username
 through `config.env`; the wrapper obtains and owns its password independently. DSH
-never reads, stores, or forwards a Miniflux password. Before restarting
-`dsh.service`, ensure both host commands and the wrapper's independent credential
-setup are present. This is intentionally not a reproducible Nix closure.
+never reads, stores, or forwards a Miniflux password. Restarting `dsh.service`
+after a system activation picks up wrapper changes.
 
 For install, upgrade, swap, rollback, and plugin troubleshooting, see
 [`docs/dsh-deployment.md`](dsh-deployment.md).
 
 ## Recommended Kosmos approach
 
-Keep the remote configuration plane closed. Add a reviewed, non-secret MCP overlay to this repository and pass its immutable deployed path as an early `--patch` argument in `dsh.service`; do **not** rely on the remote Web Settings UI or a writable `$DSH_HOME` patch. For a new or migrated integration, declare/pin a stdio server executable as a Nix package (preferred), or run an independently managed loopback HTTP server when HTTP is required. The current FlickNote/Miniflux host-managed exception above must not be mistaken for Nix reproducibility. Treat each stdio command, argument list, environment mapping, and working directory as trusted host configuration: DSH runs that child outside the agent sandbox, so neither the model nor a remote UI should choose it. A dedicated DSH bundle is optional: use one only when it genuinely packages a Cordis patch; it does not replace the server package or its lifecycle. [CLI security note](https://github.com/tta-lab/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/reference/README.md)
+Keep the remote configuration plane closed. Add a reviewed, non-secret MCP overlay to this repository and pass its immutable deployed path as an early `--patch` argument in `dsh.service`; do **not** rely on the remote Web Settings UI or a writable `$DSH_HOME` patch. For a new or migrated integration, declare/pin a stdio server executable as a Nix package (preferred), or run an independently managed loopback HTTP server when HTTP is required. The current FlickNote and Miniflux executable exceptions must not be mistaken for Nix reproducibility; only the Miniflux credential wrapper is declaratively deployed. Treat each stdio command, argument list, environment mapping, and working directory as trusted host configuration: DSH runs that child outside the agent sandbox, so neither the model nor a remote UI should choose it. A dedicated DSH bundle is optional: use one only when it genuinely packages a Cordis patch; it does not replace the server package or its lifecycle. [CLI security note](https://github.com/tta-lab/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/apps/cli/reference/README.md)
 
 When DSH itself must hand an MCP credential to a child, keep the token in a distinct agenix secret and have the service wrapper read it at startup into a narrowly named environment variable. Reference that variable through `config.env` (stdio) or a `!!js process.env…` header value (HTTP); never put its value in YAML, a plugin bundle, or UI settings. This is not the current Miniflux arrangement: its host-managed wrapper owns the password and DSH passes only non-secret connection coordinates. An explicit pass-through is required when DSH owns the handoff because it deliberately removes credential-shaped and `DSH_*` ambient variables before spawning stdio children. [credential scrubbing](https://github.com/tta-lab/deepseek-harness/blob/47f943859bef60e4160492346772ded9b24f765a/packages/mcp/mcp-client/src/transport.ts)
 

@@ -37,7 +37,10 @@ Encrypted files live in `secrets/` and are safe to commit:
 - `secrets/kube-config.age`
 - `secrets/sops-age-keys.age`
 - `secrets/woodpecker-server-env.age`
-- `secrets/openclaw-deepseek-key.age`
+- `secrets/deepseek-key.age`
+- `secrets/miniflux-password.age`
+- `secrets/soniox-key.age`
+- `secrets/volcengine-key.age`
 
 They decrypt to:
 
@@ -48,8 +51,14 @@ They decrypt to:
 - `/run/agenix/woodpecker-server-env` (root-owned, synchronized to the local
   K3s `devops/woodpecker-server-env` Secret by
   `woodpecker-secret-sync.service`)
-- `/home/neil/.config/openclaw/deepseek-key` (a raw DeepSeek key, injected into
+- `/home/neil/.config/deepseek/key` (a raw DeepSeek key, injected into
   `dsh.service` as `DEEPSEEK_API_KEY`)
+- `/home/neil/.config/miniflux/password` (read only by the DSH Miniflux MCP
+  wrapper as `MINIFLUX_PASSWORD`)
+- `/home/neil/.config/soniox/key` (provider-owned Soniox credential retained
+  for a future voice integration)
+- `/home/neil/.config/volcengine/key` (provider-owned Volcengine credential
+  retained for a future voice integration)
 
 `lenos/config.json` in this repo is non-secret and still maps to
 `/home/neil/.config/lenos/config.json`.
@@ -74,7 +83,10 @@ agenix -e secrets/env.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/kube-config.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/sops-age-keys.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/woodpecker-server-env.age -i ~/.ssh/agenix_ed25519
-agenix -e secrets/openclaw-deepseek-key.age -i ~/.ssh/agenix_ed25519
+agenix -e secrets/deepseek-key.age -i ~/.ssh/agenix_ed25519
+agenix -e secrets/miniflux-password.age -i ~/.ssh/agenix_ed25519
+agenix -e secrets/soniox-key.age -i ~/.ssh/agenix_ed25519
+agenix -e secrets/volcengine-key.age -i ~/.ssh/agenix_ed25519
 ```
 
 Before deploying a changed Woodpecker secret, Neil must validate that all
@@ -96,19 +108,26 @@ git commit -m "chore(secrets): update encrypted secrets"
 ## DeepSeek Harness
 
 `dsh.service` reads the existing agenix-managed
-`/home/neil/.config/openclaw/deepseek-key` at process start and injects it as
+`/home/neil/.config/deepseek/key` at process start and injects it as
 `DEEPSEEK_API_KEY`. The secret must contain only the raw key, not an
 `DEEPSEEK_API_KEY=` assignment. To rotate it without exposing it in a shell
 history, edit the encrypted file and then deploy:
 
 ```bash
 cd /home/neil/code/projects/tta-lab/kosmos
-agenix -e secrets/openclaw-deepseek-key.age -i ~/.ssh/agenix_ed25519
+agenix -e secrets/deepseek-key.age -i ~/.ssh/agenix_ed25519
 nh os switch . -H wsl --ask
 ```
 
 The remote DSH Models and Settings APIs intentionally remain unavailable: the
 upstream application restricts credential and configuration writes to loopback.
+
+## Miniflux MCP
+
+The Home Manager-deployed `/home/neil/.local/bin/miniflux-mcp-wrapper` reads
+`/home/neil/.config/miniflux/password` and starts the host-managed
+`/home/neil/go/bin/miniflux-mcp` child for DSH. DSH receives only the
+non-secret Miniflux URL and username from its Cordis overlay.
 
 ## Add The Local k3d Cluster
 

@@ -22,11 +22,7 @@ listener, Pod proxy endpoint, Pod and Service CIDRs, and base `NO_PROXY`
 entries. `kosmos.wsl.proxy` derives the host environment and both uppercase and
 lowercase proxy variables from it. It feeds NixOS, `home.sessionVariables`,
 DSH, Temenos, and og; Tanka derives Pod workload proxy settings from the same
-data. K3s extends only the base bypass list with cluster-local hostnames. The
-self-managed OpenClaw gateway sources the non-secret generated
-`/etc/kosmos/proxy.env` and then adds its `*.localhost` bypass. That interface
-is mandatory: apply the WSL configuration before installing or restarting the
-gateway.
+data. K3s extends only the base bypass list with cluster-local hostnames.
 
 `kosmos-wsl-proxy-env` is intentionally separate: it discovers a reachable WSL
 host proxy at runtime for manual bootstrap work. Do not use it as a second place
@@ -43,5 +39,3 @@ service credentials. See [Secrets](secrets.md) for safe editing instructions.
 
 `PI_RETRY_STALL_TIMEOUT_MS=0` is a non-secret interactive setting in
 `home.sessionVariables`. It takes effect in newly started Fish and Zsh sessions.
-It intentionally does not enter the self-managed OpenClaw systemd gateway or
-its Pi ACP processes.

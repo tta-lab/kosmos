@@ -17,10 +17,8 @@ in {
   "secrets/anki-sync-env.age".publicKeys = users ++ systems;
   "secrets/openvpn-config.age".publicKeys = users ++ systems;
   "secrets/openvpn-auth.age".publicKeys = users ++ systems;
-  "secrets/openclaw-gateway-token.age".publicKeys = users ++ systems;
-  "secrets/openclaw-telegram-token.age".publicKeys = users ++ systems;
-  "secrets/openclaw-deepseek-key.age".publicKeys = users ++ systems;
-  "secrets/openclaw-miniflux-password.age".publicKeys = users ++ systems;
+  "secrets/deepseek-key.age".publicKeys = users ++ systems;
+  "secrets/miniflux-password.age".publicKeys = users ++ systems;
   "secrets/soniox-key.age".publicKeys = users ++ systems;
   "secrets/volcengine-key.age".publicKeys = users ++ systems;
   "secrets/cloudreve-env.age".publicKeys = users ++ systems;

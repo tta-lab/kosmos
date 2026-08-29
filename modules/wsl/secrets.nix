@@ -108,22 +108,19 @@ in {
           mode = "0400";
           path = "/run/agenix/openvpn-auth";
         };
-        # OpenClaw secrets: committed .age files exist, so declare directly.
-        openclaw-gateway-token = userSecret "openclaw-gateway-token.age" "/home/neil/.config/openclaw/gateway-token";
-        openclaw-telegram-token = userSecret "openclaw-telegram-token.age" "/home/neil/.config/openclaw/telegram-token";
-        openclaw-deepseek-key = userSecret "openclaw-deepseek-key.age" "/home/neil/.config/openclaw/deepseek-key";
-        openclaw-miniflux-password = userSecret "openclaw-miniflux-password.age" "/home/neil/.config/openclaw/miniflux-password";
+        deepseek-key = userSecret "deepseek-key.age" "/home/neil/.config/deepseek/key";
+        miniflux-password = userSecret "miniflux-password.age" "/home/neil/.config/miniflux/password";
       }
       # Soniox key: declared only once the .age file exists (agenix build
       # fails on missing secret files), same pattern as forgejo-smoke-token.
       # Create it with: agenix -e secrets/soniox-key.age
       // lib.optionalAttrs haveSonioxKey {
-        soniox-key = userSecret "soniox-key.age" "/home/neil/.config/openclaw/soniox-key";
+        soniox-key = userSecret "soniox-key.age" "/home/neil/.config/soniox/key";
       }
       # Volcengine (豆包) TTS key: same pattern.
       # Create it with: agenix -e secrets/volcengine-key.age
       // lib.optionalAttrs haveVolcengineKey {
-        volcengine-key = userSecret "volcengine-key.age" "/home/neil/.config/openclaw/volcengine-key";
+        volcengine-key = userSecret "volcengine-key.age" "/home/neil/.config/volcengine/key";
       }
       // lib.optionalAttrs haveForgejoSmokeToken {
         forgejo-smoke-token = userSecret "forgejo-smoke-token.age" "/home/neil/.config/kosmos/forgejo-smoke-token";
