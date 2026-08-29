@@ -69,6 +69,7 @@
             ${./scripts/forgejo-k8s-pull-secret-smoke} \
             ${./scripts/init-ebook-secrets} \
             ${./scripts/init-miniflux-secrets} \
+            ${./scripts/miniflux-mcp-wrapper} \
             ${./scripts/sync-cloudreve-secret} \
             ${./scripts/sync-agent-config} \
             ${./scripts/install-tta-lab-go} \
