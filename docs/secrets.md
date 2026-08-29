@@ -37,6 +37,7 @@ Encrypted files live in `secrets/` and are safe to commit:
 - `secrets/kube-config.age`
 - `secrets/sops-age-keys.age`
 - `secrets/woodpecker-server-env.age`
+- `secrets/woodpecker-postgres-env.age`
 - `secrets/deepseek-key.age`
 - `secrets/miniflux-password.age`
 - `secrets/soniox-key.age`
@@ -51,6 +52,8 @@ They decrypt to:
 - `/run/agenix/woodpecker-server-env` (root-owned, synchronized to the local
   K3s `devops/woodpecker-server-env` Secret by
   `woodpecker-secret-sync.service`)
+- `/run/agenix/woodpecker-postgres-env` (root-owned, synchronized to the local
+  K3s `devops/woodpecker-postgres-env` Secret by the same service)
 - `/home/neil/.config/deepseek/key` (a raw DeepSeek key, injected into
   `dsh.service` as `DEEPSEEK_API_KEY`)
 - `/home/neil/.config/miniflux/password` (read only by the DSH Miniflux MCP
@@ -83,25 +86,30 @@ agenix -e secrets/env.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/kube-config.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/sops-age-keys.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/woodpecker-server-env.age -i ~/.ssh/agenix_ed25519
+agenix -e secrets/woodpecker-postgres-env.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/deepseek-key.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/miniflux-password.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/soniox-key.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/volcengine-key.age -i ~/.ssh/agenix_ed25519
 ```
 
-Before deploying a changed Woodpecker secret, Neil must validate that all
-three required keys exist exactly once and are non-empty. This command prints
-only the validation result, never the values:
+Before deploying changed Woodpecker secrets, Neil must validate both encrypted
+files. The server file contains the three Forgejo/agent keys; the PostgreSQL
+file contains `POSTGRES_PASSWORD` and `WOODPECKER_DATABASE_DATASOURCE`. This
+command prints only the validation result, never the values:
 
 ```bash
-agenix -d secrets/woodpecker-server-env.age -i ~/.ssh/agenix_ed25519 \
-  | bash scripts/sync-woodpecker-secret --validate-only -
+bash -c '
+  bash scripts/sync-woodpecker-secret --validate-only \
+    <(agenix -d secrets/woodpecker-server-env.age -i ~/.ssh/agenix_ed25519) \
+    <(agenix -d secrets/woodpecker-postgres-env.age -i ~/.ssh/agenix_ed25519)
+'
 ```
 
 Commit encrypted files after editing:
 
 ```bash
-git add secrets/ttal.env.age secrets/env.age secrets/kube-config.age secrets/sops-age-keys.age secrets/woodpecker-server-env.age
+git add secrets/ttal.env.age secrets/env.age secrets/kube-config.age secrets/sops-age-keys.age secrets/woodpecker-server-env.age secrets/woodpecker-postgres-env.age
 git commit -m "chore(secrets): update encrypted secrets"
 ```
 
@@ -159,13 +167,14 @@ cd /home/neil/code/projects/tta-lab/kosmos
 nh os switch . -H wsl --ask
 ```
 
-The rebuild restarts `woodpecker-secret-sync.service` when
-`secrets/woodpecker-server-env.age` changes. The unit uses only
-`/etc/rancher/k3s/k3s.yaml` and refuses a non-local API server. Verify it
-without reading the secret:
+The rebuild restarts `woodpecker-secret-sync.service` when either Woodpecker
+encrypted file changes. The unit uses only `/etc/rancher/k3s/k3s.yaml` and
+refuses a non-local API server. Verify both synchronized Kubernetes Secrets
+without reading them:
 
 ```bash
 systemctl status woodpecker-secret-sync.service --no-pager
 KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
-  kubectl get secret woodpecker-server-env -n devops -o name
+  kubectl get secret woodpecker-server-env woodpecker-postgres-env \
+    -n devops -o name
 ```
