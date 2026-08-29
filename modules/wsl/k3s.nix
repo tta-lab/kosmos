@@ -30,6 +30,7 @@ in {
     "miniflux.localhost"
     "hindsight.localhost"
     "hindsightui.localhost"
+    "codex-bridge.localhost"
     "erpnext.localhost"
   ];
 

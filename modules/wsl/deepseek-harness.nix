@@ -15,9 +15,9 @@
   entrypoint = "${runtime}/node_modules/@deepseek-ai/dsh/lib/bin.js";
   stateDirectory = "/home/neil/.local/state/dsh";
   mcpPatch = ./deepseek-harness-mcp.cordis.yml;
-  # Remote DSH credential writes stay loopback-only by design. Reuse the
-  # existing agenix-managed DeepSeek key instead of weakening that boundary.
-  deepseekKey = config.age.secrets."openclaw-deepseek-key".path;
+  # Remote DSH credential writes stay loopback-only by design. The
+  # provider-owned agenix key remains outside that boundary.
+  deepseekKey = config.age.secrets."deepseek-key".path;
   dshCommand = [
     (lib.getExe pkgsUnstable.nodejs_24)
     "--expose-internals"
@@ -48,31 +48,39 @@ in {
   options.kosmos.wsl.deepseekHarness.enable = lib.mkEnableOption "the DeepSeek Harness web UI";
 
   config = lib.mkIf cfg.enable {
-    home-manager.users.neil.home.sessionPath = [runtimeBin];
+    home-manager.users.neil = {
+      home = {
+        sessionPath = [runtimeBin];
+        file.".local/bin/miniflux-mcp-wrapper" = {
+          source = ../../scripts/miniflux-mcp-wrapper;
+          executable = true;
+        };
+      };
 
-    home-manager.users.neil.systemd.user.services.dsh = {
-      Unit.Description = "DeepSeek Harness web UI";
-      Install.WantedBy = ["default.target"];
-      Service = {
-        WorkingDirectory = "/home/neil";
-        ExecStartPre = lib.escapeShellArgs [
-          "${pkgs.coreutils}/bin/install"
-          "-d"
-          "-m"
-          "0700"
-          stateDirectory
-        ];
-        ExecStart = lib.escapeShellArgs ([dshStart] ++ dshCommand);
-        Restart = "on-failure";
-        RestartSec = 5;
-        UMask = "0077";
-        Environment =
-          [
-            "DSH_HOME=${stateDirectory}"
-            "NODE_USE_ENV_PROXY=1"
-            "PATH=/home/neil/.local/bin:/home/neil/go/bin:/home/neil/.local/share/npm-global/bin:/run/current-system/sw/bin"
-          ]
-          ++ proxyEnvironment;
+      systemd.user.services.dsh = {
+        Unit.Description = "DeepSeek Harness web UI";
+        Install.WantedBy = ["default.target"];
+        Service = {
+          WorkingDirectory = "/home/neil";
+          ExecStartPre = lib.escapeShellArgs [
+            "${pkgs.coreutils}/bin/install"
+            "-d"
+            "-m"
+            "0700"
+            stateDirectory
+          ];
+          ExecStart = lib.escapeShellArgs ([dshStart] ++ dshCommand);
+          Restart = "on-failure";
+          RestartSec = 5;
+          UMask = "0077";
+          Environment =
+            [
+              "DSH_HOME=${stateDirectory}"
+              "NODE_USE_ENV_PROXY=1"
+              "PATH=/home/neil/.local/bin:/home/neil/go/bin:/home/neil/.local/share/npm-global/bin:/run/current-system/sw/bin"
+            ]
+            ++ proxyEnvironment;
+        };
       };
     };
   };

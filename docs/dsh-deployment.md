@@ -12,7 +12,8 @@ upgraded, swapped, rolled back, and how plugins are managed — the steps that
 | Runtime tree | `/home/neil/.local/share/dsh-runtime` | Not Nix; standalone npm tree, installed with bun |
 | Service unit | Home Manager user service `dsh.service` | `modules/wsl/deepseek-harness.nix` |
 | Profile/plugin tree | `/home/neil/.local/state/dsh/profiles/web/node_modules` (`DSH_HOME` = `/home/neil/.local/state/dsh`) | `dsh plugin --profile web add …` (pnpm) |
-| Secret | agenix `openclaw-deepseek-key` → `/home/neil/.config/openclaw/deepseek-key` | `secrets/` + `modules/wsl/secrets.nix` |
+| DeepSeek secret | agenix `deepseek-key` → `/home/neil/.config/deepseek/key` | `secrets/` + `modules/wsl/secrets.nix` |
+| Miniflux MCP wrapper | `/home/neil/.local/bin/miniflux-mcp-wrapper`, reading agenix `miniflux-password` → `/home/neil/.config/miniflux/password` | Home Manager in `modules/wsl/deepseek-harness.nix` + `scripts/miniflux-mcp-wrapper` |
 | Exposure | loopback `127.0.0.1:3080` only; Kepos publishes service `dsh` → `http://dsh.localhost:17480` (Mac + Pixel 7a) | `modules/wsl/deepseek-harness.nix` (listener); `kepos/publisher-policy.jsonnet` + `just kepos-policy-render` (Kepos policy) |
 | MCP overlay | `modules/wsl/deepseek-harness-mcp.cordis.yml`, passed as immutable `--patch` | this repo |
 

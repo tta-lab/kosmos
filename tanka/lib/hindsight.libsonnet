@@ -44,7 +44,7 @@ local proxy = import 'proxy.libsonnet';
           },
           containers: [{
             name: 'hindsight',
-            image: 'ghcr.io/vectorize-io/hindsight:0.8.6@sha256:ffa391a77284e49f6b55e32c86f33529ac4257831407b14038a72b6a0a232039',
+            image: 'ghcr.io/vectorize-io/hindsight:0.9.2@sha256:84ab276b8f501546deb6ea9c64a57291718b4e16a59dd9e02a02fdd5adfe9028',
             ports: [
               {
                 name: 'api',
@@ -56,26 +56,22 @@ local proxy = import 'proxy.libsonnet';
               },
             ],
             env: [
-              { name: 'HINDSIGHT_API_LLM_PROVIDER', value: 'deepseek' },
-              { name: 'HINDSIGHT_API_LLM_MODEL', value: 'deepseek-v4-flash' },
+              { name: 'HINDSIGHT_API_LLM_PROVIDER', value: 'openai-responses' },
+              { name: 'HINDSIGHT_API_LLM_BASE_URL', value: 'http://codex-bridge.localhost:17480/hindsight' },
+              { name: 'HINDSIGHT_API_LLM_MODEL', value: 'gpt-5.6-luna' },
+              { name: 'HINDSIGHT_API_LLM_REASONING_EFFORT', value: 'high' },
+              { name: 'HINDSIGHT_API_LLM_API_KEY', value: 'bridge-managed-oauth' },
+              { name: 'HINDSIGHT_API_LLM_TIMEOUT', value: '300' },
+              { name: 'HINDSIGHT_API_RERANKER_PROVIDER', value: 'rrf' },
               { name: 'HINDSIGHT_API_WORKER_ID', value: 'hindsight' },
               { name: 'HTTP_PROXY', value: proxy.podUrl },
               { name: 'HTTPS_PROXY', value: proxy.podUrl },
               {
                 name: 'NO_PROXY',
-                value: proxy.clusterNoProxy(),
+                value: proxy.clusterNoProxy(['.localhost']),
               },
               { name: 'HF_HUB_OFFLINE', value: '1' },
               { name: 'TRANSFORMERS_OFFLINE', value: '1' },
-              {
-                name: 'HINDSIGHT_API_LLM_API_KEY',
-                valueFrom: {
-                  secretKeyRef: {
-                    name: 'hindsight-env',
-                    key: 'HINDSIGHT_API_LLM_API_KEY',
-                  },
-                },
-              },
             ],
             startupProbe: {
               httpGet: { path: '/health', port: 'api' },
@@ -110,11 +106,13 @@ local proxy = import 'proxy.libsonnet';
             volumeMounts: [
               { name: 'data', mountPath: '/home/hindsight/.pg0' },
               { name: 'tmp', mountPath: '/tmp' },
+              { name: 'shm', mountPath: '/dev/shm' },
             ],
           }],
           volumes: [
             { name: 'data', persistentVolumeClaim: { claimName: 'hindsight-data' } },
             { name: 'tmp', emptyDir: { sizeLimit: '1Gi' } },
+            { name: 'shm', emptyDir: { medium: 'Memory', sizeLimit: '1Gi' } },
           ],
         },
       },

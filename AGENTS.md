@@ -81,11 +81,16 @@ nix build .#nixosConfigurations.wsl.config.system.build.toplevel --no-link  # WS
 nix develop                                  # enter dev shell
 ```
 
-Run `nix-instantiate --parse` + `statix check .` + `nix flake check` before committing.
+Run `nix-instantiate --parse` + `statix check .` + `nix flake check` before
+committing only when changes affect Nix evaluation or activation: `*.nix`,
+`flake.nix`, `flake.lock`, or Nix-managed package, user, service, network, or
+agenix configuration. For every other change, run the smallest relevant
+syntax, schema, or behavioral check; render changed Jsonnet with `jsonnet`.
 Changes limited to `AGENTS.user.md` do not require Nix checks or a rebuild because
 Nix no longer consumes that file. Verify the diff, then run
 `scripts/sync-agent-config` after updating the checkout on each target host.
-Run the full WSL build before changes to packages, users, services, networking, or agenix.
+Run the full WSL build before Nix changes to packages, users, services,
+networking, or agenix.
 Build `.#nixosConfigurations.kosmos...` only when touching shared or bare-metal modules.
 For simple package selection changes, rely on Nix evaluation and the system build.
 Do not add tests that only grep source files for the selected package expression.

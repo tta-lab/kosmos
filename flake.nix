@@ -69,14 +69,13 @@
             ${./scripts/forgejo-k8s-pull-secret-smoke} \
             ${./scripts/init-ebook-secrets} \
             ${./scripts/init-miniflux-secrets} \
+            ${./scripts/miniflux-mcp-wrapper} \
             ${./scripts/sync-cloudreve-secret} \
             ${./scripts/sync-agent-config} \
             ${./scripts/install-tta-lab-go} \
             ${./scripts/sync-anki-secret} \
-            ${./scripts/sync-hindsight-secret} \
             ${./scripts/prepare-mihomo-config} \
             ${./scripts/render-kepos-policy} \
-            ${./scripts/openclaw-gateway-wrapper} \
             ${./scripts/ttal-tmux-project-picker} \
             ${./scripts/wsl-devops-smoke} \
             ${./tests/temenos-env-test} \
@@ -97,8 +96,6 @@
             ${./tests/cloudreve-gateway-render-test} \
             ${./tests/ebook-gateway-render-test} \
             ${./tests/anki-render-test} \
-            ${./tests/hindsight-render-test} \
-            ${./tests/hindsight-gateway-render-test} \
             ${./tests/anki-gateway-render-test} \
             ${./tests/notes-render-test} \
             ${./tests/notes-gateway-render-test} \
@@ -108,7 +105,6 @@
             ${./tests/sync-anki-secret-test} \
             ${./tests/sync-codex-auth-test} \
             ${./tests/sync-agent-config-test} \
-            ${./tests/sync-hindsight-secret-test} \
             ${./tests/wsl-devops-smoke-test} \
             ${./tests/orga-cli-service-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
@@ -129,8 +125,14 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudreve-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ebook-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-render-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-render-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-gateway-render-test}
+          tk fmt --test ${./.}/tests/jsonnet
+          tk lint ${./.}/tests/jsonnet
+          tk eval ${./.}/tests/jsonnet/hindsight.test.jsonnet >/dev/null
+          tk eval ${./.}/tests/jsonnet/codex-bridge.test.jsonnet >/dev/null
+          tk eval ${./.}/tests/jsonnet/gateway.test.jsonnet >/dev/null
+          tk show --dangerous-allow-redirect ${./.}/tanka/environments/hindsight >/dev/null
+          tk show --dangerous-allow-redirect ${./.}/tanka/environments/codex-bridge >/dev/null
+          tk show --dangerous-allow-redirect ${./.}/tanka/environments/devops >/dev/null
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-gateway-render-test}
@@ -140,7 +142,6 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-anki-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-codex-auth-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-agent-config-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-hindsight-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/wsl-devops-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
           touch $out
@@ -242,31 +243,6 @@
         assert unit.serviceConfig.Type == "oneshot";
         assert unit.serviceConfig.RemainAfterExit;
           pkgs.runCommand "anki-secret-sync-module-check" {} "touch $out";
-
-      hindsight-secret-sync-module = let
-        eval = nixpkgs.lib.nixosSystem {
-          inherit system;
-          specialArgs = {inherit agenix;};
-          modules = [
-            agenix.nixosModules.default
-            ./modules/wsl/secrets.nix
-            (_: {system.stateVersion = "25.05";})
-          ];
-        };
-        cfg = eval.config;
-        secret = cfg.age.secrets.hindsight-env;
-        unit = cfg.systemd.services.hindsight-secret-sync;
-        has = value: list: builtins.elem value list;
-      in
-        assert secret.path == "/run/agenix/hindsight-env";
-        assert secret.mode == "0400";
-        assert unit.restartTriggers == [secret.file];
-        assert has "k3s.service" unit.after;
-        assert has "k3s.service" unit.wants;
-        assert has "multi-user.target" unit.wantedBy;
-        assert unit.serviceConfig.Type == "oneshot";
-        assert unit.serviceConfig.RemainAfterExit;
-          pkgs.runCommand "hindsight-secret-sync-module-check" {} "touch $out";
 
       openvpn-client-module = let
         cfg = self.nixosConfigurations.wsl.config;
@@ -484,7 +460,6 @@
         home = cfg.home-manager.users.neil;
         package = kepos-neo.packages.${system}.kepos;
         publisherUnit = home.systemd.user.services.kepos-publisher;
-        bridgeUnit = home.systemd.user.services.kepos-codex-bridge;
         dshEnv = home.systemd.user.services.dsh.Service.Environment;
         publisherPolicyFile = "/home/neil/.config/kepos/publisher.toml";
         publisherStateDir = "/home/neil/.local/state/kepos-neo/mux-publisher";
@@ -501,7 +476,6 @@
         assert !(publisherUnit.Service ? Environment);
         assert nixpkgs.lib.hasInfix "--state ${publisherStateDir}" publisherUnit.Service.ExecStart;
         assert nixpkgs.lib.hasInfix "--config ${publisherPolicyFile}" publisherUnit.Service.ExecStart;
-        assert bridgeUnit.Install.WantedBy == ["default.target"];
         # The DSH unit reads its key from the agenix file, never hardcodes it.
         assert !builtins.any (entry: nixpkgs.lib.hasPrefix "DEEPSEEK_API_KEY=" entry) dshEnv;
           pkgs.runCommand "kepos-live-policy-check" {

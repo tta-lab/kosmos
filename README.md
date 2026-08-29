@@ -66,8 +66,7 @@ Mihomo loads the generated Clash Verge runtime configuration from the mounted
 Windows profile through systemd credentials; the configuration is never copied
 into the Nix store. The WSL URL and base bypass list have one owner:
 `kosmos.wsl.proxy` in `modules/wsl/proxy.nix`, derived from that topology. It
-generates both proxy variable cases for shells and managed services, plus
-`/etc/kosmos/proxy.env` for self-managed services such as OpenClaw. K3s adds
+generates both proxy variable cases for shells and managed services. K3s adds
 its cluster-only bypasses on top. The `kosmos-wsl-proxy-env` helper remains a
 separate dynamic manual bootstrap fallback. See [environment ownership](docs/environment.md).
 
