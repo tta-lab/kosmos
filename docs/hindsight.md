@@ -1,72 +1,304 @@
 # Hindsight
 
-Hindsight 0.9.2 runs as one local k3s workload with its embedded pg0 database.
-The canonical gateway and Kepos publish two distinct endpoints:
+Hindsight 0.9.2 keeps its existing API, UI, LLM bridge, worker identity, and
+RRF reranker. The migration adds a separately persisted PostgreSQL 18 service
+with PGroonga 4.0.8 and pgvector 0.8.6, and runs a multilingual local
+`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` embedding model
+on CPU. The model and database dependencies are baked into two local images;
+the legacy and multilingual pods use the same fixed local Hindsight image,
+while the new database and multilingual pods never download model or image
+artifacts at runtime. The legacy pod's pg0 mount and configuration remain
+unchanged for rollback availability.
+
+The canonical gateway endpoints remain:
 
 - API and MCP: `http://hindsight.localhost:17480`
 - Control Plane: `http://hindsightui.localhost:17480`
 
-The workload has no direct host ports. Caddy selects the API or UI by hostname,
-and both Kepos service IDs allow only the named Mac subscriber. Hindsight has
-no application API key because the local k3s network and that Mac-only Kepos
-boundary are the intended trust model.
+The canonical `hindsight` Service is deliberately stage-dependent. During the
+candidate stage it selects the retained embedded-pg0 deployment. The separate
+`hindsight-candidate` Service selects the multilingual deployment for import
+and evaluation. The final stage moves the canonical selector to the
+multilingual deployment and leaves the legacy deployment scaled to zero for
+rollback.
 
-## LLM provider
+The non-secret LLM policy is unchanged: `openai-responses` through
+`http://codex-bridge.localhost:17480/hindsight`, model `gpt-5.6-luna`, reasoning
+effort `high`, 300-second operation timeout, and `rrf` reranking. The
+`bridge-managed-oauth` value is only an initializer marker; the bridge supplies
+the managed identity. Cluster and loopback destinations bypass the configured
+Mihomo pod proxy.
 
-The manifest owns the complete non-secret LLM policy:
+## Images and storage
 
-- provider: `openai-responses`;
-- base URL: `http://codex-bridge.localhost:17480/hindsight`;
-- model: `gpt-5.6-luna`;
-- reasoning effort: `xhigh`;
-- retain and consolidation LLM timeout: 300 seconds per attempt;
-- recall reranker: `rrf`.
+The image recipes are in `images/hindsight-postgres/` and `images/hindsight/`.
+Their upstream bases are digest-pinned, and the rendered stack tag is currently
+`0.1.0`. A recipe change must bump that stack version in the image labels,
+`scripts/build-hindsight-images`, and `tanka/lib/hindsight.libsonnet`; never
+overwrite a tag already used by a deployment.
 
-The OpenAI SDK appends `/responses`, so requests reach the Bridge's fixed
-`/hindsight/responses` route through the canonical Caddy gateway. The API-key value
-in the manifest is deliberately a non-secret initializer placeholder. The
-Bridge removes caller authorization and injects its own managed OAuth identity;
-Hindsight has no OpenAI or DeepSeek credential.
-
-Only the asynchronous retain and consolidation paths receive the longer
-timeout. Their larger prompts can legitimately keep `luna` at `xhigh` busy for
-more than Hindsight's 120-second global default; allowing them to finish avoids
-paying for retries of the same request. Other LLM operations retain the global
-default so an interactive failure cannot occupy a request for five minutes.
-
-Outbound LLM traffic uses the Mihomo Pod endpoint from
-`modules/wsl/proxy-topology.json`; cluster and loopback traffic bypass it.
-
-## Deploy
-
-NixOS owns the Hindsight data directory. Tanka owns the canonical gateway and
-Kubernetes workloads. Deploy in this order:
+Build and inspect both images with rootless Podman:
 
 ```bash
-nh os switch . -H wsl --ask
-just codex-bridge-diff
-just codex-bridge-deploy
-just diff
-just apply
-just hindsight-diff
-just hindsight-deploy
-just hindsight-status
-just kepos-policy-render
-just kepos-status
+just hindsight-images
 ```
 
-The first image pull is large. The image is pinned to the signed Hindsight
-0.9.2 multi-architecture digest and already contains its default embedding and
-reranker models. Offline model flags prevent runtime model drift; do not mount
-an empty volume over `/home/hindsight/.cache/huggingface`.
-
-## Verify
+When the images are ready to use in the single-node local k3s cluster, load
+them into that cluster's containerd store. This is the only step that uses
+elevation and it writes no registry:
 
 ```bash
-curl --fail http://hindsight.localhost:17480/health
-curl --fail http://hindsightui.localhost:17480/
-just hindsight-logs
+just hindsight-images-load
 ```
+
+The loader creates a private temporary directory, exports two OCI archives,
+imports them with `sudo k3s ctr images import`, and removes only that directory.
+It also retags Podman's local `localhost/...` names to the exact `kosmos/...`
+references rendered by Tanka.
+The Kubernetes manifests use `imagePullPolicy: Never`, so this load must happen
+before applying either stage.
+
+The old embedded database remains at
+`/var/lib/kosmos-k3s/hindsight` and is mounted only by the legacy deployment.
+The external database uses the separate retained directory
+`/var/lib/kosmos-k3s/hindsight-postgres`, PostgreSQL PVC
+`hindsight-postgres-data`, and StatefulSet `hindsight-postgres`. Both volumes
+use `Retain`; neither is an off-host backup.
+
+## Secrets and operator commands
+
+Bootstrap the cluster-local database Secret once. The helper refuses any
+non-local Kubernetes API server, generates a random password in a private
+temporary file, creates `hindsight-database` in namespace `hindsight`, and
+deletes the temporary file. Repeating it preserves the existing Secret. No
+credential is stored in this repository.
+
+```bash
+just hindsight-candidate-secrets
+```
+
+The candidate and final stages each expose show, diff, apply, status, and logs
+targets. All mutating targets retain the local-cluster guard (`https://127.0.0.1:26443`):
+
+```bash
+just hindsight-candidate-show
+just hindsight-candidate-diff
+just hindsight-candidate-apply
+just hindsight-candidate-status
+just hindsight-candidate-logs
+
+just hindsight-final-show
+just hindsight-final-diff
+just hindsight-final-apply
+just hindsight-final-status
+just hindsight-final-logs
+```
+
+`hindsight-apply` and the historical `hindsight-*` targets remain aliases for
+the safe candidate environment. Use the explicit final targets for a cutover.
+
+## Candidate, migration, and cutover sequence
+
+The following is the complete operator sequence. It prepares and verifies the
+blue-green migration; it is intentionally not run by CI or by this change.
+
+1. Build/load the pinned images and create the Secret:
+
+   ```bash
+   nh os switch . -H wsl --ask
+   just hindsight-images-load
+   just hindsight-candidate-secrets
+   ```
+
+2. Render and inspect the candidate before applying it:
+
+   ```bash
+   just hindsight-candidate-show
+   just hindsight-candidate-diff
+   just hindsight-candidate-apply
+   kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
+     rollout status statefulset/hindsight-postgres --timeout=300s
+   kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
+     rollout status deployment/hindsight-multilingual --timeout=600s
+   ```
+
+   Candidate rendering keeps `deployment/hindsight` at one replica and keeps
+   the canonical `hindsight` Service on it. The PostgreSQL and multilingual
+   workloads are independently addressable through `hindsight-candidate`.
+
+3. Export the source bank with Hindsight's official whole-bank command. Run the
+   command in the legacy pod and copy the archive to an operator-owned,
+   access-controlled directory; do not edit the pg0 volume or delete the pod.
+
+   ```bash
+   export BANK=hermes
+   export CANDIDATE_BANK="${BANK}-candidate"
+   export ARCHIVE="$PWD/hindsight-$BANK-$(date +%Y%m%d%H%M%S).zip"
+   export LEGACY_POD="$(kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
+     get pod -l 'app.kubernetes.io/name=hindsight,kosmos.tta-lab.org/role=legacy' \
+     -o jsonpath='{.items[0].metadata.name}')"
+   kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
+     exec "$LEGACY_POD" -- \
+     hindsight-admin export-bank --bank "$BANK" --output /tmp/hindsight-bank.zip
+   kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
+     cp "$LEGACY_POD:/tmp/hindsight-bank.zip" "$ARCHIVE"
+   ```
+
+   Inspect the archive manifest before import and retain it with the
+   operator's migration evidence:
+
+   ```bash
+   unzip -p "$ARCHIVE" manifest.json | jq .
+   unzip -l "$ARCHIVE"
+   ```
+
+   The official export intentionally omits stored `embedding` and
+   `search_vector` values. It carries bank-level counts such as
+   `document_count`, `fact_count`, `observation_count`, and
+   `mental_model_count`; those counts are the source side of the reconciliation
+   below. Do not treat an archive containing old vectors as a valid migration
+   input.
+
+4. Import into the empty external database through the candidate pod. The
+   import command recreates embeddings and derived search state (entities,
+   links, and indexes) from the exported memories. It does not call retain,
+   LLM fact extraction, consolidation, or webhooks.
+
+   ```bash
+   export MULTILINGUAL_POD="$(kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
+     get pod -l 'app.kubernetes.io/name=hindsight,kosmos.tta-lab.org/role=multilingual' \
+     -o jsonpath='{.items[0].metadata.name}')"
+   kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
+     cp "$ARCHIVE" "$MULTILINGUAL_POD:/tmp/hindsight-bank.zip"
+   kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
+     exec "$MULTILINGUAL_POD" -- \
+     hindsight-admin import-bank --archive /tmp/hindsight-bank.zip --target-bank "$CANDIDATE_BANK"
+   ```
+
+   Keep the legacy service serving while this import and all candidate checks
+   run. The temporary candidate bank keeps the canonical bank id free for the
+   final import (the import command refuses an existing target bank). Capture
+   the import summary and compare its bank-level counts with
+   `manifest.json`. Then check for failed or pending operations and inspect the
+   candidate bank stats:
+
+   ```bash
+   export BANK=hermes
+   export CANDIDATE_BANK="${BANK}-candidate"
+   export CANDIDATE_URL=http://127.0.0.1:18888
+   kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
+     port-forward service/hindsight-candidate 18888:8888
+   ```
+
+   Leave that port-forward running in one terminal, then run the checks in a
+   second terminal:
+
+   ```bash
+   export BANK=hermes
+   export CANDIDATE_BANK="${BANK}-candidate"
+   export CANDIDATE_URL=http://127.0.0.1:18888
+   curl --fail "$CANDIDATE_URL/v1/default/banks/$CANDIDATE_BANK/operations?status=pending"
+   curl --fail "$CANDIDATE_URL/v1/default/banks/$CANDIDATE_BANK/operations?status=failed"
+   curl --fail "$CANDIDATE_URL/v1/default/banks/$CANDIDATE_BANK/stats" | jq .
+   ```
+
+   Reconcile the manifest's documented counts against the imported bank's
+   stats/import summary. Any failed or pending operation, count mismatch, or
+   missing derived state stops the migration; leave the legacy Service active.
+
+5. Generate a golden set locally from the exported bank, without committing
+   personal memory text. Add one reviewed JSON object per line with `query`,
+   `language` (`chinese`, `english`, or `mixed`), and
+   `relevant_memory_ids`. The synthetic schema/example is
+   `examples/hindsight-golden.example.jsonl`; the reviewed file belongs in a
+   test-owned or operator-private path and remains untracked.
+
+   Evaluate through the candidate Service (the port-forward above avoids any
+   cluster-local DNS assumption):
+
+   ```bash
+   python3 scripts/hindsight-recall-eval \
+     --url "$CANDIDATE_URL" \
+     --bank "$CANDIDATE_BANK" \
+     --golden /secure/operator/path/hindsight-golden.jsonl \
+     --top-k 5 \
+     --format text
+   ```
+
+   The evaluator reports per-query hits, grouped Chinese/English/mixed
+   Recall@K and MRR, and end-to-end p50/p95 latency. Acceptance requires every
+   user-approved query to return a relevant top-K result and p95 no greater
+   than one second. Failed/partial responses, malformed JSONL, missing
+   relevance, or a p95 over 1000 ms return a non-zero status.
+
+6. When the candidate gate passes, schedule a short write freeze. Stop all
+   Hindsight writers, verify that no writes are in flight, and repeat the
+   official export/import into a fresh empty canonical target bank. The
+   candidate bank is deliberately suffixed and the canonical `$BANK` target is
+   still absent, so the import contract's "target bank must not exist" guard is
+   satisfied. Reconcile the source/import counts and pending/failed operations
+   again, then rerun the reviewed golden set and latency gate. Do not skip this
+   second export: it is what makes the final external bank match the frozen pg0
+   source.
+
+   ```bash
+   # With writes stopped, repeat export and copy it to MULTILINGUAL_POD.
+   kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
+     exec "$LEGACY_POD" -- \
+     hindsight-admin export-bank --bank "$BANK" --output /tmp/hindsight-bank-final.zip
+   kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
+     cp "$LEGACY_POD:/tmp/hindsight-bank-final.zip" "$ARCHIVE"
+   kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
+     cp "$ARCHIVE" "$MULTILINGUAL_POD:/tmp/hindsight-bank-final.zip"
+   kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
+     exec "$MULTILINGUAL_POD" -- \
+     hindsight-admin import-bank --archive /tmp/hindsight-bank-final.zip --target-bank "$BANK"
+   ```
+
+   The suffixed candidate bank is disposable evaluation data. Remove it only
+   after the rollback window with a separately reviewed cleanup operation; do
+   not make cleanup part of the cutover.
+
+7. Apply the final stage only after every gate passes:
+
+   ```bash
+   just hindsight-final-diff
+   just hindsight-final-apply
+   just hindsight-final-status
+   curl --fail http://hindsight.localhost:17480/health
+   curl --fail http://hindsightui.localhost:17480/
+   ```
+
+   Final rendering keeps the external StatefulSet and multilingual Deployment
+   at one replica, moves the canonical Service selector to multilingual, and
+   scales the legacy deployment to zero. It does not delete the legacy PVC,
+   PV, or pg0 directory.
+
+## Exact rollback
+
+If health, relevance, latency, or operations checks fail, do not translate or
+modify either retained database. Before final apply, simply leave the
+candidate stage in place: the canonical Service still selects pg0. After a
+final apply, restore the candidate selector and replicas explicitly:
+
+```bash
+kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
+  scale deployment/hindsight --replicas=1
+kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
+  patch service/hindsight --type=merge \
+  -p '{"spec":{"selector":{"app.kubernetes.io/name":"hindsight","app.kubernetes.io/part-of":"kosmos-hindsight"}}}'
+kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
+  scale deployment/hindsight-multilingual --replicas=0
+kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
+  rollout status deployment/hindsight --timeout=300s
+```
+
+The retained pg0 copy remains the rollback source, and the new PostgreSQL
+volume remains available for diagnosis. Removing the scaled-down legacy
+objects or either host-directory declaration is deferred until the agreed
+rollback window ends and requires a later cleanup change.
+
+## Existing clients and verification
 
 Nanocodex uses the personal `hermes` memory bank through:
 
@@ -75,15 +307,21 @@ http://hindsight.localhost:17480/mcp/hermes/
 ```
 
 After switching the Home Manager generation, the `naco` Fish function includes
-that MCP server and disables Nanocodex browser and cookie imports.
+that MCP server and disables Nanocodex browser and cookie imports. The
+candidate/final change does not alter this client contract or the codex-bridge
+LLM route.
 
-## Storage and upgrades
+For repository-only verification, run:
 
-Embedded pg0 data is retained at `/var/lib/kosmos-k3s/hindsight`. The PV uses
-the `Retain` reclaim policy, but the directory remains on the WSL virtual disk
-and is not an off-host backup. Stop the deployment before copying or restoring
-it.
+```bash
+just tanka-test
+bash tests/hindsight-render-test
+bash tests/init-hindsight-secrets-test
+bash tests/hindsight-images-test
+bash tests/hindsight-recall-eval-test
+```
 
-The default local embedding model is English-focused. Changing the embedding
-provider or model after storing memories requires an explicit migration and
-re-embedding plan; do not change it as a routine image upgrade.
+The full required Nix checks are `nix-instantiate --parse configuration.nix`,
+`statix check .`, `nix --extra-experimental-features 'nix-command flakes' flake check`,
+and the WSL system closure build. These checks do not contact a live bank or
+Kubernetes cluster.

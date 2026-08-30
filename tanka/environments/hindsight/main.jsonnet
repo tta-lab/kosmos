@@ -1,12 +1,5 @@
-local storage = import '../../lib/hindsight-storage.libsonnet';
 local hindsight = import '../../lib/hindsight.libsonnet';
 
-{
-  namespace: {
-    apiVersion: 'v1',
-    kind: 'Namespace',
-    metadata: {
-      name: 'hindsight',
-    },
-  },
-} + storage + hindsight
+// The historical environment is the safe candidate stage. The final stage is
+// explicitly rendered from tanka/environments/hindsight-final.
+hindsight.candidate

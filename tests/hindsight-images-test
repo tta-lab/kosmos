@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+test_root="$(mktemp -d)"
+trap 'rm -rf "$test_root"' EXIT
+mkdir -p "$test_root/bin"
+
+cat >"$test_root/bin/podman" <<'EOF'
+#!@bash@
+set -euo pipefail
+printf '%s\n' "$*" >>"$TEST_PODMAN_LOG"
+case "${1:-}" in
+  build)
+    exit 0
+    ;;
+  image)
+    if [[ "$*" == *"RepoTags"* && "$*" == *"hindsight-postgres"* ]]; then
+      printf '%s\n' 'localhost/kosmos/hindsight-postgres:0.1.0'
+    elif [[ "$*" == *"RepoTags"* && "$*" == *"hindsight:"* ]]; then
+      printf '%s\n' 'localhost/kosmos/hindsight:0.1.0'
+    elif [[ "$*" == *"--format"* && "$*" == *"hindsight-postgres"* ]]; then
+      printf '%s\n' '{"org.opencontainers.image.description":"PGroonga 4.0.8 and pgvector 0.8.6"}'
+    elif [[ "$*" == *"--format"* && "$*" == *"hindsight:"* ]]; then
+      printf '%s\n' '{"org.opencontainers.image.embedding-model":"paraphrase-multilingual-MiniLM-L12-v2"}'
+    fi
+    exit 0
+    ;;
+  run)
+    if [[ "$*" == *"dpkg-query"* ]]; then
+      printf '%s\n' '0.8.6-1.pgdg13+1'
+    elif [[ "$*" == *"grep"* ]]; then
+      printf '%s\n' "default_version = '4.0.8'"
+    elif [[ "$*" == *"hindsight-postgres"* ]]; then
+      printf '%s\n' 'postgres (PostgreSQL) 18.4'
+    fi
+    exit 0
+    ;;
+  save)
+    output=""
+    for argument in "$@"; do
+      case "$argument" in
+        --output) expect_output=1 ;;
+        *) if [[ "${expect_output:-0}" == 1 ]]; then output="$argument"; expect_output=0; fi ;;
+      esac
+    done
+    : >"$output"
+    ;;
+  *)
+    echo "unexpected podman command" >&2
+    exit 1
+    ;;
+esac
+EOF
+sed -i "s|@bash@|$BASH|" "$test_root/bin/podman"
+chmod +x "$test_root/bin/podman"
+
+cat >"$test_root/bin/sudo" <<'EOF'
+#!@bash@
+printf '%s\n' "$*" >>"$TEST_SUDO_LOG"
+exit 0
+EOF
+sed -i "s|@bash@|$BASH|" "$test_root/bin/sudo"
+chmod +x "$test_root/bin/sudo"
+
+cat >"$test_root/bin/k3s" <<'EOF'
+#!@bash@
+printf '%s\n' "$*" >>"$TEST_K3S_LOG"
+exit 0
+EOF
+sed -i "s|@bash@|$BASH|" "$test_root/bin/k3s"
+chmod +x "$test_root/bin/k3s"
+
+export PATH="$test_root/bin:$PATH"
+export TEST_PODMAN_LOG="$test_root/podman.log"
+export TEST_SUDO_LOG="$test_root/sudo.log"
+export TEST_K3S_LOG="$test_root/k3s.log"
+
+bash "$repo_root/scripts/build-hindsight-images" >"$test_root/check-output"
+grep -q 'built and verified kosmos/hindsight-postgres:0.1.0 and kosmos/hindsight:0.1.0' "$test_root/check-output"
+grep -q -- '--pull=missing' "$TEST_PODMAN_LOG"
+[[ ! -s "$TEST_SUDO_LOG" ]]
+[[ ! -s "$TEST_K3S_LOG" ]]
+
+: >"$TEST_PODMAN_LOG"
+: >"$TEST_SUDO_LOG"
+: >"$TEST_K3S_LOG"
+bash "$repo_root/scripts/build-hindsight-images" --load >"$test_root/load-output"
+grep -q '^loaded kosmos/hindsight-postgres:0.1.0 and kosmos/hindsight:0.1.0 into local k3s containerd$' "$test_root/load-output"
+grep -q 'save --format oci-archive --output ' "$TEST_PODMAN_LOG"
+grep -q 'images import ' "$TEST_SUDO_LOG"
+grep -q 'images tag localhost/kosmos/hindsight-postgres:0.1.0 kosmos/hindsight-postgres:0.1.0' "$TEST_SUDO_LOG"
+grep -q 'images tag localhost/kosmos/hindsight:0.1.0 kosmos/hindsight:0.1.0' "$TEST_SUDO_LOG"
+[[ "$(wc -l <"$TEST_SUDO_LOG")" -eq 4 ]]
+[[ "$(wc -l <"$TEST_K3S_LOG")" -eq 0 ]]
+
+printf 'Hindsight image packaging builds and inspects locally, with opt-in archive loading\n'
