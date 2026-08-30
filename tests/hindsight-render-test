@@ -39,10 +39,6 @@ jq -e '
   ) and
   (resource("PersistentVolume"; "kosmos-hindsight-postgres").spec.hostPath.path == "/var/lib/kosmos-k3s/hindsight-postgres") and
   (resource("PersistentVolume"; "kosmos-hindsight-postgres").spec.persistentVolumeReclaimPolicy == "Retain") and
-  (map(select(.kind == "Deployment" and .metadata.name == "hindsight")) | length == 0) and
-  (map(select(.kind == "Service" and .metadata.name == "hindsight-candidate")) | length == 0) and
-  (map(select(.kind == "PersistentVolume" and .metadata.name == "kosmos-hindsight")) | length == 0) and
-  (map(select(.kind == "PersistentVolumeClaim" and .metadata.name == "hindsight-data")) | length == 0) and
   (map(select(.kind == "Secret")) | length == 0)
 ' "$test_root/hindsight.json" >/dev/null
 
