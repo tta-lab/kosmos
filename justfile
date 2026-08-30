@@ -109,13 +109,22 @@ hindsight-show:
 hindsight-diff: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ hindsight_environment }}"
 
-hindsight-apply: _local-k3s
+hindsight-secrets: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" scripts/init-hindsight-secrets
+
+hindsight-apply: _local-k3s hindsight-secrets
   @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ hindsight_environment }}"
 
-hindsight-deploy: hindsight-apply
+hindsight-deploy: hindsight-images-load hindsight-apply
 
 hindsight-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n hindsight -o wide
+
+hindsight-images:
+  @scripts/build-hindsight-images
+
+hindsight-images-load:
+  @scripts/build-hindsight-images --load
 
 codex-bridge-show:
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ codex_bridge_environment }}"
@@ -173,7 +182,7 @@ cloudreve-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n cloudreve -o wide
 
 hindsight-logs: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" kubectl logs deployment/hindsight -n hindsight --tail=200
+  @KUBECONFIG="{{ kubeconfig }}" kubectl logs deployment/hindsight-multilingual -n hindsight --tail=200
 
 codex-bridge-logs: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl logs deployment/codex-bridge -n codex-bridge -c bridge --tail=200

@@ -5,9 +5,12 @@ local env = {
   [variable.name]: variable
   for variable in container.env
 };
-local service = resources.hindsightService;
-local pv = resources.hindsightPv;
-local pvc = resources.hindsightPvc;
+local postgres = resources.hindsightPostgres;
+local postgresContainer = postgres.spec.template.spec.containers[0];
+local postgresEnv = {
+  [variable.name]: variable
+  for variable in postgresContainer.env
+};
 local secrets = [
   resources[field]
   for field in std.objectFields(resources)
@@ -15,48 +18,33 @@ local secrets = [
 ];
 
 std.assertEqual(resources.namespace.metadata.name, 'hindsight') &&
+std.assertEqual(deployment.metadata.name, 'hindsight-multilingual') &&
 std.assertEqual(deployment.spec.replicas, 1) &&
-std.assertEqual(deployment.spec.strategy.type, 'Recreate') &&
-std.assertEqual(
-  container.image,
-  'ghcr.io/vectorize-io/hindsight:0.9.2@sha256:84ab276b8f501546deb6ea9c64a57291718b4e16a59dd9e02a02fdd5adfe9028'
-) &&
+std.assertEqual(resources.hindsightService.spec.selector, deployment.spec.selector.matchLabels) &&
+std.assertEqual(container.image, 'localhost/kosmos/hindsight:0.1.1') &&
+std.assertEqual(container.imagePullPolicy, 'Never') &&
 std.assertEqual(container.securityContext.runAsNonRoot, true) &&
 std.assertEqual(container.startupProbe.httpGet.path, '/health') &&
-std.assertEqual(container.readinessProbe.httpGet.path, '/health') &&
-std.assertEqual(container.livenessProbe.httpGet.path, '/health') &&
-std.assertEqual([port for port in container.ports if port.name == 'api'][0], {
-  name: 'api',
-  containerPort: 8888,
+std.assertEqual(env.HINDSIGHT_API_DATABASE_URL.valueFrom.secretKeyRef, {
+  name: 'hindsight-database',
+  key: 'HINDSIGHT_API_DATABASE_URL',
 }) &&
-std.assertEqual([port for port in container.ports if port.name == 'ui'][0], {
-  name: 'ui',
-  containerPort: 9999,
+std.assertEqual(env.HINDSIGHT_API_VECTOR_EXTENSION.value, 'pgvector') &&
+std.assertEqual(env.HINDSIGHT_API_TEXT_SEARCH_EXTENSION.value, 'pgroonga') &&
+std.assertEqual(env.HINDSIGHT_API_EMBEDDINGS_PROVIDER.value, 'local') &&
+std.assertEqual(env.HINDSIGHT_API_EMBEDDINGS_LOCAL_MODEL.value, '/opt/hindsight-models/paraphrase-multilingual-MiniLM-L12-v2') &&
+std.assertEqual(env.HINDSIGHT_API_EMBEDDINGS_LOCAL_FORCE_CPU.value, '1') &&
+std.assertEqual(env.HINDSIGHT_API_RERANKER_PROVIDER.value, 'rrf') &&
+std.assertEqual(std.length(container.volumeMounts), 2) &&
+std.assertEqual(postgres.metadata.name, 'hindsight-postgres') &&
+std.assertEqual(postgres.spec.replicas, 1) &&
+std.assertEqual(postgresContainer.image, 'localhost/kosmos/hindsight-postgres:0.1.1') &&
+std.assertEqual(postgresEnv.POSTGRES_PASSWORD.valueFrom.secretKeyRef, {
+  name: 'hindsight-database',
+  key: 'POSTGRES_PASSWORD',
 }) &&
-std.assertEqual(env.HINDSIGHT_API_LLM_PROVIDER.value, 'openai-responses') &&
-std.assertEqual(env.HINDSIGHT_API_LLM_BASE_URL.value, 'http://codex-bridge.localhost:17480/hindsight') &&
-std.assertEqual(env.HINDSIGHT_API_LLM_MODEL.value, 'gpt-5.6-luna') &&
-std.assertEqual(env.HINDSIGHT_API_LLM_REASONING_EFFORT.value, 'high') &&
-std.assertEqual(env.HINDSIGHT_API_LLM_API_KEY.value, 'bridge-managed-oauth') &&
-std.assertEqual(env.HINDSIGHT_API_LLM_TIMEOUT.value, '300') &&
-!std.objectHas(env, 'HINDSIGHT_API_RETAIN_LLM_TIMEOUT') &&
-!std.objectHas(env, 'HINDSIGHT_API_CONSOLIDATION_LLM_TIMEOUT') &&
-std.assertEqual(env.HINDSIGHT_API_WORKER_ID.value, 'hindsight') &&
-std.assertEqual(env.HTTPS_PROXY.value, 'http://10.42.0.1:7890') &&
-std.assertEqual(std.findSubstr('localhost', env.NO_PROXY.value) != [], true) &&
-std.assertEqual(std.findSubstr('.cluster.local', env.NO_PROXY.value) != [], true) &&
-std.assertEqual(std.findSubstr('.localhost', env.NO_PROXY.value) != [], true) &&
-std.assertEqual(env.HF_HUB_OFFLINE.value, '1') &&
-std.assertEqual(env.TRANSFORMERS_OFFLINE.value, '1') &&
-std.assertEqual(
-  [mount for mount in container.volumeMounts if mount.name == 'data'][0].mountPath,
-  '/home/hindsight/.pg0'
-) &&
-std.assertEqual(container.resources.requests.memory, '4Gi') &&
-std.assertEqual(service.spec.type, 'ClusterIP') &&
-std.assertEqual([port for port in service.spec.ports if port.name == 'api'][0].port, 8888) &&
-std.assertEqual([port for port in service.spec.ports if port.name == 'ui'][0].port, 9999) &&
-std.assertEqual(pv.spec.persistentVolumeReclaimPolicy, 'Retain') &&
-std.assertEqual(pv.spec.hostPath.path, '/var/lib/kosmos-k3s/hindsight') &&
-std.assertEqual(pvc.spec.volumeName, 'kosmos-hindsight') &&
+std.assertEqual(std.findSubstr('4.0.8', postgresContainer.readinessProbe.exec.command[2]) != [], true) &&
+std.assertEqual(std.findSubstr('0.8.6', postgresContainer.readinessProbe.exec.command[2]) != [], true) &&
+std.assertEqual(resources.hindsightPostgresPv.spec.hostPath.path, '/var/lib/kosmos-k3s/hindsight-postgres') &&
+std.assertEqual(resources.hindsightPostgresPvc.spec.volumeName, 'kosmos-hindsight-postgres') &&
 std.assertEqual(std.length(secrets), 0)

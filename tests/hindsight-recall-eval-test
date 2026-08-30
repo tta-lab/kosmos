@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+test_root="$(mktemp -d)"
+server_pid=""
+cleanup() {
+  if [[ -n "$server_pid" ]]; then
+    kill "$server_pid" 2>/dev/null || true
+    wait "$server_pid" 2>/dev/null || true
+  fi
+  rm -rf "$test_root"
+}
+trap cleanup EXIT
+
+mkdir -p "$test_root/bin"
+cat >"$test_root/server.py" <<'PY'
+import json
+import os
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+class Handler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        length = int(self.headers["Content-Length"])
+        json.loads(self.rfile.read(length))
+        with open(os.environ["TEST_RECALL_MODE_FILE"], encoding="ascii") as stream:
+            mode = stream.read().strip()
+        if mode == "slow":
+            time.sleep(1.05)
+        if mode == "fail":
+            self.send_response(503)
+            self.end_headers()
+            return
+        if mode == "malformed":
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"{")
+            return
+        if mode == "missing":
+            payload = {"results": [{"text": "unrelated"}]}
+        elif mode == "id-only":
+            payload = {"results": [{"id": "legacy-memory-id"}]}
+        else:
+            payload = {"results": [
+                {"text": "中文项目"},
+                {"text": "English service"},
+                {"text": "mixed-language bank"},
+            ]}
+        encoded = json.dumps(payload).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(encoded)))
+        self.end_headers()
+        self.wfile.write(encoded)
+
+    def log_message(self, *_):
+        pass
+
+server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+with open(os.environ["TEST_PORT_FILE"], "w", encoding="ascii") as stream:
+    stream.write(str(server.server_port))
+server.serve_forever()
+PY
+
+export TEST_PORT_FILE="$test_root/port"
+export TEST_RECALL_MODE_FILE="$test_root/mode"
+printf '%s\n' pass >"$TEST_RECALL_MODE_FILE"
+python3 "$test_root/server.py" &
+server_pid=$!
+for _ in {1..50}; do
+  [[ -s "$TEST_PORT_FILE" ]] && break
+  sleep 0.02
+done
+port="$(cat "$TEST_PORT_FILE")"
+
+cat >"$test_root/golden.jsonl" <<'EOF'
+{"query":"中文项目","language":"chinese","relevant_memory_texts":["中文项目"]}
+{"query":"English service","language":"english","relevant_memory_texts":["English service"]}
+{"query":"mixed-language bank","language":"mixed","relevant_memory_texts":["mixed-language bank"]}
+EOF
+
+base_args=(--url "http://127.0.0.1:$port" --bank example --golden "$test_root/golden.jsonl" --top-k 3 --timeout 3)
+python3 "$repo_root/scripts/hindsight-recall-eval" "${base_args[@]}" --format json >"$test_root/pass.json"
+jq -e '.gate == "PASS" and .metrics.queries == 3 and .metrics.groups.chinese.queries == 1 and (.metrics.latency_ms.p95 >= .metrics.latency_ms.p50)' "$test_root/pass.json" >/dev/null
+
+printf '%s\n' missing >"$TEST_RECALL_MODE_FILE"
+if python3 "$repo_root/scripts/hindsight-recall-eval" "${base_args[@]}" >"$test_root/missing-output" 2>&1; then
+  echo 'evaluator accepted a reviewed query with no relevant result' >&2
+  exit 1
+fi
+grep -q 'no relevant top-K result' "$test_root/missing-output"
+
+printf '%s\n' fail >"$TEST_RECALL_MODE_FILE"
+if python3 "$repo_root/scripts/hindsight-recall-eval" "${base_args[@]}" >"$test_root/failure-output" 2>&1; then
+  echo 'evaluator accepted a failed API response' >&2
+  exit 1
+fi
+grep -q 'HTTP 503' "$test_root/failure-output"
+
+printf '%s\n' id-only >"$TEST_RECALL_MODE_FILE"
+if python3 "$repo_root/scripts/hindsight-recall-eval" "${base_args[@]}" >"$test_root/id-only-output" 2>&1; then
+  echo 'evaluator accepted ID-only RecallResult data' >&2
+  exit 1
+fi
+grep -q 'has no text' "$test_root/id-only-output"
+
+cat >"$test_root/missing-category.jsonl" <<'EOF'
+{"query":"中文项目","language":"chinese","relevant_memory_texts":["中文项目"]}
+{"query":"English service","language":"english","relevant_memory_texts":["English service"]}
+EOF
+printf '%s\n' pass >"$TEST_RECALL_MODE_FILE"
+if python3 "$repo_root/scripts/hindsight-recall-eval" --url "http://127.0.0.1:$port" --bank example --golden "$test_root/missing-category.jsonl" >"$test_root/missing-category-output" 2>&1; then
+  echo 'evaluator accepted a golden set without all required language categories' >&2
+  exit 1
+fi
+grep -q 'missing mixed' "$test_root/missing-category-output"
+
+cat >"$test_root/language-alias.jsonl" <<'EOF'
+{"query":"中文项目","language":"zh","relevant_memory_texts":["中文项目"]}
+EOF
+if python3 "$repo_root/scripts/hindsight-recall-eval" --url "http://127.0.0.1:$port" --bank example --golden "$test_root/language-alias.jsonl" >"$test_root/language-alias-output" 2>&1; then
+  echo 'evaluator accepted a language alias' >&2
+  exit 1
+fi
+grep -q "language must be chinese, english, or mixed" "$test_root/language-alias-output"
+
+cat >"$test_root/category-fallback.jsonl" <<'EOF'
+{"query":"中文项目","category":"chinese","relevant_memory_texts":["中文项目"]}
+EOF
+if python3 "$repo_root/scripts/hindsight-recall-eval" --url "http://127.0.0.1:$port" --bank example --golden "$test_root/category-fallback.jsonl" >"$test_root/category-fallback-output" 2>&1; then
+  echo 'evaluator accepted the obsolete category field' >&2
+  exit 1
+fi
+grep -q "language must be chinese, english, or mixed" "$test_root/category-fallback-output"
+
+if python3 "$repo_root/scripts/hindsight-recall-eval" "${base_args[@]}" --max-p95-ms 1001 >"$test_root/too-high-threshold-output" 2>&1; then
+  echo 'evaluator accepted a p95 threshold above one second' >&2
+  exit 1
+fi
+grep -q 'between 0 and 1000 milliseconds' "$test_root/too-high-threshold-output"
+
+python3 "$repo_root/scripts/hindsight-recall-eval" "${base_args[@]}" --max-p95-ms 999 --format json >"$test_root/lower-threshold.json"
+jq -e '.gate == "PASS"' "$test_root/lower-threshold.json" >/dev/null
+
+printf '%s\n' slow >"$TEST_RECALL_MODE_FILE"
+if python3 "$repo_root/scripts/hindsight-recall-eval" "${base_args[@]}" >"$test_root/slow-output" 2>&1; then
+  echo 'evaluator accepted p95 latency above one second' >&2
+  exit 1
+fi
+grep -q 'exceeds 1000.0 ms' "$test_root/slow-output"
+
+printf '%s\n' '{"query":"broken","language":"english","relevant_memory_texts":' >"$test_root/malformed.jsonl"
+if python3 "$repo_root/scripts/hindsight-recall-eval" --url "http://127.0.0.1:$port" --bank example --golden "$test_root/malformed.jsonl" >"$test_root/malformed-output" 2>&1; then
+  echo 'evaluator accepted malformed JSONL' >&2
+  exit 1
+fi
+grep -q 'malformed JSON' "$test_root/malformed-output"
+
+printf 'Hindsight recall evaluator covers JSONL validation, API failures, relevance, metrics, and the p95 gate\n'

@@ -1,0 +1,365 @@
+#!/usr/bin/env python3
+"""Evaluate a reviewed Hindsight recall golden set.
+
+The evaluator deliberately uses only the Python standard library. It sends
+read-only recall requests to a caller-supplied endpoint, so it can run from a
+developer workstation without adding a client dependency or writing to the
+Hindsight bank.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import sys
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from statistics import fmean
+from typing import Any
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote
+from urllib.request import Request, urlopen
+
+
+DEFAULT_TOP_K = 5
+DEFAULT_TIMEOUT_SECONDS = 30.0
+DEFAULT_MAX_P95_MS = 1000.0
+REQUIRED_LANGUAGES = ("chinese", "english", "mixed")
+
+
+class EvaluationError(Exception):
+    """A user-facing input, transport, or response error."""
+
+
+@dataclass(frozen=True)
+class GoldenRecord:
+    line_number: int
+    query: str
+    language: str
+    relevant_texts: frozenset[str]
+
+
+@dataclass(frozen=True)
+class QueryResult:
+    record: GoldenRecord
+    hits: tuple[str, ...]
+    relevant_hit: bool
+    reciprocal_rank: float
+    latency_ms: float
+
+
+def _language(value: Any, line_number: int) -> str:
+    if value not in REQUIRED_LANGUAGES:
+        raise EvaluationError(
+            f"line {line_number}: language must be chinese, english, or mixed (got {value!r})"
+        )
+    return value
+
+
+def _relevant_texts(value: Any, line_number: int) -> frozenset[str]:
+    if not isinstance(value, list) or not value:
+        raise EvaluationError(f"line {line_number}: relevant_memory_texts must be a non-empty array")
+    if any(not isinstance(item, str) or not item.strip() for item in value):
+        raise EvaluationError(f"line {line_number}: relevant_memory_texts must contain non-empty strings")
+    return frozenset(value)
+
+
+def load_golden(path: Path) -> list[GoldenRecord]:
+    """Parse and validate the public JSONL golden-set contract."""
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as error:
+        raise EvaluationError(f"cannot read golden set {path}: {error}") from error
+
+    records: list[GoldenRecord] = []
+    for line_number, line in enumerate(lines, start=1):
+        if not line.strip():
+            continue
+        try:
+            value = json.loads(line)
+        except json.JSONDecodeError as error:
+            raise EvaluationError(f"line {line_number}: malformed JSON ({error.msg})") from error
+        if not isinstance(value, dict):
+            raise EvaluationError(f"line {line_number}: record must be a JSON object")
+        query = value.get("query")
+        if not isinstance(query, str) or not query.strip():
+            raise EvaluationError(f"line {line_number}: query must be a non-empty string")
+        language_value = value.get("language")
+        relevant_value = value.get("relevant_memory_texts")
+        records.append(
+            GoldenRecord(
+                line_number=line_number,
+                query=query,
+                language=_language(language_value, line_number),
+                relevant_texts=_relevant_texts(relevant_value, line_number),
+            )
+        )
+    if not records:
+        raise EvaluationError(f"golden set {path} contains no records")
+    return records
+
+
+def percentile(values: list[float], percentage: float) -> float:
+    """Return an inclusive linear-interpolation percentile in milliseconds."""
+    if not values:
+        raise ValueError("percentile requires at least one value")
+    if not 0 <= percentage <= 100:
+        raise ValueError("percentage must be between 0 and 100")
+    ordered = sorted(values)
+    if len(ordered) == 1:
+        return ordered[0]
+    position = (len(ordered) - 1) * percentage / 100
+    lower = math.floor(position)
+    upper = math.ceil(position)
+    if lower == upper:
+        return ordered[lower]
+    fraction = position - lower
+    return ordered[lower] + (ordered[upper] - ordered[lower]) * fraction
+
+
+def recall_endpoint(base_url: str, bank: str) -> str:
+    return f"{base_url.rstrip('/')}/v1/default/banks/{quote(bank, safe='')}/memories/recall"
+
+
+def request_recall(endpoint: str, query: str, timeout: float) -> list[str]:
+    payload = json.dumps({"query": query, "budget": "low", "max_tokens": 4096}).encode("utf-8")
+    request = Request(
+        endpoint,
+        data=payload,
+        method="POST",
+        headers={"Accept": "application/json", "Content-Type": "application/json"},
+    )
+    try:
+        with urlopen(request, timeout=timeout) as response:  # noqa: S310 - operator-supplied local URL
+            if response.status != 200:
+                raise EvaluationError(f"recall request returned HTTP {response.status}")
+            raw = response.read()
+    except HTTPError as error:
+        raise EvaluationError(f"recall request returned HTTP {error.code}") from error
+    except (URLError, TimeoutError, OSError) as error:
+        raise EvaluationError(f"recall request failed: {error}") from error
+
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError as error:
+        raise EvaluationError(f"recall response was not JSON ({error.msg})") from error
+    if not isinstance(value, dict) or not isinstance(value.get("results"), list):
+        raise EvaluationError("recall response is missing a results array")
+
+    texts: list[str] = []
+    for index, result in enumerate(value["results"], start=1):
+        if not isinstance(result, dict):
+            raise EvaluationError(f"recall response result {index} is not an object")
+        memory_text = result.get("text")
+        if not isinstance(memory_text, str) or not memory_text.strip():
+            raise EvaluationError(f"recall response result {index} has no text")
+        texts.append(memory_text)
+    return texts
+
+
+def evaluate(records: list[GoldenRecord], endpoint: str, top_k: int, timeout: float) -> tuple[list[QueryResult], list[str]]:
+    results: list[QueryResult] = []
+    errors: list[str] = []
+    for ordinal, record in enumerate(records, start=1):
+        started = time.perf_counter()
+        try:
+            response_texts = request_recall(endpoint, record.query, timeout)
+        except EvaluationError as error:
+            errors.append(f"query {ordinal} (line {record.line_number}): {error}")
+            continue
+        elapsed_ms = (time.perf_counter() - started) * 1000
+        hits = tuple(response_texts[:top_k])
+        first_rank = next(
+            (rank for rank, memory_text in enumerate(hits, start=1) if memory_text in record.relevant_texts),
+            None,
+        )
+        results.append(
+            QueryResult(
+                record=record,
+                hits=hits,
+                relevant_hit=first_rank is not None,
+                reciprocal_rank=1 / first_rank if first_rank is not None else 0.0,
+                latency_ms=elapsed_ms,
+            )
+        )
+    return results, errors
+
+
+def missing_languages(records: list[GoldenRecord]) -> list[str]:
+    reviewed_languages = {record.language for record in records}
+    return [language for language in REQUIRED_LANGUAGES if language not in reviewed_languages]
+
+
+def metrics(results: list[QueryResult], records: list[GoldenRecord]) -> dict[str, Any]:
+    latencies = [result.latency_ms for result in results]
+    groups: dict[str, dict[str, Any]] = {}
+    for language in REQUIRED_LANGUAGES:
+        grouped = [result for result in results if result.record.language == language]
+        if not grouped:
+            continue
+        groups[language] = {
+            "queries": len(grouped),
+            "recall_at_k": fmean(result.relevant_hit for result in grouped),
+            "mrr": fmean(result.reciprocal_rank for result in grouped),
+        }
+    missing_categories = missing_languages(records)
+    reviewed_languages = {record.language for record in records}
+    return {
+        "queries": len(results),
+        "groups": groups,
+        "reviewed_categories": [language for language in REQUIRED_LANGUAGES if language in reviewed_languages],
+        "missing_categories": missing_categories,
+        "latency_ms": {
+            "p50": percentile(latencies, 50),
+            "p95": percentile(latencies, 95),
+        },
+        "missing_relevance": sum(not result.relevant_hit for result in results),
+    }
+
+
+def gate_passes(
+    records: list[GoldenRecord],
+    results: list[QueryResult],
+    errors: list[str],
+    max_p95_ms: float,
+) -> bool:
+    if not results or errors:
+        return False
+    report = metrics(results, records)
+    return (
+        not report["missing_categories"]
+        and report["missing_relevance"] == 0
+        and report["latency_ms"]["p95"] <= max_p95_ms
+    )
+
+
+def _human_report(
+    records: list[GoldenRecord],
+    results: list[QueryResult],
+    errors: list[str],
+    top_k: int,
+    max_p95_ms: float,
+) -> bool:
+    by_line = {result.record.line_number: result for result in results}
+    for ordinal, record in enumerate(records, start=1):
+        result = by_line.get(record.line_number)
+        if result is None:
+            print(f"[{ordinal}] category={record.language} status=error")
+            continue
+        hits = ",".join(result.hits) if result.hits else "-"
+        print(
+            f"[{ordinal}] category={record.language} hits={hits} "
+            f"relevant={'yes' if result.relevant_hit else 'no'} "
+            f"recall@{top_k}={int(result.relevant_hit)} "
+            f"mrr={result.reciprocal_rank:.3f} latency_ms={result.latency_ms:.1f}"
+        )
+    for error in errors:
+        print(f"error: {error}", file=sys.stderr)
+    missing_categories = missing_languages(records)
+    if missing_categories:
+        print(
+            "gate failure: golden set must include at least one reviewed record for each of "
+            f"Chinese, English, and mixed; missing {', '.join(missing_categories)}",
+            file=sys.stderr,
+        )
+    if not results:
+        print("summary: no successful recall responses", file=sys.stderr)
+        return False
+    report = metrics(results, records)
+    for language, group in report["groups"].items():
+        print(
+            f"{language}: queries={group['queries']} "
+            f"Recall@{top_k}={group['recall_at_k']:.3f} MRR={group['mrr']:.3f}"
+        )
+    p50 = report["latency_ms"]["p50"]
+    p95 = report["latency_ms"]["p95"]
+    passed = gate_passes(records, results, errors, max_p95_ms)
+    print(
+        f"summary: queries={report['queries']} Recall@{top_k}="
+        f"{fmean(result.relevant_hit for result in results):.3f} "
+        f"MRR={fmean(result.reciprocal_rank for result in results):.3f} "
+        f"p50_ms={p50:.1f} p95_ms={p95:.1f} "
+        f"gate={'PASS' if passed else 'FAIL'}"
+    )
+    if errors:
+        print("gate failure: one or more recall requests failed", file=sys.stderr)
+    if report["missing_relevance"]:
+        print("gate failure: a reviewed query returned no relevant top-K result", file=sys.stderr)
+    if p95 > max_p95_ms:
+        print(f"gate failure: p95 latency {p95:.1f} ms exceeds {max_p95_ms:.1f} ms", file=sys.stderr)
+    return passed
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--url", dest="base_url", required=True, help="Hindsight API base URL")
+    parser.add_argument("--bank", required=True, help="bank id to evaluate")
+    parser.add_argument("--golden", type=Path, required=True, help="reviewed JSONL golden set")
+    parser.add_argument("--top-k", type=int, default=DEFAULT_TOP_K, help=f"top-K cutoff (default: {DEFAULT_TOP_K})")
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=DEFAULT_TIMEOUT_SECONDS,
+        help=f"per-query HTTP timeout in seconds (default: {DEFAULT_TIMEOUT_SECONDS:g})",
+    )
+    parser.add_argument(
+        "--max-p95-ms",
+        type=float,
+        default=DEFAULT_MAX_P95_MS,
+        help=f"maximum accepted p95 latency in milliseconds (default: {DEFAULT_MAX_P95_MS:g})",
+    )
+    parser.add_argument("--format", choices=("text", "json"), default="text", help="report format")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parser().parse_args(argv)
+    if args.top_k <= 0:
+        print("error: --top-k must be greater than zero", file=sys.stderr)
+        return 2
+    if args.timeout <= 0:
+        print("error: timeout must be positive", file=sys.stderr)
+        return 2
+    if (
+        not math.isfinite(args.max_p95_ms)
+        or args.max_p95_ms < 0
+        or args.max_p95_ms > DEFAULT_MAX_P95_MS
+    ):
+        print("error: --max-p95-ms must be between 0 and 1000 milliseconds", file=sys.stderr)
+        return 2
+    try:
+        records = load_golden(args.golden)
+    except EvaluationError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 2
+
+    results, errors = evaluate(records, recall_endpoint(args.base_url, args.bank), args.top_k, args.timeout)
+    report = metrics(results, records) if results else None
+    passed = gate_passes(records, results, errors, args.max_p95_ms)
+    if args.format == "json":
+        payload = {
+            "queries": [
+                {
+                    "line": result.record.line_number,
+                    "language": result.record.language,
+                    "hits": list(result.hits),
+                    "relevant": result.relevant_hit,
+                    "mrr": result.reciprocal_rank,
+                    "latency_ms": result.latency_ms,
+                }
+                for result in results
+            ],
+            "metrics": report,
+            "errors": errors,
+            "missing_categories": report["missing_categories"] if report else missing_languages(records),
+            "gate": "PASS" if passed else "FAIL",
+        }
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0 if passed else 1
+    return 0 if _human_report(records, results, errors, args.top_k, args.max_p95_ms) else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

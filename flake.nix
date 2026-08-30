@@ -53,6 +53,7 @@
             gawk
             gnused
             jq
+            just
             jsonnet
             python3
             shellcheck
@@ -69,6 +70,8 @@
             ${./scripts/forgejo-k8s-pull-secret-smoke} \
             ${./scripts/init-ebook-secrets} \
             ${./scripts/init-miniflux-secrets} \
+            ${./scripts/init-hindsight-secrets} \
+            ${./scripts/build-hindsight-images} \
             ${./scripts/miniflux-mcp-wrapper} \
             ${./scripts/sync-cloudreve-secret} \
             ${./scripts/sync-agent-config} \
@@ -88,6 +91,10 @@
             ${./tests/sync-woodpecker-secret-test} \
             ${./tests/sync-ente-secret-test} \
             ${./tests/init-ebook-secrets-test} \
+            ${./tests/init-hindsight-secrets-test} \
+            ${./tests/hindsight-images-test} \
+            ${./tests/hindsight-render-test} \
+            ${./tests/hindsight-recall-eval-test} \
             ${./tests/sync-cloudreve-secret-test} \
             ${./tests/prepare-mihomo-config-test} \
             ${./tests/render-kepos-policy-test} \
@@ -117,6 +124,9 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-woodpecker-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-ente-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-ebook-secrets-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-hindsight-secrets-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-images-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-recall-eval-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-cloudreve-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/prepare-mihomo-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/render-kepos-policy-test}
@@ -144,6 +154,7 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-agent-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/wsl-devops-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-render-test}
           touch $out
         '';
 
@@ -289,7 +300,7 @@
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit-db 0700 999 999 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/anki 0750 1000 1000 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/notes/memos 0750 10001 10001 - -" rules;
-        assert builtins.elem "d /var/lib/kosmos-k3s/hindsight 0750 1000 1000 - -" rules;
+        assert builtins.elem "d /var/lib/kosmos-k3s/hindsight-postgres 0700 999 999 - -" rules;
           pkgs.runCommand "k3s-state-directories-check" {} "touch $out";
 
       wsl-devops-cli = let

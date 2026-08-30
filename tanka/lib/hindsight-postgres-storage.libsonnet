@@ -1,14 +1,14 @@
 local labels = {
-  'app.kubernetes.io/name': 'hindsight',
+  'app.kubernetes.io/name': 'hindsight-postgres',
   'app.kubernetes.io/part-of': 'kosmos-hindsight',
 };
 
 {
-  hindsightPv: {
+  hindsightPostgresPv: {
     apiVersion: 'v1',
     kind: 'PersistentVolume',
     metadata: {
-      name: 'kosmos-hindsight',
+      name: 'kosmos-hindsight-postgres',
       labels: labels,
     },
     spec: {
@@ -17,23 +17,23 @@ local labels = {
       persistentVolumeReclaimPolicy: 'Retain',
       storageClassName: 'kosmos-static',
       hostPath: {
-        path: '/var/lib/kosmos-k3s/hindsight',
+        path: '/var/lib/kosmos-k3s/hindsight-postgres',
         type: 'Directory',
       },
     },
   },
-  hindsightPvc: {
+  hindsightPostgresPvc: {
     apiVersion: 'v1',
     kind: 'PersistentVolumeClaim',
     metadata: {
-      name: 'hindsight-data',
+      name: 'hindsight-postgres-data',
       namespace: 'hindsight',
       labels: labels,
     },
     spec: {
       accessModes: ['ReadWriteOnce'],
       storageClassName: 'kosmos-static',
-      volumeName: 'kosmos-hindsight',
+      volumeName: 'kosmos-hindsight-postgres',
       resources: { requests: { storage: '20Gi' } },
     },
   },

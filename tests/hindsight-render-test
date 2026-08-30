@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+test_root="$(mktemp -d)"
+trap 'rm -rf "$test_root"' EXIT
+
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/hindsight" |
+  yq -s '.' >"$test_root/hindsight.json"
+
+jq -e '
+  def resource($kind; $name):
+    map(select(.kind == $kind and .metadata.name == $name)) | first;
+  def env($container):
+    $container.env | map({key: .name, value: .}) | from_entries;
+  (resource("Service"; "hindsight") as $service |
+    resource("Deployment"; "hindsight-multilingual") as $app |
+    ($service.spec.selector == $app.spec.selector.matchLabels) and
+    ($app.spec.replicas == 1) and
+    ($app.spec.template.spec.containers[0] as $container |
+      ($container.image == "localhost/kosmos/hindsight:0.1.1") and
+      ($container.imagePullPolicy == "Never") and
+      (env($container).HINDSIGHT_API_DATABASE_URL.valueFrom.secretKeyRef.name == "hindsight-database") and
+      (env($container).HINDSIGHT_API_TEXT_SEARCH_EXTENSION.value == "pgroonga") and
+      (env($container).HINDSIGHT_API_EMBEDDINGS_LOCAL_MODEL.value == "/opt/hindsight-models/paraphrase-multilingual-MiniLM-L12-v2") and
+      (env($container).HINDSIGHT_API_EMBEDDINGS_LOCAL_FORCE_CPU.value == "1") and
+      (($container.volumeMounts // []) | all(.mountPath != "/home/hindsight/.pg0"))
+    )
+  ) and
+  (resource("StatefulSet"; "hindsight-postgres") as $postgres |
+    ($postgres.spec.replicas == 1) and
+    ($postgres.spec.template.spec.containers[0] as $container |
+      ($container.image == "localhost/kosmos/hindsight-postgres:0.1.1") and
+      (env($container).POSTGRES_PASSWORD.valueFrom.secretKeyRef.name == "hindsight-database") and
+      (($container.args | join(" ")) | contains("pgroonga.enable_wal=on")) and
+      (($container.readinessProbe.exec.command | join(" ")) | contains("4.0.8")) and
+      (($container.readinessProbe.exec.command | join(" ")) | contains("0.8.6"))
+    )
+  ) and
+  (resource("PersistentVolume"; "kosmos-hindsight-postgres").spec.hostPath.path == "/var/lib/kosmos-k3s/hindsight-postgres") and
+  (resource("PersistentVolume"; "kosmos-hindsight-postgres").spec.persistentVolumeReclaimPolicy == "Retain") and
+  (map(select(.kind == "Secret")) | length == 0)
+' "$test_root/hindsight.json" >/dev/null
+
+printf 'Hindsight rendering contains only the multilingual app and external PostgreSQL\n'
