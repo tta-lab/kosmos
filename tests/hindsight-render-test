@@ -14,6 +14,13 @@ render() {
 render hindsight-candidate "$test_root/candidate.json"
 render hindsight-final "$test_root/final.json"
 
+for rendered in candidate final; do
+  jq -e --slurpfile fixed_point_template "$repo_root/tests/fixtures/hindsight-legacy-template.json" '
+    map(select(.kind == "Deployment" and .metadata.name == "hindsight"))[0].spec.template
+      == $fixed_point_template[0]
+  ' "$test_root/$rendered.json" >/dev/null
+done
+
 jq -e '
   def resource($kind; $name):
     map(select(.kind == $kind and .metadata.name == $name)) | first;

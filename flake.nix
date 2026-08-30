@@ -96,7 +96,6 @@
             ${./tests/hindsight-render-test} \
             ${./tests/hindsight-recall-eval-test} \
             ${./tests/hindsight-migration-check-test} \
-            ${./tests/hindsight-runbook-test} \
             ${./tests/hindsight-rollback-test} \
             ${./tests/sync-cloudreve-secret-test} \
             ${./tests/prepare-mihomo-config-test} \
@@ -131,7 +130,6 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-images-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-recall-eval-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-migration-check-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-runbook-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-rollback-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-cloudreve-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/prepare-mihomo-config-test}

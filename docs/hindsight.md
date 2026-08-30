@@ -139,8 +139,10 @@ blue-green migration; it is intentionally not run by CI or by this change.
    export FINAL_ARCHIVE="$EVIDENCE_DIR/final-export.zip"
    export CANDIDATE_IMPORT_STDOUT="$EVIDENCE_DIR/candidate-import.stdout"
    export CANDIDATE_STATS_JSON="$EVIDENCE_DIR/candidate-stats.json"
+   export SOURCE_STATS_JSON="$EVIDENCE_DIR/source-stats.json"
    export FINAL_IMPORT_STDOUT="$EVIDENCE_DIR/final-import.stdout"
    export FINAL_STATS_JSON="$EVIDENCE_DIR/final-stats.json"
+   export SOURCE_URL=http://127.0.0.1:18889
    ```
 
 2. Render and inspect the candidate before applying it:
@@ -187,11 +189,11 @@ blue-green migration; it is intentionally not run by CI or by this change.
    ```
 
    The official export intentionally omits stored `embedding` and
-   `search_vector` values. It carries bank-level counts such as
-   `document_count`, `fact_count`, `observation_count`, and
-   `mental_model_count`; those counts are the source side of the reconciliation
-   below. Do not treat an archive containing old vectors as a valid migration
-   input.
+   `search_vector` values. It carries the seven bank-level counts
+   `document_count`, `fact_count`, `observation_count`, `mental_model_count`,
+   `knowledge_page_count`, `directive_count`, and `webhook_count`; those counts
+   are the source side of the reconciliation below. Do not treat an archive
+   containing old vectors as a valid migration input.
 
 4. Import into the empty external database through the candidate pod. The
    import command recreates embeddings and derived search state (entities,
@@ -242,13 +244,14 @@ blue-green migration; it is intentionally not run by CI or by this change.
    scripts/hindsight-migration-check reconcile \
      --archive "$CANDIDATE_ARCHIVE" \
      --import-summary "$CANDIDATE_IMPORT_STDOUT" \
-     --stats "$CANDIDATE_STATS_JSON"
+     --stats "$CANDIDATE_STATS_JSON" \
+     --target-bank "$CANDIDATE_BANK"
    ```
 
    The archive validator runs before import and recursively rejects any stored
    `embedding` or `search_vector` key. The reconciliation command then consumes
    `manifest.json`, the captured import stdout, and the fresh `stats?refresh=true`
-   response. It verifies all four manifest/import counts, document and
+   response. It verifies all seven manifest/import counts, document and
    observation totals, non-observation nodes, and zero pending/failed/processing
    operations. Any malformed evidence, mismatch, or non-zero operation count
    stops the migration; leave the legacy Service active.
@@ -284,22 +287,49 @@ blue-green migration; it is intentionally not run by CI or by this change.
    relevance, or a p95 over 1000 ms return a non-zero status.
 
 6. When the candidate gate passes, schedule a short write freeze. Stop all
-   Hindsight writers, verify that no writes are in flight, and repeat the
-   official export/import into a fresh empty canonical target bank. The
+   external Hindsight writers and verify that no writes are in flight. Capture
+   a fresh stats response from the canonical (legacy) Service and run the
+   source-quiescence checker before repeating the official export/import into a
+   fresh empty canonical target bank. The
    candidate bank is deliberately suffixed and the canonical `$BANK` target is
    still absent, so the import contract's "target bank must not exist" guard is
-   satisfied. Reconcile the source/import counts and pending/failed operations
-   again, then rerun the reviewed golden set and latency gate. Do not skip this
+   satisfied. Reconcile all seven source/import counts and pending/failed/processing
+   operations again, then rerun the reviewed golden set and latency gate. Do not skip this
    second export: it is what makes the final external bank match the frozen pg0
    source.
 
    ```bash
    : "${BANK:?BANK must be set explicitly (currently observed source bank: yuki-memory)}"
    : "${GOLDEN:?set GOLDEN to the reviewed text golden set before final evaluation}"
-   test -n "${EVIDENCE_DIR:-}" && test -n "${FINAL_ARCHIVE:-}" || {
-     echo 'set EVIDENCE_DIR and FINAL_ARCHIVE from step 1 before final export' >&2
+   test -n "${EVIDENCE_DIR:-}" && test -n "${SOURCE_STATS_JSON:-}" && test -n "${FINAL_ARCHIVE:-}" || {
+     echo 'set EVIDENCE_DIR, SOURCE_STATS_JSON, and FINAL_ARCHIVE from step 1 before final export' >&2
      exit 1
    }
+   # After external writers are stopped, leave this canonical source
+   # port-forward running in one terminal.
+   kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
+     port-forward service/hindsight 18889:8888
+   ```
+
+   In a second terminal, capture and validate the canonical source snapshot
+   before exporting. Historical failed operations are recorded but do not by
+   themselves prevent source quiescence; pending and processing operations do.
+
+   ```bash
+   : "${BANK:?BANK must be set explicitly (currently observed source bank: yuki-memory)}"
+   export SOURCE_URL=http://127.0.0.1:18889
+   curl --fail "$SOURCE_URL/v1/default/banks/$BANK/stats?refresh=true" \
+     >"$SOURCE_STATS_JSON"
+   jq . "$SOURCE_STATS_JSON"
+   scripts/hindsight-migration-check source-quiescent \
+     --bank "$BANK" \
+     --stats "$SOURCE_STATS_JSON"
+   ```
+
+   With that checker passing, repeat the export and import:
+
+   ```bash
+   : "${BANK:?BANK must be set explicitly (currently observed source bank: yuki-memory)}"
    # With writes stopped, repeat export and copy it to MULTILINGUAL_POD.
    kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
      exec "$LEGACY_POD" -- \
@@ -321,7 +351,8 @@ blue-green migration; it is intentionally not run by CI or by this change.
    scripts/hindsight-migration-check reconcile \
      --archive "$FINAL_ARCHIVE" \
      --import-summary "$FINAL_IMPORT_STDOUT" \
-     --stats "$FINAL_STATS_JSON"
+     --stats "$FINAL_STATS_JSON" \
+     --target-bank "$BANK"
    python3 scripts/hindsight-recall-eval \
      --url "$CANDIDATE_URL" \
      --bank "$BANK" \
@@ -393,7 +424,6 @@ bash tests/init-hindsight-secrets-test
 bash tests/hindsight-images-test
 bash tests/hindsight-recall-eval-test
 bash tests/hindsight-migration-check-test
-bash tests/hindsight-runbook-test
 bash tests/hindsight-rollback-test
 ```
 

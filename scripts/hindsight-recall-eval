@@ -27,17 +27,6 @@ DEFAULT_TOP_K = 5
 DEFAULT_TIMEOUT_SECONDS = 30.0
 DEFAULT_MAX_P95_MS = 1000.0
 REQUIRED_LANGUAGES = ("chinese", "english", "mixed")
-LANGUAGE_ALIASES = {
-    "zh": "chinese",
-    "中文": "chinese",
-    "chinese": "chinese",
-    "cn": "chinese",
-    "en": "english",
-    "english": "english",
-    "mixed": "mixed",
-    "zh-en": "mixed",
-    "chinese-english": "mixed",
-}
 
 
 class EvaluationError(Exception):
@@ -62,14 +51,11 @@ class QueryResult:
 
 
 def _language(value: Any, line_number: int) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise EvaluationError(f"line {line_number}: language must be a non-empty string")
-    normalized = LANGUAGE_ALIASES.get(value.strip().lower())
-    if normalized is None:
+    if value not in REQUIRED_LANGUAGES:
         raise EvaluationError(
             f"line {line_number}: language must be chinese, english, or mixed (got {value!r})"
         )
-    return normalized
+    return value
 
 
 def _relevant_texts(value: Any, line_number: int) -> frozenset[str]:
@@ -100,7 +86,7 @@ def load_golden(path: Path) -> list[GoldenRecord]:
         query = value.get("query")
         if not isinstance(query, str) or not query.strip():
             raise EvaluationError(f"line {line_number}: query must be a non-empty string")
-        language_value = value.get("language", value.get("category"))
+        language_value = value.get("language")
         relevant_value = value.get("relevant_memory_texts")
         records.append(
             GoldenRecord(
@@ -201,6 +187,11 @@ def evaluate(records: list[GoldenRecord], endpoint: str, top_k: int, timeout: fl
     return results, errors
 
 
+def missing_languages(records: list[GoldenRecord]) -> list[str]:
+    reviewed_languages = {record.language for record in records}
+    return [language for language in REQUIRED_LANGUAGES if language not in reviewed_languages]
+
+
 def metrics(results: list[QueryResult], records: list[GoldenRecord]) -> dict[str, Any]:
     latencies = [result.latency_ms for result in results]
     groups: dict[str, dict[str, Any]] = {}
@@ -213,8 +204,8 @@ def metrics(results: list[QueryResult], records: list[GoldenRecord]) -> dict[str
             "recall_at_k": fmean(result.relevant_hit for result in grouped),
             "mrr": fmean(result.reciprocal_rank for result in grouped),
         }
+    missing_categories = missing_languages(records)
     reviewed_languages = {record.language for record in records}
-    missing_categories = [language for language in REQUIRED_LANGUAGES if language not in reviewed_languages]
     return {
         "queries": len(results),
         "groups": groups,
@@ -226,6 +217,22 @@ def metrics(results: list[QueryResult], records: list[GoldenRecord]) -> dict[str
         },
         "missing_relevance": sum(not result.relevant_hit for result in results),
     }
+
+
+def gate_passes(
+    records: list[GoldenRecord],
+    results: list[QueryResult],
+    errors: list[str],
+    max_p95_ms: float,
+) -> bool:
+    if not results or errors:
+        return False
+    report = metrics(results, records)
+    return (
+        not report["missing_categories"]
+        and report["missing_relevance"] == 0
+        and report["latency_ms"]["p95"] <= max_p95_ms
+    )
 
 
 def _human_report(
@@ -250,9 +257,7 @@ def _human_report(
         )
     for error in errors:
         print(f"error: {error}", file=sys.stderr)
-    missing_categories = [
-        language for language in REQUIRED_LANGUAGES if not any(record.language == language for record in records)
-    ]
+    missing_categories = missing_languages(records)
     if missing_categories:
         print(
             "gate failure: golden set must include at least one reviewed record for each of "
@@ -270,12 +275,7 @@ def _human_report(
         )
     p50 = report["latency_ms"]["p50"]
     p95 = report["latency_ms"]["p95"]
-    passed = (
-        not errors
-        and not report["missing_categories"]
-        and report["missing_relevance"] == 0
-        and p95 <= max_p95_ms
-    )
+    passed = gate_passes(records, results, errors, max_p95_ms)
     print(
         f"summary: queries={report['queries']} Recall@{top_k}="
         f"{fmean(result.relevant_hit for result in results):.3f} "
@@ -294,7 +294,7 @@ def _human_report(
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--url", "--base-url", dest="base_url", required=True, help="Hindsight API base URL")
+    parser.add_argument("--url", dest="base_url", required=True, help="Hindsight API base URL")
     parser.add_argument("--bank", required=True, help="bank id to evaluate")
     parser.add_argument("--golden", type=Path, required=True, help="reviewed JSONL golden set")
     parser.add_argument("--top-k", type=int, default=DEFAULT_TOP_K, help=f"top-K cutoff (default: {DEFAULT_TOP_K})")
@@ -337,14 +337,7 @@ def main(argv: list[str] | None = None) -> int:
 
     results, errors = evaluate(records, recall_endpoint(args.base_url, args.bank), args.top_k, args.timeout)
     report = metrics(results, records) if results else None
-    passed = bool(
-        results
-        and not errors
-        and report is not None
-        and not report["missing_categories"]
-        and report["missing_relevance"] == 0
-        and report["latency_ms"]["p95"] <= args.max_p95_ms
-    )
+    passed = gate_passes(records, results, errors, args.max_p95_ms)
     if args.format == "json":
         payload = {
             "queries": [
@@ -360,9 +353,7 @@ def main(argv: list[str] | None = None) -> int:
             ],
             "metrics": report,
             "errors": errors,
-            "missing_categories": report["missing_categories"] if report else [
-                language for language in REQUIRED_LANGUAGES if not any(record.language == language for record in records)
-            ],
+            "missing_categories": report["missing_categories"] if report else missing_languages(records),
             "gate": "PASS" if passed else "FAIL",
         }
         print(json.dumps(payload, ensure_ascii=False, indent=2))

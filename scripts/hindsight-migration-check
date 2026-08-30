@@ -20,13 +20,26 @@ from typing import Any
 
 
 FORBIDDEN_JSON_KEYS = frozenset({"embedding", "search_vector"})
-MANIFEST_COUNTS = ("document_count", "fact_count", "observation_count", "mental_model_count")
+MANIFEST_COUNTS = (
+    "document_count",
+    "fact_count",
+    "observation_count",
+    "mental_model_count",
+    "knowledge_page_count",
+    "directive_count",
+    "webhook_count",
+)
 IMPORT_SUMMARY_RE = re.compile(
     r"^Imported bank '(?P<bank>[^']+)': "
     r"(?P<document_count>\d+) doc\(s\), "
     r"(?P<fact_count>\d+) fact\(s\), "
     r"(?P<observation_count>\d+) observation\(s\), "
-    r"(?P<mental_model_count>\d+) mental model\(s\),",
+    r"(?P<mental_model_count>\d+) mental model\(s\), "
+    r"\d+ mm-history row\(s\), "
+    r"(?P<knowledge_page_count>\d+) knowledge page\(s\), "
+    r"(?P<directive_count>\d+) directive\(s\), "
+    r"(?P<webhook_count>\d+) webhook\(s\), "
+    r"\d+ history row\(s\)$",
     re.MULTILINE,
 )
 
@@ -120,7 +133,7 @@ def validate_archive(path: Path) -> dict[str, Any]:
         return _validate_manifest(manifest, str(path))
 
 
-def parse_import_summary(path: Path) -> dict[str, int]:
+def parse_import_summary(path: Path) -> dict[str, Any]:
     """Parse the stable summary line emitted by ``hindsight-admin import-bank``."""
     text = _read_text(path, "import summary")
     matches = list(IMPORT_SUMMARY_RE.finditer(text))
@@ -129,7 +142,10 @@ def parse_import_summary(path: Path) -> dict[str, int]:
             f"import summary {path} must contain exactly one complete 'Imported bank' summary line"
         )
     match = matches[0]
-    return {field: int(match.group(field)) for field in MANIFEST_COUNTS}
+    return {
+        "bank": match.group("bank"),
+        **{field: int(match.group(field)) for field in MANIFEST_COUNTS},
+    }
 
 
 def _stats_int(stats: dict[str, Any], field: str) -> int:
@@ -138,10 +154,30 @@ def _stats_int(stats: dict[str, Any], field: str) -> int:
     return _nonnegative_int(stats[field], field, "stats JSON")
 
 
-def reconcile(archive_path: Path, summary_path: Path, stats_path: Path) -> None:
+def _require_bank_id(value: Any, source: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise ValidationError(f"{source} field bank_id must be non-empty text")
+    return value
+
+
+def _processing_operations(stats: dict[str, Any]) -> int:
+    operations = stats.get("operations_by_status")
+    if not isinstance(operations, dict):
+        raise ValidationError("stats JSON field operations_by_status must be an object")
+    # The API emits only statuses that have rows. An absent processing bucket
+    # therefore means zero; if present, it must still be an integer.
+    return _nonnegative_int(operations.get("processing", 0), "operations_by_status.processing", "stats JSON")
+
+
+def reconcile(archive_path: Path, summary_path: Path, stats_path: Path, target_bank: str) -> None:
     """Validate all three import evidence files and require exact reconciliation."""
+    target_bank = _require_bank_id(target_bank, "target bank")
     manifest = validate_archive(archive_path)
     imported = parse_import_summary(summary_path)
+    if imported["bank"] != target_bank:
+        raise ValidationError(
+            f"import summary bank={imported['bank']!r} does not match target bank={target_bank!r}"
+        )
     for field in MANIFEST_COUNTS:
         if imported[field] != manifest[field]:
             raise ValidationError(
@@ -152,20 +188,15 @@ def reconcile(archive_path: Path, summary_path: Path, stats_path: Path) -> None:
     stats = _load_json(stats_path, "stats JSON")
     if not isinstance(stats, dict):
         raise ValidationError(f"stats JSON {stats_path} must contain a JSON object")
+    stats_bank = _require_bank_id(stats.get("bank_id"), "stats JSON")
+    if stats_bank != target_bank:
+        raise ValidationError(f"stats bank_id={stats_bank!r} does not match target bank={target_bank!r}")
     total_documents = _stats_int(stats, "total_documents")
     total_observations = _stats_int(stats, "total_observations")
     total_nodes = _stats_int(stats, "total_nodes")
     pending_operations = _stats_int(stats, "pending_operations")
     failed_operations = _stats_int(stats, "failed_operations")
-    operations = stats.get("operations_by_status")
-    if not isinstance(operations, dict):
-        raise ValidationError("stats JSON field operations_by_status must be an object")
-    # The API emits only statuses that have rows. An absent processing bucket
-    # therefore means zero; if present, it must still be an integer.
-    processing_operations = operations.get("processing", 0)
-    processing_operations = _nonnegative_int(
-        processing_operations, "operations_by_status.processing", "stats JSON"
-    )
+    processing_operations = _processing_operations(stats)
 
     if total_documents != manifest["document_count"]:
         raise ValidationError(
@@ -195,6 +226,25 @@ def reconcile(archive_path: Path, summary_path: Path, stats_path: Path) -> None:
         )
 
 
+def check_source_quiescent(stats_path: Path, source_bank: str) -> None:
+    """Require a fresh source-bank stats snapshot with no in-flight writes."""
+    source_bank = _require_bank_id(source_bank, "source bank")
+    stats = _load_json(stats_path, "source stats JSON")
+    if not isinstance(stats, dict):
+        raise ValidationError(f"source stats JSON {stats_path} must contain a JSON object")
+    stats_bank = _require_bank_id(stats.get("bank_id"), "source stats JSON")
+    if stats_bank != source_bank:
+        raise ValidationError(f"source stats bank_id={stats_bank!r} does not match source bank={source_bank!r}")
+    pending_operations = _stats_int(stats, "pending_operations")
+    processing_operations = _processing_operations(stats)
+    if pending_operations != 0:
+        raise ValidationError(f"source stats pending_operations must be 0 (got {pending_operations})")
+    if processing_operations != 0:
+        raise ValidationError(
+            f"source stats operations_by_status.processing must be 0 (got {processing_operations})"
+        )
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -210,6 +260,13 @@ def _parser() -> argparse.ArgumentParser:
     reconcile_parser.add_argument("--archive", type=Path, required=True)
     reconcile_parser.add_argument("--import-summary", type=Path, required=True)
     reconcile_parser.add_argument("--stats", type=Path, required=True)
+    reconcile_parser.add_argument("--target-bank", required=True, help="bank imported by this evidence")
+
+    source_parser = subparsers.add_parser(
+        "source-quiescent", help="verify a fresh source-bank stats snapshot before final export"
+    )
+    source_parser.add_argument("--stats", type=Path, required=True)
+    source_parser.add_argument("--bank", required=True, help="source bank represented by the stats snapshot")
     return parser
 
 
@@ -225,8 +282,12 @@ def main(argv: list[str] | None = None) -> int:
                 f"mental_models={manifest['mental_model_count']}"
             )
         else:
-            reconcile(args.archive, args.import_summary, args.stats)
-            print(f"reconciled Hindsight import evidence for {args.archive}")
+            if args.command == "reconcile":
+                reconcile(args.archive, args.import_summary, args.stats, args.target_bank)
+                print(f"reconciled Hindsight import evidence for {args.archive}")
+            else:
+                check_source_quiescent(args.stats, args.bank)
+                print(f"verified source bank {args.bank} is quiescent")
     except ValidationError as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
