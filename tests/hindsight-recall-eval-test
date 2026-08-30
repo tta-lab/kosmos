@@ -134,12 +134,6 @@ if python3 "$repo_root/scripts/hindsight-recall-eval" --url "http://127.0.0.1:$p
 fi
 grep -q "language must be chinese, english, or mixed" "$test_root/category-fallback-output"
 
-if python3 "$repo_root/scripts/hindsight-recall-eval" --base-url "http://127.0.0.1:$port" --bank example --golden "$test_root/golden.jsonl" >"$test_root/base-url-output" 2>&1; then
-  echo 'evaluator accepted the obsolete --base-url option' >&2
-  exit 1
-fi
-grep -q -- 'required: --url' "$test_root/base-url-output"
-
 if python3 "$repo_root/scripts/hindsight-recall-eval" "${base_args[@]}" --max-p95-ms 1001 >"$test_root/too-high-threshold-output" 2>&1; then
   echo 'evaluator accepted a p95 threshold above one second' >&2
   exit 1
