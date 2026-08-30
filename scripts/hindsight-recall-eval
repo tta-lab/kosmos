@@ -26,6 +26,7 @@ from urllib.request import Request, urlopen
 DEFAULT_TOP_K = 5
 DEFAULT_TIMEOUT_SECONDS = 30.0
 DEFAULT_MAX_P95_MS = 1000.0
+REQUIRED_LANGUAGES = ("chinese", "english", "mixed")
 LANGUAGE_ALIASES = {
     "zh": "chinese",
     "中文": "chinese",
@@ -48,7 +49,7 @@ class GoldenRecord:
     line_number: int
     query: str
     language: str
-    relevant_ids: frozenset[str]
+    relevant_texts: frozenset[str]
 
 
 @dataclass(frozen=True)
@@ -71,12 +72,12 @@ def _language(value: Any, line_number: int) -> str:
     return normalized
 
 
-def _relevant_ids(value: Any, line_number: int) -> frozenset[str]:
+def _relevant_texts(value: Any, line_number: int) -> frozenset[str]:
     if not isinstance(value, list) or not value:
-        raise EvaluationError(f"line {line_number}: relevant_memory_ids must be a non-empty array")
+        raise EvaluationError(f"line {line_number}: relevant_memory_texts must be a non-empty array")
     if any(not isinstance(item, str) or not item.strip() for item in value):
-        raise EvaluationError(f"line {line_number}: relevant_memory_ids must contain non-empty strings")
-    return frozenset(item.strip() for item in value)
+        raise EvaluationError(f"line {line_number}: relevant_memory_texts must contain non-empty strings")
+    return frozenset(value)
 
 
 def load_golden(path: Path) -> list[GoldenRecord]:
@@ -100,13 +101,13 @@ def load_golden(path: Path) -> list[GoldenRecord]:
         if not isinstance(query, str) or not query.strip():
             raise EvaluationError(f"line {line_number}: query must be a non-empty string")
         language_value = value.get("language", value.get("category"))
-        relevant_value = value.get("relevant_memory_ids", value.get("relevant_ids"))
+        relevant_value = value.get("relevant_memory_texts")
         records.append(
             GoldenRecord(
                 line_number=line_number,
                 query=query,
                 language=_language(language_value, line_number),
-                relevant_ids=_relevant_ids(relevant_value, line_number),
+                relevant_texts=_relevant_texts(relevant_value, line_number),
             )
         )
     if not records:
@@ -161,15 +162,15 @@ def request_recall(endpoint: str, query: str, timeout: float) -> list[str]:
     if not isinstance(value, dict) or not isinstance(value.get("results"), list):
         raise EvaluationError("recall response is missing a results array")
 
-    ids: list[str] = []
+    texts: list[str] = []
     for index, result in enumerate(value["results"], start=1):
         if not isinstance(result, dict):
             raise EvaluationError(f"recall response result {index} is not an object")
-        memory_id = result.get("id", result.get("memory_id"))
-        if not isinstance(memory_id, str) or not memory_id:
-            raise EvaluationError(f"recall response result {index} has no memory id")
-        ids.append(memory_id)
-    return ids
+        memory_text = result.get("text")
+        if not isinstance(memory_text, str) or not memory_text.strip():
+            raise EvaluationError(f"recall response result {index} has no text")
+        texts.append(memory_text)
+    return texts
 
 
 def evaluate(records: list[GoldenRecord], endpoint: str, top_k: int, timeout: float) -> tuple[list[QueryResult], list[str]]:
@@ -178,14 +179,14 @@ def evaluate(records: list[GoldenRecord], endpoint: str, top_k: int, timeout: fl
     for ordinal, record in enumerate(records, start=1):
         started = time.perf_counter()
         try:
-            response_ids = request_recall(endpoint, record.query, timeout)
+            response_texts = request_recall(endpoint, record.query, timeout)
         except EvaluationError as error:
             errors.append(f"query {ordinal} (line {record.line_number}): {error}")
             continue
         elapsed_ms = (time.perf_counter() - started) * 1000
-        hits = tuple(response_ids[:top_k])
+        hits = tuple(response_texts[:top_k])
         first_rank = next(
-            (rank for rank, memory_id in enumerate(hits, start=1) if memory_id in record.relevant_ids),
+            (rank for rank, memory_text in enumerate(hits, start=1) if memory_text in record.relevant_texts),
             None,
         )
         results.append(
@@ -200,10 +201,10 @@ def evaluate(records: list[GoldenRecord], endpoint: str, top_k: int, timeout: fl
     return results, errors
 
 
-def metrics(results: list[QueryResult]) -> dict[str, Any]:
+def metrics(results: list[QueryResult], records: list[GoldenRecord]) -> dict[str, Any]:
     latencies = [result.latency_ms for result in results]
     groups: dict[str, dict[str, Any]] = {}
-    for language in ("chinese", "english", "mixed"):
+    for language in REQUIRED_LANGUAGES:
         grouped = [result for result in results if result.record.language == language]
         if not grouped:
             continue
@@ -212,9 +213,13 @@ def metrics(results: list[QueryResult]) -> dict[str, Any]:
             "recall_at_k": fmean(result.relevant_hit for result in grouped),
             "mrr": fmean(result.reciprocal_rank for result in grouped),
         }
+    reviewed_languages = {record.language for record in records}
+    missing_categories = [language for language in REQUIRED_LANGUAGES if language not in reviewed_languages]
     return {
         "queries": len(results),
         "groups": groups,
+        "reviewed_categories": [language for language in REQUIRED_LANGUAGES if language in reviewed_languages],
+        "missing_categories": missing_categories,
         "latency_ms": {
             "p50": percentile(latencies, 50),
             "p95": percentile(latencies, 95),
@@ -223,7 +228,13 @@ def metrics(results: list[QueryResult]) -> dict[str, Any]:
     }
 
 
-def _human_report(records: list[GoldenRecord], results: list[QueryResult], errors: list[str], top_k: int, max_p95_ms: float) -> bool:
+def _human_report(
+    records: list[GoldenRecord],
+    results: list[QueryResult],
+    errors: list[str],
+    top_k: int,
+    max_p95_ms: float,
+) -> bool:
     by_line = {result.record.line_number: result for result in results}
     for ordinal, record in enumerate(records, start=1):
         result = by_line.get(record.line_number)
@@ -239,10 +250,19 @@ def _human_report(records: list[GoldenRecord], results: list[QueryResult], error
         )
     for error in errors:
         print(f"error: {error}", file=sys.stderr)
+    missing_categories = [
+        language for language in REQUIRED_LANGUAGES if not any(record.language == language for record in records)
+    ]
+    if missing_categories:
+        print(
+            "gate failure: golden set must include at least one reviewed record for each of "
+            f"Chinese, English, and mixed; missing {', '.join(missing_categories)}",
+            file=sys.stderr,
+        )
     if not results:
         print("summary: no successful recall responses", file=sys.stderr)
         return False
-    report = metrics(results)
+    report = metrics(results, records)
     for language, group in report["groups"].items():
         print(
             f"{language}: queries={group['queries']} "
@@ -250,7 +270,12 @@ def _human_report(records: list[GoldenRecord], results: list[QueryResult], error
         )
     p50 = report["latency_ms"]["p50"]
     p95 = report["latency_ms"]["p95"]
-    passed = not errors and report["missing_relevance"] == 0 and p95 <= max_p95_ms
+    passed = (
+        not errors
+        and not report["missing_categories"]
+        and report["missing_relevance"] == 0
+        and p95 <= max_p95_ms
+    )
     print(
         f"summary: queries={report['queries']} Recall@{top_k}="
         f"{fmean(result.relevant_hit for result in results):.3f} "
@@ -294,8 +319,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.top_k <= 0:
         print("error: --top-k must be greater than zero", file=sys.stderr)
         return 2
-    if args.timeout <= 0 or args.max_p95_ms < 0:
-        print("error: timeout and max-p95-ms must be positive", file=sys.stderr)
+    if args.timeout <= 0:
+        print("error: timeout must be positive", file=sys.stderr)
+        return 2
+    if (
+        not math.isfinite(args.max_p95_ms)
+        or args.max_p95_ms < 0
+        or args.max_p95_ms > DEFAULT_MAX_P95_MS
+    ):
+        print("error: --max-p95-ms must be between 0 and 1000 milliseconds", file=sys.stderr)
         return 2
     try:
         records = load_golden(args.golden)
@@ -304,11 +336,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     results, errors = evaluate(records, recall_endpoint(args.base_url, args.bank), args.top_k, args.timeout)
-    report = metrics(results) if results else None
+    report = metrics(results, records) if results else None
     passed = bool(
         results
         and not errors
         and report is not None
+        and not report["missing_categories"]
         and report["missing_relevance"] == 0
         and report["latency_ms"]["p95"] <= args.max_p95_ms
     )
@@ -327,6 +360,9 @@ def main(argv: list[str] | None = None) -> int:
             ],
             "metrics": report,
             "errors": errors,
+            "missing_categories": report["missing_categories"] if report else [
+                language for language in REQUIRED_LANGUAGES if not any(record.language == language for record in records)
+            ],
             "gate": "PASS" if passed else "FAIL",
         }
         print(json.dumps(payload, ensure_ascii=False, indent=2))

@@ -34,9 +34,13 @@ std.assertEqual(deployment.spec.replicas, 1) &&
 std.assertEqual(deployment.spec.strategy.type, 'Recreate') &&
 std.assertEqual(
   container.image,
-  'kosmos/hindsight:0.1.0'
+  'ghcr.io/vectorize-io/hindsight:0.9.2@sha256:84ab276b8f501546deb6ea9c64a57291718b4e16a59dd9e02a02fdd5adfe9028'
 ) &&
-std.assertEqual(container.imagePullPolicy, 'Never') &&
+std.assertEqual(std.objectHas(container, 'imagePullPolicy'), false) &&
+std.assertEqual(deployment.spec.template.metadata.labels, {
+  'app.kubernetes.io/name': 'hindsight',
+  'app.kubernetes.io/part-of': 'kosmos-hindsight',
+}) &&
 std.assertEqual(container.securityContext.runAsNonRoot, true) &&
 std.assertEqual(container.startupProbe.httpGet.path, '/health') &&
 std.assertEqual(container.readinessProbe.httpGet.path, '/health') &&
@@ -85,9 +89,11 @@ std.assertEqual(candidate.hindsightDeployment.spec.selector.matchLabels, {
 std.assertEqual(final.hindsightService.spec.selector, final.hindsightMultilingualDeployment.spec.selector.matchLabels) &&
 std.assertEqual(final.hindsightDeployment.spec.replicas, 0) &&
 std.assertEqual(candidate.hindsightDeployment.spec.replicas, 1) &&
+std.assertEqual(candidate.hindsightDeployment.spec.template, final.hindsightDeployment.spec.template) &&
+std.assertEqual(candidate.hindsightDeployment.metadata.labels, final.hindsightDeployment.metadata.labels) &&
 std.assertEqual(candidate.hindsightCandidateService.metadata.name, 'hindsight-candidate') &&
 std.assertEqual(candidate.hindsightCandidateService.spec.selector, multilingual.spec.selector.matchLabels) &&
-std.assertEqual(multilingualContainer.image, 'kosmos/hindsight:0.1.0') &&
+std.assertEqual(multilingualContainer.image, 'localhost/kosmos/hindsight:0.1.0') &&
 std.assertEqual(multilingualContainer.imagePullPolicy, 'Never') &&
 std.assertEqual(multilingual.spec.selector.matchLabels['app.kubernetes.io/name'], 'hindsight-multilingual') &&
 std.assertEqual(multilingualContainer.securityContext.runAsNonRoot, true) &&
@@ -107,7 +113,7 @@ std.assertEqual(multilingualEnv.HINDSIGHT_API_RERANKER_PROVIDER.value, 'rrf') &&
 std.assertEqual(std.length(multilingualContainer.volumeMounts), 2) &&
 std.assertEqual(postgres.metadata.name, 'hindsight-postgres') &&
 std.assertEqual(postgres.spec.replicas, 1) &&
-std.assertEqual(postgresContainer.image, 'kosmos/hindsight-postgres:0.1.0') &&
+std.assertEqual(postgresContainer.image, 'localhost/kosmos/hindsight-postgres:0.1.0') &&
 std.assertEqual(postgresContainer.imagePullPolicy, 'Never') &&
 std.assertEqual(postgresContainer.securityContext.capabilities.drop, ['ALL']) &&
 std.assertEqual(postgresEnv.POSTGRES_PASSWORD.valueFrom.secretKeyRef, {

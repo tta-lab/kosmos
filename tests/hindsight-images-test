@@ -77,8 +77,10 @@ export TEST_SUDO_LOG="$test_root/sudo.log"
 export TEST_K3S_LOG="$test_root/k3s.log"
 
 bash "$repo_root/scripts/build-hindsight-images" >"$test_root/check-output"
-grep -q 'built and verified kosmos/hindsight-postgres:0.1.0 and kosmos/hindsight:0.1.0' "$test_root/check-output"
+grep -q 'built and verified localhost/kosmos/hindsight-postgres:0.1.0 and localhost/kosmos/hindsight:0.1.0' "$test_root/check-output"
 grep -q -- '--pull=missing' "$TEST_PODMAN_LOG"
+grep -q -- '--tag localhost/kosmos/hindsight-postgres:0.1.0' "$TEST_PODMAN_LOG"
+grep -q -- '--tag localhost/kosmos/hindsight:0.1.0' "$TEST_PODMAN_LOG"
 [[ ! -s "$TEST_SUDO_LOG" ]]
 [[ ! -s "$TEST_K3S_LOG" ]]
 
@@ -86,12 +88,14 @@ grep -q -- '--pull=missing' "$TEST_PODMAN_LOG"
 : >"$TEST_SUDO_LOG"
 : >"$TEST_K3S_LOG"
 bash "$repo_root/scripts/build-hindsight-images" --load >"$test_root/load-output"
-grep -q '^loaded kosmos/hindsight-postgres:0.1.0 and kosmos/hindsight:0.1.0 into local k3s containerd$' "$test_root/load-output"
+grep -q '^loaded localhost/kosmos/hindsight-postgres:0.1.0 and localhost/kosmos/hindsight:0.1.0 into local k3s containerd$' "$test_root/load-output"
 grep -q 'save --format oci-archive --output ' "$TEST_PODMAN_LOG"
 grep -q 'images import ' "$TEST_SUDO_LOG"
-grep -q 'images tag localhost/kosmos/hindsight-postgres:0.1.0 kosmos/hindsight-postgres:0.1.0' "$TEST_SUDO_LOG"
-grep -q 'images tag localhost/kosmos/hindsight:0.1.0 kosmos/hindsight:0.1.0' "$TEST_SUDO_LOG"
-[[ "$(wc -l <"$TEST_SUDO_LOG")" -eq 4 ]]
+if grep -q 'images tag ' "$TEST_SUDO_LOG"; then
+  echo 'loader performed an unnecessary post-import retag' >&2
+  exit 1
+fi
+[[ "$(wc -l <"$TEST_SUDO_LOG")" -eq 2 ]]
 [[ "$(wc -l <"$TEST_K3S_LOG")" -eq 0 ]]
 
 printf 'Hindsight image packaging builds and inspects locally, with opt-in archive loading\n'

@@ -22,16 +22,21 @@ jq -e '
   . as $resources |
   (resource("Deployment"; "hindsight") as $legacy |
     ($legacy.spec.replicas == 1) and
+    ($legacy.metadata.labels == {
+      "app.kubernetes.io/name": "hindsight",
+      "app.kubernetes.io/part-of": "kosmos-hindsight"
+    }) and
+    ($legacy.spec.template.metadata.labels == $legacy.metadata.labels) and
     ($legacy.spec.template.spec.containers[0].volumeMounts | any(.mountPath == "/home/hindsight/.pg0")) and
-    ($legacy.spec.template.spec.containers[0].image == "kosmos/hindsight:0.1.0") and
-    ($legacy.spec.template.spec.containers[0].imagePullPolicy == "Never")
+    ($legacy.spec.template.spec.containers[0].image == "ghcr.io/vectorize-io/hindsight:0.9.2@sha256:84ab276b8f501546deb6ea9c64a57291718b4e16a59dd9e02a02fdd5adfe9028") and
+    (($legacy.spec.template.spec.containers[0] | has("imagePullPolicy")) | not)
   ) and
   (resource("Service"; "hindsight").spec.selector["app.kubernetes.io/name"] == "hindsight") and
   (resource("Service"; "hindsight-candidate").spec.selector["kosmos.tta-lab.org/role"] == "multilingual") and
   (resource("Deployment"; "hindsight-multilingual") as $app |
     ($app.spec.replicas == 1) and
     ($app.spec.template.spec.containers[0] as $container |
-      ($container.image == "kosmos/hindsight:0.1.0") and
+      ($container.image == "localhost/kosmos/hindsight:0.1.0") and
       ($container.imagePullPolicy == "Never") and
       (($container.volumeMounts // []) | all(.mountPath != "/home/hindsight/.pg0")) and
       (env($container).HINDSIGHT_API_DATABASE_URL.valueFrom.secretKeyRef.name == "hindsight-database") and
@@ -50,7 +55,7 @@ jq -e '
   (resource("StatefulSet"; "hindsight-postgres") as $postgres |
     ($postgres.spec.replicas == 1) and
     ($postgres.spec.template.spec.containers[0] as $container |
-      ($container.image == "kosmos/hindsight-postgres:0.1.0") and
+      ($container.image == "localhost/kosmos/hindsight-postgres:0.1.0") and
       ($container.imagePullPolicy == "Never") and
       (env($container).POSTGRES_PASSWORD.valueFrom.secretKeyRef.name == "hindsight-database") and
       (($container.args | join(" ")) | contains("pgroonga_wal_resource_manager")) and

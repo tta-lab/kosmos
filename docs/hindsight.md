@@ -5,10 +5,15 @@ RRF reranker. The migration adds a separately persisted PostgreSQL 18 service
 with PGroonga 4.0.8 and pgvector 0.8.6, and runs a multilingual local
 `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` embedding model
 on CPU. The model and database dependencies are baked into two local images;
-the legacy and multilingual pods use the same fixed local Hindsight image,
-while the new database and multilingual pods never download model or image
-artifacts at runtime. The legacy pod's pg0 mount and configuration remain
-unchanged for rollback availability.
+the multilingual pod uses the fixed local Hindsight image, while the legacy pod
+retains its official digest-pinned image and fixed-point pod template. The new
+database and multilingual pods never download model or image artifacts at
+runtime. The legacy pod's pg0 mount and configuration remain unchanged for
+rollback availability.
+
+The legacy Deployment still uses the fixed-point official image
+`ghcr.io/vectorize-io/hindsight:0.9.2@sha256:84ab276b8f501546deb6ea9c64a57291718b4e16a59dd9e02a02fdd5adfe9028`
+and leaves its pull policy and pod labels untouched.
 
 The canonical gateway endpoints remain:
 
@@ -33,7 +38,12 @@ Mihomo pod proxy.
 
 The image recipes are in `images/hindsight-postgres/` and `images/hindsight/`.
 Their upstream bases are digest-pinned, and the rendered stack tag is currently
-`0.1.0`. A recipe change must bump that stack version in the image labels,
+`0.1.0`. The manifests use these fully qualified local references:
+
+- `localhost/kosmos/hindsight:0.1.0`
+- `localhost/kosmos/hindsight-postgres:0.1.0`
+
+A recipe change must bump that stack version in the image labels,
 `scripts/build-hindsight-images`, and `tanka/lib/hindsight.libsonnet`; never
 overwrite a tag already used by a deployment.
 
@@ -53,10 +63,11 @@ just hindsight-images-load
 
 The loader creates a private temporary directory, exports two OCI archives,
 imports them with `sudo k3s ctr images import`, and removes only that directory.
-It also retags Podman's local `localhost/...` names to the exact `kosmos/...`
-references rendered by Tanka.
-The Kubernetes manifests use `imagePullPolicy: Never`, so this load must happen
-before applying either stage.
+Podman and Tanka use the same `localhost/kosmos/...` references, so no registry
+or post-import retagging is needed.
+The external database and multilingual manifests use `imagePullPolicy: Never`,
+so this load must happen before applying either stage. The legacy Deployment
+retains its fixed-point pull-policy behavior.
 
 The old embedded database remains at
 `/var/lib/kosmos-k3s/hindsight` and is mounted only by the legacy deployment.
@@ -92,6 +103,8 @@ just hindsight-final-diff
 just hindsight-final-apply
 just hindsight-final-status
 just hindsight-final-logs
+
+just hindsight-rollback
 ```
 
 `hindsight-apply` and the historical `hindsight-*` targets remain aliases for
@@ -108,6 +121,21 @@ blue-green migration; it is intentionally not run by CI or by this change.
    nh os switch . -H wsl --ask
    just hindsight-images-load
    just hindsight-candidate-secrets
+   ```
+
+   The currently observed source bank is `yuki-memory`; this is informational
+   only. Never rely on a source-bank default. Set `BANK` explicitly before
+   continuing. The guard below fails clearly when it is unset and keeps the
+   candidate and final export evidence in one private directory:
+
+   ```bash
+   : "${BANK:?BANK must be set explicitly (currently observed source bank: yuki-memory)}"
+   export CANDIDATE_BANK="${BANK}-candidate"
+   umask 077
+   export EVIDENCE_DIR="$PWD/hindsight-$BANK-$(date +%Y%m%d%H%M%S)"
+   mkdir "$EVIDENCE_DIR"
+   export CANDIDATE_ARCHIVE="$EVIDENCE_DIR/candidate-export.zip"
+   export FINAL_ARCHIVE="$EVIDENCE_DIR/final-export.zip"
    ```
 
 2. Render and inspect the candidate before applying it:
@@ -131,25 +159,25 @@ blue-green migration; it is intentionally not run by CI or by this change.
    access-controlled directory; do not edit the pg0 volume or delete the pod.
 
    ```bash
-   export BANK=hermes
+   : "${BANK:?BANK must be set explicitly (currently observed source bank: yuki-memory)}"
    export CANDIDATE_BANK="${BANK}-candidate"
-   export ARCHIVE="$PWD/hindsight-$BANK-$(date +%Y%m%d%H%M%S).zip"
    export LEGACY_POD="$(kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
-     get pod -l 'app.kubernetes.io/name=hindsight,kosmos.tta-lab.org/role=legacy' \
+     get pod -l 'app.kubernetes.io/name=hindsight,app.kubernetes.io/part-of=kosmos-hindsight' \
      -o jsonpath='{.items[0].metadata.name}')"
    kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
      exec "$LEGACY_POD" -- \
      hindsight-admin export-bank --bank "$BANK" --output /tmp/hindsight-bank.zip
    kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
-     cp "$LEGACY_POD:/tmp/hindsight-bank.zip" "$ARCHIVE"
+     cp "$LEGACY_POD:/tmp/hindsight-bank.zip" "$CANDIDATE_ARCHIVE"
    ```
 
    Inspect the archive manifest before import and retain it with the
    operator's migration evidence:
 
    ```bash
-   unzip -p "$ARCHIVE" manifest.json | jq .
-   unzip -l "$ARCHIVE"
+   unzip -p "$CANDIDATE_ARCHIVE" manifest.json | jq .
+   unzip -p "$CANDIDATE_ARCHIVE" manifest.json | jq . >"$EVIDENCE_DIR/candidate-manifest.json"
+   unzip -l "$CANDIDATE_ARCHIVE"
    ```
 
    The official export intentionally omits stored `embedding` and
@@ -165,11 +193,12 @@ blue-green migration; it is intentionally not run by CI or by this change.
    LLM fact extraction, consolidation, or webhooks.
 
    ```bash
+   : "${BANK:?BANK must be set explicitly (currently observed source bank: yuki-memory)}"
    export MULTILINGUAL_POD="$(kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
      get pod -l 'app.kubernetes.io/name=hindsight,kosmos.tta-lab.org/role=multilingual' \
      -o jsonpath='{.items[0].metadata.name}')"
    kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
-     cp "$ARCHIVE" "$MULTILINGUAL_POD:/tmp/hindsight-bank.zip"
+     cp "$CANDIDATE_ARCHIVE" "$MULTILINGUAL_POD:/tmp/hindsight-bank.zip"
    kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
      exec "$MULTILINGUAL_POD" -- \
      hindsight-admin import-bank --archive /tmp/hindsight-bank.zip --target-bank "$CANDIDATE_BANK"
@@ -183,7 +212,7 @@ blue-green migration; it is intentionally not run by CI or by this change.
    candidate bank stats:
 
    ```bash
-   export BANK=hermes
+   : "${BANK:?BANK must be set explicitly (currently observed source bank: yuki-memory)}"
    export CANDIDATE_BANK="${BANK}-candidate"
    export CANDIDATE_URL=http://127.0.0.1:18888
    kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
@@ -194,7 +223,7 @@ blue-green migration; it is intentionally not run by CI or by this change.
    second terminal:
 
    ```bash
-   export BANK=hermes
+   : "${BANK:?BANK must be set explicitly (currently observed source bank: yuki-memory)}"
    export CANDIDATE_BANK="${BANK}-candidate"
    export CANDIDATE_URL=http://127.0.0.1:18888
    curl --fail "$CANDIDATE_URL/v1/default/banks/$CANDIDATE_BANK/operations?status=pending"
@@ -209,7 +238,10 @@ blue-green migration; it is intentionally not run by CI or by this change.
 5. Generate a golden set locally from the exported bank, without committing
    personal memory text. Add one reviewed JSON object per line with `query`,
    `language` (`chinese`, `english`, or `mixed`), and
-   `relevant_memory_ids`. The synthetic schema/example is
+   `relevant_memory_texts`. Values must be copied exactly from the
+   `RecallResult.text` fields returned by Hindsight. Memory-unit IDs are
+   regenerated by each whole-bank import, so the same text-based set works for
+   both candidate and final banks. The synthetic schema/example is
    `examples/hindsight-golden.example.jsonl`; the reviewed file belongs in a
    test-owned or operator-private path and remains untracked.
 
@@ -217,10 +249,12 @@ blue-green migration; it is intentionally not run by CI or by this change.
    cluster-local DNS assumption):
 
    ```bash
+   : "${BANK:?BANK must be set explicitly (currently observed source bank: yuki-memory)}"
+   export GOLDEN=/secure/operator/path/hindsight-golden.jsonl
    python3 scripts/hindsight-recall-eval \
      --url "$CANDIDATE_URL" \
      --bank "$CANDIDATE_BANK" \
-     --golden /secure/operator/path/hindsight-golden.jsonl \
+     --golden "$GOLDEN" \
      --top-k 5 \
      --format text
    ```
@@ -242,17 +276,30 @@ blue-green migration; it is intentionally not run by CI or by this change.
    source.
 
    ```bash
+   : "${BANK:?BANK must be set explicitly (currently observed source bank: yuki-memory)}"
+   : "${GOLDEN:?set GOLDEN to the reviewed text golden set before final evaluation}"
+   test -n "${EVIDENCE_DIR:-}" && test -n "${FINAL_ARCHIVE:-}" || {
+     echo 'set EVIDENCE_DIR and FINAL_ARCHIVE from step 1 before final export' >&2
+     exit 1
+   }
    # With writes stopped, repeat export and copy it to MULTILINGUAL_POD.
    kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
      exec "$LEGACY_POD" -- \
      hindsight-admin export-bank --bank "$BANK" --output /tmp/hindsight-bank-final.zip
    kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
-     cp "$LEGACY_POD:/tmp/hindsight-bank-final.zip" "$ARCHIVE"
+     cp "$LEGACY_POD:/tmp/hindsight-bank-final.zip" "$FINAL_ARCHIVE"
    kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
-     cp "$ARCHIVE" "$MULTILINGUAL_POD:/tmp/hindsight-bank-final.zip"
+     cp "$FINAL_ARCHIVE" "$MULTILINGUAL_POD:/tmp/hindsight-bank-final.zip"
    kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
      exec "$MULTILINGUAL_POD" -- \
      hindsight-admin import-bank --archive /tmp/hindsight-bank-final.zip --target-bank "$BANK"
+   unzip -p "$FINAL_ARCHIVE" manifest.json | jq . >"$EVIDENCE_DIR/final-manifest.json"
+   python3 scripts/hindsight-recall-eval \
+     --url "$CANDIDATE_URL" \
+     --bank "$BANK" \
+     --golden "$GOLDEN" \
+     --top-k 5 \
+     --format text
    ```
 
    The suffixed candidate bank is disposable evaluation data. Remove it only
@@ -279,18 +326,13 @@ blue-green migration; it is intentionally not run by CI or by this change.
 If health, relevance, latency, or operations checks fail, do not translate or
 modify either retained database. Before final apply, simply leave the
 candidate stage in place: the canonical Service still selects pg0. After a
-final apply, restore the candidate selector and replicas explicitly:
+final apply, run the local-cluster-guarded rollback target. It scales the
+legacy deployment up and waits for it to become Available, replaces the entire
+canonical selector with the exact legacy selector, verifies canonical health,
+and only then scales the multilingual deployment down:
 
 ```bash
-kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
-  scale deployment/hindsight --replicas=1
-kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
-  patch service/hindsight --type=merge \
-  -p '{"spec":{"selector":{"app.kubernetes.io/name":"hindsight","app.kubernetes.io/part-of":"kosmos-hindsight"}}}'
-kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
-  scale deployment/hindsight-multilingual --replicas=0
-kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
-  rollout status deployment/hindsight --timeout=300s
+just hindsight-rollback
 ```
 
 The retained pg0 copy remains the rollback source, and the new PostgreSQL
@@ -300,11 +342,14 @@ rollback window ends and requires a later cleanup change.
 
 ## Existing clients and verification
 
-Nanocodex uses the personal `hermes` memory bank through:
+Nanocodex uses its configured Hindsight memory bank through the usual:
 
 ```text
-http://hindsight.localhost:17480/mcp/hermes/
+http://hindsight.localhost:17480/mcp/<bank>/
 ```
+
+The currently observed source bank is `yuki-memory`; the migration runbook
+still requires the operator to set `BANK` explicitly rather than assuming it.
 
 After switching the Home Manager generation, the `naco` Fish function includes
 that MCP server and disables Nanocodex browser and cookie imports. The
@@ -319,6 +364,7 @@ bash tests/hindsight-render-test
 bash tests/init-hindsight-secrets-test
 bash tests/hindsight-images-test
 bash tests/hindsight-recall-eval-test
+bash tests/hindsight-rollback-test
 ```
 
 The full required Nix checks are `nix-instantiate --parse configuration.nix`,

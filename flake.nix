@@ -53,6 +53,7 @@
             gawk
             gnused
             jq
+            just
             jsonnet
             python3
             shellcheck
@@ -94,6 +95,7 @@
             ${./tests/hindsight-images-test} \
             ${./tests/hindsight-render-test} \
             ${./tests/hindsight-recall-eval-test} \
+            ${./tests/hindsight-rollback-test} \
             ${./tests/sync-cloudreve-secret-test} \
             ${./tests/prepare-mihomo-config-test} \
             ${./tests/render-kepos-policy-test} \
@@ -126,6 +128,7 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-hindsight-secrets-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-images-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-recall-eval-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-rollback-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-cloudreve-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/prepare-mihomo-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/render-kepos-policy-test}

@@ -43,8 +43,8 @@ require() {
 
 require "$podman_bin"
 
-postgres_image="kosmos/hindsight-postgres:${stack_version}"
-hindsight_image="kosmos/hindsight:${stack_version}"
+postgres_image="localhost/kosmos/hindsight-postgres:${stack_version}"
+hindsight_image="localhost/kosmos/hindsight:${stack_version}"
 
 "$podman_bin" build \
   --pull=missing \
@@ -120,6 +120,10 @@ if [[ "$load_images" -eq 1 ]]; then
     printf 'could not resolve Podman image tags for k3s import\n' >&2
     exit 1
   }
+  [[ "$postgres_source_ref" == "$postgres_image" && "$hindsight_source_ref" == "$hindsight_image" ]] || {
+    printf 'Podman tags do not match the fully qualified Kubernetes image references\n' >&2
+    exit 1
+  }
   archive_dir="$(mktemp -d "${TMPDIR:-/tmp}/kosmos-hindsight-images.XXXXXX")"
   trap 'rm -rf -- "$archive_dir"' EXIT
   chmod 700 "$archive_dir"
@@ -128,11 +132,6 @@ if [[ "$load_images" -eq 1 ]]; then
   "$podman_bin" save --format oci-archive --output "$archive_dir/hindsight.tar" "$hindsight_image"
   sudo -- k3s ctr images import "$archive_dir/hindsight-postgres.tar"
   sudo -- k3s ctr images import "$archive_dir/hindsight.tar"
-  # Podman qualifies local short-name tags as localhost/<name> in OCI
-  # annotations. Add the exact short names used by imagePullPolicy=Never after
-  # importing; this avoids a registry and keeps the rendered references stable.
-  sudo -- k3s ctr images tag "$postgres_source_ref" "$postgres_image"
-  sudo -- k3s ctr images tag "$hindsight_source_ref" "$hindsight_image"
   printf 'loaded %s and %s into local k3s containerd\n' "$postgres_image" "$hindsight_image"
 else
   printf 'built and verified %s and %s (use --load for local k3s)\n' "$postgres_image" "$hindsight_image"

@@ -1,3 +1,3 @@
-{"query":"哪一个项目使用了 PGroonga？","language":"chinese","relevant_memory_ids":["example-memory-chinese"]}
-{"query":"Which service owns the retained database?","language":"english","relevant_memory_ids":["example-memory-english"]}
-{"query":"这个 mixed-language bank 是否使用 CPU embeddings？","language":"mixed","relevant_memory_ids":["example-memory-mixed"]}
+{"query":"哪一个项目使用了 PGroonga？","language":"chinese","relevant_memory_texts":["Hindsight 使用 PGroonga 支持中文关键词检索。"]}
+{"query":"Which service owns the retained database?","language":"english","relevant_memory_texts":["The Hindsight PostgreSQL service owns the retained database."]}
+{"query":"这个 mixed-language bank 是否使用 CPU embeddings？","language":"mixed","relevant_memory_texts":["The mixed-language bank uses CPU embeddings and RRF."]}

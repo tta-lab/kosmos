@@ -162,6 +162,14 @@ hindsight-final-status: _local-k3s
 hindsight-final-logs: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl logs deployment/hindsight-multilingual -n hindsight --tail=200
 
+hindsight-rollback: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl scale deployment/hindsight -n hindsight --replicas=1
+  @KUBECONFIG="{{ kubeconfig }}" kubectl wait --for=condition=Available deployment/hindsight -n hindsight --timeout=300s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl patch service/hindsight -n hindsight --type=json -p='[{"op":"replace","path":"/spec/selector","value":{"app.kubernetes.io/name":"hindsight","app.kubernetes.io/part-of":"kosmos-hindsight"}}]'
+  @KUBECONFIG="{{ kubeconfig }}" kubectl get service/hindsight -n hindsight -o json | jq -e '.spec.selector == {"app.kubernetes.io/name":"hindsight","app.kubernetes.io/part-of":"kosmos-hindsight"}' >/dev/null
+  @curl --fail --silent --show-error --max-time 10 --noproxy '*' http://hindsight.localhost:17480/health >/dev/null
+  @KUBECONFIG="{{ kubeconfig }}" kubectl scale deployment/hindsight-multilingual -n hindsight --replicas=0
+
 codex-bridge-show:
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ codex_bridge_environment }}"
 

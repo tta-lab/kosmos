@@ -12,7 +12,7 @@ local labels(role) = baseLabels + { 'kosmos.tta-lab.org/role': role };
 // The multilingual pods use a distinct name label so the old selector cannot
 // accidentally adopt them during the blue-green window.
 local legacySelector = baseLabels;
-local legacyLabels = labels('legacy');
+local legacyLabels = baseLabels;
 local multilingualLabels = labels('multilingual') + {
   'app.kubernetes.io/name': 'hindsight-multilingual',
 };
@@ -21,8 +21,8 @@ local postgresLabels = {
   'app.kubernetes.io/part-of': 'kosmos-hindsight',
 };
 
-local hindsightImage = 'kosmos/hindsight:0.1.0';
-local postgresImage = 'kosmos/hindsight-postgres:0.1.0';
+local hindsightImage = 'localhost/kosmos/hindsight:0.1.0';
+local postgresImage = 'localhost/kosmos/hindsight-postgres:0.1.0';
 local databaseSecretName = 'hindsight-database';
 
 local service(selector, name='hindsight') = {
@@ -134,8 +134,7 @@ local legacyDeployment(replicas) = {
         },
         containers: [{
           name: 'hindsight',
-          image: hindsightImage,
-          imagePullPolicy: 'Never',
+          image: 'ghcr.io/vectorize-io/hindsight:0.9.2@sha256:84ab276b8f501546deb6ea9c64a57291718b4e16a59dd9e02a02fdd5adfe9028',
           ports: [
             { name: 'api', containerPort: 8888 },
             { name: 'ui', containerPort: 9999 },
