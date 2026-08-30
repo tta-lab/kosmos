@@ -35,6 +35,12 @@ jq -e '
   (resource("Service"; "hindsight-candidate").spec.selector["kosmos.tta-lab.org/role"] == "multilingual") and
   (resource("Deployment"; "hindsight-multilingual") as $app |
     ($app.spec.replicas == 1) and
+    ($app.metadata.labels == {
+      "app.kubernetes.io/name": "hindsight-multilingual",
+      "app.kubernetes.io/part-of": "kosmos-hindsight",
+      "kosmos.tta-lab.org/role": "multilingual"
+    }) and
+    ($app.spec.template.metadata.labels == $app.metadata.labels) and
     ($app.spec.template.spec.containers[0] as $container |
       ($container.image == "localhost/kosmos/hindsight:0.1.0") and
       ($container.imagePullPolicy == "Never") and

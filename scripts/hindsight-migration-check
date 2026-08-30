@@ -1,0 +1,237 @@
+#!/usr/bin/env python3
+"""Validate Hindsight whole-bank archives and reconcile an import.
+
+The command is deliberately standard-library-only so the operator can run it
+before either import without changing the cluster or the bank. A whole-bank
+archive is checked for embedded derived vectors, then its manifest is compared
+with the captured ``hindsight-admin import-bank`` summary and a fresh ``/stats``
+response.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+import zipfile
+from pathlib import Path
+from typing import Any
+
+
+FORBIDDEN_JSON_KEYS = frozenset({"embedding", "search_vector"})
+MANIFEST_COUNTS = ("document_count", "fact_count", "observation_count", "mental_model_count")
+IMPORT_SUMMARY_RE = re.compile(
+    r"^Imported bank '(?P<bank>[^']+)': "
+    r"(?P<document_count>\d+) doc\(s\), "
+    r"(?P<fact_count>\d+) fact\(s\), "
+    r"(?P<observation_count>\d+) observation\(s\), "
+    r"(?P<mental_model_count>\d+) mental model\(s\),",
+    re.MULTILINE,
+)
+
+
+class ValidationError(Exception):
+    """A fail-closed archive, import-summary, or stats validation error."""
+
+
+def _read_text(path: Path, description: str) -> str:
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as error:
+        raise ValidationError(f"cannot read {description} {path}: {error}") from error
+
+
+def _load_json(path: Path, description: str) -> Any:
+    raw = _read_text(path, description)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as error:
+        raise ValidationError(f"{description} {path} is not valid JSON ({error.msg})") from error
+
+
+def _nonnegative_int(value: Any, field: str, source: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValidationError(f"{source} field {field} must be a non-negative integer")
+    return value
+
+
+def _reject_derived_keys(value: Any, location: str) -> None:
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if key in FORBIDDEN_JSON_KEYS:
+                raise ValidationError(f"{location} contains forbidden JSON key {key!r}")
+            _reject_derived_keys(child, f"{location}.{key}")
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            _reject_derived_keys(child, f"{location}[{index}]")
+
+
+def _validate_manifest(manifest: Any, source: str) -> dict[str, Any]:
+    if not isinstance(manifest, dict):
+        raise ValidationError(f"{source} manifest.json must contain a JSON object")
+    if manifest.get("schema_version") != 1:
+        raise ValidationError(f"{source} manifest.json must declare schema_version 1")
+    if manifest.get("archive_type") != "bank":
+        raise ValidationError(f"{source} manifest.json must declare archive_type 'bank'")
+    source_bank_id = manifest.get("source_bank_id")
+    if not isinstance(source_bank_id, str) or not source_bank_id.strip():
+        raise ValidationError(f"{source} manifest.json field source_bank_id must be non-empty text")
+    for field in MANIFEST_COUNTS:
+        if field not in manifest:
+            raise ValidationError(f"{source} manifest.json is missing field {field}")
+        _nonnegative_int(manifest[field], field, f"{source} manifest.json")
+    return manifest
+
+
+def validate_archive(path: Path) -> dict[str, Any]:
+    """Validate a whole-bank ZIP and return its manifest."""
+    try:
+        archive = zipfile.ZipFile(path, "r")
+    except (OSError, zipfile.BadZipFile) as error:
+        raise ValidationError(f"archive {path} is not a readable ZIP: {error}") from error
+
+    with archive:
+        infos = archive.infolist()
+        if not infos:
+            raise ValidationError(f"archive {path} is empty")
+        names = [info.filename for info in infos]
+        if len(names) != len(set(names)):
+            raise ValidationError(f"archive {path} contains duplicate member names")
+        if names.count("manifest.json") != 1:
+            raise ValidationError(f"archive {path} must contain exactly one root manifest.json")
+
+        manifest: Any = None
+        for info in infos:
+            if info.is_dir() or not info.filename.endswith(".json"):
+                continue
+            try:
+                value = json.loads(archive.read(info))
+            except (OSError, KeyError, RuntimeError, zipfile.BadZipFile) as error:
+                raise ValidationError(f"archive member {info.filename} cannot be read: {error}") from error
+            except (UnicodeError, json.JSONDecodeError) as error:
+                raise ValidationError(f"archive member {info.filename} is not valid JSON ({error.msg})") from error
+            _reject_derived_keys(value, f"archive member {info.filename}")
+            if info.filename == "manifest.json":
+                manifest = value
+
+        if manifest is None:
+            raise ValidationError(f"archive {path} is missing a readable root manifest.json")
+        return _validate_manifest(manifest, str(path))
+
+
+def parse_import_summary(path: Path) -> dict[str, int]:
+    """Parse the stable summary line emitted by ``hindsight-admin import-bank``."""
+    text = _read_text(path, "import summary")
+    matches = list(IMPORT_SUMMARY_RE.finditer(text))
+    if len(matches) != 1:
+        raise ValidationError(
+            f"import summary {path} must contain exactly one complete 'Imported bank' summary line"
+        )
+    match = matches[0]
+    return {field: int(match.group(field)) for field in MANIFEST_COUNTS}
+
+
+def _stats_int(stats: dict[str, Any], field: str) -> int:
+    if field not in stats:
+        raise ValidationError(f"stats JSON is missing field {field}")
+    return _nonnegative_int(stats[field], field, "stats JSON")
+
+
+def reconcile(archive_path: Path, summary_path: Path, stats_path: Path) -> None:
+    """Validate all three import evidence files and require exact reconciliation."""
+    manifest = validate_archive(archive_path)
+    imported = parse_import_summary(summary_path)
+    for field in MANIFEST_COUNTS:
+        if imported[field] != manifest[field]:
+            raise ValidationError(
+                f"import summary {field}={imported[field]} does not match "
+                f"manifest {field}={manifest[field]}"
+            )
+
+    stats = _load_json(stats_path, "stats JSON")
+    if not isinstance(stats, dict):
+        raise ValidationError(f"stats JSON {stats_path} must contain a JSON object")
+    total_documents = _stats_int(stats, "total_documents")
+    total_observations = _stats_int(stats, "total_observations")
+    total_nodes = _stats_int(stats, "total_nodes")
+    pending_operations = _stats_int(stats, "pending_operations")
+    failed_operations = _stats_int(stats, "failed_operations")
+    operations = stats.get("operations_by_status")
+    if not isinstance(operations, dict):
+        raise ValidationError("stats JSON field operations_by_status must be an object")
+    # The API emits only statuses that have rows. An absent processing bucket
+    # therefore means zero; if present, it must still be an integer.
+    processing_operations = operations.get("processing", 0)
+    processing_operations = _nonnegative_int(
+        processing_operations, "operations_by_status.processing", "stats JSON"
+    )
+
+    if total_documents != manifest["document_count"]:
+        raise ValidationError(
+            f"stats total_documents={total_documents} does not match manifest "
+            f"document_count={manifest['document_count']}"
+        )
+    if total_observations != manifest["observation_count"]:
+        raise ValidationError(
+            f"stats total_observations={total_observations} does not match manifest "
+            f"observation_count={manifest['observation_count']}"
+        )
+    non_observation_nodes = total_nodes - total_observations
+    if non_observation_nodes < 0:
+        raise ValidationError("stats total_nodes cannot be less than total_observations")
+    if non_observation_nodes != manifest["fact_count"]:
+        raise ValidationError(
+            f"stats non-observation nodes={non_observation_nodes} does not match manifest "
+            f"fact_count={manifest['fact_count']}"
+        )
+    if pending_operations != 0:
+        raise ValidationError(f"stats pending_operations must be 0 (got {pending_operations})")
+    if failed_operations != 0:
+        raise ValidationError(f"stats failed_operations must be 0 (got {failed_operations})")
+    if processing_operations != 0:
+        raise ValidationError(
+            f"stats operations_by_status.processing must be 0 (got {processing_operations})"
+        )
+
+
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    archive_parser = subparsers.add_parser(
+        "validate-archive", help="validate a whole-bank ZIP before importing it"
+    )
+    archive_parser.add_argument("archive", type=Path)
+
+    reconcile_parser = subparsers.add_parser(
+        "reconcile", help="reconcile archive, import stdout, and fresh bank stats"
+    )
+    reconcile_parser.add_argument("--archive", type=Path, required=True)
+    reconcile_parser.add_argument("--import-summary", type=Path, required=True)
+    reconcile_parser.add_argument("--stats", type=Path, required=True)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parser().parse_args(argv)
+    try:
+        if args.command == "validate-archive":
+            manifest = validate_archive(args.archive)
+            print(
+                f"validated whole-bank archive {args.archive}: "
+                f"documents={manifest['document_count']} facts={manifest['fact_count']} "
+                f"observations={manifest['observation_count']} "
+                f"mental_models={manifest['mental_model_count']}"
+            )
+        else:
+            reconcile(args.archive, args.import_summary, args.stats)
+            print(f"reconciled Hindsight import evidence for {args.archive}")
+    except ValidationError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

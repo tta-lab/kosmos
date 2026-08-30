@@ -45,7 +45,8 @@ Their upstream bases are digest-pinned, and the rendered stack tag is currently
 
 A recipe change must bump that stack version in the image labels,
 `scripts/build-hindsight-images`, and `tanka/lib/hindsight.libsonnet`; never
-overwrite a tag already used by a deployment.
+overwrite a tag already used by a deployment. The loader uses this explicit
+`0.1.0` source; it has no runtime stack-version override.
 
 Build and inspect both images with rootless Podman:
 
@@ -136,6 +137,10 @@ blue-green migration; it is intentionally not run by CI or by this change.
    mkdir "$EVIDENCE_DIR"
    export CANDIDATE_ARCHIVE="$EVIDENCE_DIR/candidate-export.zip"
    export FINAL_ARCHIVE="$EVIDENCE_DIR/final-export.zip"
+   export CANDIDATE_IMPORT_STDOUT="$EVIDENCE_DIR/candidate-import.stdout"
+   export CANDIDATE_STATS_JSON="$EVIDENCE_DIR/candidate-stats.json"
+   export FINAL_IMPORT_STDOUT="$EVIDENCE_DIR/final-import.stdout"
+   export FINAL_STATS_JSON="$EVIDENCE_DIR/final-stats.json"
    ```
 
 2. Render and inspect the candidate before applying it:
@@ -178,6 +183,7 @@ blue-green migration; it is intentionally not run by CI or by this change.
    unzip -p "$CANDIDATE_ARCHIVE" manifest.json | jq .
    unzip -p "$CANDIDATE_ARCHIVE" manifest.json | jq . >"$EVIDENCE_DIR/candidate-manifest.json"
    unzip -l "$CANDIDATE_ARCHIVE"
+   scripts/hindsight-migration-check validate-archive "$CANDIDATE_ARCHIVE"
    ```
 
    The official export intentionally omits stored `embedding` and
@@ -195,13 +201,15 @@ blue-green migration; it is intentionally not run by CI or by this change.
    ```bash
    : "${BANK:?BANK must be set explicitly (currently observed source bank: yuki-memory)}"
    export MULTILINGUAL_POD="$(kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
-     get pod -l 'app.kubernetes.io/name=hindsight,kosmos.tta-lab.org/role=multilingual' \
+     get pod -l 'app.kubernetes.io/name=hindsight-multilingual,kosmos.tta-lab.org/role=multilingual' \
      -o jsonpath='{.items[0].metadata.name}')"
    kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
      cp "$CANDIDATE_ARCHIVE" "$MULTILINGUAL_POD:/tmp/hindsight-bank.zip"
    kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
      exec "$MULTILINGUAL_POD" -- \
-     hindsight-admin import-bank --archive /tmp/hindsight-bank.zip --target-bank "$CANDIDATE_BANK"
+     hindsight-admin import-bank --archive /tmp/hindsight-bank.zip --target-bank "$CANDIDATE_BANK" \
+     >"$CANDIDATE_IMPORT_STDOUT"
+   cat "$CANDIDATE_IMPORT_STDOUT"
    ```
 
    Keep the legacy service serving while this import and all candidate checks
@@ -228,12 +236,22 @@ blue-green migration; it is intentionally not run by CI or by this change.
    export CANDIDATE_URL=http://127.0.0.1:18888
    curl --fail "$CANDIDATE_URL/v1/default/banks/$CANDIDATE_BANK/operations?status=pending"
    curl --fail "$CANDIDATE_URL/v1/default/banks/$CANDIDATE_BANK/operations?status=failed"
-   curl --fail "$CANDIDATE_URL/v1/default/banks/$CANDIDATE_BANK/stats" | jq .
+   curl --fail "$CANDIDATE_URL/v1/default/banks/$CANDIDATE_BANK/stats?refresh=true" \
+     >"$CANDIDATE_STATS_JSON"
+   jq . "$CANDIDATE_STATS_JSON"
+   scripts/hindsight-migration-check reconcile \
+     --archive "$CANDIDATE_ARCHIVE" \
+     --import-summary "$CANDIDATE_IMPORT_STDOUT" \
+     --stats "$CANDIDATE_STATS_JSON"
    ```
 
-   Reconcile the manifest's documented counts against the imported bank's
-   stats/import summary. Any failed or pending operation, count mismatch, or
-   missing derived state stops the migration; leave the legacy Service active.
+   The archive validator runs before import and recursively rejects any stored
+   `embedding` or `search_vector` key. The reconciliation command then consumes
+   `manifest.json`, the captured import stdout, and the fresh `stats?refresh=true`
+   response. It verifies all four manifest/import counts, document and
+   observation totals, non-observation nodes, and zero pending/failed/processing
+   operations. Any malformed evidence, mismatch, or non-zero operation count
+   stops the migration; leave the legacy Service active.
 
 5. Generate a golden set locally from the exported bank, without committing
    personal memory text. Add one reviewed JSON object per line with `query`,
@@ -288,12 +306,22 @@ blue-green migration; it is intentionally not run by CI or by this change.
      hindsight-admin export-bank --bank "$BANK" --output /tmp/hindsight-bank-final.zip
    kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
      cp "$LEGACY_POD:/tmp/hindsight-bank-final.zip" "$FINAL_ARCHIVE"
+   scripts/hindsight-migration-check validate-archive "$FINAL_ARCHIVE"
    kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
      cp "$FINAL_ARCHIVE" "$MULTILINGUAL_POD:/tmp/hindsight-bank-final.zip"
    kubectl --kubeconfig=/etc/rancher/k3s/k3s.yaml -n hindsight \
      exec "$MULTILINGUAL_POD" -- \
-     hindsight-admin import-bank --archive /tmp/hindsight-bank-final.zip --target-bank "$BANK"
+     hindsight-admin import-bank --archive /tmp/hindsight-bank-final.zip --target-bank "$BANK" \
+     >"$FINAL_IMPORT_STDOUT"
+   cat "$FINAL_IMPORT_STDOUT"
    unzip -p "$FINAL_ARCHIVE" manifest.json | jq . >"$EVIDENCE_DIR/final-manifest.json"
+   curl --fail "$CANDIDATE_URL/v1/default/banks/$BANK/stats?refresh=true" \
+     >"$FINAL_STATS_JSON"
+   jq . "$FINAL_STATS_JSON"
+   scripts/hindsight-migration-check reconcile \
+     --archive "$FINAL_ARCHIVE" \
+     --import-summary "$FINAL_IMPORT_STDOUT" \
+     --stats "$FINAL_STATS_JSON"
    python3 scripts/hindsight-recall-eval \
      --url "$CANDIDATE_URL" \
      --bank "$BANK" \
@@ -364,6 +392,8 @@ bash tests/hindsight-render-test
 bash tests/init-hindsight-secrets-test
 bash tests/hindsight-images-test
 bash tests/hindsight-recall-eval-test
+bash tests/hindsight-migration-check-test
+bash tests/hindsight-runbook-test
 bash tests/hindsight-rollback-test
 ```
 

@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+runbook="$repo_root/docs/hindsight.md"
+
+# Keep the operator's copy command aligned with the labels rendered by the
+# multilingual Deployment. This is intentionally a command-level documentation
+# contract: a label rename must update both the manifest and the runbook.
+grep -F "get pod -l 'app.kubernetes.io/name=hindsight-multilingual,kosmos.tta-lab.org/role=multilingual'" \
+  "$runbook" >/dev/null
+if grep -F "get pod -l 'app.kubernetes.io/name=hindsight,kosmos.tta-lab.org/role=multilingual'" \
+  "$runbook" >/dev/null; then
+  echo 'runbook uses the legacy app name for the multilingual pod selector' >&2
+  exit 1
+fi
+
+printf 'Hindsight runbook uses the rendered multilingual pod selector\n'

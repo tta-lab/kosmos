@@ -1,0 +1,237 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+test_root="$(mktemp -d)"
+trap 'rm -rf "$test_root"' EXIT
+
+python3 - "$test_root/archive.zip" "$test_root/import.stdout" "$test_root/stats.json" <<'PY'
+import json
+import sys
+import zipfile
+from pathlib import Path
+
+archive_path, summary_path, stats_path = map(Path, sys.argv[1:])
+manifest = {
+    "schema_version": 1,
+    "source_bank_id": "synthetic-source",
+    "archive_type": "bank",
+    "document_count": 2,
+    "fact_count": 3,
+    "observation_count": 1,
+    "mental_model_count": 1,
+}
+with zipfile.ZipFile(archive_path, "w") as archive:
+    archive.writestr("manifest.json", json.dumps(manifest))
+    archive.writestr("documents/one.json", json.dumps({"facts": [{"text": "one"}]}))
+    archive.writestr("documents/two.json", json.dumps({"facts": [{"text": "two"}, {"text": "three"}]}))
+    archive.writestr("observations.json", json.dumps([{"text": "observation"}]))
+summary_path.write_text(
+    "Importing bank archive 'archive' into schema 'public'...\n"
+    "Imported bank 'synthetic-target': 2 doc(s), 3 fact(s), 1 observation(s), "
+    "1 mental model(s), 0 mm-history row(s), 0 knowledge page(s), 0 directive(s), "
+    "0 webhook(s), 0 history row(s)\n",
+    encoding="utf-8",
+)
+stats_path.write_text(
+    json.dumps(
+        {
+            "bank_id": "synthetic-target",
+            "total_documents": 2,
+            "total_observations": 1,
+            "total_nodes": 4,
+            "pending_operations": 0,
+            "failed_operations": 0,
+            "operations_by_status": {"completed": 9},
+        }
+    ),
+    encoding="utf-8",
+)
+PY
+
+check="$repo_root/scripts/hindsight-migration-check"
+python3 "$check" validate-archive "$test_root/archive.zip" >"$test_root/archive-output"
+grep -F 'validated whole-bank archive' "$test_root/archive-output" >/dev/null
+python3 "$check" reconcile \
+  --archive "$test_root/archive.zip" \
+  --import-summary "$test_root/import.stdout" \
+  --stats "$test_root/stats.json" >"$test_root/reconcile-output"
+grep -F 'reconciled Hindsight import evidence' "$test_root/reconcile-output" >/dev/null
+
+python3 - "$test_root/embedding.zip" <<'PY'
+import json
+import sys
+import zipfile
+from pathlib import Path
+
+path = Path(sys.argv[1])
+manifest = {
+    "schema_version": 1,
+    "source_bank_id": "synthetic-source",
+    "archive_type": "bank",
+    "document_count": 0,
+    "fact_count": 0,
+    "observation_count": 0,
+    "mental_model_count": 0,
+}
+with zipfile.ZipFile(path, "w") as archive:
+    archive.writestr("manifest.json", json.dumps(manifest))
+    archive.writestr("documents/nested.json", json.dumps({"nested": [{"embedding": [0.1]}]}))
+PY
+if python3 "$check" validate-archive "$test_root/embedding.zip" >"$test_root/embedding-output" 2>&1; then
+  echo 'archive validator accepted a nested embedding key' >&2
+  exit 1
+fi
+grep -F "forbidden JSON key 'embedding'" "$test_root/embedding-output" >/dev/null
+
+python3 - "$test_root/search-vector.zip" <<'PY'
+import json
+import sys
+import zipfile
+from pathlib import Path
+
+path = Path(sys.argv[1])
+manifest = {
+    "schema_version": 1,
+    "source_bank_id": "synthetic-source",
+    "archive_type": "bank",
+    "document_count": 0,
+    "fact_count": 0,
+    "observation_count": 0,
+    "mental_model_count": 0,
+}
+with zipfile.ZipFile(path, "w") as archive:
+    archive.writestr("manifest.json", json.dumps(manifest))
+    archive.writestr("nested.json", json.dumps({"derived": {"search_vector": "old"}}))
+PY
+if python3 "$check" validate-archive "$test_root/search-vector.zip" >"$test_root/search-vector-output" 2>&1; then
+  echo 'archive validator accepted a nested search_vector key' >&2
+  exit 1
+fi
+grep -F "forbidden JSON key 'search_vector'" "$test_root/search-vector-output" >/dev/null
+
+printf 'not a zip\n' >"$test_root/not-a-zip"
+if python3 "$check" validate-archive "$test_root/not-a-zip" >"$test_root/bad-zip-output" 2>&1; then
+  echo 'archive validator accepted a malformed ZIP' >&2
+  exit 1
+fi
+grep -F 'not a readable ZIP' "$test_root/bad-zip-output" >/dev/null
+
+python3 - "$test_root/missing-manifest.zip" <<'PY'
+import sys
+import zipfile
+from pathlib import Path
+
+with zipfile.ZipFile(Path(sys.argv[1]), "w") as archive:
+    archive.writestr("documents/one.json", "{}")
+PY
+if python3 "$check" validate-archive "$test_root/missing-manifest.zip" >"$test_root/missing-manifest-output" 2>&1; then
+  echo 'archive validator accepted a ZIP without manifest.json' >&2
+  exit 1
+fi
+grep -F 'exactly one root manifest.json' "$test_root/missing-manifest-output" >/dev/null
+
+python3 - "$test_root/missing-field.zip" <<'PY'
+import json
+import sys
+import zipfile
+from pathlib import Path
+
+manifest = {
+    "schema_version": 1,
+    "source_bank_id": "synthetic-source",
+    "archive_type": "bank",
+    "document_count": 0,
+    "fact_count": 0,
+    "observation_count": 0,
+}
+with zipfile.ZipFile(Path(sys.argv[1]), "w") as archive:
+    archive.writestr("manifest.json", json.dumps(manifest))
+PY
+if python3 "$check" validate-archive "$test_root/missing-field.zip" >"$test_root/missing-field-output" 2>&1; then
+  echo 'archive validator accepted a manifest with a missing count' >&2
+  exit 1
+fi
+grep -F 'missing field mental_model_count' "$test_root/missing-field-output" >/dev/null
+
+expect_failure() {
+  local name="$1"
+  shift
+  if "$@" >"$test_root/$name-output" 2>&1; then
+    echo "$name unexpectedly passed" >&2
+    exit 1
+  fi
+}
+
+python3 - "$test_root/wrong-summary.stdout" <<'PY'
+import sys
+from pathlib import Path
+
+Path(sys.argv[1]).write_text(
+    "Imported bank 'synthetic-target': 2 doc(s), 4 fact(s), 1 observation(s), "
+    "1 mental model(s), 0 mm-history row(s), 0 knowledge page(s), 0 directive(s), "
+    "0 webhook(s), 0 history row(s)\n",
+    encoding="utf-8",
+)
+PY
+expect_failure wrong-summary python3 "$check" reconcile --archive "$test_root/archive.zip" \
+  --import-summary "$test_root/wrong-summary.stdout" --stats "$test_root/stats.json"
+grep -F 'does not match manifest fact_count=3' "$test_root/wrong-summary-output" >/dev/null
+
+python3 - "$test_root/wrong-stats.json" "$test_root/stats.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+stats = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+stats["total_nodes"] = 5
+Path(sys.argv[1]).write_text(json.dumps(stats), encoding="utf-8")
+PY
+expect_failure wrong-stats python3 "$check" reconcile --archive "$test_root/archive.zip" \
+  --import-summary "$test_root/import.stdout" --stats "$test_root/wrong-stats.json"
+grep -F 'non-observation nodes=4 does not match manifest fact_count=3' "$test_root/wrong-stats-output" >/dev/null
+
+python3 - "$test_root/missing-stats-field.json" "$test_root/stats.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+stats = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+del stats["total_documents"]
+Path(sys.argv[1]).write_text(json.dumps(stats), encoding="utf-8")
+PY
+expect_failure missing-stats-field python3 "$check" reconcile --archive "$test_root/archive.zip" \
+  --import-summary "$test_root/import.stdout" --stats "$test_root/missing-stats-field.json"
+grep -F 'stats JSON is missing field total_documents' "$test_root/missing-stats-field-output" >/dev/null
+
+for status_case in pending failed processing; do
+  python3 - "$test_root/$status_case-stats.json" "$status_case" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+stats = {
+    "total_documents": 2,
+    "total_observations": 1,
+    "total_nodes": 4,
+    "pending_operations": 0,
+    "failed_operations": 0,
+    "operations_by_status": {"completed": 9},
+}
+field = sys.argv[2]
+if field == "pending":
+    stats["pending_operations"] = 1
+elif field == "failed":
+    stats["failed_operations"] = 1
+else:
+    stats["operations_by_status"]["processing"] = 1
+Path(sys.argv[1]).write_text(json.dumps(stats), encoding="utf-8")
+PY
+  expect_failure "$status_case" python3 "$check" reconcile --archive "$test_root/archive.zip" \
+    --import-summary "$test_root/import.stdout" --stats "$test_root/$status_case-stats.json"
+done
+grep -F 'pending_operations must be 0' "$test_root/pending-output" >/dev/null
+grep -F 'failed_operations must be 0' "$test_root/failed-output" >/dev/null
+grep -F 'operations_by_status.processing must be 0' "$test_root/processing-output" >/dev/null
+
+printf 'Hindsight migration checker validates archives and fails closed on reconciliation errors\n'
