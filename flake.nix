@@ -95,8 +95,6 @@
             ${./tests/hindsight-images-test} \
             ${./tests/hindsight-render-test} \
             ${./tests/hindsight-recall-eval-test} \
-            ${./tests/hindsight-migration-check-test} \
-            ${./tests/hindsight-rollback-test} \
             ${./tests/sync-cloudreve-secret-test} \
             ${./tests/prepare-mihomo-config-test} \
             ${./tests/render-kepos-policy-test} \
@@ -129,8 +127,6 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-hindsight-secrets-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-images-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-recall-eval-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-migration-check-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-rollback-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-cloudreve-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/prepare-mihomo-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/render-kepos-policy-test}
@@ -145,8 +141,6 @@
           tk eval ${./.}/tests/jsonnet/codex-bridge.test.jsonnet >/dev/null
           tk eval ${./.}/tests/jsonnet/gateway.test.jsonnet >/dev/null
           tk show --dangerous-allow-redirect ${./.}/tanka/environments/hindsight >/dev/null
-          tk show --dangerous-allow-redirect ${./.}/tanka/environments/hindsight-candidate >/dev/null
-          tk show --dangerous-allow-redirect ${./.}/tanka/environments/hindsight-final >/dev/null
           tk show --dangerous-allow-redirect ${./.}/tanka/environments/codex-bridge >/dev/null
           tk show --dangerous-allow-redirect ${./.}/tanka/environments/devops >/dev/null
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-gateway-render-test}
@@ -306,7 +300,7 @@
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit-db 0700 999 999 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/anki 0750 1000 1000 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/notes/memos 0750 10001 10001 - -" rules;
-        assert builtins.elem "d /var/lib/kosmos-k3s/hindsight 0750 1000 1000 - -" rules;
+        assert builtins.elem "d /var/lib/kosmos-k3s/hindsight-postgres 0700 999 999 - -" rules;
           pkgs.runCommand "k3s-state-directories-check" {} "touch $out";
 
       wsl-devops-cli = let

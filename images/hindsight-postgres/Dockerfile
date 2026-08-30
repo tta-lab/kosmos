@@ -24,6 +24,6 @@ RUN printf '%s\n' \
 COPY 10-hindsight-extensions.sql /docker-entrypoint-initdb.d/10-hindsight-extensions.sql
 
 LABEL org.opencontainers.image.title="kosmos-hindsight-postgres" \
-      org.opencontainers.image.version="0.1.0" \
+      org.opencontainers.image.version="0.1.1" \
       org.opencontainers.image.description="PostgreSQL 18 with PGroonga 4.0.8 and pgvector 0.8.6 for Hindsight 0.9.2" \
       org.opencontainers.image.source="https://github.com/tta-lab/kosmos"

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-stack_version="0.1.0"
+stack_version="0.1.1"
 podman_bin="${PODMAN_BIN:-podman}"
 load_images=0
 
@@ -99,14 +99,16 @@ hindsight_labels="$("$podman_bin" image inspect --format '{{json .Config.Labels}
     exit 1
   }
 "$podman_bin" run --rm --network=none \
+  --interactive \
   --env HF_HUB_OFFLINE=1 \
   --env TRANSFORMERS_OFFLINE=1 \
   --entrypoint /app/api/.venv/bin/python "$hindsight_image" - <<'PY'
 from sentence_transformers import SentenceTransformer
 
 model = SentenceTransformer(
-    "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+    "/opt/hindsight-models/paraphrase-multilingual-MiniLM-L12-v2",
     device="cpu",
+    local_files_only=True,
 )
 assert model.get_sentence_embedding_dimension() == 384
 PY

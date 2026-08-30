@@ -5,6 +5,7 @@ FROM ghcr.io/vectorize-io/hindsight:0.9.2@sha256:84ab276b8f501546deb6ea9c64a5729
 
 ARG EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
 ARG EMBEDDING_MODEL_REVISION=e8f8c211226b894fcb81acc59f3b34ba3efd5f42
+ARG EMBEDDING_MODEL_PATH=/opt/hindsight-models/paraphrase-multilingual-MiniLM-L12-v2
 
 ENV HF_HOME=/home/hindsight/.cache/huggingface \
     TRANSFORMERS_CACHE=/home/hindsight/.cache/huggingface \
@@ -16,25 +17,30 @@ ENV HF_HOME=/home/hindsight/.cache/huggingface \
 # used by the Kubernetes workload, then restore the non-root user explicitly.
 USER root
 RUN mkdir -p /home/hindsight/.cache/huggingface \
-    && chown -R hindsight:hindsight /home/hindsight/.cache
+    /opt/hindsight-models \
+    && chown -R hindsight:hindsight /home/hindsight/.cache /opt/hindsight-models
 
 USER hindsight
 RUN HF_HUB_OFFLINE=0 TRANSFORMERS_OFFLINE=0 \
-    /app/api/.venv/bin/python - "$EMBEDDING_MODEL" "$EMBEDDING_MODEL_REVISION" <<'PY'
+    /app/api/.venv/bin/python - "$EMBEDDING_MODEL" "$EMBEDDING_MODEL_REVISION" "$EMBEDDING_MODEL_PATH" <<'PY'
 import sys
 
 from sentence_transformers import SentenceTransformer
 
-model_name, revision = sys.argv[1:]
+model_name, revision, model_path = sys.argv[1:]
 model = SentenceTransformer(model_name, revision=revision, device="cpu")
 dimension = model.get_sentence_embedding_dimension()
 if dimension != 384:
     raise SystemExit(f"unexpected embedding dimension for {model_name}: {dimension}")
-print(f"cached {model_name}@{revision} ({dimension} dimensions on CPU)")
+model.save(model_path)
+offline_model = SentenceTransformer(model_path, device="cpu", local_files_only=True)
+if offline_model.get_sentence_embedding_dimension() != 384:
+    raise SystemExit(f"saved model at {model_path} has an unexpected embedding dimension")
+print(f"saved {model_name}@{revision} to {model_path} ({dimension} dimensions on CPU)")
 PY
 
 LABEL org.opencontainers.image.title="kosmos-hindsight" \
-      org.opencontainers.image.version="0.1.0" \
+      org.opencontainers.image.version="0.1.1" \
       org.opencontainers.image.description="Hindsight 0.9.2 with an offline multilingual MiniLM embedding cache" \
       org.opencontainers.image.source="https://github.com/tta-lab/kosmos" \
       org.opencontainers.image.embedding-model="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2" \

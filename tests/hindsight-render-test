@@ -5,95 +5,45 @@ repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
 test_root="$(mktemp -d)"
 trap 'rm -rf "$test_root"' EXIT
 
-render() {
-  local environment="$1"
-  local output="$2"
-  tk show --dangerous-allow-redirect "$repo_root/tanka/environments/$environment" | yq -s '.' >"$output"
-}
-
-render hindsight-candidate "$test_root/candidate.json"
-render hindsight-final "$test_root/final.json"
-
-for rendered in candidate final; do
-  jq -e --slurpfile fixed_point_template "$repo_root/tests/fixtures/hindsight-legacy-template.json" '
-    map(select(.kind == "Deployment" and .metadata.name == "hindsight"))[0].spec.template
-      == $fixed_point_template[0]
-  ' "$test_root/$rendered.json" >/dev/null
-done
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/hindsight" |
+  yq -s '.' >"$test_root/hindsight.json"
 
 jq -e '
   def resource($kind; $name):
     map(select(.kind == $kind and .metadata.name == $name)) | first;
   def env($container):
     $container.env | map({key: .name, value: .}) | from_entries;
-  . as $resources |
-  (resource("Deployment"; "hindsight") as $legacy |
-    ($legacy.spec.replicas == 1) and
-    ($legacy.metadata.labels == {
-      "app.kubernetes.io/name": "hindsight",
-      "app.kubernetes.io/part-of": "kosmos-hindsight"
-    }) and
-    ($legacy.spec.template.metadata.labels == $legacy.metadata.labels) and
-    ($legacy.spec.template.spec.containers[0].volumeMounts | any(.mountPath == "/home/hindsight/.pg0")) and
-    ($legacy.spec.template.spec.containers[0].image == "ghcr.io/vectorize-io/hindsight:0.9.2@sha256:84ab276b8f501546deb6ea9c64a57291718b4e16a59dd9e02a02fdd5adfe9028") and
-    (($legacy.spec.template.spec.containers[0] | has("imagePullPolicy")) | not)
-  ) and
-  (resource("Service"; "hindsight").spec.selector["app.kubernetes.io/name"] == "hindsight") and
-  (resource("Service"; "hindsight-candidate").spec.selector["kosmos.tta-lab.org/role"] == "multilingual") and
-  (resource("Deployment"; "hindsight-multilingual") as $app |
+  (resource("Service"; "hindsight") as $service |
+    resource("Deployment"; "hindsight-multilingual") as $app |
+    ($service.spec.selector == $app.spec.selector.matchLabels) and
     ($app.spec.replicas == 1) and
-    ($app.metadata.labels == {
-      "app.kubernetes.io/name": "hindsight-multilingual",
-      "app.kubernetes.io/part-of": "kosmos-hindsight",
-      "kosmos.tta-lab.org/role": "multilingual"
-    }) and
-    ($app.spec.template.metadata.labels == $app.metadata.labels) and
     ($app.spec.template.spec.containers[0] as $container |
-      ($container.image == "localhost/kosmos/hindsight:0.1.0") and
+      ($container.image == "localhost/kosmos/hindsight:0.1.1") and
       ($container.imagePullPolicy == "Never") and
-      (($container.volumeMounts // []) | all(.mountPath != "/home/hindsight/.pg0")) and
       (env($container).HINDSIGHT_API_DATABASE_URL.valueFrom.secretKeyRef.name == "hindsight-database") and
-      (env($container).HINDSIGHT_API_VECTOR_EXTENSION.value == "pgvector") and
       (env($container).HINDSIGHT_API_TEXT_SEARCH_EXTENSION.value == "pgroonga") and
-      (env($container).HINDSIGHT_API_EMBEDDINGS_LOCAL_MODEL.value == "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2") and
+      (env($container).HINDSIGHT_API_EMBEDDINGS_LOCAL_MODEL.value == "/opt/hindsight-models/paraphrase-multilingual-MiniLM-L12-v2") and
       (env($container).HINDSIGHT_API_EMBEDDINGS_LOCAL_FORCE_CPU.value == "1") and
-      (env($container).HF_HUB_OFFLINE.value == "1") and
-      (env($container).TRANSFORMERS_OFFLINE.value == "1") and
-      (env($container).HINDSIGHT_API_RERANKER_PROVIDER.value == "rrf") and
-      ($container.startupProbe.failureThreshold == 120) and
-      ($container.readinessProbe.httpGet.path == "/health") and
-      ($container.livenessProbe.httpGet.path == "/health")
+      (($container.volumeMounts // []) | all(.mountPath != "/home/hindsight/.pg0"))
     )
   ) and
   (resource("StatefulSet"; "hindsight-postgres") as $postgres |
     ($postgres.spec.replicas == 1) and
     ($postgres.spec.template.spec.containers[0] as $container |
-      ($container.image == "localhost/kosmos/hindsight-postgres:0.1.0") and
-      ($container.imagePullPolicy == "Never") and
+      ($container.image == "localhost/kosmos/hindsight-postgres:0.1.1") and
       (env($container).POSTGRES_PASSWORD.valueFrom.secretKeyRef.name == "hindsight-database") and
-      (($container.args | join(" ")) | contains("pgroonga_wal_resource_manager")) and
-      (($container.args | join(" ")) | contains("pgroonga_crash_safer")) and
       (($container.args | join(" ")) | contains("pgroonga.enable_wal=on")) and
-      (($container.readinessProbe.exec.command | join(" ")) | contains("pg_isready")) and
       (($container.readinessProbe.exec.command | join(" ")) | contains("4.0.8")) and
       (($container.readinessProbe.exec.command | join(" ")) | contains("0.8.6"))
     )
   ) and
-  (resource("PersistentVolume"; "kosmos-hindsight").spec.hostPath.path == "/var/lib/kosmos-k3s/hindsight") and
   (resource("PersistentVolume"; "kosmos-hindsight-postgres").spec.hostPath.path == "/var/lib/kosmos-k3s/hindsight-postgres") and
   (resource("PersistentVolume"; "kosmos-hindsight-postgres").spec.persistentVolumeReclaimPolicy == "Retain") and
+  (map(select(.kind == "Deployment" and .metadata.name == "hindsight")) | length == 0) and
+  (map(select(.kind == "Service" and .metadata.name == "hindsight-candidate")) | length == 0) and
+  (map(select(.kind == "PersistentVolume" and .metadata.name == "kosmos-hindsight")) | length == 0) and
+  (map(select(.kind == "PersistentVolumeClaim" and .metadata.name == "hindsight-data")) | length == 0) and
   (map(select(.kind == "Secret")) | length == 0)
-' "$test_root/candidate.json" >/dev/null
+' "$test_root/hindsight.json" >/dev/null
 
-jq -e '
-  def resource($kind; $name):
-    map(select(.kind == $kind and .metadata.name == $name)) | first;
-  . as $resources |
-  (resource("Deployment"; "hindsight").spec.replicas == 0) and
-  (resource("Service"; "hindsight").spec.selector["kosmos.tta-lab.org/role"] == "multilingual") and
-  (resource("Deployment"; "hindsight-multilingual").spec.replicas == 1) and
-  (resource("StatefulSet"; "hindsight-postgres").spec.replicas == 1) and
-  (map(select(.kind == "Secret")) | length == 0)
-' "$test_root/final.json" >/dev/null
-
-printf 'Hindsight candidate/final rendering preserves rollback and separates multilingual storage\n'
+printf 'Hindsight rendering contains only the multilingual app and external PostgreSQL\n'

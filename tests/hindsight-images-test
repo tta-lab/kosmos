@@ -16,9 +16,9 @@ case "${1:-}" in
     ;;
   image)
     if [[ "$*" == *"RepoTags"* && "$*" == *"hindsight-postgres"* ]]; then
-      printf '%s\n' 'localhost/kosmos/hindsight-postgres:0.1.0'
+      printf '%s\n' 'localhost/kosmos/hindsight-postgres:0.1.1'
     elif [[ "$*" == *"RepoTags"* && "$*" == *"hindsight:"* ]]; then
-      printf '%s\n' 'localhost/kosmos/hindsight:0.1.0'
+      printf '%s\n' 'localhost/kosmos/hindsight:0.1.1'
     elif [[ "$*" == *"--format"* && "$*" == *"hindsight-postgres"* ]]; then
       printf '%s\n' '{"org.opencontainers.image.description":"PGroonga 4.0.8 and pgvector 0.8.6"}'
     elif [[ "$*" == *"--format"* && "$*" == *"hindsight:"* ]]; then
@@ -77,10 +77,10 @@ export TEST_SUDO_LOG="$test_root/sudo.log"
 export TEST_K3S_LOG="$test_root/k3s.log"
 
 bash "$repo_root/scripts/build-hindsight-images" >"$test_root/check-output"
-grep -q 'built and verified localhost/kosmos/hindsight-postgres:0.1.0 and localhost/kosmos/hindsight:0.1.0' "$test_root/check-output"
+grep -q 'built and verified localhost/kosmos/hindsight-postgres:0.1.1 and localhost/kosmos/hindsight:0.1.1' "$test_root/check-output"
 grep -q -- '--pull=missing' "$TEST_PODMAN_LOG"
-grep -q -- '--tag localhost/kosmos/hindsight-postgres:0.1.0' "$TEST_PODMAN_LOG"
-grep -q -- '--tag localhost/kosmos/hindsight:0.1.0' "$TEST_PODMAN_LOG"
+grep -q -- '--tag localhost/kosmos/hindsight-postgres:0.1.1' "$TEST_PODMAN_LOG"
+grep -q -- '--tag localhost/kosmos/hindsight:0.1.1' "$TEST_PODMAN_LOG"
 [[ ! -s "$TEST_SUDO_LOG" ]]
 [[ ! -s "$TEST_K3S_LOG" ]]
 
@@ -88,7 +88,7 @@ grep -q -- '--tag localhost/kosmos/hindsight:0.1.0' "$TEST_PODMAN_LOG"
 : >"$TEST_SUDO_LOG"
 : >"$TEST_K3S_LOG"
 bash "$repo_root/scripts/build-hindsight-images" --load >"$test_root/load-output"
-grep -q '^loaded localhost/kosmos/hindsight-postgres:0.1.0 and localhost/kosmos/hindsight:0.1.0 into local k3s containerd$' "$test_root/load-output"
+grep -q '^loaded localhost/kosmos/hindsight-postgres:0.1.1 and localhost/kosmos/hindsight:0.1.1 into local k3s containerd$' "$test_root/load-output"
 grep -q 'save --format oci-archive --output ' "$TEST_PODMAN_LOG"
 grep -q 'images import ' "$TEST_SUDO_LOG"
 if grep -q 'images tag ' "$TEST_SUDO_LOG"; then

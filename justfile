@@ -8,8 +8,6 @@ notes_environment := "tanka/environments/notes"
 feeds_environment := "tanka/environments/feeds"
 cloudreve_environment := "tanka/environments/cloudreve"
 hindsight_environment := "tanka/environments/hindsight"
-hindsight_candidate_environment := "tanka/environments/hindsight-candidate"
-hindsight_final_environment := "tanka/environments/hindsight-final"
 codex_bridge_environment := "tanka/environments/codex-bridge"
 kubeconfig := env_var_or_default("KUBECONFIG", "/etc/rancher/k3s/k3s.yaml")
 api_server := "https://127.0.0.1:26443"
@@ -111,10 +109,13 @@ hindsight-show:
 hindsight-diff: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ hindsight_environment }}"
 
-hindsight-apply: _local-k3s
+hindsight-secrets: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" scripts/init-hindsight-secrets
+
+hindsight-apply: _local-k3s hindsight-secrets
   @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ hindsight_environment }}"
 
-hindsight-deploy: hindsight-apply
+hindsight-deploy: hindsight-images-load hindsight-apply
 
 hindsight-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n hindsight -o wide
@@ -124,51 +125,6 @@ hindsight-images:
 
 hindsight-images-load:
   @scripts/build-hindsight-images --load
-
-hindsight-candidate-show:
-  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ hindsight_candidate_environment }}"
-
-hindsight-candidate-diff: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ hindsight_candidate_environment }}"
-
-hindsight-candidate-secrets: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" scripts/init-hindsight-secrets
-
-hindsight-candidate-apply: _local-k3s hindsight-candidate-secrets
-  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ hindsight_candidate_environment }}"
-
-hindsight-candidate-deploy: hindsight-candidate-apply
-
-hindsight-candidate-status: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" kubectl get deployment,statefulset,svc,pvc -n hindsight -o wide
-
-hindsight-candidate-logs: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" kubectl logs deployment/hindsight-multilingual -n hindsight --tail=200
-
-hindsight-final-show:
-  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ hindsight_final_environment }}"
-
-hindsight-final-diff: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ hindsight_final_environment }}"
-
-hindsight-final-apply: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ hindsight_final_environment }}"
-
-hindsight-final-deploy: hindsight-final-apply
-
-hindsight-final-status: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" kubectl get deployment,statefulset,svc,pvc -n hindsight -o wide
-
-hindsight-final-logs: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" kubectl logs deployment/hindsight-multilingual -n hindsight --tail=200
-
-hindsight-rollback: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" kubectl scale deployment/hindsight -n hindsight --replicas=1
-  @KUBECONFIG="{{ kubeconfig }}" kubectl wait --for=condition=Available deployment/hindsight -n hindsight --timeout=300s
-  @KUBECONFIG="{{ kubeconfig }}" kubectl patch service/hindsight -n hindsight --type=json -p='[{"op":"replace","path":"/spec/selector","value":{"app.kubernetes.io/name":"hindsight","app.kubernetes.io/part-of":"kosmos-hindsight"}}]'
-  @KUBECONFIG="{{ kubeconfig }}" kubectl get service/hindsight -n hindsight -o json | jq -e '.spec.selector == {"app.kubernetes.io/name":"hindsight","app.kubernetes.io/part-of":"kosmos-hindsight"}' >/dev/null
-  @curl --fail --silent --show-error --max-time 10 --noproxy '*' http://hindsight.localhost:17480/health >/dev/null
-  @KUBECONFIG="{{ kubeconfig }}" kubectl scale deployment/hindsight-multilingual -n hindsight --replicas=0
 
 codex-bridge-show:
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ codex_bridge_environment }}"
@@ -226,7 +182,7 @@ cloudreve-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n cloudreve -o wide
 
 hindsight-logs: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" kubectl logs deployment/hindsight -n hindsight --tail=200
+  @KUBECONFIG="{{ kubeconfig }}" kubectl logs deployment/hindsight-multilingual -n hindsight --tail=200
 
 codex-bridge-logs: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl logs deployment/codex-bridge -n codex-bridge -c bridge --tail=200
