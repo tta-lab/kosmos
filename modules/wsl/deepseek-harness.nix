@@ -23,9 +23,9 @@
     "--expose-internals"
     entrypoint
     "web"
-    "--no-open"
     "--patch"
     (toString mcpPatch)
+    "--no-open"
     "--host"
     "127.0.0.1"
     "--port"
