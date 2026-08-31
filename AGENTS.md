@@ -102,6 +102,7 @@ before the commit as usual.
 ## Editing Rules
 
 - **Never edit managed `~/.config/*` files directly** — edit the repo source and rebuild WSL. The project registry in `~/.config/ttal/` is unmanaged; use `og clone` for normal project additions and edit the registry directly only for archive/migration work. Kepos's unmanaged `~/.config/kepos/publisher.toml` is generated output: edit `kepos/publisher-policy.jsonnet` and run `just kepos-policy-render` instead.
+- One-time migrations are operator-run backup, transition, and restore steps in the PR handoff; merged configuration contains only enduring behavior.
 - `~/.agents/skills/*` is **not** managed by Kosmos — each machine owns its skills directly; deploy by copying skill directories into `~/.agents/skills/`.
 - For tmux clipboard on kosmos-wsl, use tmux clipboard/OSC 52 commands such as `copy-selection` or `copy-selection-and-cancel`; do not pipe copy bindings to platform clipboard tools like `pbcopy`, `clip.exe`, or `wl-copy`.
 - Use `og clone` for normal project additions. Edit the unmanaged `~/.config/ttal/projects.toml` directly only for archive or migration work that og does not expose.
