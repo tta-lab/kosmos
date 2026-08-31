@@ -50,6 +50,7 @@
           nativeBuildInputs = with pkgs; [
             bash
             coreutils
+            fish
             gawk
             gnused
             jq
@@ -82,6 +83,7 @@
             ${./scripts/ttal-tmux-project-picker} \
             ${./scripts/wsl-devops-smoke} \
             ${./tests/temenos-env-test} \
+            ${./tests/fish-copy-test} \
             ${./tests/ttal-tmux-project-picker-test} \
             ${./tests/temenos-ca-test} \
             ${./tests/tmux-copy-mode-test} \
@@ -117,6 +119,7 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-env-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/fish-copy-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-copy-mode-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/devops-gate-status-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/backup-ente-test}
