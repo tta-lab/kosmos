@@ -28,7 +28,7 @@ render = true
 # Copy selections and the current buffer path through OSC 52.
 [keys.normal]
 y = ["yank_main_selection_to_clipboard"]
-Y = ':sh printf "\033]52;c;%%s\a" "$(printf "%%s" "%{buffer_name}" | base64 -w0)"'
+Y = ':sh printf "%%s" "%{buffer_name}" | copy'
 # d = ["delete_selection"]
 # p = ["paste_clipboard_after"]
 # P = ["paste_clipboard_before"]
