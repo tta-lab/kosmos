@@ -20,6 +20,8 @@ local subscribers = {
   guazi: 'fb9782436a1d150879f65ec7d4a2281376499011df9fc45830c5459a92540d32',
   'sven-mac': 'b1e5e5fd757e682f167d4aa68098368d8c7fe09372a14e90eb7154ddf63c4fd1',
   'codex-bridge': '7cee61458c3a5dcc59027feebc855d540c97e4d09bcca6c6cfcf13ce0457bc62',
+  // Placeholder: replace with Lili's Kepos subscriber public key.
+  lili: '57fc7011097bb91fa6e3e713d93dc1da3d2571a149f7cc66b7780e22f8a7d13b',
 };
 
 local fullTrustAllow = [
@@ -42,13 +44,14 @@ local baiheAllow = [
 local guaziAllow = [subscribers.guazi];
 local svenMacAllow = [subscribers['sven-mac']];
 local codexBridgeAllow = [subscribers['codex-bridge']];
+local liliAllow = [subscribers.lili];
 local unique(values) = std.foldl(
   function(acc, value) if std.member(acc, value) then acc else acc + [value],
   values,
   []
 );
 local publisherAllow = unique(
-  personalDevicesAllow + forgeClientsAllow + baiheAllow + guaziAllow + svenMacAllow + codexBridgeAllow
+  personalDevicesAllow + forgeClientsAllow + baiheAllow + guaziAllow + svenMacAllow + codexBridgeAllow + liliAllow
 );
 local service(id, name, targetPort, allow, kind = null) = {
   id: id,
@@ -75,11 +78,11 @@ std.manifestTomlEx({
       service('ente', 'Ente Photos', 17480, personalDevicesAllow + baiheAllow + guaziAllow + svenMacAllow),
       service('ente-storage', 'Ente Storage', 17480, personalDevicesAllow + baiheAllow + guaziAllow + svenMacAllow),
       service('erpnext', 'ERPNext', 17480, fullTrustAllow + svenMacAllow),
-      service('forgejo', 'Forgejo', 17480, forgeClientsAllow + baiheAllow + svenMacAllow),
+      service('forgejo', 'Forgejo', 17480, forgeClientsAllow + baiheAllow + svenMacAllow + liliAllow),
       service('hindsight', 'Hindsight', 17480, fullTrustAllow),
       service('hindsightui', 'Hindsight UI', 17480, fullTrustAllow),
       service('memos', 'Memos', 17480, personalDevicesAllow + baiheAllow + guaziAllow),
-      service('mihomo', 'Mihomo', 7890, personalDevicesAllow),
+      service('mihomo', 'Mihomo', 7890, personalDevicesAllow + liliAllow),
       service('mihomo-dashboard', 'Mihomo Dashboard', 9090, fullTrustAllow),
       service('miniflux', 'Miniflux', 17480, personalDevicesAllow),
       service('navidrome', 'Navidrome', 4533, personalDevicesAllow + guaziAllow),
