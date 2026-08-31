@@ -77,7 +77,6 @@ in {
           "temenos/config.toml".source = ../temenos/config.toml;
           "helix/config.toml".source = ../helix/config.toml;
           "helix/languages.toml".source = ../helix/languages.toml;
-          "herdr/config.toml".source = ../herdr/config.toml;
           "herdr/open-project-space.fish" = {
             source = ../herdr/open-project-space.fish;
             executable = true;
