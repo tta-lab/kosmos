@@ -22,28 +22,6 @@
     ];
     text = builtins.readFile ../../scripts/backup-ente;
   };
-  herdr = pkgs.stdenvNoCC.mkDerivation {
-    pname = "herdr";
-    version = "0.8.0";
-
-    src = pkgs.fetchurl {
-      url = "https://github.com/herdrdev/herdr/releases/download/v0.8.0/herdr-linux-x86_64";
-      hash = "sha256-uHLqfkD6LLF+hXrJtisb8m23tAPGIvXS8/WzX26azSg=";
-    };
-
-    dontUnpack = true;
-
-    installPhase = ''
-      install -Dm755 $src $out/bin/herdr
-    '';
-
-    meta = {
-      description = "Terminal workspace manager for AI coding agents";
-      homepage = "https://herdr.dev";
-      mainProgram = "herdr";
-      platforms = ["x86_64-linux"];
-    };
-  };
 in {
   environment.systemPackages = with pkgs; [
     # Shells and editors
@@ -61,7 +39,7 @@ in {
     git-sizer
     delta
     tmux
-    herdr
+    pkgsUnstable.herdr
 
     # Terminfo for SSH clients using modern terminal emulators.
     kitty.terminfo
