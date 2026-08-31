@@ -11,7 +11,7 @@ target_file="$test_root/publisher.toml"
 expected_file="$test_root/expected.toml"
 before_file="$test_root/before.toml"
 broken_source="$test_root/broken.jsonnet"
-lili_key='57fc7011097bb91fa6e3e713d93dc1da3d2571a149f7cc66b7780e22f8a7d13b'
+lili_key='7e467b8465c11390c6150e093bbc3ee8cec8d8049c9e80efa4a500c394af643e'
 
 if [[ ! -f "$source_file" ]]; then
   echo "Kepos Jsonnet source is missing" >&2

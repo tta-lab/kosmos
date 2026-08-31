@@ -20,8 +20,7 @@ local subscribers = {
   guazi: 'fb9782436a1d150879f65ec7d4a2281376499011df9fc45830c5459a92540d32',
   'sven-mac': 'b1e5e5fd757e682f167d4aa68098368d8c7fe09372a14e90eb7154ddf63c4fd1',
   'codex-bridge': '7cee61458c3a5dcc59027feebc855d540c97e4d09bcca6c6cfcf13ce0457bc62',
-  // Placeholder: replace with Lili's Kepos subscriber public key.
-  lili: '57fc7011097bb91fa6e3e713d93dc1da3d2571a149f7cc66b7780e22f8a7d13b',
+  lili: '7e467b8465c11390c6150e093bbc3ee8cec8d8049c9e80efa4a500c394af643e',
 };
 
 local fullTrustAllow = [
