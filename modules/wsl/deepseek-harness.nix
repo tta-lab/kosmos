@@ -23,6 +23,7 @@
     "--expose-internals"
     entrypoint
     "web"
+    "--no-open"
     "--patch"
     (toString mcpPatch)
     "--host"

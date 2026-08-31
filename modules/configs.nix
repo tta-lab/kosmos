@@ -67,6 +67,8 @@ in {
             source = ../scripts/sync-codex-auth.ts;
             executable = true;
           };
+          ".config/fish/functions/copy.fish".source = ../fish/functions/copy.fish;
+          ".config/fish/functions/pwdc.fish".source = ../fish/functions/pwdc.fish;
         };
       };
 
@@ -123,16 +125,6 @@ in {
             end
           '';
           functions = {
-            copy = {
-              description = "Copy standard input to the terminal clipboard through OSC 52";
-              body = ''
-                printf '\e]52;c;%s\a' (base64 | string join "")
-              '';
-            };
-            pwdc = {
-              description = "Copy the current directory to the terminal clipboard";
-              body = "pwd | copy";
-            };
             p = ''
               set -l dir (command project jump $argv)
               or return 1

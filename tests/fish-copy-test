@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+copy_source="$repo_root/fish/functions/copy.fish"
+pwdc_source="$repo_root/fish/functions/pwdc.fish"
+test_root="$(mktemp -d)"
+input_fifo="$test_root/input"
+mkfifo "$input_fifo"
+exec 9<>"$input_fifo"
+trap 'exec 9>&-; rm -rf "$test_root"' EXIT
+
+fish_binary="$(command -v fish)"
+
+set +e
+timeout 1s "$fish_binary" --no-config -c "source \"$copy_source\"; source \"$pwdc_source\"; cd \"$test_root\"; pwdc >/dev/null" <&9
+pwdc_status=$?
+set -e
+if [ "$pwdc_status" -ne 0 ]; then
+  printf 'pwdc should copy through a fish pipeline without blocking\n' >&2
+  exit 1
+fi
+
+actual="$test_root/actual"
+expected="$test_root/expected"
+"$fish_binary" --no-config -c "source \"$copy_source\"; printf fixture | copy" >"$actual"
+printf '\033]52;c;Zml4dHVyZQ==\a' >"$expected"
+cmp "$expected" "$actual"
