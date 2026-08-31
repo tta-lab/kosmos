@@ -6,6 +6,8 @@ cursorline = true
 auto-save = true
 bufferline = "multiple"
 true-color = true
+# Send clipboard writes as OSC 52 so Herdr can forward them through SSH to macOS.
+clipboard-provider = "termcode"
 
 [editor.cursor-shape]
 insert = "bar"
@@ -23,10 +25,10 @@ display-inlay-hints = true
 [editor.indent-guides]
 render = true
 
-# Use system clipboard by default
+# Copy selections and the current buffer path through OSC 52.
 [keys.normal]
 y = ["yank_main_selection_to_clipboard"]
-Y = ':sh printf %%s "%{buffer_name}" | tmux load-buffer -w -'
+Y = ':sh printf "\033]52;c;%%s\a" "$(printf "%%s" "%{buffer_name}" | base64 -w0)"'
 # d = ["delete_selection"]
 # p = ["paste_clipboard_after"]
 # P = ["paste_clipboard_before"]
@@ -51,4 +53,3 @@ y = ["yank_main_selection_to_clipboard"]
 d = ["delete_selection"]
 p = ["paste_clipboard_after"]
 P = ["paste_clipboard_before"]
-
