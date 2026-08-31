@@ -35,7 +35,7 @@ awk '$0 == "[publisher]" { found = 1 } END { exit !found }' "$target_file"
 tomlq -e --arg key "$lili_key" '.publisher.allow | index($key) != null' "$target_file" >/dev/null
 # shellcheck disable=SC2016 # jq filter expands $key, not the shell variable.
 tomlq -e --arg key "$lili_key" \
-  '[.publisher.services[] | select(.allow | index($key) != null) | .id] == ["forgejo", "mihomo"]' \
+  '[.publisher.services[] | select(.allow | index($key) != null) | .id] == ["codex-bridge", "forgejo", "mihomo"]' \
   "$target_file" >/dev/null
 
 cp "$target_file" "$before_file"
