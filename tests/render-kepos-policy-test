@@ -11,7 +11,6 @@ target_file="$test_root/publisher.toml"
 expected_file="$test_root/expected.toml"
 before_file="$test_root/before.toml"
 broken_source="$test_root/broken.jsonnet"
-lili_key='7e467b8465c11390c6150e093bbc3ee8cec8d8049c9e80efa4a500c394af643e'
 
 if [[ ! -f "$source_file" ]]; then
   echo "Kepos Jsonnet source is missing" >&2
@@ -31,12 +30,6 @@ KEPOS_POLICY_SOURCE="$source_file" \
 cmp --silent "$expected_file" "$target_file"
 [[ "$(stat -c '%a' "$target_file")" == "600" ]]
 awk '$0 == "[publisher]" { found = 1 } END { exit !found }' "$target_file"
-# shellcheck disable=SC2016 # jq filter expands $key, not the shell variable.
-tomlq -e --arg key "$lili_key" '.publisher.allow | index($key) != null' "$target_file" >/dev/null
-# shellcheck disable=SC2016 # jq filter expands $key, not the shell variable.
-tomlq -e --arg key "$lili_key" \
-  '[.publisher.services[] | select(.allow | index($key) != null) | .id] == ["codex-bridge", "forgejo", "mihomo"]' \
-  "$target_file" >/dev/null
 
 cp "$target_file" "$before_file"
 printf '%s\n' '{ this is not valid Jsonnet' >"$broken_source"
