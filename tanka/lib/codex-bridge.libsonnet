@@ -4,7 +4,7 @@ local labels = {
 };
 local proxy = import 'proxy.libsonnet';
 
-local bridgeImage = 'ghcr.io/lamplitisles/kepos-codex-bridge:sha-dae3c3aa786209884c4e343cfcd868c45f27f06f@sha256:fb58f432052f89d2e959edbe1b4ac2dee350370ab1fe83336304fdb1f4f95047';
+local bridgeImage = 'ghcr.io/lamplitisles/kepos-codex-bridge:sha-af4a97e7203e064a645d971230c83676e90581e9@sha256:7c0edd8483162d541234de25a980dfce0d8320368a483f160a1fa36469b1cc37';
 local relayImage = 'docker.io/alpine/socat:1.8.0.3@sha256:beb4a68d9e4fe6b0f21ea774a0fde6c31f580dde6368939ed70100c5385b015e';
 
 {
