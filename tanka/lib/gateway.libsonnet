@@ -108,7 +108,7 @@ local gatewayLabels = labels('canonical-gateway');
             reverse_proxy hindsight.hindsight.svc.cluster.local:9999
           }
 
-          @codexBridge host codex-bridge.localhost
+          @codexBridge host codex-bridge.localhost codex-bridge.kepos.internal
           handle @codexBridge {
             reverse_proxy codex-bridge.codex-bridge.svc.cluster.local:8787
           }
