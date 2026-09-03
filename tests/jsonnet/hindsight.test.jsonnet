@@ -31,6 +31,7 @@ std.assertEqual(env.HINDSIGHT_API_DATABASE_URL.valueFrom.secretKeyRef, {
 }) &&
 std.assertEqual(env.HINDSIGHT_API_VECTOR_EXTENSION.value, 'pgvector') &&
 std.assertEqual(env.HINDSIGHT_API_TEXT_SEARCH_EXTENSION.value, 'pgroonga') &&
+std.assertEqual(env.HINDSIGHT_API_LLM_BASE_URL.value, 'http://codex-bridge.localhost:17480/codex/buffered') &&
 std.assertEqual(env.HINDSIGHT_API_EMBEDDINGS_PROVIDER.value, 'local') &&
 std.assertEqual(env.HINDSIGHT_API_EMBEDDINGS_LOCAL_MODEL.value, '/opt/hindsight-models/paraphrase-multilingual-MiniLM-L12-v2') &&
 std.assertEqual(env.HINDSIGHT_API_EMBEDDINGS_LOCAL_FORCE_CPU.value, '1') &&
