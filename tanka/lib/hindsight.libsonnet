@@ -47,7 +47,7 @@ local hindsightService = {
 
 local appEnv = [
   { name: 'HINDSIGHT_API_LLM_PROVIDER', value: 'openai-responses' },
-  { name: 'HINDSIGHT_API_LLM_BASE_URL', value: 'http://codex-bridge.localhost:17480/hindsight' },
+  { name: 'HINDSIGHT_API_LLM_BASE_URL', value: 'http://codex-bridge.localhost:17480/codex/buffered' },
   { name: 'HINDSIGHT_API_LLM_MODEL', value: 'gpt-5.6-luna' },
   { name: 'HINDSIGHT_API_LLM_REASONING_EFFORT', value: 'high' },
   { name: 'HINDSIGHT_API_LLM_API_KEY', value: 'bridge-managed-oauth' },

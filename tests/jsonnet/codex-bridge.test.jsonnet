@@ -19,7 +19,7 @@ std.assertEqual(deployment.spec.strategy.type, 'Recreate') &&
 std.assertEqual(deployment.spec.template.spec.automountServiceAccountToken, false) &&
 std.assertEqual(
   bridge.image,
-  'ghcr.io/lamplitisles/kepos-codex-bridge:sha-255a4638ca6476a0f4fe5b79eeb54ebe0ae7280b@sha256:ab8c98c458155a0d5e08d9a611c2291b2f30eca5f0d24b27f3a58fcd8a860ba6'
+  'ghcr.io/lamplitisles/kepos-codex-bridge:sha-dae3c3aa786209884c4e343cfcd868c45f27f06f@sha256:fb58f432052f89d2e959edbe1b4ac2dee350370ab1fe83336304fdb1f4f95047'
 ) &&
 std.assertEqual(bridge.args, [
   'serve',
