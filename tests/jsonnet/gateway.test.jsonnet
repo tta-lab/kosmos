@@ -16,7 +16,10 @@ std.assertEqual(
   contains(caddy, 'reverse_proxy hindsight.hindsight.svc.cluster.local:9999'),
   true
 ) &&
-std.assertEqual(contains(caddy, '@codexBridge host codex-bridge.localhost'), true) &&
+std.assertEqual(
+  contains(caddy, '@codexBridge host codex-bridge.localhost codex-bridge.kepos.internal'),
+  true
+) &&
 std.assertEqual(
   contains(caddy, 'reverse_proxy codex-bridge.codex-bridge.svc.cluster.local:8787'),
   true
