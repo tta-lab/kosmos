@@ -36,6 +36,10 @@ local forgeClientsAllow = fullTrustAllow + [
   subscribers['guion-worker-2'],
   subscribers['sw-server'],
 ];
+local guionWorkersAllow = [
+  subscribers['guion-worker-1'],
+  subscribers['guion-worker-2'],
+];
 local baiheAllow = [
   subscribers.baihe,
   subscribers['baihe-laptop'],
@@ -68,7 +72,7 @@ std.manifestTomlEx({
       service('anki', 'Anki', 17480, personalDevicesAllow + guaziAllow),
       service('bookorbit', 'BookOrbit', 17480, personalDevicesAllow + baiheAllow),
       service('cloudreve', 'Cloudreve', 17480, personalDevicesAllow + baiheAllow + svenMacAllow + liliAllow),
-      service('codex-bridge', 'Codex Bridge', 17480, fullTrustAllow + baiheAllow + codexBridgeAllow + liliAllow),
+      service('codex-bridge', 'Codex Bridge', 17480, fullTrustAllow + guionWorkersAllow + baiheAllow + codexBridgeAllow + liliAllow),
       service('dagger', 'Dagger', 8080, fullTrustAllow + svenMacAllow),
       service('dsh', 'DeepSeek Harness', 3080, fullTrustAllow + [subscribers.pixel7a]),
       service('ente', 'Ente Photos', 17480, personalDevicesAllow + baiheAllow + guaziAllow + svenMacAllow),
