@@ -9,6 +9,15 @@
         args: [mcp]
         cwd: !!js process.cwd()
 
+    - id: mcp-project
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: project
+        transport: stdio
+        command: project
+        args: [mcp]
+        cwd: !!js process.cwd()
+
     - id: mcp-miniflux
       name: '@deepseek-ai/dsh-mcp-client'
       config:
