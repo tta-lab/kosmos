@@ -9,7 +9,7 @@ upgraded, swapped, rolled back, and how plugins are managed — the steps that
 
 | Piece | Location | Managed by |
 |---|---|---|
-| Runtime tree | `/home/neil/.local/share/dsh-runtime` | Not Nix; standalone npm tree, installed with bun |
+| Runtime tree | `/home/neil/.local/share/dsh-runtime` | Not Nix; standalone npm tree, installed with pnpm |
 | Service unit | Home Manager user service `dsh.service` | `modules/wsl/deepseek-harness.nix` |
 | Profile/plugin tree | `/home/neil/.local/state/dsh/profiles/web/node_modules` (`DSH_HOME` = `/home/neil/.local/state/dsh`) | `dsh plugin --profile web add …` (pnpm) |
 | DeepSeek secret | agenix `deepseek-key` → `/home/neil/.config/deepseek/key` | `secrets/` + `modules/wsl/secrets.nix` |
@@ -34,11 +34,11 @@ upgrades are routine maintenance, not incidents.
 ## Build a new runtime tree
 
 Distribution channel is the public npm registry — the fork's "packed tree"
-(230 `file:` tarball deps into a deleted `/tmp` dir) is obsolete. Use **bun**,
-not npm: npm 11 hangs CPU-bound on the dsh dependency graph (see
-Troubleshooting). Same `node_modules` shape either way; the service runs under
-the Nix-pinned node regardless. Always build a **fresh staging tree** and swap
-it in — never `bun add` into the live tree.
+(230 `file:` tarball deps into a deleted `/tmp` dir) is obsolete. Use
+**pnpm**, not Bun: Bun can resolve rc prerelease peer ranges to alpha packages
+(see Troubleshooting). The service runs under the Nix-pinned Node regardless.
+Always build a **fresh staging tree** and swap it in — never install into the
+live tree.
 
 1. Check the latest published version:
    ```bash
@@ -48,13 +48,18 @@ it in — never `bun add` into the live tree.
    ```bash
    mkdir -p /home/neil/.local/share/dsh-runtime.new
    cd /home/neil/.local/share/dsh-runtime.new
-   bun add @deepseek-ai/dsh@<version>
-   bun pm trust --all   # required: koffi native binding + dsh-subprocess-local helper
+   pnpm add --save-exact \
+     --allow-build=koffi \
+     --allow-build=@deepseek-ai/dsh-subprocess-local \
+     --allow-build=@google/genai \
+     --allow-build=node-pty \
+     --allow-build=protobufjs \
+     @deepseek-ai/dsh@<version>
    ```
-3. **Done when** `node -e "console.log(require('./node_modules/@deepseek-ai/dsh/package.json').version)"`
-   prints the target version, and `node -e "require('koffi')"` succeeds.
+3. **Done when** `./node_modules/.bin/dsh --version` prints the target version,
+   and the staged entrypoint composes the intended profile successfully.
 
-`bun` writes `bun.lock` + `package.json` into the staging tree; harmless
+`pnpm` writes `pnpm-lock.yaml` + `package.json` into the staging tree; harmless
 metadata, the service never reads them.
 
 ## Deploy a new runtime tree (swap)
@@ -106,17 +111,18 @@ metadata, the service never reads them.
 
 - **npm install hangs** (CPU ~100%, RSS grows past 500 MB, verbose log frozen for
   tens of seconds): npm 11 idealTree resolution explosion over the dsh family
-  graph (200+ packages, many rc versions each). It is **not** a proxy problem —
-  prove it: `curl -w '%{time_total}' https://registry.npmjs.org/@deepseek-ai/dsh`
-  is fast and `npm view` answers instantly. Fix: install with bun.
-- **In-place `npm install` in the runtime tree fails/hangs**: the tree's root
+graph (200+ packages, many rc versions each). It is **not** a proxy problem —
+prove it: `curl -w '%{time_total}' https://registry.npmjs.org/@deepseek-ai/dsh`
+is fast and `npm view` answers instantly. Fix: install with pnpm in a fresh
+staging tree.
+- **Bun resolves DSH prerelease peers to alpha packages**: a root
+`@deepseek-ai/dsh@0.1.2-rc.1` can end up with first-party packages such as
+`dsh-settings`, `dsh-compaction`, or `dsh-sandbox` at `0.1.2-alpha.3`.
+This creates an incompatible mixed graph even though the CLI itself reports
+rc.1. Build the runtime with pnpm instead; do not compensate by pinning
+individual DSH subpackages.
+- **In-place package-manager install in the runtime tree fails/hangs**: the tree's root
   `package.json` can carry stale `file:/tmp/…tgz` deps pointing at a deleted
   directory (old packed-tree era). Always build a fresh tree and swap.
-- **Diagnosing a stuck npm**: `nohup npm install --loglevel=verbose > log &`,
-  poll `tail log`, and `ps -o pcpu,rss,etime -p <pid>`. Frozen log + busy CPU
-  = resolution explosion, not network.
-- **Killing npm**: never `pkill -f` a pattern that also appears in your own
-  shell command text — it kills your own shell. Kill by exact process name
-  (`pgrep -x npm`) or PID.
 - **Rollback is a rename**: keep every replaced tree as `dsh-runtime.<version>.bak`;
   no reinstall needed to go back.
