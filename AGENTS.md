@@ -42,6 +42,15 @@ reach every HTTP service through the subscriber gateway port — never configure
 `[[subscriber.services]]` for HTTP; that is only for raw TCP/SSH services like
 `dagger`. See `docs/wsl-devops-runbook.md` for the full service model.
 
+Kosmos-owned publisher observability uses the dedicated Tanka environment and
+the `just observability-show`, `just observability-diff`,
+`just observability-secrets`, `just observability-apply`,
+`just observability-status`, and `just observability-deploy` recipes. The
+VictoriaMetrics/Grafana environment is local-cluster gated; inspect it with
+show/render checks before any operator-run apply. Grafana is a gateway-routed
+service at `grafana.localhost:17480`, and its dashboard comes from Kepos's
+pinned `grafana-dashboard` system-profile artifact.
+
 `~/.config/kepos/publisher.toml` is an intentional unmanaged runtime output,
 not a Home Manager file. Do not edit it directly: keep subscriber keys, ACLs,
 and publisher service entries in `kepos/publisher-policy.jsonnet`, then render

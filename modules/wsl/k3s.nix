@@ -13,8 +13,10 @@
       proxy.serviceCidr
       ".svc"
       ".cluster.local"
+      "10.255.255.1"
       "forgejo.localhost"
       "woodpecker.localhost"
+      "grafana.localhost"
     ]
   );
 in {
@@ -32,10 +34,12 @@ in {
     "hindsightui.localhost"
     "codex-bridge.localhost"
     "erpnext.localhost"
+    "grafana.localhost"
   ];
 
   networking.firewall.interfaces.cni0.allowedTCPPorts = [
     26443
+    9475
   ];
 
   users.groups.k3s.members = ["neil"];
@@ -113,5 +117,8 @@ in {
     "d /var/lib/kosmos-k3s/feeds 0750 root root - -"
     "d /var/lib/kosmos-k3s/feeds/miniflux-db 0700 70 70 - -"
     "d /var/lib/kosmos-k3s/hindsight-postgres 0700 999 999 - -"
+    "d /var/lib/kosmos-k3s/observability 0750 root root - -"
+    "d /var/lib/kosmos-k3s/observability/victoria-metrics 0750 65534 65534 - -"
+    "d /var/lib/kosmos-k3s/observability/grafana 0750 472 472 - -"
   ];
 }
