@@ -108,7 +108,9 @@ in {
     pkgsUnstable.cargo-deny
     pkgsUnstable.cargo-release
     moonbitToolchain
-    python3
+    (python3.withPackages (ps: [
+      ps.pyyaml
+    ]))
     pkgsUnstable.uv
     pkgsUnstable.ruff
     pkgsUnstable.basedpyright
