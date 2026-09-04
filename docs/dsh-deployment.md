@@ -48,12 +48,16 @@ live tree.
    ```bash
    mkdir -p /home/neil/.local/share/dsh-runtime.new
    cd /home/neil/.local/share/dsh-runtime.new
-   pnpm add --save-exact @deepseek-ai/dsh@<version>
-   pnpm approve-builds koffi @deepseek-ai/dsh-subprocess-local
-   pnpm rebuild koffi @deepseek-ai/dsh-subprocess-local
+   pnpm add --save-exact \
+     --allow-build=koffi \
+     --allow-build=@deepseek-ai/dsh-subprocess-local \
+     --allow-build=@google/genai \
+     --allow-build=node-pty \
+     --allow-build=protobufjs \
+     @deepseek-ai/dsh@<version>
    ```
-3. **Done when** `node -e "console.log(require('./node_modules/@deepseek-ai/dsh/package.json').version)"`
-   prints the target version, and `node -e "require('koffi')"` succeeds.
+3. **Done when** `./node_modules/.bin/dsh --version` prints the target version,
+   and the staged entrypoint composes the intended profile successfully.
 
 `pnpm` writes `pnpm-lock.yaml` + `package.json` into the staging tree; harmless
 metadata, the service never reads them.
