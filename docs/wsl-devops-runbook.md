@@ -177,7 +177,7 @@ whose active API server is not `https://127.0.0.1:26443`.
 
 ## Publisher observability
 
-The publisher is pinned to Kepos commit `6dba376`. Its metrics listener binds
+The publisher is pinned to Kepos commit `7cd23c7`. Its metrics listener binds
 to `10.255.255.1:9475` and is reachable only on the k3s CNI interface; it is
 not published through Kepos or the application gateway. A dedicated
 VictoriaMetrics single-node deployment scrapes that endpoint every 15 seconds,

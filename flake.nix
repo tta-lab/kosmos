@@ -19,7 +19,7 @@
     moonbit-overlay.url = "github:moonbit-community/moonbit-overlay";
     moonbit-overlay.inputs.nixpkgs.follows = "nixpkgs-unstable";
     kepos-neo = {
-      url = "github:LamplitIsles/kepos/6dba376";
+      url = "github:LamplitIsles/kepos/7cd23c7";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
@@ -511,14 +511,12 @@
         # The DSH unit reads its key from the agenix file, never hardcodes it.
         assert !builtins.any (entry: nixpkgs.lib.hasPrefix "DEEPSEEK_API_KEY=" entry) dshEnv;
           pkgs.runCommand "kepos-live-policy-check" {
-            nativeBuildInputs = [package pkgs.jsonnet];
+            nativeBuildInputs = [package];
           } ''
             set -euo pipefail
 
-            policy="$TMPDIR/publisher.toml"
             state_dir="$TMPDIR/publisher"
-            jsonnet -S ${./kepos/publisher-policy.jsonnet} > "$policy"
-            kepos setup publisher --state "$state_dir" --config "$policy" >/dev/null
+            kepos setup publisher --state "$state_dir" >/dev/null
             key_output="$(kepos publisher key --state "$state_dir")"
             [[ "$key_output" =~ ^Publisher\ key:\ [0-9a-f]{64}$ ]]
             test -f ${dashboardPackage}/share/kepos/grafana/kepos-publisher-observability.json
