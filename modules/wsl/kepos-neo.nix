@@ -130,4 +130,5 @@ in {
   # profile so Kubernetes can mount this stable path without copying content
   # into Kosmos or the Grafana data volume.
   environment.systemPackages = [dashboardPackage];
+  environment.pathsToLink = ["/share/kepos"];
 }

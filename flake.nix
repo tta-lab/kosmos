@@ -507,6 +507,7 @@
         assert nixpkgs.lib.hasInfix "--config ${publisherPolicyFile}" publisherUnit.Service.ExecStart;
         assert nixpkgs.lib.hasInfix "--metrics-listen 10.255.255.1:9475" publisherUnit.Service.ExecStart;
         assert builtins.elem dashboardPackage cfg.environment.systemPackages;
+        assert builtins.elem "/share/kepos" cfg.environment.pathsToLink;
         # The DSH unit reads its key from the agenix file, never hardcodes it.
         assert !builtins.any (entry: nixpkgs.lib.hasPrefix "DEEPSEEK_API_KEY=" entry) dshEnv;
           pkgs.runCommand "kepos-live-policy-check" {
