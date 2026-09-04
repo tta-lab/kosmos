@@ -24,6 +24,11 @@ std.assertEqual(
   contains(caddy, 'reverse_proxy codex-bridge.codex-bridge.svc.cluster.local:8787'),
   true
 ) &&
+std.assertEqual(contains(caddy, '@grafana host grafana.localhost'), true) &&
+std.assertEqual(
+  contains(caddy, 'reverse_proxy grafana.observability.svc.cluster.local:3000'),
+  true
+) &&
 std.assertEqual(
   contains(dns, 'rewrite name exact hindsight.localhost canonical-gateway.devops.svc.cluster.local'),
   true
@@ -34,6 +39,10 @@ std.assertEqual(
 ) &&
 std.assertEqual(
   contains(dns, 'rewrite name exact codex-bridge.localhost canonical-gateway.devops.svc.cluster.local'),
+  true
+) &&
+std.assertEqual(
+  contains(dns, 'rewrite name exact grafana.localhost canonical-gateway.devops.svc.cluster.local'),
   true
 ) &&
 std.assertEqual(std.member(container.args, '--watch'), true) &&

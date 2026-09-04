@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+test_root="$(mktemp -d)"
+trap 'rm -rf "$test_root"' EXIT
+
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/observability" \
+  | yq -s '.' >"$test_root/observability.json"
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/devops" \
+  | yq -s '.' >"$test_root/devops.json"
+
+jq -e '
+  . as $resources |
+  def resource($kind; $name):
+    $resources | map(select(.kind == $kind and .metadata.name == $name)) | first;
+  def containers($kind; $name):
+    resource($kind; $name).spec.template.spec.containers;
+
+  (resource("Namespace"; "observability").metadata.name == "observability") and
+  (resource("Deployment"; "victoria-metrics").spec.replicas == 1) and
+  (resource("Deployment"; "victoria-metrics").spec.strategy.type == "Recreate") and
+  (containers("Deployment"; "victoria-metrics") | length == 1) and
+  (containers("Deployment"; "victoria-metrics")[0] as $container |
+    ($container.image | test("^victoriametrics/victoria-metrics:[^@]+@sha256:[0-9a-f]{64}$")) and
+    ($container.args | index("-promscrape.config=/etc/victoria-metrics/prometheus.yml")) and
+    ($container.args | index("-retentionPeriod=30d")) and
+    ($container.args | index("-storage.minFreeDiskSpaceBytes=256MiB")) and
+    ($container.resources.requests.memory == "256Mi") and
+    ($container.resources.limits.memory == "512Mi") and
+    ($container.securityContext.allowPrivilegeEscalation == false)
+  ) and
+  (resource("Service"; "victoria-metrics").spec.type == "ClusterIP") and
+  (resource("Service"; "victoria-metrics").spec.ports[0].port == 8428) and
+  (resource("PersistentVolume"; "kosmos-victoria-metrics").spec.capacity.storage == "2Gi") and
+  (resource("PersistentVolume"; "kosmos-victoria-metrics").spec.persistentVolumeReclaimPolicy == "Retain") and
+  (resource("PersistentVolume"; "kosmos-victoria-metrics").spec.hostPath.path == "/var/lib/kosmos-k3s/observability/victoria-metrics") and
+  (resource("PersistentVolumeClaim"; "victoria-metrics-data").spec.volumeName == "kosmos-victoria-metrics") and
+  (resource("ConfigMap"; "victoria-metrics-scrape").data["prometheus.yml"] | contains("scrape_interval: 15s")) and
+  (resource("ConfigMap"; "victoria-metrics-scrape").data["prometheus.yml"] | contains("10.255.255.1:9475")) and
+  (resource("ConfigMap"; "victoria-metrics-scrape").data["prometheus.yml"] | contains("metrics_path: /metrics")) and
+  ((resource("ConfigMap"; "victoria-metrics-scrape").data["prometheus.yml"] | split("job_name:") | length) == 2) and
+  ((resource("ConfigMap"; "victoria-metrics-scrape").data["prometheus.yml"] | split("targets:") | length) == 2) and
+
+  (resource("Deployment"; "grafana").spec.replicas == 1) and
+  (containers("Deployment"; "grafana") | length == 1) and
+  (containers("Deployment"; "grafana")[0] as $container |
+    ($container.image | test("^grafana/grafana:[^@]+@sha256:[0-9a-f]{64}$")) and
+    ($container.resources.requests.memory == "128Mi") and
+    ($container.resources.limits.memory == "256Mi") and
+    ($container.env | any(.name == "GF_SECURITY_ADMIN_PASSWORD" and .valueFrom.secretKeyRef.name == "grafana-admin" and .valueFrom.secretKeyRef.key == "admin-password")) and
+    ($container.volumeMounts | any(.mountPath == "/var/lib/grafana/dashboards/kepos-publisher-observability.json" and .readOnly == true)) and
+    ($container.volumeMounts | any(.mountPath == "/etc/grafana/provisioning/datasources/datasources.yaml" and .readOnly == true))
+  ) and
+  (resource("Service"; "grafana").spec.type == "ClusterIP") and
+  (resource("PersistentVolume"; "kosmos-grafana").spec.persistentVolumeReclaimPolicy == "Retain") and
+  (resource("PersistentVolume"; "kosmos-grafana").spec.hostPath.path == "/var/lib/kosmos-k3s/observability/grafana") and
+  (resource("PersistentVolumeClaim"; "grafana-data").spec.volumeName == "kosmos-grafana") and
+  (resource("ConfigMap"; "grafana-datasources").data["datasources.yaml"] | contains("type: prometheus")) and
+  (resource("ConfigMap"; "grafana-datasources").data["datasources.yaml"] | contains("url: http://victoria-metrics.observability.svc.cluster.local:8428")) and
+  (resource("ConfigMap"; "grafana-dashboard-provider").data["dashboards.yaml"] | contains("path: /var/lib/grafana/dashboards")) and
+  (resource("Deployment"; "grafana").spec.template.spec.volumes | any(.name == "dashboard" and .hostPath.path == "/run/current-system/sw/share/kepos/grafana/kepos-publisher-observability.json" and .hostPath.type == "File")) and
+
+  (map(select(.kind == "Secret")) | length == 0) and
+  (map(select(.kind | test("Prometheus|VM|Alertmanager"; "i"))) | length == 0) and
+  (tostring | test("clickhouse|energy-observatory|energy_secret|kepos_publisher_"; "i") | not)
+' "$test_root/observability.json" >/dev/null
+
+jq -e '
+  . as $resources |
+  (map(select(.kind == "ConfigMap" and .metadata.name == "canonical-gateway")) | first | .data.Caddyfile) as $caddy |
+  (map(select(.kind == "ConfigMap" and .metadata.name == "coredns-custom")) | first | .data["kosmos.override"]) as $dns |
+  ($caddy | contains("@grafana host grafana.localhost")) and
+  ($caddy | contains("reverse_proxy grafana.observability.svc.cluster.local:3000")) and
+  ($dns | contains("rewrite name exact grafana.localhost canonical-gateway.devops.svc.cluster.local"))
+' "$test_root/devops.json" >/dev/null
+
+printf 'observability manifests render a local VictoriaMetrics scrape and Victoria-only Grafana\n'

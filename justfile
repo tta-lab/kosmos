@@ -9,6 +9,7 @@ feeds_environment := "tanka/environments/feeds"
 cloudreve_environment := "tanka/environments/cloudreve"
 hindsight_environment := "tanka/environments/hindsight"
 codex_bridge_environment := "tanka/environments/codex-bridge"
+observability_environment := "tanka/environments/observability"
 kubeconfig := env_var_or_default("KUBECONFIG", "/etc/rancher/k3s/k3s.yaml")
 api_server := "https://127.0.0.1:26443"
 
@@ -27,6 +28,8 @@ tanka-test:
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ hindsight_environment }}" >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ codex_bridge_environment }}" >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ environment }}" >/dev/null
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ observability_environment }}" >/dev/null
+  @bash tests/observability-render-test
 
 diff target=environment: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ target }}"
@@ -142,6 +145,26 @@ codex-bridge-deploy: codex-bridge-apply
 
 codex-bridge-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n codex-bridge -o wide
+
+observability-show:
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ observability_environment }}"
+
+observability-diff: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ observability_environment }}"
+
+observability-secrets: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" scripts/init-observability-secrets
+
+observability-apply: _local-k3s observability-secrets
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ observability_environment }}"
+
+observability-deploy: observability-apply
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}"
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+
+observability-status: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n observability -o wide
 
 feeds-show:
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ feeds_environment }}"

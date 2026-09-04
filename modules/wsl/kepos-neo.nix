@@ -5,6 +5,7 @@
   ...
 }: let
   package = kepos-neo.packages.x86_64-linux.kepos;
+  dashboardPackage = kepos-neo.packages.x86_64-linux.grafana-dashboard;
   publisherStateDir = "/home/neil/.local/state/kepos-neo/mux-publisher";
   # This is deliberately not a Home Manager-managed file. Kepos reloads its
   # policy from it every second. Render it atomically from
@@ -60,6 +61,8 @@ in {
               publisherPolicyFile
               "--observations"
               "ndjson"
+              "--metrics-listen"
+              "10.255.255.1:9475"
             ];
             Restart = "always";
             RestartSec = 5;
@@ -122,4 +125,9 @@ in {
         };
       };
   };
+
+  # The dashboard is owned and rendered by Kepos. Keep it in the NixOS system
+  # profile so Kubernetes can mount this stable path without copying content
+  # into Kosmos or the Grafana data volume.
+  environment.systemPackages = [dashboardPackage];
 }

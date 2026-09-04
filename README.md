@@ -70,6 +70,22 @@ generates both proxy variable cases for shells and managed services. K3s adds
 its cluster-only bypasses on top. The `kosmos-wsl-proxy-env` helper remains a
 separate dynamic manual bootstrap fallback. See [environment ownership](docs/environment.md).
 
+## Publisher observability
+
+The WSL Kepos publisher is pinned to commit `6dba376` and exposes Prometheus
+metrics on the CNI-only listener `10.255.255.1:9475`. A dedicated local
+VictoriaMetrics and Grafana stack scrapes and displays those metrics without
+the Energy/ClickHouse observability stack. Grafana is available through the
+canonical gateway at `http://grafana.localhost:17480` and uses the pinned
+Kepos `grafana-dashboard` artifact from the Nix system profile.
+
+Inspect the manifests without changing k3s with `just observability-show` or
+`just observability-diff`. Initialize the idempotent, local-only Grafana admin
+Secret with `just observability-secrets`, then use
+`just observability-apply` and `just observability-status` when you are ready to
+change the local cluster. The full operator workflow is in the
+[WSL DevOps runbook](docs/wsl-devops-runbook.md#publisher-observability).
+
 ## Codex CLI
 
 WSL installs OpenAI Codex CLI with npm instead of Nixpkgs because Codex releases often and Nixpkgs can lag. Apply the host, then run:

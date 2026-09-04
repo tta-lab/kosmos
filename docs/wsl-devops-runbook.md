@@ -21,6 +21,8 @@ Tanka.
 - Hindsight API and MCP: `http://hindsight.localhost:17480` through Kepos
 - Hindsight Control Plane: `http://hindsightui.localhost:17480` through Kepos
 - ERPNext: `http://erpnext.localhost:17480` through Kepos
+- Grafana: `http://grafana.localhost:17480` through the loopback gateway and
+  full-trust Kepos subscribers
 
 For Kubernetes-backed HTTP apps, Caddy binds the host gateway only on
 `127.0.0.1:17480`. CoreDNS rewrites their canonical `.localhost` names to that
@@ -58,6 +60,9 @@ Kepos publishes application service IDs including:
   credentials and first login.
 - `erpnext` targets the canonical gateway port `17480`; the preserved HTTP Host
   header selects the ERPNext service route.
+- `grafana` targets the canonical gateway port `17480`; the preserved HTTP Host
+  header selects the Kosmos-owned observability Grafana route. It is restricted
+  to the full-trust subscriber set.
 
 ## Kepos service model: HTTP web services vs raw TCP
 
@@ -68,7 +73,7 @@ Desktop / CLI), not by the publisher:
 
 - **Gateway-routed HTTP web services** (`bookorbit`, `forgejo`,
   `woodpecker`, `memos`, `anki`, `hindsight`, `hindsightui`, `codex-bridge`,
-  `miniflux`, `ente`, `erpnext`, …): target the canonical gateway port `17480` and are
+  `miniflux`, `ente`, `erpnext`, `grafana`, …): target the canonical gateway port `17480` and are
   routed by the preserved `Host` header.
 - **Direct loopback HTTP services** (`dsh`): a Home Manager user service binds
   its own `127.0.0.1` port and Kepos publishes that port directly. It has no
@@ -121,19 +126,21 @@ state before its user service is enabled.
 Kepos reads a valid save within about one second. An invalid or incomplete TOML
 keeps the last valid policy active and reports the reload failure in
 `journalctl --user -u kepos-publisher.service -n 100 --no-pager`; no Nix
-switch, Git commit, or Kepos restart is needed. Removing a key from the global
-`publisher.allow` list disconnects that subscriber; service and per-service ACL
-changes apply to new registry requests and newly opened tunnels while existing
-tunnels drain.
+switch, Git commit, or Kepos restart is needed. Removing a labeled subscriber
+from `publisher.subscribers` disconnects that subscriber; service and
+per-service ACL changes apply to new registry requests and newly opened
+tunnels while existing tunnels drain.
 
-The global allowlist is the outer gate and each service `allow` list can only
-narrow it. A service with no `allow` inherits the global list; an explicit
-empty list denies that service to everyone. Define those relationships in
-Jsonnet rather than copying keys between service entries:
+The labeled subscriber list is the outer gate and each service `allow` list can
+only narrow it. A service with no `allow` inherits the full subscriber set; an
+explicit empty list denies that service to everyone. Define those relationships
+in Jsonnet rather than copying keys between service entries:
 
 ```jsonnet
-local subscribers = {mac: '<subscriber-public-key>'};
-local trusted = [subscribers.mac];
+local subscribers = {
+  mac: {label: 'mac', public_key: '<subscriber-public-key>'},
+};
+local trusted = [subscribers.mac.public_key];
 local service(id, name, port, allow) = {
   id: id,
   name: name,
@@ -160,10 +167,48 @@ These commands do not change the cluster:
 just show
 just diff
 just status
+just observability-show
+just observability-diff
+just observability-status
 ```
 
 `just apply` is the explicit normal apply command. It refuses any kubeconfig
 whose active API server is not `https://127.0.0.1:26443`.
+
+## Publisher observability
+
+The publisher is pinned to Kepos commit `6dba376`. Its metrics listener binds
+to `10.255.255.1:9475` and is reachable only on the k3s CNI interface; it is
+not published through Kepos or the application gateway. A dedicated
+VictoriaMetrics single-node deployment scrapes that endpoint every 15 seconds,
+retains 30 days of data, and stores it on the retained local volume at
+`/var/lib/kosmos-k3s/observability/victoria-metrics`.
+
+Grafana is available at `http://grafana.localhost:17480` through the canonical
+gateway. It has one VictoriaMetrics datasource and mounts the Kepos-owned
+`grafana-dashboard` artifact from the Nix system profile read-only. The
+dashboard is retained with Grafana data under
+`/var/lib/kosmos-k3s/observability/grafana`; Energy/ClickHouse dashboards and
+datasources are intentionally not installed.
+
+Initialize the local Grafana admin Secret (the command refuses a remote
+kubeconfig and is idempotent), then inspect or apply the observability
+environment explicitly:
+
+```bash
+just observability-secrets
+just observability-show
+just observability-diff
+just observability-apply
+just observability-status
+just observability-deploy
+```
+
+`observability-secrets`, `observability-apply`, and `observability-deploy` are
+the only mutating observability recipes; each is gated to the local k3s API.
+`observability-deploy` applies the environment and then refreshes the
+canonical gateway route. No observability command is run as part of a NixOS
+switch.
 
 ## Deploy
 

@@ -19,7 +19,7 @@
     moonbit-overlay.url = "github:moonbit-community/moonbit-overlay";
     moonbit-overlay.inputs.nixpkgs.follows = "nixpkgs-unstable";
     kepos-neo = {
-      url = "github:LamplitIsles/kepos";
+      url = "github:LamplitIsles/kepos/6dba376";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
@@ -72,6 +72,7 @@
             ${./scripts/init-ebook-secrets} \
             ${./scripts/init-miniflux-secrets} \
             ${./scripts/init-hindsight-secrets} \
+            ${./scripts/init-observability-secrets} \
             ${./scripts/build-hindsight-images} \
             ${./scripts/miniflux-mcp-wrapper} \
             ${./scripts/sync-cloudreve-secret} \
@@ -100,6 +101,9 @@
             ${./tests/sync-cloudreve-secret-test} \
             ${./tests/prepare-mihomo-config-test} \
             ${./tests/render-kepos-policy-test} \
+            ${./tests/observability-render-test} \
+            ${./tests/init-observability-secrets-test} \
+            ${./tests/observability-just-test} \
             ${./tests/ebooks-render-test} \
             ${./tests/cloudreve-render-test} \
             ${./tests/cloudreve-gateway-render-test} \
@@ -133,6 +137,9 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-cloudreve-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/prepare-mihomo-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/render-kepos-policy-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/observability-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-observability-secrets-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/observability-just-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ebooks-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudreve-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudreve-gateway-render-test}
@@ -293,6 +300,8 @@
         k3sFlags = eval.config.services.k3s.extraFlags;
       in
         assert builtins.elem "--node-ip=10.255.255.1" k3sFlags;
+        assert builtins.elem 9475 eval.config.networking.firewall.interfaces.cni0.allowedTCPPorts;
+        assert !(builtins.elem 9475 eval.config.networking.firewall.allowedTCPPorts);
         assert builtins.elem "k3s-node-address.service" eval.config.systemd.services.k3s.requires;
         assert builtins.elem "d /var/lib/kosmos-k3s/dagger 0750 root root - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ente 0750 root root - -" rules;
@@ -304,6 +313,9 @@
         assert builtins.elem "d /var/lib/kosmos-k3s/anki 0750 1000 1000 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/notes/memos 0750 10001 10001 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/hindsight-postgres 0700 999 999 - -" rules;
+        assert builtins.elem "d /var/lib/kosmos-k3s/observability 0750 root root - -" rules;
+        assert builtins.elem "d /var/lib/kosmos-k3s/observability/victoria-metrics 0750 65534 65534 - -" rules;
+        assert builtins.elem "d /var/lib/kosmos-k3s/observability/grafana 0750 472 472 - -" rules;
           pkgs.runCommand "k3s-state-directories-check" {} "touch $out";
 
       wsl-devops-cli = let
@@ -361,8 +373,10 @@
             expectedServiceCidr
             ".svc"
             ".cluster.local"
+            "10.255.255.1"
             "forgejo.localhost"
             "woodpecker.localhost"
+            "grafana.localhost"
           ]
         );
         has = value: list: builtins.elem value list;
@@ -473,6 +487,7 @@
         cfg = self.nixosConfigurations.wsl.config;
         home = cfg.home-manager.users.neil;
         package = kepos-neo.packages.${system}.kepos;
+        dashboardPackage = kepos-neo.packages.${system}.grafana-dashboard;
         publisherUnit = home.systemd.user.services.kepos-publisher;
         dshEnv = home.systemd.user.services.dsh.Service.Environment;
         publisherPolicyFile = "/home/neil/.config/kepos/publisher.toml";
@@ -490,6 +505,8 @@
         assert !(publisherUnit.Service ? Environment);
         assert nixpkgs.lib.hasInfix "--state ${publisherStateDir}" publisherUnit.Service.ExecStart;
         assert nixpkgs.lib.hasInfix "--config ${publisherPolicyFile}" publisherUnit.Service.ExecStart;
+        assert nixpkgs.lib.hasInfix "--metrics-listen 10.255.255.1:9475" publisherUnit.Service.ExecStart;
+        assert builtins.elem dashboardPackage cfg.environment.systemPackages;
         # The DSH unit reads its key from the agenix file, never hardcodes it.
         assert !builtins.any (entry: nixpkgs.lib.hasPrefix "DEEPSEEK_API_KEY=" entry) dshEnv;
           pkgs.runCommand "kepos-live-policy-check" {
@@ -503,6 +520,7 @@
             kepos setup publisher --state "$state_dir" --config "$policy" >/dev/null
             key_output="$(kepos publisher key --state "$state_dir")"
             [[ "$key_output" =~ ^Publisher\ key:\ [0-9a-f]{64}$ ]]
+            test -f ${dashboardPackage}/share/kepos/grafana/kepos-publisher-observability.json
             touch "$out"
           '';
     };

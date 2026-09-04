@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+test_root="$(mktemp -d)"
+trap 'rm -rf "$test_root"' EXIT
+mkdir -p "$test_root/bin"
+
+cat >"$test_root/bin/kubectl" <<'EOF'
+#!@bash@
+set -euo pipefail
+printf '%s\n' "$*" >>"$TEST_KUBECTL_LOG"
+if [[ "$*" == *"config view"* ]]; then
+  printf '%s' "$TEST_KUBE_SERVER"
+fi
+EOF
+sed -i "s|@bash@|$BASH|" "$test_root/bin/kubectl"
+chmod +x "$test_root/bin/kubectl"
+
+cat >"$test_root/bin/tk" <<'EOF'
+#!@bash@
+printf '%s\n' "$*" >>"$TEST_TK_LOG"
+EOF
+sed -i "s|@bash@|$BASH|" "$test_root/bin/tk"
+chmod +x "$test_root/bin/tk"
+
+export PATH="$test_root/bin:$PATH"
+export TEST_KUBECTL_LOG="$test_root/kubectl.log"
+export TEST_TK_LOG="$test_root/tk.log"
+export KUBECONFIG="$test_root/kubeconfig"
+
+cd "$repo_root"
+dry_run="$(just --dry-run observability-apply 2>&1)"
+grep -q 'scripts/init-observability-secrets' <<<"$dry_run"
+grep -q 'tk apply "tanka/environments/observability"' <<<"$dry_run"
+dry_run="$(just --dry-run observability-deploy 2>&1)"
+grep -q 'tk apply "tanka/environments/devops"' <<<"$dry_run"
+grep -q 'rollout restart deployment/canonical-gateway -n devops' <<<"$dry_run"
+dry_run="$(just --dry-run observability-status 2>&1)"
+grep -q 'kubectl get pods,svc,pvc -n observability -o wide' <<<"$dry_run"
+
+export TEST_KUBE_SERVER="https://127.0.0.1:26443"
+: >"$TEST_KUBECTL_LOG"
+: >"$TEST_TK_LOG"
+just observability-diff >/dev/null
+grep -q '^diff tanka/environments/observability$' "$TEST_TK_LOG"
+
+: >"$TEST_KUBECTL_LOG"
+: >"$TEST_TK_LOG"
+export TEST_KUBE_SERVER="https://kube-new.flicknote.app"
+if just observability-diff >"$test_root/remote-output" 2>&1; then
+  echo 'observability-diff accepted a non-local cluster' >&2
+  exit 1
+fi
+grep -q 'refusing non-local cluster: https://kube-new.flicknote.app' "$test_root/remote-output"
+[[ ! -s "$TEST_TK_LOG" ]]
+
+printf 'observability just commands render and gate cluster mutations to local K3s\n'

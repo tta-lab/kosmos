@@ -30,6 +30,45 @@ KEPOS_POLICY_SOURCE="$source_file" \
 cmp --silent "$expected_file" "$target_file"
 [[ "$(stat -c '%a' "$target_file")" == "600" ]]
 awk '$0 == "[publisher]" { found = 1 } END { exit !found }' "$target_file"
+if grep -q '^  allow = ' "$target_file"; then
+  echo 'Kepos publisher policy still uses the removed bare-key allowlist' >&2
+  exit 1
+fi
+
+python3 - "$target_file" <<'PY'
+import sys
+import tomllib
+
+with open(sys.argv[1], "rb") as handle:
+    policy = tomllib.load(handle)
+
+publisher = policy["publisher"]
+subscribers = publisher["subscribers"]
+assert {device["label"] for device in subscribers} == {
+    "mac",
+    "nuc-win",
+    "pixel7a",
+    "aipaper",
+    "guion-worker-1",
+    "guion-worker-2",
+    "sw-server",
+    "baihe",
+    "baihe-laptop",
+    "guazi",
+    "sven-mac",
+    "codex-bridge",
+    "lili",
+}
+keys = {device["public_key"] for device in subscribers}
+assert len(keys) == len(subscribers)
+assert "allow" not in publisher
+services = {service["id"]: service for service in publisher["services"]}
+assert set(services["grafana"]["allow"]) == {
+    next(device["public_key"] for device in subscribers if device["label"] == "mac"),
+    next(device["public_key"] for device in subscribers if device["label"] == "nuc-win"),
+}
+assert all(set(service.get("allow", [])) <= keys for service in services.values())
+PY
 
 cp "$target_file" "$before_file"
 printf '%s\n' '{ this is not valid Jsonnet' >"$broken_source"
