@@ -8,7 +8,7 @@ _: {
     initialPassword = "changeme";
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOI1HtKeFR8rm4DrSx7pyF5J/gYWmRzccwM7wOAi2yB1 neil@neilmac"
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHnfoOocpi8DgLeI5D+Jlr+yTQyHeEw6WA9eFKdCxUnC"
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHFCjb4BoCJLj+5lUsHznSBSAY/RZgoLzr/pUfyeG0Tz redock-android"
     ];
   };
 }
