@@ -8,6 +8,8 @@ bufferline = "multiple"
 true-color = true
 # Send clipboard writes as OSC 52 so Herdr can forward them through SSH to macOS.
 clipboard-provider = "termcode"
+[editor.soft-wrap]
+enable = true
 
 [editor.cursor-shape]
 insert = "bar"
