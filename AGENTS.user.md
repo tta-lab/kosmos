@@ -75,6 +75,7 @@ ordinary word. List projects only when discovery is needed.
 
 ## Git Best Practices
 
+- Never add files under `.scratch/` to Git; they are local working material only.
 - Before committing, review `git diff --cached`. Describe the final staged diff, not the editing journey or reverted work.
 - Use only scoped Conventional Commits: `feat(<scope>): <description>`, `fix(<scope>): <description>`, `refactor(<scope>): <description>`, or `chore(<scope>): <description>`.
 - Do not use Bitnami container images or Bitnami Helm charts.
