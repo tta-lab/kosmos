@@ -13,7 +13,7 @@ lists that server version as compatible.
 ## Deploy
 
 ```bash
-nh os switch . -H wsl --ask
+nh os switch . -H wsl
 
 just notes-diff
 just notes-deploy

@@ -19,7 +19,7 @@ The repository's glossary defines these terms:
   archive.
 
 The source-recovery job runs in namespace `devops` as CronJob
-`forgejo-source-backup` at `02:17 UTC` (`17 2 * * *`). Kubernetes
+`forgejo-source-backup` at `04:00 Asia/Taipei` (`0 4 * * *`). Kubernetes
 `concurrencyPolicy: Forbid` prevents overlapping runs. A Job has a one-hour
 deadline, no retries, and `restartPolicy: Never`; a failed stage therefore
 leaves a failed Job rather than reporting a successful backup.
@@ -80,7 +80,7 @@ After editing the file, activate the WSL configuration so agenix can decrypt
 it and the optional synchronizer can create `devops/forgejo-r2-backup`:
 
 ```bash
-nh os switch . -H wsl --ask
+nh os switch . -H wsl
 systemctl status forgejo-r2-backup-secret-sync.service --no-pager
 KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
   kubectl get secret forgejo-r2-backup -n devops -o name

@@ -57,7 +57,7 @@ The local-cluster guard requires the API server to be exactly
 changing `modules/wsl/k3s.nix`:
 
 ```bash
-nh os switch . -H wsl --ask
+nh os switch . -H wsl
 ```
 
 Verify the observable service after deployment:

@@ -16,7 +16,7 @@ Deploy the NixOS generation first. It creates the retained host directories,
 adds the local hostname, and installs the Kepos publisher service:
 
 ```bash
-nh os switch . -H wsl --ask
+nh os switch . -H wsl
 ```
 
 Then add the `bookorbit` service and its ACL to

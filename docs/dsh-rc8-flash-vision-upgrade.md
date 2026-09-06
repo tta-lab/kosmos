@@ -72,7 +72,7 @@ Then use the documented atomic swap while the deployed Nix overlay is still the 
 nix-instantiate --parse configuration.nix
 statix check .
 nix --extra-experimental-features 'nix-command flakes' flake check
-nh os switch . -H wsl --ask
+nh os switch . -H wsl
 ```
 
 After activation, re-run `systemctl --user is-active dsh`, `ss -tlnp | grep 3080`, `pgrep -af 'flicknote mcp|miniflux-mcp'`, and recent `journalctl --user -u dsh`, then open a **new** Web session to confirm MCP discovery and the vision-model default. Existing sessions and a saved local model selection can retain the prior model. A real API smoke test should use a user-supplied key without logging it; `/models` can confirm account availability before sending a small test image.

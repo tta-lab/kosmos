@@ -56,7 +56,7 @@ does not reconcile an already registered task or its copy in `%LOCALAPPDATA%`.
 ## Deploy and verify
 
 ```bash
-nh os switch . -H wsl --ask
+nh os switch . -H wsl
 just cloudreve-diff
 just cloudreve-deploy
 just cloudreve-status
@@ -87,5 +87,5 @@ To change the credentials, edit the encrypted source and activate NixOS:
 
 ```bash
 agenix -e secrets/cloudreve-env.age
-nh os switch . -H wsl --ask
+nh os switch . -H wsl
 ```

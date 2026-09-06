@@ -143,7 +143,7 @@ Agents must not read, decrypt, or inspect plaintext secrets. If a task needs one
 
 After merging config/package changes, deploy on WSL:
 ```bash
-nh os switch . -H wsl --ask
+nh os switch . -H wsl
 ```
 
 Run `nh` as the regular user. It delegates builds to `nix-daemon` and elevates

@@ -141,7 +141,7 @@ history, edit the encrypted file and then deploy:
 ```bash
 cd /home/neil/code/projects/tta-lab/kosmos
 agenix -e secrets/deepseek-key.age -i ~/.ssh/agenix_ed25519
-nh os switch . -H wsl --ask
+nh os switch . -H wsl
 ```
 
 The remote DSH Models and Settings APIs intentionally remain unavailable: the
@@ -181,7 +181,7 @@ After creating or editing encrypted files, apply the WSL config:
 
 ```bash
 cd /home/neil/code/projects/tta-lab/kosmos
-nh os switch . -H wsl --ask
+nh os switch . -H wsl
 ```
 
 The rebuild restarts `woodpecker-secret-sync.service` when either Woodpecker

@@ -222,7 +222,7 @@ Deploy the NixOS generation first so k3s, its directories, the Woodpecker
 Secret sync unit, the packaged Kepos CLI, and the user service exist:
 
 ```bash
-nh os switch . -H wsl --ask
+nh os switch . -H wsl
 ```
 
 Open a new WSL shell after the switch so the session picks up membership in
@@ -295,7 +295,7 @@ the managed `NODE_EXTRA_CA_CERTS` session variable. Apply it with the normal
 WSL rebuild:
 
 ```bash
-nh os switch . -H wsl --ask
+nh os switch . -H wsl
 ```
 
 Open a fresh shell after activation so Node receives the session variable. To

@@ -39,11 +39,9 @@ local secretEnv(key) = {
       labels: labels,
     },
     spec: {
-      // 02:17 UTC is intentionally fixed; timeZone keeps this independent of
-      // the node's local timezone and is supported by the Kubernetes CronJob
-      // API used by the local cluster.
-      schedule: '17 2 * * *',
-      timeZone: 'Etc/UTC',
+      // Run at 04:00 Taipei time, independently of the node's local timezone.
+      schedule: '0 4 * * *',
+      timeZone: 'Asia/Taipei',
       concurrencyPolicy: 'Forbid',
       startingDeadlineSeconds: 3600,
       successfulJobsHistoryLimit: 3,

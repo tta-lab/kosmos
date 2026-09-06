@@ -25,8 +25,8 @@ jq -e '
   def has_mount($mount):
     resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.template.spec.containers[0].volumeMounts
       | any(.mountPath == $mount);
-  (resource("CronJob"; "forgejo-source-backup").spec.schedule == "17 2 * * *") and
-  (resource("CronJob"; "forgejo-source-backup").spec.timeZone == "Etc/UTC") and
+  (resource("CronJob"; "forgejo-source-backup").spec.schedule == "0 4 * * *") and
+  (resource("CronJob"; "forgejo-source-backup").spec.timeZone == "Asia/Taipei") and
   (resource("CronJob"; "forgejo-source-backup").spec.concurrencyPolicy == "Forbid") and
   (resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.backoffLimit == 0) and
   (resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.activeDeadlineSeconds == 3600) and

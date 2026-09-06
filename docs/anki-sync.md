@@ -50,7 +50,7 @@ Kepos publisher service. Tanka owns the Kubernetes resources. Deploy in this
 order:
 
 ```bash
-nh os switch . -H wsl --ask
+nh os switch . -H wsl
 sudo systemctl restart anki-secret-sync.service
 sudo systemctl status anki-secret-sync.service --no-pager
 just anki-diff

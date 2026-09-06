@@ -35,7 +35,7 @@ change first, open a new shell if needed, then deploy the Tanka environment and
 gateway route:
 
 ```bash
-nh os switch . -H wsl --ask
+nh os switch . -H wsl
 just impri-deploy
 just kepos-policy-render
 just impri-status
