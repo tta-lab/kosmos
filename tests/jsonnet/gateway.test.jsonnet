@@ -1,4 +1,4 @@
-local resources = import '../../tanka/environments/devops/main.jsonnet';
+local resources = (import '../../tanka/environments/devops/main.jsonnet')('false');
 local caddy = resources.gatewayConfig.data.Caddyfile;
 local dns = resources.coreDnsOverrides.data['kosmos.override'];
 local deployment = resources.gatewayDeployment;

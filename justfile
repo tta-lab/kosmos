@@ -40,6 +40,18 @@ diff target=environment: _local-k3s
 apply target=environment: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ target }}"
 
+forgejo-backup-show: _forgejo-r2-backup-secret
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show --tla-str forgejoR2BackupEnabled=true "{{ environment }}"
+
+forgejo-backup-diff: _forgejo-r2-backup-secret
+  @KUBECONFIG="{{ kubeconfig }}" tk diff --tla-str forgejoR2BackupEnabled=true "{{ environment }}"
+
+forgejo-backup-apply: _forgejo-r2-backup-secret
+  @KUBECONFIG="{{ kubeconfig }}" tk apply --tla-str forgejoR2BackupEnabled=true "{{ environment }}"
+
+forgejo-backup-status: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl get cronjob,job -n devops -l app.kubernetes.io/name=forgejo-source-backup
+
 status namespace="devops": _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n "{{ namespace }}" -o wide
 
@@ -267,3 +279,6 @@ sync-codex-auth direction:
 _local-k3s:
   @actual="$(KUBECONFIG="{{ kubeconfig }}" kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')"; \
     test "$actual" = "{{ api_server }}" || { echo "refusing non-local cluster: $actual" >&2; exit 1; }
+
+_forgejo-r2-backup-secret:
+  @KUBECONFIG="{{ kubeconfig }}" scripts/check-forgejo-r2-backup-secret

@@ -22,4 +22,5 @@ in {
   "secrets/soniox-key.age".publicKeys = users ++ systems;
   "secrets/volcengine-key.age".publicKeys = users ++ systems;
   "secrets/cloudreve-env.age".publicKeys = users ++ systems;
+  "secrets/forgejo-r2-backup.age".publicKeys = users ++ systems;
 }

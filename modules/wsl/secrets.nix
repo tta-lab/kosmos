@@ -7,6 +7,7 @@
 }: let
   secretsDir = ../../secrets;
   haveForgejoSmokeToken = builtins.pathExists (secretsDir + "/forgejo-smoke-token.age");
+  haveForgejoR2Backup = builtins.pathExists (secretsDir + "/forgejo-r2-backup.age");
   haveSonioxKey = builtins.pathExists (secretsDir + "/soniox-key.age");
   haveVolcengineKey = builtins.pathExists (secretsDir + "/volcengine-key.age");
   userSecret = fileName: path: {
@@ -49,6 +50,14 @@
       kosmos-sync-cloudreve-secret "$@"
       exec sleep infinity
     '';
+  };
+  forgejoR2BackupSecretSync = pkgs.writeShellApplication {
+    name = "kosmos-sync-forgejo-r2-backup-secret";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.kubectl
+    ];
+    text = builtins.readFile ../../scripts/sync-forgejo-r2-backup-secret;
   };
 in {
   age = {
@@ -124,6 +133,15 @@ in {
       }
       // lib.optionalAttrs haveForgejoSmokeToken {
         forgejo-smoke-token = userSecret "forgejo-smoke-token.age" "/home/neil/.config/kosmos/forgejo-smoke-token";
+      }
+      // lib.optionalAttrs haveForgejoR2Backup {
+        forgejo-r2-backup = {
+          file = secretsDir + "/forgejo-r2-backup.age";
+          owner = "root";
+          group = "root";
+          mode = "0400";
+          path = "/run/agenix/forgejo-r2-backup";
+        };
       };
   };
 
@@ -189,6 +207,21 @@ in {
         RestartSec = "5s";
         ExecStart = "${cloudreveSecretReconciler}/bin/kosmos-reconcile-cloudreve-secret ${config.age.secrets.cloudreve-env.path}";
       };
+    };
+  };
+
+  systemd.services.forgejo-r2-backup-secret-sync = lib.mkIf haveForgejoR2Backup {
+    description = "Synchronize the Forgejo R2 backup Secret to local K3s";
+    wantedBy = ["multi-user.target"];
+    wants = ["k3s.service"];
+    after = ["k3s.service"];
+    restartTriggers = [config.age.secrets.forgejo-r2-backup.file];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      Restart = "on-failure";
+      RestartSec = "5s";
+      ExecStart = "${forgejoR2BackupSecretSync}/bin/kosmos-sync-forgejo-r2-backup-secret ${config.age.secrets.forgejo-r2-backup.path}";
     };
   };
 }

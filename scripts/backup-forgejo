@@ -1,0 +1,128 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+data_root="${FORGEJO_DATA_ROOT:-/var/lib/gitea}"
+staging_root="${FORGEJO_BACKUP_STAGING:-/staging}"
+database_path="${FORGEJO_DATABASE_PATH:-$data_root/data/forgejo.db}"
+repositories_path="${FORGEJO_REPOSITORIES_PATH:-$data_root/repositories}"
+lfs_path="${FORGEJO_LFS_PATH:-$data_root/data/lfs}"
+snapshot_path="${FORGEJO_SQLITE_SNAPSHOT_PATH:-$staging_root/forgejo.db}"
+sqlite3_command="${SQLITE3_BIN:-sqlite3}"
+
+required_environment=(
+  RESTIC_REPOSITORY
+  RESTIC_PASSWORD
+  AWS_ACCESS_KEY_ID
+  AWS_SECRET_ACCESS_KEY
+)
+for variable in "${required_environment[@]}"; do
+  if [[ -z "${!variable:-}" ]]; then
+    printf 'required backup environment is missing: %s\n' "$variable" >&2
+    exit 1
+  fi
+done
+
+if ! command -v "$sqlite3_command" >/dev/null 2>&1; then
+  printf 'SQLite command is unavailable: %s\n' "$sqlite3_command" >&2
+  exit 1
+fi
+
+if [[ ! -r "$database_path" ]]; then
+  printf 'Forgejo SQLite database is missing or unreadable: %s\n' "$database_path" >&2
+  exit 1
+fi
+if [[ ! -d "$repositories_path" || ! -r "$repositories_path" ]]; then
+  printf 'Forgejo repository storage is missing or unreadable: %s\n' "$repositories_path" >&2
+  exit 1
+fi
+if [[ ! -d "$lfs_path" || ! -r "$lfs_path" ]]; then
+  printf 'Forgejo LFS storage is missing or unreadable: %s\n' "$lfs_path" >&2
+  exit 1
+fi
+
+mkdir -p -- "$staging_root" "${HOME:-$staging_root/home}" "${RESTIC_CACHE_DIR:-$staging_root/restic-cache}"
+rm -f -- "$snapshot_path"
+
+run_restic() {
+  local phase=$1
+  shift
+  local stderr_path="$staging_root/restic-${phase}.stderr"
+  : >"$stderr_path"
+  chmod 0600 -- "$stderr_path"
+  restic "$@" 2>"$stderr_path"
+}
+
+# SQLite's online backup API gives the database its own consistent snapshot
+# while Forgejo remains online. The resulting file is disposable staging data;
+# the live database and its WAL/SHM files are never passed to restic.
+if ! "$sqlite3_command" "$database_path" ".backup '$snapshot_path'"; then
+  printf 'SQLite online backup failed\n' >&2
+  exit 1
+fi
+if [[ ! -s "$snapshot_path" ]]; then
+  printf 'SQLite online backup did not create a non-empty snapshot\n' >&2
+  exit 1
+fi
+chmod 0600 -- "$snapshot_path"
+
+if ! integrity_result="$("$sqlite3_command" "$snapshot_path" 'PRAGMA integrity_check;')"; then
+  printf 'SQLite snapshot integrity check could not run\n' >&2
+  exit 1
+fi
+if [[ "$integrity_result" != 'ok' ]]; then
+  printf 'SQLite snapshot integrity check failed\n' >&2
+  exit 1
+fi
+printf 'Forgejo SQLite snapshot validated\n'
+
+# A failed probe can mean that the repository has not been initialized yet.
+# `restic init` never overwrites an existing repository. If initialization
+# races with another first run, the second probe accepts the repository that
+# won the race; unrelated probe or initialization failures remain fatal.
+if ! run_restic probe snapshots --no-lock >/dev/null; then
+  if ! run_restic init init >/dev/null; then
+    if ! run_restic probe-after-init snapshots --no-lock >/dev/null; then
+      printf 'Forgejo restic repository probe failed after initialization\n' >&2
+      exit 1
+    fi
+  fi
+fi
+
+# Pass only the selected source-recovery inputs. The explicit excludes make
+# the out-of-scope Forgejo storage domains clear and remain defensive if a
+# future source path is widened. In particular, the live SQLite database and
+# its WAL/SHM files are never backed up.
+if ! run_restic backup backup \
+  --host forgejo-source-recovery \
+  --tag forgejo-source-recovery \
+  --exclude "${FORGEJO_PACKAGES_PATH:-$data_root/data/packages}" \
+  --exclude "${FORGEJO_ATTACHMENTS_PATH:-$data_root/data/attachments}" \
+  --exclude "${FORGEJO_LOG_PATH:-$data_root/log}" \
+  --exclude "${FORGEJO_REPOSITORY_ARCHIVES_PATH:-$data_root/data/repo-archive}" \
+  --exclude "$database_path" \
+  --exclude "${database_path}-wal" \
+  --exclude "${database_path}-shm" \
+  "$repositories_path" \
+  "$lfs_path" \
+  "$snapshot_path"; then
+  printf 'Forgejo restic backup failed\n' >&2
+  exit 1
+fi
+printf 'Forgejo source snapshot uploaded\n'
+
+if ! run_restic forget forget \
+  --tag forgejo-source-recovery \
+  --keep-daily 30 \
+  --prune; then
+  printf 'Forgejo restic retention failed\n' >&2
+  exit 1
+fi
+printf 'Forgejo source recovery retention applied (30 daily snapshots)\n'
+
+# Reading one twentieth of repository data bounds the recurring integrity
+# check while still exercising encrypted packs and their indexes.
+if ! run_restic check check --read-data-subset=1/20; then
+  printf 'Forgejo restic check failed\n' >&2
+  exit 1
+fi
+printf 'Forgejo restic repository check passed (read-data-subset=1/20)\n'

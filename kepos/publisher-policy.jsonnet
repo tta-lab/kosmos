@@ -103,6 +103,7 @@ std.manifestTomlEx({
   network: {bootstrap: bootstrap},
   publisher: {
     display_name: 'kosmos-wsl',
+    max_publisher_to_subscriber_bps: 2000000,
     subscribers: subscriberDevices,
     services: [
       service('anki', 'Anki', 17480, personalDevicesAllow + guaziAllow),

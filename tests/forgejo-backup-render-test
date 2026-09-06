@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+test_root="$(mktemp -d)"
+trap 'rm -rf -- "$test_root"' EXIT
+
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/devops" \
+  | yq -s '.' >"$test_root/default.json"
+tk show --dangerous-allow-redirect --tla-str forgejoR2BackupEnabled=true \
+  "$repo_root/tanka/environments/devops" | yq -s '.' >"$test_root/enabled.json"
+
+jq -e '
+  (map(select(.metadata.name == "forgejo-source-backup")) | length == 0) and
+  (map(select(.kind == "CronJob")) | length == 0)
+' "$test_root/default.json" >/dev/null
+
+jq -e '
+  . as $resources |
+  def resource($kind; $name):
+    $resources | map(select(.kind == $kind and .metadata.name == $name)) | first;
+  def env($name):
+    resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.template.spec.containers[0].env
+      | map(select(.name == $name)) | first;
+  def has_mount($mount):
+    resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.template.spec.containers[0].volumeMounts
+      | any(.mountPath == $mount);
+  (resource("CronJob"; "forgejo-source-backup").spec.schedule == "17 2 * * *") and
+  (resource("CronJob"; "forgejo-source-backup").spec.timeZone == "Etc/UTC") and
+  (resource("CronJob"; "forgejo-source-backup").spec.concurrencyPolicy == "Forbid") and
+  (resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.backoffLimit == 0) and
+  (resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.activeDeadlineSeconds == 3600) and
+  (resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.template.spec.restartPolicy == "Never") and
+  (resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.template.spec.automountServiceAccountToken == false) and
+  (resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.template.spec.securityContext.runAsNonRoot == true) and
+  (resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.template.spec.securityContext.runAsUser == 1000) and
+  (resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.template.spec.securityContext.runAsGroup == 1000) and
+  (resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.template.spec.securityContext.seccompProfile.type == "RuntimeDefault") and
+  (resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.template.spec.initContainers[0].image | test("^docker.io/keinos/sqlite3:[^@]+@sha256:[0-9a-f]{64}$")) and
+  (resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.template.spec.containers[0].image | test("^docker.io/mazzolino/restic:[^@]+@sha256:[0-9a-f]{64}$")) and
+  (resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.template.spec.initContainers[0].args[0] | contains("/staging/bin/sqlite3")) and
+  (env("SQLITE3_BIN").value == "/staging/bin/sqlite3") and
+  (env("PATH").value | startswith("/staging/bin:")) and
+  (has_mount("/var/lib/gitea")) and
+  (has_mount("/staging")) and
+  (has_mount("/tmp")) and
+  (resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.template.spec.containers[0].volumeMounts
+    | any(.mountPath == "/var/lib/gitea" and .readOnly == true)) and
+  (resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.template.spec.volumes
+    | any(.name == "staging" and .emptyDir.sizeLimit == "512Mi")) and
+  (resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.template.spec.volumes
+    | any(.name == "tmp" and .emptyDir.sizeLimit == "128Mi")) and
+  (env("AWS_ACCESS_KEY_ID").valueFrom.secretKeyRef.name == "forgejo-r2-backup" and env("AWS_ACCESS_KEY_ID").valueFrom.secretKeyRef.optional == false) and
+  (env("AWS_SECRET_ACCESS_KEY").valueFrom.secretKeyRef.name == "forgejo-r2-backup" and env("AWS_SECRET_ACCESS_KEY").valueFrom.secretKeyRef.optional == false) and
+  (env("RESTIC_PASSWORD").valueFrom.secretKeyRef.name == "forgejo-r2-backup" and env("RESTIC_PASSWORD").valueFrom.secretKeyRef.optional == false) and
+  (env("RESTIC_REPOSITORY").valueFrom.secretKeyRef.name == "forgejo-r2-backup" and env("RESTIC_REPOSITORY").valueFrom.secretKeyRef.optional == false) and
+  (map(select(.kind == "Secret")) | length == 0) and
+  (resource("ConfigMap"; "forgejo-source-backup").data["backup-forgejo"]
+    | contains(".backup") and contains("--keep-daily 30") and contains("--read-data-subset=1/20") and contains("data/packages") and contains("data/attachments") and contains("repo-archive"))
+' "$test_root/enabled.json" >/dev/null
+
+printf 'Forgejo backup render gate and enabled CronJob contract are valid\n'

@@ -44,7 +44,19 @@
     export DEEPSEEK_API_KEY="$key"
     exec "$@"
   '';
-  proxyEnvironment = lib.mapAttrsToList (name: value: "${name}=${value}") config.kosmos.wsl.proxy.environment;
+  dshNoProxy = lib.concatStringsSep "," (config.kosmos.wsl.proxy.noProxy
+    ++ [
+      "mail.guion.io"
+      "guionai.cloudflareaccess.com"
+    ]);
+  dshEnvironmentValue = name: value:
+    if builtins.elem name ["NO_PROXY" "no_proxy"]
+    then dshNoProxy
+    else value;
+  dshProxyEnvironment =
+    lib.mapAttrsToList
+    (name: value: "${name}=${dshEnvironmentValue name value}")
+    config.kosmos.wsl.proxy.environment;
 in {
   options.kosmos.wsl.deepseekHarness.enable = lib.mkEnableOption "the DeepSeek Harness web UI";
 
@@ -80,7 +92,7 @@ in {
               "NODE_USE_ENV_PROXY=1"
               "PATH=/home/neil/.local/bin:/home/neil/go/bin:/home/neil/.local/share/npm-global/bin:/run/current-system/sw/bin"
             ]
-            ++ proxyEnvironment;
+            ++ dshProxyEnvironment;
         };
       };
     };

@@ -42,6 +42,9 @@ Encrypted files live in `secrets/` and are safe to commit:
 - `secrets/miniflux-password.age`
 - `secrets/soniox-key.age`
 - `secrets/volcengine-key.age`
+- `secrets/forgejo-r2-backup.age` (optional; encrypted and safe to commit;
+  enables the Forgejo source-recovery backup secret synchronizer when the
+  operator creates it)
 
 They decrypt to:
 
@@ -62,6 +65,9 @@ They decrypt to:
   for a future voice integration)
 - `/home/neil/.config/volcengine/key` (provider-owned Volcengine credential
   retained for a future voice integration)
+- `/run/agenix/forgejo-r2-backup` (root-owned R2/restic environment, synchronized
+  to the local `devops/forgejo-r2-backup` Kubernetes Secret by
+  `forgejo-r2-backup-secret-sync.service`)
 
 `lenos/config.json` in this repo is non-secret and still maps to
 `/home/neil/.config/lenos/config.json`.
@@ -91,7 +97,18 @@ agenix -e secrets/deepseek-key.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/miniflux-password.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/soniox-key.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/volcengine-key.age -i ~/.ssh/agenix_ed25519
+agenix -e secrets/forgejo-r2-backup.age -i ~/.ssh/agenix_ed25519
 ```
+
+The optional Forgejo source-recovery file must contain only the four required
+environment assignments (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+`RESTIC_PASSWORD`, and `RESTIC_REPOSITORY` using restic `s3:` syntax). Keep the
+restic password in an independent password-manager entry before creating the
+file. Do not place values in Nix, Jsonnet, source control, logs, or this
+documentation. The synchronizer validates the encrypted file after the WSL
+switch and creates the Kubernetes Secret only on the local k3s API. The `.age`
+file is the encrypted artifact: after editing it with `agenix`, commit the
+encrypted file and never commit a decrypted copy.
 
 Before deploying changed Woodpecker secrets, Neil must validate both encrypted
 files. The server file contains the three Forgejo/agent keys; the PostgreSQL
@@ -109,7 +126,7 @@ bash -c '
 Commit encrypted files after editing:
 
 ```bash
-git add secrets/ttal.env.age secrets/env.age secrets/kube-config.age secrets/sops-age-keys.age secrets/woodpecker-server-env.age secrets/woodpecker-postgres-env.age
+git add secrets/ttal.env.age secrets/env.age secrets/kube-config.age secrets/sops-age-keys.age secrets/woodpecker-server-env.age secrets/woodpecker-postgres-env.age secrets/forgejo-r2-backup.age
 git commit -m "chore(secrets): update encrypted secrets"
 ```
 

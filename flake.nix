@@ -19,7 +19,7 @@
     moonbit-overlay.url = "github:moonbit-community/moonbit-overlay";
     moonbit-overlay.inputs.nixpkgs.follows = "nixpkgs-unstable";
     kepos-neo = {
-      url = "github:LamplitIsles/kepos/7cd23c7";
+      url = "github:LamplitIsles/kepos/105a22fc963c195f0ec03f6b0a76e037e31e4865";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
@@ -76,6 +76,9 @@
             ${./scripts/build-hindsight-images} \
             ${./scripts/miniflux-mcp-wrapper} \
             ${./scripts/sync-cloudreve-secret} \
+            ${./scripts/backup-forgejo} \
+            ${./scripts/check-forgejo-r2-backup-secret} \
+            ${./scripts/sync-forgejo-r2-backup-secret} \
             ${./scripts/sync-agent-config} \
             ${./scripts/install-tta-lab-go} \
             ${./scripts/sync-anki-secret} \
@@ -99,6 +102,8 @@
             ${./tests/hindsight-render-test} \
             ${./tests/hindsight-recall-eval-test} \
             ${./tests/sync-cloudreve-secret-test} \
+            ${./tests/backup-forgejo-test} \
+            ${./tests/forgejo-backup-render-test} \
             ${./tests/prepare-mihomo-config-test} \
             ${./tests/render-kepos-policy-test} \
             ${./tests/observability-render-test} \
@@ -135,6 +140,8 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-images-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-recall-eval-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-cloudreve-secret-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/backup-forgejo-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-backup-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/prepare-mihomo-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/render-kepos-policy-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/observability-render-test}
@@ -356,6 +363,11 @@
           "::1"
         ];
         expectedNoProxy = nixpkgs.lib.concatStringsSep "," expectedNoProxyEntries;
+        expectedDshNoProxyEntries = expectedNoProxyEntries ++ [
+          "mail.guion.io"
+          "guionai.cloudflareaccess.com"
+        ];
+        expectedDshNoProxy = nixpkgs.lib.concatStringsSep "," expectedDshNoProxyEntries;
         expectedProxyEnvironment = {
           HTTP_PROXY = expectedProxy;
           HTTPS_PROXY = expectedProxy;
@@ -365,6 +377,10 @@
           https_proxy = expectedProxy;
           all_proxy = expectedProxy;
           no_proxy = expectedNoProxy;
+        };
+        expectedDshProxyEnvironment = expectedProxyEnvironment // {
+          NO_PROXY = expectedDshNoProxy;
+          no_proxy = expectedDshNoProxy;
         };
         expectedK3sNoProxy = nixpkgs.lib.concatStringsSep "," (
           expectedNoProxyEntries
@@ -428,7 +444,7 @@
         assert k3sEnvironment.all_proxy == expectedProxy;
         assert k3sEnvironment.NO_PROXY == expectedK3sNoProxy;
         assert k3sEnvironment.no_proxy == expectedK3sNoProxy;
-        assert builtins.all (entry: has entry dshEnvironment) proxyEnvironmentEntries;
+        assert builtins.all (entry: has entry dshEnvironment) (nixpkgs.lib.mapAttrsToList (name: value: "${name}=${value}") expectedDshProxyEnvironment);
         assert builtins.all (entry: has entry temenosEnvironment) proxyEnvironmentEntries;
         assert has "mihomo.service" cfg.systemd.services.k3s.wants;
         assert has "mihomo.service" cfg.systemd.services.k3s.after;

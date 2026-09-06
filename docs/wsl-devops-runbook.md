@@ -182,8 +182,9 @@ whose active API server is not `https://127.0.0.1:26443`.
 
 ## Publisher observability
 
-The publisher is pinned to Kepos commit `7cd23c7`. Its metrics listener binds
-to `10.255.255.1:9475` and is reachable only on the k3s CNI interface; it is
+The publisher is pinned to Kepos commit
+`105a22fc963c195f0ec03f6b0a76e037e31e4865`. Its metrics listener binds to
+`10.255.255.1:9475` and is reachable only on the k3s CNI interface; it is
 not published through Kepos or the application gateway. A dedicated
 VictoriaMetrics single-node deployment scrapes that endpoint every 15 seconds,
 retains 30 days of data, and stores it on the retained local volume at
@@ -311,7 +312,10 @@ closure. Install, upgrade, swap, rollback, and plugin troubleshooting:
 
 Reapplying NixOS or Tanka does not delete the retained Forgejo and Woodpecker
 PostgreSQL data under `/var/lib/kosmos-k3s`. There is no legacy-systemd rollback
-command and no SQLite database to restore.
+command. Forgejo source recovery, including its SQLite-consistent metadata
+snapshot, is documented in the [Forgejo Source Recovery Backup runbook](forgejo-backup.md).
+That backup intentionally excludes Packages/OCI artifacts and is not a full
+Forgejo-instance restore.
 
 If the Woodpecker Secret is missing or stale, repair the encrypted secret,
 rebuild NixOS, and verify the sync unit. To retry without changing the secret:

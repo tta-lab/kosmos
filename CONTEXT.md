@@ -27,3 +27,21 @@ _Avoid_: Callback consumer
 **Watcher**:
 An optional source monitor that creates actions when it observes matching external events.
 _Avoid_: Polling Service
+
+**Source Recovery Backup**:
+An encrypted offsite snapshot that preserves Forgejo's Git repositories and a
+consistent SQLite snapshot, but intentionally excludes Forgejo Packages/OCI
+artifacts. It protects source recovery, not complete Forgejo-instance recovery.
+_Avoid_: Full backup, mirror
+
+**Full Forgejo Backup**:
+A synchronized copy of every Forgejo storage domain, including database,
+repositories, attachments, LFS objects, and Packages/OCI artifacts, from which
+the complete Forgejo instance can be recovered.
+_Avoid_: Source Recovery Backup
+
+**Backup Snapshot**:
+An immutable, encrypted restic record of a selected source-recovery state.
+Snapshots share unchanged data blocks; retention removes only snapshots whose
+data is no longer shared.
+_Avoid_: Archive, mirror

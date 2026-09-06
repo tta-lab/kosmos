@@ -72,8 +72,9 @@ separate dynamic manual bootstrap fallback. See [environment ownership](docs/env
 
 ## Publisher observability
 
-The WSL Kepos publisher is pinned to commit `7cd23c7` and exposes Prometheus
-metrics on the CNI-only listener `10.255.255.1:9475`. A dedicated local
+The WSL Kepos publisher is pinned to commit
+`105a22fc963c195f0ec03f6b0a76e037e31e4865` and exposes Prometheus metrics on
+the CNI-only listener `10.255.255.1:9475`. A dedicated local
 VictoriaMetrics and Grafana stack scrapes and displays those metrics without
 the Energy/ClickHouse observability stack. Grafana is available through the
 canonical gateway at `http://grafana.localhost:17480` and uses the pinned

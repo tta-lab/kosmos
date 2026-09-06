@@ -1,0 +1,158 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
+backup_script="$repo_root/scripts/backup-forgejo"
+test_root="$(mktemp -d)"
+trap 'rm -rf -- "$test_root"' EXIT
+
+bin_dir="$test_root/bin"
+data_root="$test_root/data"
+staging_root="$test_root/staging"
+sqlite_log="$test_root/sqlite.log"
+restic_log="$test_root/restic.log"
+mkdir -p "$bin_dir" "$data_root/data/lfs" "$data_root/repositories" \
+  "$data_root/data/packages" "$data_root/data/attachments" "$data_root/data/repo-archive" \
+  "$data_root/log" "$staging_root"
+printf 'live database placeholder\n' >"$data_root/data/forgejo.db"
+printf 'git object\n' >"$data_root/repositories/example.git"
+printf 'lfs object\n' >"$data_root/data/lfs/object"
+
+cat >"$bin_dir/sqlite3" <<'EOF'
+#!@bash@
+set -euo pipefail
+printf 'sqlite3' >>"$SQLITE_LOG"
+printf ' %q' "$@" >>"$SQLITE_LOG"
+printf '\n' >>"$SQLITE_LOG"
+if [[ "${2:-}" == .backup\ * ]]; then
+  backup_arg="${2#.backup }"
+  destination="${backup_arg:1:${#backup_arg}-2}"
+  printf 'consistent sqlite snapshot\n' >"$destination"
+elif [[ "${2:-}" == 'PRAGMA integrity_check;' ]]; then
+  printf '%s\n' "${SQLITE_RESULT:-ok}"
+else
+  echo "unexpected sqlite invocation" >&2
+  exit 2
+fi
+EOF
+
+cat >"$bin_dir/restic" <<'EOF'
+#!@bash@
+set -euo pipefail
+command_name="${1:-}"
+shift || true
+printf '%s' "$command_name" >>"$RESTIC_LOG"
+printf ' %q' "$@" >>"$RESTIC_LOG"
+printf '\n' >>"$RESTIC_LOG"
+case "$command_name" in
+  snapshots)
+    [[ -f "$RESTIC_INITIALIZED" ]]
+    ;;
+  init)
+    if [[ "${RESTIC_INIT_FAIL:-0}" == 1 ]]; then
+      exit 1
+    fi
+    : >"$RESTIC_INITIALIZED"
+    ;;
+  backup)
+    if [[ "${RESTIC_BACKUP_FAIL:-0}" == 1 ]]; then
+      printf 'secret-bearing restic error repository=%s token=%s\n' "$RESTIC_REPOSITORY" "${RESTIC_ERROR_TOKEN:-unset}" >&2
+      exit 23
+    fi
+    ;;
+  forget|check)
+    ;;
+  *)
+    echo "unexpected restic invocation: $command_name" >&2
+    exit 2
+    ;;
+esac
+EOF
+sed -i "s|@bash@|$BASH|" "$bin_dir/sqlite3" "$bin_dir/restic"
+chmod +x "$bin_dir/sqlite3" "$bin_dir/restic"
+
+export PATH="$bin_dir:$PATH"
+export SQLITE_LOG="$sqlite_log"
+export RESTIC_LOG="$restic_log"
+export RESTIC_INITIALIZED="$test_root/restic-initialized"
+export FORGEJO_DATA_ROOT="$data_root"
+export FORGEJO_BACKUP_STAGING="$staging_root"
+export RESTIC_CACHE_DIR="$test_root/cache"
+export HOME="$test_root/home"
+export RESTIC_REPOSITORY='s3:test.example.invalid/forgejo'
+export RESTIC_PASSWORD='test-restic-password'
+export AWS_ACCESS_KEY_ID='test-access-key'
+export AWS_SECRET_ACCESS_KEY='test-secret-key'
+export SQLITE_RESULT='ok'
+export RESTIC_ERROR_TOKEN='secret-bearing-restic-error'
+unset RESTIC_BACKUP_FAIL RESTIC_INIT_FAIL
+
+assert_contains() {
+  local needle=$1
+  local file=$2
+  grep -F -- "$needle" "$file" >/dev/null || {
+    printf 'expected %s in %s\n' "$needle" "$file" >&2
+    exit 1
+  }
+}
+
+if ! output="$(bash "$backup_script" 2>&1)"; then
+  printf 'successful fake backup failed:\n%s\n' "$output" >&2
+  exit 1
+fi
+assert_contains 'Forgejo SQLite snapshot validated' <(printf '%s\n' "$output")
+assert_contains 'Forgejo source snapshot uploaded' <(printf '%s\n' "$output")
+assert_contains 'Forgejo source recovery retention applied (30 daily snapshots)' <(printf '%s\n' "$output")
+assert_contains 'Forgejo restic repository check passed (read-data-subset=1/20)' <(printf '%s\n' "$output")
+[[ "$(stat -c '%a' "$staging_root/forgejo.db")" == 600 ]]
+for phase in probe init backup forget check; do
+  [[ "$(stat -c '%a' "$staging_root/restic-$phase.stderr")" == 600 ]]
+done
+
+assert_contains 'snapshots --no-lock' "$restic_log"
+assert_contains 'init' "$restic_log"
+backup_line="$(grep '^backup ' "$restic_log")"
+for selected_path in "$data_root/repositories" "$data_root/data/lfs" "$staging_root/forgejo.db"; do
+  [[ "$backup_line" == *"$selected_path"* ]]
+done
+for excluded_path in "$data_root/data/packages" "$data_root/data/attachments" "$data_root/log" "$data_root/data/repo-archive" "$data_root/data/forgejo.db"; do
+  [[ "$backup_line" == *"--exclude $excluded_path"* ]]
+done
+assert_contains 'forget --tag forgejo-source-recovery --keep-daily 30 --prune' "$restic_log"
+assert_contains 'check --read-data-subset=1/20' "$restic_log"
+forget_line="$(grep -n '^forget ' "$restic_log" | cut -d: -f1)"
+check_line="$(grep -n '^check ' "$restic_log" | cut -d: -f1)"
+(( forget_line < check_line ))
+
+: >"$sqlite_log"
+: >"$restic_log"
+export SQLITE_RESULT='not ok'
+if bash "$backup_script" >/dev/null 2>&1; then
+  echo 'invalid SQLite result was accepted' >&2
+  exit 1
+fi
+[[ ! -s "$restic_log" ]]
+
+: >"$sqlite_log"
+: >"$restic_log"
+export SQLITE_RESULT='ok'
+export RESTIC_BACKUP_FAIL=1
+if output="$(bash "$backup_script" 2>&1)"; then
+  echo 'restic backup failure was accepted' >&2
+  exit 1
+fi
+assert_contains 'Forgejo restic backup failed' <(printf '%s\n' "$output")
+if [[ "$output" == *"$RESTIC_REPOSITORY"* || "$output" == *"$RESTIC_ERROR_TOKEN"* ]]; then
+  echo 'secret-bearing restic stderr reached the backup output' >&2
+  exit 1
+fi
+assert_contains "$RESTIC_REPOSITORY" "$staging_root/restic-backup.stderr"
+assert_contains "$RESTIC_ERROR_TOKEN" "$staging_root/restic-backup.stderr"
+[[ "$(stat -c '%a' "$staging_root/restic-backup.stderr")" == 600 ]]
+assert_contains 'backup ' "$restic_log"
+if grep -qE '^(forget|check) ' "$restic_log"; then
+  echo 'retention or check ran after restic backup failure' >&2
+  exit 1
+fi
+
+printf 'Forgejo backup behavior covers SQLite validation, selected sources, retention, and failure stops\n'
