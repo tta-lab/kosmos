@@ -17,6 +17,7 @@
       "forgejo.localhost"
       "woodpecker.localhost"
       "grafana.localhost"
+      "impri.localhost"
     ]
   );
 in {
@@ -35,6 +36,7 @@ in {
     "codex-bridge.localhost"
     "erpnext.localhost"
     "grafana.localhost"
+    "impri.localhost"
   ];
 
   networking.firewall.interfaces.cni0.allowedTCPPorts = [
@@ -120,5 +122,6 @@ in {
     "d /var/lib/kosmos-k3s/observability 0750 root root - -"
     "d /var/lib/kosmos-k3s/observability/victoria-metrics 0750 65534 65534 - -"
     "d /var/lib/kosmos-k3s/observability/grafana 0750 472 472 - -"
+    "d /var/lib/kosmos-k3s/impri 0750 10001 10001 - -"
   ];
 }

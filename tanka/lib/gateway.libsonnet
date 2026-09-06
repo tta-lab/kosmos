@@ -29,6 +29,7 @@ local gatewayLabels = labels('canonical-gateway');
         rewrite name exact codex-bridge.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact erpnext.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact grafana.localhost canonical-gateway.devops.svc.cluster.local
+        rewrite name exact impri.localhost canonical-gateway.devops.svc.cluster.local
       |||,
     },
   },
@@ -122,6 +123,11 @@ local gatewayLabels = labels('canonical-gateway');
           @grafana host grafana.localhost
           handle @grafana {
             reverse_proxy grafana.observability.svc.cluster.local:3000
+          }
+
+          @impri host impri.localhost
+          handle @impri {
+            reverse_proxy impri-ui.impri.svc.cluster.local:8080
           }
 
           handle {

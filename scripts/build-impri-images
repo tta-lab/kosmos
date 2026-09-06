@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+impri_revision="edc8147eab60e74d87859a019db81ef59e801e58"
+image_tag="${impri_revision:0:8}"
+podman_bin="${PODMAN_BIN:-podman}"
+load_images=0
+
+usage() {
+  cat <<'EOF'
+usage: build-impri-images [--load]
+
+Build the pinned Impri server and UI images from the registered `impri`
+checkout. --load also imports them into the local k3s containerd store.
+EOF
+}
+
+while (($#)); do
+  case "$1" in
+    --load)
+      load_images=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      printf 'unknown argument: %s\n' "$1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+require() {
+  command -v "$1" >/dev/null 2>&1 || {
+    printf 'missing required command: %s\n' "$1" >&2
+    exit 1
+  }
+}
+
+require git
+require tar
+require "$podman_bin"
+
+if [[ -n "${IMPRI_SOURCE:-}" ]]; then
+  impri_source="$IMPRI_SOURCE"
+else
+  require project
+  impri_source="$(project jump impri)"
+fi
+
+if [[ ! -d "$impri_source/.git" ]]; then
+  printf 'Impri checkout not found at %s; run: og clone https://gitlab.com/sekera.radim/impri.git\n' "$impri_source" >&2
+  exit 1
+fi
+
+git -C "$impri_source" cat-file -e "${impri_revision}^{commit}" 2>/dev/null || {
+  printf 'Impri checkout does not contain pinned revision %s; run: og pull --project impri\n' "$impri_revision" >&2
+  exit 1
+}
+
+build_dir="$(mktemp -d "${TMPDIR:-/tmp}/kosmos-impri-build.XXXXXX")"
+trap 'rm -rf -- "$build_dir"' EXIT
+chmod 700 "$build_dir"
+git -C "$impri_source" archive "$impri_revision" | tar -xf - -C "$build_dir"
+
+server_image="localhost/kosmos/impri-server:${image_tag}"
+ui_image="localhost/kosmos/impri-ui:${image_tag}"
+image_source="https://gitlab.com/sekera.radim/impri"
+
+"$podman_bin" build \
+  --pull=missing \
+  --tag "$server_image" \
+  --label "org.opencontainers.image.source=$image_source" \
+  --label "org.opencontainers.image.revision=$impri_revision" \
+  --file "$build_dir/docker/server.Dockerfile" \
+  "$build_dir"
+
+"$podman_bin" build \
+  --pull=missing \
+  --tag "$ui_image" \
+  --label "org.opencontainers.image.source=$image_source" \
+  --label "org.opencontainers.image.revision=$impri_revision" \
+  --file "$build_dir/ui/Dockerfile" \
+  "$build_dir/ui"
+
+for image in "$server_image" "$ui_image"; do
+  labels="$("$podman_bin" image inspect --format '{{json .Config.Labels}}' "$image")"
+  [[ "$labels" == *"$impri_revision"* ]] || {
+    printf '%s is missing the pinned Impri revision label\n' "$image" >&2
+    exit 1
+  }
+done
+
+"$podman_bin" run --rm --network=none --entrypoint node "$server_image" --version >/dev/null
+"$podman_bin" run --rm --network=none --entrypoint nginx "$ui_image" -v >/dev/null 2>&1
+
+if [[ "$load_images" -eq 1 ]]; then
+  require sudo
+  require k3s
+  archive_dir="$build_dir/oci"
+  mkdir -m 700 "$archive_dir"
+  "$podman_bin" save --format oci-archive --output "$archive_dir/impri-server.tar" "$server_image"
+  "$podman_bin" save --format oci-archive --output "$archive_dir/impri-ui.tar" "$ui_image"
+  sudo -- k3s ctr images import "$archive_dir/impri-server.tar"
+  sudo -- k3s ctr images import "$archive_dir/impri-ui.tar"
+  printf 'loaded %s and %s into local k3s containerd\n' "$server_image" "$ui_image"
+else
+  printf 'built and verified %s and %s (use --load for local k3s)\n' "$server_image" "$ui_image"
+fi

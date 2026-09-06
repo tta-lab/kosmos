@@ -10,6 +10,7 @@ cloudreve_environment := "tanka/environments/cloudreve"
 hindsight_environment := "tanka/environments/hindsight"
 codex_bridge_environment := "tanka/environments/codex-bridge"
 observability_environment := "tanka/environments/observability"
+impri_environment := "tanka/environments/impri"
 kubeconfig := env_var_or_default("KUBECONFIG", "/etc/rancher/k3s/k3s.yaml")
 api_server := "https://127.0.0.1:26443"
 
@@ -25,10 +26,12 @@ tanka-test:
   @tk eval tests/jsonnet/hindsight.test.jsonnet >/dev/null
   @tk eval tests/jsonnet/codex-bridge.test.jsonnet >/dev/null
   @tk eval tests/jsonnet/gateway.test.jsonnet >/dev/null
+  @tk eval tests/jsonnet/impri.test.jsonnet >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ hindsight_environment }}" >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ codex_bridge_environment }}" >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ environment }}" >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ observability_environment }}" >/dev/null
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ impri_environment }}" >/dev/null
   @bash tests/observability-render-test
 
 diff target=environment: _local-k3s
@@ -105,6 +108,35 @@ notes-deploy: notes-apply
 
 notes-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n notes -o wide
+
+impri-show:
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ impri_environment }}"
+
+impri-diff: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ impri_environment }}"
+
+impri-secrets: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" scripts/init-impri-secrets
+
+impri-apply: _local-k3s impri-secrets
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ impri_environment }}"
+
+impri-deploy: impri-images-load impri-apply
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}"
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+
+impri-status: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n impri -o wide
+
+impri-images:
+  @scripts/build-impri-images
+
+impri-images-load:
+  @scripts/build-impri-images --load
+
+impri-logs: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl logs deployment/impri-server -n impri --tail=200
 
 hindsight-show:
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ hindsight_environment }}"
