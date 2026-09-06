@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-impri_revision="81d941502d0cd4c5c284e8dd844a1155c9a58446"
+impri_revision="0dc63b750d2c4537bd41fd37394ea0bc6a634f52"
 image_tag="${impri_revision:0:8}"
 podman_bin="${PODMAN_BIN:-podman}"
 load_images=0

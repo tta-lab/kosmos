@@ -125,6 +125,14 @@ local gatewayLabels = labels('canonical-gateway');
             reverse_proxy grafana.observability.svc.cluster.local:3000
           }
 
+          @impriTelegramWebhook {
+            host approve.guion.io
+            path /v1/integrations/telegram/webhook/*
+          }
+          handle @impriTelegramWebhook {
+            reverse_proxy server.impri.svc.cluster.local:8484
+          }
+
           @impri host impri.localhost
           handle @impri {
             reverse_proxy impri-ui.impri.svc.cluster.local:8080

@@ -29,6 +29,16 @@ std.assertEqual(
   contains(caddy, 'reverse_proxy grafana.observability.svc.cluster.local:3000'),
   true
 ) &&
+std.assertEqual(contains(caddy, '@impriTelegramWebhook {'), true) &&
+std.assertEqual(contains(caddy, 'host approve.guion.io'), true) &&
+std.assertEqual(
+  contains(caddy, 'path /v1/integrations/telegram/webhook/*'),
+  true
+) &&
+std.assertEqual(
+  contains(caddy, 'reverse_proxy server.impri.svc.cluster.local:8484'),
+  true
+) &&
 std.assertEqual(contains(caddy, '@impri host impri.localhost'), true) &&
 std.assertEqual(
   contains(caddy, 'reverse_proxy impri-ui.impri.svc.cluster.local:8080'),
@@ -54,6 +64,7 @@ std.assertEqual(
   contains(dns, 'rewrite name exact impri.localhost canonical-gateway.devops.svc.cluster.local'),
   true
 ) &&
+std.assertEqual(contains(caddy, 'respond "unknown host" 421'), true) &&
 std.assertEqual(std.member(container.args, '--watch'), true) &&
 std.assertEqual(configMount, {
   name: 'config',

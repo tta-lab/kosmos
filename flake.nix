@@ -74,6 +74,7 @@
             ${./scripts/init-hindsight-secrets} \
             ${./scripts/init-observability-secrets} \
             ${./scripts/build-hindsight-images} \
+            ${./scripts/build-impri-images} \
             ${./scripts/miniflux-mcp-wrapper} \
             ${./scripts/sync-cloudreve-secret} \
             ${./scripts/backup-forgejo} \
@@ -157,9 +158,11 @@
           tk eval ${./.}/tests/jsonnet/hindsight.test.jsonnet >/dev/null
           tk eval ${./.}/tests/jsonnet/codex-bridge.test.jsonnet >/dev/null
           tk eval ${./.}/tests/jsonnet/gateway.test.jsonnet >/dev/null
+          tk eval ${./.}/tests/jsonnet/impri.test.jsonnet >/dev/null
           tk show --dangerous-allow-redirect ${./.}/tanka/environments/hindsight >/dev/null
           tk show --dangerous-allow-redirect ${./.}/tanka/environments/codex-bridge >/dev/null
           tk show --dangerous-allow-redirect ${./.}/tanka/environments/devops >/dev/null
+          tk show --dangerous-allow-redirect ${./.}/tanka/environments/impri >/dev/null
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-gateway-render-test}
@@ -194,6 +197,7 @@
         assert cfg.services.cloudflared.enable;
         assert tunnel.default == "http_status:404";
         assert tunnel.credentialsFile == cfg.age.secrets.cloudflared-kepos-credentials.path;
+        assert tunnel.ingress."approve.guion.io" == "http://127.0.0.1:17480";
         assert tunnel.ingress."test.guion.io" == "http://127.0.0.1:8080";
         assert cfg.systemd.services.cloudflared-tunnel-kepos.environment.TUNNEL_TRANSPORT_PROTOCOL == "http2";
           pkgs.runCommand "kepos-tunnel-module-check" {} "touch $out";

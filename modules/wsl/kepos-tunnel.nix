@@ -33,6 +33,7 @@ in {
         tunnels.kepos = {
           credentialsFile = config.age.secrets.cloudflared-kepos-credentials.path;
           default = "http_status:404";
+          ingress."approve.guion.io" = "http://127.0.0.1:17480";
         };
       };
 
