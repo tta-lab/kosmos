@@ -23,6 +23,7 @@ Tanka.
 - ERPNext: `http://erpnext.localhost:17480` through Kepos
 - Grafana: `http://grafana.localhost:17480` through the loopback gateway and
   full-trust Kepos subscribers
+- Impri: `http://impri.localhost:17480` through Kepos (Mac + Pixel 7a)
 
 For Kubernetes-backed HTTP apps, Caddy binds the host gateway only on
 `127.0.0.1:17480`. CoreDNS rewrites their canonical `.localhost` names to that
@@ -63,6 +64,10 @@ Kepos publishes application service IDs including:
 - `grafana` targets the canonical gateway port `17480`; the preserved HTTP Host
   header selects the Kosmos-owned observability Grafana route. It is restricted
   to the full-trust subscriber set.
+- `impri` targets the canonical gateway port `17480`; the preserved HTTP Host
+  header selects the private Approval Inbox route. It is restricted to the Mac
+  and Pixel 7a subscribers. See [impri.md](impri.md) for deployment and local
+  SQLite persistence.
 
 ## Kepos service model: HTTP web services vs raw TCP
 
@@ -73,7 +78,7 @@ Desktop / CLI), not by the publisher:
 
 - **Gateway-routed HTTP web services** (`bookorbit`, `forgejo`,
   `woodpecker`, `memos`, `anki`, `hindsight`, `hindsightui`, `codex-bridge`,
-  `miniflux`, `ente`, `erpnext`, `grafana`, …): target the canonical gateway port `17480` and are
+  `miniflux`, `ente`, `erpnext`, `grafana`, `impri`, …): target the canonical gateway port `17480` and are
   routed by the preserved `Host` header.
 - **Direct loopback HTTP services** (`dsh`): a Home Manager user service binds
   its own `127.0.0.1` port and Kepos publishes that port directly. It has no

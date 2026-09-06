@@ -88,6 +88,10 @@ local guaziAllow = [subscribers.guazi.public_key];
 local svenMacAllow = [subscribers['sven-mac'].public_key];
 local codexBridgeAllow = [subscribers['codex-bridge'].public_key];
 local liliAllow = [subscribers.lili.public_key];
+local impriAllow = [
+  subscribers.mac.public_key,
+  subscribers.pixel7a.public_key,
+];
 local service(id, name, targetPort, allow, kind = null) = {
   id: id,
   name: name,
@@ -114,6 +118,7 @@ std.manifestTomlEx({
       service('grafana', 'Grafana', 17480, fullTrustAllow),
       service('hindsight', 'Hindsight', 17480, fullTrustAllow),
       service('hindsightui', 'Hindsight UI', 17480, fullTrustAllow),
+      service('impri', 'Impri', 17480, impriAllow),
       service('memos', 'Memos', 17480, personalDevicesAllow + baiheAllow + guaziAllow),
       service('mihomo', 'Mihomo', 7890, personalDevicesAllow + liliAllow),
       service('mihomo-dashboard', 'Mihomo Dashboard', 9090, fullTrustAllow),

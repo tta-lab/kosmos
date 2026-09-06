@@ -377,6 +377,7 @@
             "forgejo.localhost"
             "woodpecker.localhost"
             "grafana.localhost"
+            "impri.localhost"
           ]
         );
         has = value: list: builtins.elem value list;
