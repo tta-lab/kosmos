@@ -62,8 +62,9 @@ assert {device["label"] for device in subscribers} == {
 keys = {device["public_key"] for device in subscribers}
 assert len(keys) == len(subscribers)
 assert "allow" not in publisher
-assert publisher["max_publisher_to_subscriber_bps"] == 2000000
 services = {service["id"]: service for service in publisher["services"]}
+assert "max_publisher_to_subscriber_bps" not in publisher
+assert services["forgejo"]["max_publisher_to_subscriber_bps"] == 2000000
 assert set(services["grafana"]["allow"]) == {
     next(device["public_key"] for device in subscribers if device["label"] == "mac"),
     next(device["public_key"] for device in subscribers if device["label"] == "nuc-win"),
