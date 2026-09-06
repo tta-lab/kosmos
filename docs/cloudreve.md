@@ -35,8 +35,11 @@ root filesystem.
 Install the Windows logon task once from an elevated Windows PowerShell. It
 copies its runtime script into `%LOCALAPPDATA%`, takes only the verified Micron
 disk offline in Windows, attaches it bare to WSL, and keeps the NixOS WSL
-instance alive. It also reattaches the disk after a WSL shutdown and Task
-Scheduler retries a failed task execution up to three times:
+instance alive without leaving a visible PowerShell window. A one-minute
+recovery trigger restarts the task if its persistent process is interrupted;
+healthy executions ignore those repeated triggers. It also reattaches the disk
+after a WSL shutdown and Task Scheduler retries a failed task execution up to
+three times:
 
 ```powershell
 & "\\wsl.localhost\NixOS\home\neil\code\projects\tta-lab\kosmos\windows\install-cloudreve-wsl-disk-task.ps1"
@@ -46,6 +49,9 @@ The task is named `Kosmos-Cloudreve-WSL-Disk`. Its log is
 `%LOCALAPPDATA%\Kosmos\cloudreve-wsl-disk.log`. Do not use `wsl --unmount`
 or `wsl --shutdown` to intentionally detach the disk while Cloudreve is in
 use; the task will restart it shortly afterward.
+
+Rerun the installer after changing either Windows script. Updating the checkout
+does not reconcile an already registered task or its copy in `%LOCALAPPDATA%`.
 
 ## Deploy and verify
 
