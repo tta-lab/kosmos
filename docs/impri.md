@@ -14,13 +14,13 @@ loss of the WSL host or its disk.
 
 ## Image source
 
-Impri does not publish container images. Kosmos builds the upstream server and
-UI Dockerfiles from pinned commit
-`edc8147eab60e74d87859a019db81ef59e801e58`. Obtain and register the checkout
+Impri does not publish container images. Kosmos builds the server and UI
+Dockerfiles from the security-updated fork at pinned commit
+`81d941502d0cd4c5c284e8dd844a1155c9a58446`. Obtain and register the checkout
 once, then build or load the images:
 
 ```bash
-og clone https://gitlab.com/sekera.radim/impri.git
+og clone https://github.com/birdmanmandbir/impri.git --alias impri-birdman
 just impri-images
 just impri-images-load
 ```

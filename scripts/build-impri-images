@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-impri_revision="edc8147eab60e74d87859a019db81ef59e801e58"
+impri_revision="81d941502d0cd4c5c284e8dd844a1155c9a58446"
 image_tag="${impri_revision:0:8}"
 podman_bin="${PODMAN_BIN:-podman}"
 load_images=0
@@ -10,7 +10,7 @@ usage() {
   cat <<'EOF'
 usage: build-impri-images [--load]
 
-Build the pinned Impri server and UI images from the registered `impri`
+Build the pinned Impri server and UI images from the registered `impri-birdman`
 checkout. --load also imports them into the local k3s containerd store.
 EOF
 }
@@ -48,16 +48,16 @@ if [[ -n "${IMPRI_SOURCE:-}" ]]; then
   impri_source="$IMPRI_SOURCE"
 else
   require project
-  impri_source="$(project jump impri)"
+  impri_source="$(project jump impri-birdman)"
 fi
 
 if [[ ! -d "$impri_source/.git" ]]; then
-  printf 'Impri checkout not found at %s; run: og clone https://gitlab.com/sekera.radim/impri.git\n' "$impri_source" >&2
+  printf 'Impri checkout not found at %s; run: og clone https://github.com/birdmanmandbir/impri.git --alias impri-birdman\n' "$impri_source" >&2
   exit 1
 fi
 
 git -C "$impri_source" cat-file -e "${impri_revision}^{commit}" 2>/dev/null || {
-  printf 'Impri checkout does not contain pinned revision %s; run: og pull --project impri\n' "$impri_revision" >&2
+  printf 'Impri checkout does not contain pinned revision %s; run: og pull --project impri-birdman\n' "$impri_revision" >&2
   exit 1
 }
 
@@ -68,7 +68,7 @@ git -C "$impri_source" archive "$impri_revision" | tar -xf - -C "$build_dir"
 
 server_image="localhost/kosmos/impri-server:${image_tag}"
 ui_image="localhost/kosmos/impri-ui:${image_tag}"
-image_source="https://gitlab.com/sekera.radim/impri"
+image_source="https://github.com/birdmanmandbir/impri"
 
 "$podman_bin" build \
   --pull=missing \
