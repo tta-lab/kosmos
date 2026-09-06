@@ -16,9 +16,11 @@ instructions. It is outside this repository and untouched by
 
 ## GitHub & Forgejo
 
-- Use the `og` tool instead of `git` for clone, pull, and push, and instead
-  of `gh` or `tea` for forge authentication status, pull request lifecycle,
-  comments, and CI status or logs.
+- Use `og` commands instead of `git` for clone, pull, and push. Use the
+  harness's typed `og` tools for pull-request creation and modification:
+  Organon's MCP tools in Codex and its native typed adapter in Pi. Use `og`
+  for forge authentication status, comments, and CI status or logs; keep
+  governed forge workflows off `gh` and `tea`.
 
 ## Tools
 
