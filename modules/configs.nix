@@ -205,6 +205,7 @@ in {
             merge.conflictstyle = "diff3";
             pull.rebase = true;
             fetch.prune = true;
+            http.version = "HTTP/1.1";
             tea.login = "forgejo";
           };
         };
