@@ -24,8 +24,12 @@ Unblock-File -LiteralPath $destination -ErrorAction SilentlyContinue
 $userId = [Security.Principal.WindowsIdentity]::GetCurrent().Name
 $action = New-ScheduledTaskAction `
   -Execute (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe') `
-  -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$destination`""
-$trigger = New-ScheduledTaskTrigger -AtLogOn -User $userId
+  -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$destination`""
+$logonTrigger = New-ScheduledTaskTrigger -AtLogOn -User $userId
+$recoveryTrigger = New-ScheduledTaskTrigger `
+  -Once `
+  -At (Get-Date).AddMinutes(1) `
+  -RepetitionInterval ([TimeSpan]::FromMinutes(1))
 $taskPrincipal = New-ScheduledTaskPrincipal -UserId $userId -LogonType Interactive -RunLevel Highest
 $settings = New-ScheduledTaskSettingsSet `
   -AllowStartIfOnBatteries `
@@ -35,7 +39,11 @@ $settings = New-ScheduledTaskSettingsSet `
   -RestartCount 3 `
   -RestartInterval ([TimeSpan]::FromMinutes(1)) `
   -MultipleInstances IgnoreNew
-$task = New-ScheduledTask -Action $action -Trigger $trigger -Principal $taskPrincipal -Settings $settings
+$task = New-ScheduledTask `
+  -Action $action `
+  -Trigger @($logonTrigger, $recoveryTrigger) `
+  -Principal $taskPrincipal `
+  -Settings $settings
 
 Register-ScheduledTask -TaskName $taskName -InputObject $task -Force | Out-Null
 Start-ScheduledTask -TaskName $taskName
