@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+clipcascade_revision="faf6ac0688057b79933408470452eb02afef9625"
+image_tag="${clipcascade_revision:0:8}"
+image="localhost/kosmos/clipcascade:${image_tag}"
+image_source="https://github.com/Sathvik-Rao/ClipCascade"
+podman_bin="${PODMAN_BIN:-podman}"
+load_image=0
+
+usage() {
+  cat <<'EOF'
+usage: build-clipcascade-image [--load]
+
+Build the pinned ClipCascade 3.2.0 server image from the registered
+clipcascade checkout. --load also imports the image into local k3s.
+EOF
+}
+
+while (($#)); do
+  case "$1" in
+    --load)
+      load_image=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      printf 'unknown argument: %s\n' "$1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+require() {
+  command -v "$1" >/dev/null 2>&1 || {
+    printf 'missing required command: %s\n' "$1" >&2
+    exit 1
+  }
+}
+
+require git
+require tar
+require "$podman_bin"
+
+if [[ -n "${CLIPCASCADE_SOURCE:-}" ]]; then
+  clipcascade_source="$CLIPCASCADE_SOURCE"
+else
+  require project
+  clipcascade_source="$(project jump clipcascade)"
+fi
+
+if [[ ! -d "$clipcascade_source" ]]; then
+  printf 'ClipCascade checkout not found at %s; run: og clone %s --alias clipcascade\n' \
+    "$clipcascade_source" "$image_source" >&2
+  exit 1
+fi
+
+if ! git -C "$clipcascade_source" rev-parse --git-dir >/dev/null 2>&1; then
+  printf 'ClipCascade checkout is not a Git repository: %s\n' "$clipcascade_source" >&2
+  exit 1
+fi
+
+git -C "$clipcascade_source" cat-file -e "${clipcascade_revision}^{commit}" 2>/dev/null || {
+  printf 'ClipCascade checkout does not contain pinned revision %s; run: og pull --project clipcascade\n' \
+    "$clipcascade_revision" >&2
+  exit 1
+}
+
+build_dir="$(mktemp -d "${TMPDIR:-/tmp}/kosmos-clipcascade-build.XXXXXX")"
+trap 'rm -rf -- "$build_dir"' EXIT
+chmod 700 "$build_dir"
+
+# git archive is the source boundary: ignored files, build outputs, and
+# working-tree edits never enter the image build context.
+git -C "$clipcascade_source" archive --format=tar "$clipcascade_revision" \
+  | tar -xf - -C "$build_dir"
+
+"$podman_bin" build \
+  --pull=missing \
+  --tag "$image" \
+  --label "org.opencontainers.image.source=$image_source" \
+  --label "org.opencontainers.image.revision=$clipcascade_revision" \
+  --label "org.opencontainers.image.version=3.2.0" \
+  --file "$repo_root/images/clipcascade/Dockerfile" \
+  "$build_dir"
+
+labels="$("$podman_bin" image inspect --format '{{json .Config.Labels}}' "$image")"
+[[ "$labels" == *"$clipcascade_revision"* ]] || {
+  printf '%s is missing the pinned ClipCascade revision label\n' "$image" >&2
+  exit 1
+}
+
+# This proves the final JRE image can execute without a network namespace. The
+# image build may fetch Maven dependencies, but verification is deliberately
+# offline and never contacts a registry or service.
+"$podman_bin" run --rm --network=none --entrypoint java "$image" -version >/dev/null 2>&1
+
+if [[ "$load_image" -eq 1 ]]; then
+  require sudo
+  require k3s
+  archive_dir="$(mktemp -d "${TMPDIR:-/tmp}/kosmos-clipcascade-load.XXXXXX")"
+  trap 'rm -rf -- "$build_dir" "$archive_dir"' EXIT
+  chmod 700 "$archive_dir"
+
+  "$podman_bin" save --format oci-archive --output "$archive_dir/clipcascade.tar" "$image"
+  sudo -- k3s ctr images import "$archive_dir/clipcascade.tar"
+  printf 'loaded %s into local k3s containerd\n' "$image"
+else
+  printf 'built and verified %s (use --load for local k3s)\n' "$image"
+fi

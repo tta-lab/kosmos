@@ -18,6 +18,7 @@
       "woodpecker.localhost"
       "grafana.localhost"
       "impri.localhost"
+      "clipcascade.localhost"
     ]
   );
 in {
@@ -37,6 +38,7 @@ in {
     "erpnext.localhost"
     "grafana.localhost"
     "impri.localhost"
+    "clipcascade.localhost"
   ];
 
   networking.firewall.interfaces.cni0.allowedTCPPorts = [
@@ -123,5 +125,6 @@ in {
     "d /var/lib/kosmos-k3s/observability/victoria-metrics 0750 65534 65534 - -"
     "d /var/lib/kosmos-k3s/observability/grafana 0750 472 472 - -"
     "d /var/lib/kosmos-k3s/impri 0750 10001 10001 - -"
+    "d /var/lib/kosmos-k3s/clipcascade 0750 10001 10001 - -"
   ];
 }

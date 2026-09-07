@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+test_root="$(mktemp -d)"
+trap 'rm -rf "$test_root"' EXIT
+
+source_dir="$test_root/clipcascade"
+fake_bin="$test_root/bin"
+mkdir -p "$source_dir" "$fake_bin"
+
+real_git="$(command -v git)"
+"$real_git" -C "$source_dir" init -q
+"$real_git" -C "$source_dir" config user.email test@example.invalid
+"$real_git" -C "$source_dir" config user.name test
+printf 'tracked source\n' >"$source_dir/tracked.txt"
+"$real_git" -C "$source_dir" add tracked.txt
+"$real_git" -C "$source_dir" commit -q -m source
+printf 'must not enter archive\n' >"$source_dir/ignored.txt"
+
+cat >"$fake_bin/git" <<'EOF'
+#!@bash@
+set -euo pipefail
+printf '%s\n' "$*" >>"$TEST_GIT_LOG"
+if [[ "${TEST_GIT_FAIL:-no}" == yes && "$*" == *'cat-file'* ]]; then
+  exit 1
+fi
+if [[ "$*" == *'cat-file'* ]]; then
+  exit 0
+fi
+if [[ "$*" == *'archive'* ]]; then
+  exec "$TEST_REAL_GIT" -C "$TEST_SOURCE" archive --format=tar HEAD
+fi
+exec "$TEST_REAL_GIT" "$@"
+EOF
+sed -i "s|@bash@|$BASH|" "$fake_bin/git"
+chmod +x "$fake_bin/git"
+
+cat >"$fake_bin/podman" <<'EOF'
+#!@bash@
+set -euo pipefail
+printf '%s\n' "$*" >>"$TEST_PODMAN_LOG"
+case "${1:-}" in
+  build)
+    exit 0
+    ;;
+  image)
+    printf '%s\n' '{"org.opencontainers.image.revision":"faf6ac0688057b79933408470452eb02afef9625"}'
+    ;;
+  run)
+    [[ "$*" == *'--network=none'* ]]
+    ;;
+  save)
+    output=''
+    expect_output=0
+    for argument in "$@"; do
+      if [[ "$argument" == --output ]]; then
+        expect_output=1
+      elif [[ "$expect_output" == 1 ]]; then
+        output="$argument"
+        expect_output=0
+      fi
+    done
+    : >"$output"
+    ;;
+  *)
+    echo "unexpected podman command" >&2
+    exit 1
+    ;;
+esac
+EOF
+sed -i "s|@bash@|$BASH|" "$fake_bin/podman"
+chmod +x "$fake_bin/podman"
+
+cat >"$fake_bin/sudo" <<'EOF'
+#!@bash@
+set -euo pipefail
+printf '%s\n' "$*" >>"$TEST_SUDO_LOG"
+exit 0
+EOF
+sed -i "s|@bash@|$BASH|" "$fake_bin/sudo"
+chmod +x "$fake_bin/sudo"
+
+cat >"$fake_bin/k3s" <<'EOF'
+#!@bash@
+set -euo pipefail
+printf '%s\n' "$*" >>"$TEST_K3S_LOG"
+EOF
+sed -i "s|@bash@|$BASH|" "$fake_bin/k3s"
+chmod +x "$fake_bin/k3s"
+
+export PATH="$fake_bin:$PATH"
+export TEST_GIT_LOG="$test_root/git.log"
+export TEST_PODMAN_LOG="$test_root/podman.log"
+export TEST_SUDO_LOG="$test_root/sudo.log"
+export TEST_K3S_LOG="$test_root/k3s.log"
+export TEST_REAL_GIT="$real_git"
+export TEST_SOURCE="$source_dir"
+export CLIPCASCADE_SOURCE="$source_dir"
+
+bash "$repo_root/scripts/build-clipcascade-image" >"$test_root/build-output"
+grep -q '^built and verified localhost/kosmos/clipcascade:faf6ac06 (use --load for local k3s)$' "$test_root/build-output"
+grep -Fq 'cat-file -e faf6ac0688057b79933408470452eb02afef9625^{commit}' "$TEST_GIT_LOG"
+grep -q 'archive --format=tar faf6ac0688057b79933408470452eb02afef9625' "$TEST_GIT_LOG"
+grep -q -- '--pull=missing --tag localhost/kosmos/clipcascade:faf6ac06' "$TEST_PODMAN_LOG"
+grep -q -- '--label org.opencontainers.image.revision=faf6ac0688057b79933408470452eb02afef9625' "$TEST_PODMAN_LOG"
+grep -q -- 'run --rm --network=none --entrypoint java localhost/kosmos/clipcascade:faf6ac06 -version' "$TEST_PODMAN_LOG"
+[[ ! -s "$TEST_SUDO_LOG" ]]
+[[ ! -s "$TEST_K3S_LOG" ]]
+
+: >"$TEST_PODMAN_LOG"
+: >"$TEST_SUDO_LOG"
+: >"$TEST_K3S_LOG"
+bash "$repo_root/scripts/build-clipcascade-image" --load >"$test_root/load-output"
+grep -q '^loaded localhost/kosmos/clipcascade:faf6ac06 into local k3s containerd$' "$test_root/load-output"
+grep -q 'save --format oci-archive --output ' "$TEST_PODMAN_LOG"
+grep -q 'ctr images import ' "$TEST_SUDO_LOG"
+[[ "$(wc -l <"$TEST_SUDO_LOG")" -eq 1 ]]
+[[ ! -s "$TEST_K3S_LOG" ]]
+
+if CLIPCASCADE_SOURCE="$test_root/missing" \
+  bash "$repo_root/scripts/build-clipcascade-image" >"$test_root/missing-output" 2>&1; then
+  echo 'builder accepted a missing checkout' >&2
+  exit 1
+fi
+grep -q 'checkout not found' "$test_root/missing-output"
+
+export TEST_GIT_FAIL=yes
+if bash "$repo_root/scripts/build-clipcascade-image" >"$test_root/revision-output" 2>&1; then
+  echo 'builder accepted a checkout without the pinned revision' >&2
+  exit 1
+fi
+grep -q 'does not contain pinned revision faf6ac0688057b79933408470452eb02afef9625' "$test_root/revision-output"
+
+if bash "$repo_root/scripts/build-clipcascade-image" --unexpected >"$test_root/argument-output" 2>&1; then
+  echo 'builder accepted an unknown argument' >&2
+  exit 1
+fi
+grep -q '^unknown argument: --unexpected$' "$test_root/argument-output"
+
+printf 'ClipCascade image builder archives the pinned revision, verifies offline, and loads only on request\n'

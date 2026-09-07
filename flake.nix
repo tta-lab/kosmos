@@ -51,8 +51,11 @@
             bash
             coreutils
             fish
+            findutils
             gawk
+            git
             gnused
+            gnutar
             jq
             just
             jsonnet
@@ -75,6 +78,8 @@
             ${./scripts/init-observability-secrets} \
             ${./scripts/build-hindsight-images} \
             ${./scripts/build-impri-images} \
+            ${./scripts/build-clipcascade-image} \
+            ${./scripts/init-clipcascade-secrets} \
             ${./scripts/miniflux-mcp-wrapper} \
             ${./scripts/sync-cloudreve-secret} \
             ${./scripts/backup-forgejo} \
@@ -100,6 +105,10 @@
             ${./tests/init-ebook-secrets-test} \
             ${./tests/init-hindsight-secrets-test} \
             ${./tests/hindsight-images-test} \
+            ${./tests/build-clipcascade-image-test} \
+            ${./tests/init-clipcascade-secrets-test} \
+            ${./tests/clipcascade-render-test} \
+            ${./tests/clipcascade-just-test} \
             ${./tests/hindsight-render-test} \
             ${./tests/hindsight-recall-eval-test} \
             ${./tests/sync-cloudreve-secret-test} \
@@ -139,6 +148,10 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-ebook-secrets-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-hindsight-secrets-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-images-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/build-clipcascade-image-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-clipcascade-secrets-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/clipcascade-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/clipcascade-just-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-recall-eval-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-cloudreve-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/backup-forgejo-test}
@@ -159,10 +172,12 @@
           tk eval ${./.}/tests/jsonnet/codex-bridge.test.jsonnet >/dev/null
           tk eval ${./.}/tests/jsonnet/gateway.test.jsonnet >/dev/null
           tk eval ${./.}/tests/jsonnet/impri.test.jsonnet >/dev/null
+          tk eval ${./.}/tests/jsonnet/clipcascade.test.jsonnet >/dev/null
           tk show --dangerous-allow-redirect ${./.}/tanka/environments/hindsight >/dev/null
           tk show --dangerous-allow-redirect ${./.}/tanka/environments/codex-bridge >/dev/null
           tk show --dangerous-allow-redirect ${./.}/tanka/environments/devops >/dev/null
           tk show --dangerous-allow-redirect ${./.}/tanka/environments/impri >/dev/null
+          tk show --dangerous-allow-redirect ${./.}/tanka/environments/clipcascade >/dev/null
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-gateway-render-test}
@@ -327,6 +342,8 @@
         assert builtins.elem "d /var/lib/kosmos-k3s/observability 0750 root root - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/observability/victoria-metrics 0750 65534 65534 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/observability/grafana 0750 472 472 - -" rules;
+        assert builtins.elem "d /var/lib/kosmos-k3s/clipcascade 0750 10001 10001 - -" rules;
+        assert builtins.elem "clipcascade.localhost" eval.config.networking.hosts."127.0.0.1";
           pkgs.runCommand "k3s-state-directories-check" {} "touch $out";
 
       wsl-devops-cli = let
@@ -398,6 +415,7 @@
             "woodpecker.localhost"
             "grafana.localhost"
             "impri.localhost"
+            "clipcascade.localhost"
           ]
         );
         has = value: list: builtins.elem value list;

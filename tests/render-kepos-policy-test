@@ -69,6 +69,12 @@ assert set(services["grafana"]["allow"]) == {
     next(device["public_key"] for device in subscribers if device["label"] == "mac"),
     next(device["public_key"] for device in subscribers if device["label"] == "nuc-win"),
 }
+assert services["clipcascade"]["name"] == "ClipCascade"
+assert services["clipcascade"]["target_port"] == 17480
+assert set(services["clipcascade"]["allow"]) == {
+    next(device["public_key"] for device in subscribers if device["label"] == label)
+    for label in ("mac", "nuc-win", "pixel7a", "aipaper")
+}
 assert all(set(service.get("allow", [])) <= keys for service in services.values())
 PY
 
