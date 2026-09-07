@@ -44,15 +44,6 @@ std.assertEqual(
   contains(caddy, 'reverse_proxy impri-ui.impri.svc.cluster.local:8080'),
   true
 ) &&
-std.assertEqual(contains(caddy, '@clipcascade host clipcascade.localhost'), true) &&
-std.assertEqual(
-  contains(caddy, 'header_up Host clipcascade.localhost:17480'),
-  true
-) &&
-std.assertEqual(
-  contains(caddy, 'reverse_proxy clipcascade.clipcascade.svc.cluster.local:8080'),
-  true
-) &&
 std.assertEqual(
   contains(dns, 'rewrite name exact hindsight.localhost canonical-gateway.devops.svc.cluster.local'),
   true
@@ -71,10 +62,6 @@ std.assertEqual(
 ) &&
 std.assertEqual(
   contains(dns, 'rewrite name exact impri.localhost canonical-gateway.devops.svc.cluster.local'),
-  true
-) &&
-std.assertEqual(
-  contains(dns, 'rewrite name exact clipcascade.localhost canonical-gateway.devops.svc.cluster.local'),
   true
 ) &&
 std.assertEqual(contains(caddy, 'respond "unknown host" 421'), true) &&

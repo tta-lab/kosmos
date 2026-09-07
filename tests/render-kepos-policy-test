@@ -70,14 +70,8 @@ assert set(services["grafana"]["allow"]) == {
     next(device["public_key"] for device in subscribers if device["label"] == "mac"),
     next(device["public_key"] for device in subscribers if device["label"] == "nuc-win"),
 }
-assert services["clipcascade"]["name"] == "ClipCascade"
-assert services["clipcascade"]["target_port"] == 17480
-assert set(services["clipcascade"]["allow"]) == {
-    next(device["public_key"] for device in subscribers if device["label"] == label)
-    for label in ("mac", "nuc-win", "pixel7a", "xiaomi", "aipaper")
-}
 xiaomi = next(device["public_key"] for device in subscribers if device["label"] == "xiaomi")
-for service_id in ("clipcascade", "dsh", "ente", "ente-storage", "memos", "mihomo", "navidrome"):
+for service_id in ("dsh", "ente", "ente-storage", "memos", "mihomo", "navidrome"):
     assert xiaomi in services[service_id]["allow"]
 for service_id in ("anki", "bookorbit", "cloudreve", "miniflux", "ssh"):
     assert xiaomi not in services[service_id]["allow"]

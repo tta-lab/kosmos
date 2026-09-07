@@ -24,7 +24,6 @@ Tanka.
 - Grafana: `http://grafana.localhost:17480` through the loopback gateway and
   full-trust Kepos subscribers
 - Impri: `http://impri.localhost:17480` through Kepos (Mac + Pixel 7a)
-- ClipCascade: `http://clipcascade.localhost:17480` through Kepos (personal devices)
 
 For Kubernetes-backed HTTP apps, Caddy binds the host gateway only on
 `127.0.0.1:17480`. CoreDNS rewrites their canonical `.localhost` names to that
@@ -69,10 +68,6 @@ Kepos publishes application service IDs including:
   header selects the private Approval Inbox route. It is restricted to the Mac
   and Pixel 7a subscribers. See [impri.md](impri.md) for deployment and local
   SQLite persistence.
-- `clipcascade` targets the canonical gateway port `17480`; the preserved HTTP
-  Host header selects the private P2S clipboard relay. It is restricted to the
-  personal-device subscribers. See [clipcascade.md](clipcascade.md) for the
-  pinned source build, encrypted H2 storage, and client acceptance checks.
 
 ## Kepos service model: HTTP web services vs raw TCP
 

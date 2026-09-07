@@ -30,7 +30,6 @@ local gatewayLabels = labels('canonical-gateway');
         rewrite name exact erpnext.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact grafana.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact impri.localhost canonical-gateway.devops.svc.cluster.local
-        rewrite name exact clipcascade.localhost canonical-gateway.devops.svc.cluster.local
       |||,
     },
   },
@@ -137,13 +136,6 @@ local gatewayLabels = labels('canonical-gateway');
           @impri host impri.localhost
           handle @impri {
             reverse_proxy impri-ui.impri.svc.cluster.local:8080
-          }
-
-          @clipcascade host clipcascade.localhost
-          handle @clipcascade {
-            reverse_proxy clipcascade.clipcascade.svc.cluster.local:8080 {
-              header_up Host clipcascade.localhost:17480
-            }
           }
 
           handle {

@@ -11,7 +11,6 @@ hindsight_environment := "tanka/environments/hindsight"
 codex_bridge_environment := "tanka/environments/codex-bridge"
 observability_environment := "tanka/environments/observability"
 impri_environment := "tanka/environments/impri"
-clipcascade_environment := "tanka/environments/clipcascade"
 kubeconfig := env_var_or_default("KUBECONFIG", "/etc/rancher/k3s/k3s.yaml")
 api_server := "https://127.0.0.1:26443"
 
@@ -28,14 +27,11 @@ tanka-test:
   @tk eval tests/jsonnet/codex-bridge.test.jsonnet >/dev/null
   @tk eval tests/jsonnet/gateway.test.jsonnet >/dev/null
   @tk eval tests/jsonnet/impri.test.jsonnet >/dev/null
-  @tk eval tests/jsonnet/clipcascade.test.jsonnet >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ hindsight_environment }}" >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ codex_bridge_environment }}" >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ environment }}" >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ observability_environment }}" >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ impri_environment }}" >/dev/null
-  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ clipcascade_environment }}" >/dev/null
-  @bash tests/clipcascade-render-test
   @bash tests/observability-render-test
 
 diff target=environment: _local-k3s
@@ -127,35 +123,6 @@ notes-status: _local-k3s
 
 impri-show:
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ impri_environment }}"
-
-clipcascade-show:
-  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ clipcascade_environment }}"
-
-clipcascade-diff: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ clipcascade_environment }}"
-
-clipcascade-secrets: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" scripts/init-clipcascade-secrets
-
-clipcascade-apply: _local-k3s clipcascade-secrets
-  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ clipcascade_environment }}"
-
-clipcascade-deploy: clipcascade-images-load clipcascade-apply
-  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}"
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
-
-clipcascade-status: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n clipcascade -o wide
-
-clipcascade-images:
-  @scripts/build-clipcascade-image
-
-clipcascade-images-load:
-  @scripts/build-clipcascade-image --load
-
-clipcascade-logs: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" kubectl logs deployment/clipcascade -n clipcascade --tail=200
 
 impri-diff: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ impri_environment }}"

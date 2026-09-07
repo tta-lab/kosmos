@@ -113,7 +113,6 @@ std.manifestTomlEx({
       service('anki', 'Anki', 17480, personalDevicesAllow + guaziAllow),
       service('bookorbit', 'BookOrbit', 17480, personalDevicesAllow + baiheAllow),
       service('cloudreve', 'Cloudreve', 17480, personalDevicesAllow + baiheAllow + svenMacAllow + liliAllow),
-      service('clipcascade', 'ClipCascade', 17480, personalDevicesAllow + xiaomiAllow),
       service('codex-bridge', 'Codex Bridge', 17480, fullTrustAllow + guionWorkersAllow + baiheAllow + codexBridgeAllow + liliAllow),
       service('dagger', 'Dagger', 8080, fullTrustAllow + svenMacAllow),
       service('dsh', 'DeepSeek Harness', 3080, fullTrustAllow + [subscribers.pixel7a.public_key] + xiaomiAllow),
