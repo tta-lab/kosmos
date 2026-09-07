@@ -46,6 +46,10 @@ std.assertEqual(
 ) &&
 std.assertEqual(contains(caddy, '@clipcascade host clipcascade.localhost'), true) &&
 std.assertEqual(
+  contains(caddy, 'header_up Host clipcascade.localhost:17480'),
+  true
+) &&
+std.assertEqual(
   contains(caddy, 'reverse_proxy clipcascade.clipcascade.svc.cluster.local:8080'),
   true
 ) &&
