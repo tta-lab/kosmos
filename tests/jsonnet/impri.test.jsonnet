@@ -17,7 +17,7 @@ std.assertEqual(resources.namespace.metadata.name, 'impri') &&
 std.assertEqual(server.spec.replicas, 1) &&
 std.assertEqual(server.spec.strategy.type, 'Recreate') &&
 std.assertEqual(resources.serverService.spec.selector, server.spec.selector.matchLabels) &&
-std.assertEqual(serverContainer.image, 'localhost/kosmos/impri-server:0dc63b75') &&
+std.assertEqual(serverContainer.image, 'localhost/kosmos/impri-server:bff19604') &&
 std.assertEqual(serverContainer.imagePullPolicy, 'Never') &&
 std.assertEqual(serverContainer.securityContext.runAsNonRoot, true) &&
 std.assertEqual(serverContainer.startupProbe.httpGet.path, '/readyz') &&
@@ -39,7 +39,7 @@ std.assertEqual(serverEnv.WEBHOOK_SECRET.valueFrom.secretKeyRef, {
 std.assertEqual(resources.impriPv.spec.hostPath.path, '/var/lib/kosmos-k3s/impri') &&
 std.assertEqual(resources.impriPv.spec.persistentVolumeReclaimPolicy, 'Retain') &&
 std.assertEqual(resources.impriPvc.spec.volumeName, 'kosmos-impri') &&
-std.assertEqual(uiContainer.image, 'localhost/kosmos/impri-ui:0dc63b75') &&
+std.assertEqual(uiContainer.image, 'localhost/kosmos/impri-ui:bff19604') &&
 std.assertEqual(uiContainer.imagePullPolicy, 'Never') &&
 std.assertEqual(resources.uiService.spec.selector, ui.spec.selector.matchLabels) &&
 std.assertEqual(std.length(secrets), 0)

@@ -9,7 +9,7 @@ local uiLabels = {
   'app.kubernetes.io/name': 'impri-ui',
   'app.kubernetes.io/part-of': 'kosmos-impri',
 };
-local imageRevision = '0dc63b75';
+local imageRevision = 'bff19604';
 
 {
   namespace: {

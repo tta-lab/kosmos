@@ -24,10 +24,11 @@ loss of the WSL host or its disk.
 
 Impri does not publish container images. Kosmos builds the server and UI
 Dockerfiles from the security-updated fork at pinned commit
-`0dc63b750d2c4537bd41fd37394ea0bc6a634f52`.
+`bff19604d9e0998fddf1c84ead217154d21e83ee`.
 
-This trusted fork pin includes the Telegram environment-proxy dispatcher from
-`ede00db` and its final coverage in `0dc63b7`.
+This trusted fork pin includes the Telegram environment-proxy dispatcher, a
+target link on interactive approval messages, and unlimited self-hosted usage
+reporting.
 
 Obtain and register the checkout once, then build or load the images:
 
