@@ -80,7 +80,7 @@ local probes = {
           },
           containers: [{
             name: 'clipcascade',
-            image: 'localhost/kosmos/clipcascade:faf6ac06',
+            image: 'localhost/kosmos/clipcascade:d0304c05',
             imagePullPolicy: 'Never',
             ports: [{ name: 'http', containerPort: 8080 }],
             env: [

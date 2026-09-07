@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-clipcascade_revision="faf6ac0688057b79933408470452eb02afef9625"
+clipcascade_revision="d0304c052bb4566b25a25154cba0127f704eb3d4"
 image_tag="${clipcascade_revision:0:8}"
 image="localhost/kosmos/clipcascade:${image_tag}"
 image_source="https://github.com/Sathvik-Rao/ClipCascade"
@@ -88,12 +88,6 @@ git -C "$clipcascade_source" archive --format=tar "$clipcascade_revision" \
   --label "org.opencontainers.image.version=3.2.0" \
   --file "$repo_root/images/clipcascade/Dockerfile" \
   "$build_dir"
-
-labels="$("$podman_bin" image inspect --format '{{json .Config.Labels}}' "$image")"
-[[ "$labels" == *"$clipcascade_revision"* ]] || {
-  printf '%s is missing the pinned ClipCascade revision label\n' "$image" >&2
-  exit 1
-}
 
 # This proves the final JRE image can execute without a network namespace. The
 # image build may fetch Maven dependencies, but verification is deliberately

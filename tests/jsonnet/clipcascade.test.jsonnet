@@ -29,7 +29,6 @@ std.assertEqual(resources.clipcascadeService.spec.ports[0], {
   targetPort: 'http',
 }) &&
 std.assertEqual(resources.clipcascadeService.spec.selector, deployment.spec.selector.matchLabels) &&
-std.assertEqual(container.image, 'localhost/kosmos/clipcascade:faf6ac06') &&
 std.assertEqual(container.imagePullPolicy, 'Never') &&
 std.assertEqual(env.CC_PORT.value, '8080') &&
 std.assertEqual(env.CC_P2P_ENABLED.value, 'false') &&

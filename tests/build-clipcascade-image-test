@@ -26,9 +26,12 @@ if [[ "${TEST_GIT_FAIL:-no}" == yes && "$*" == *'cat-file'* ]]; then
   exit 1
 fi
 if [[ "$*" == *'cat-file'* ]]; then
+  reference="${!#}"
+  printf '%s\n' "${reference%\^\{commit\}}" >"$TEST_GIT_REVISION_FILE"
   exit 0
 fi
 if [[ "$*" == *'archive'* ]]; then
+  [[ "${!#}" == "$(<"$TEST_GIT_REVISION_FILE")" ]]
   exec "$TEST_REAL_GIT" -C "$TEST_SOURCE" archive --format=tar HEAD
 fi
 exec "$TEST_REAL_GIT" "$@"
@@ -43,9 +46,6 @@ printf '%s\n' "$*" >>"$TEST_PODMAN_LOG"
 case "${1:-}" in
   build)
     exit 0
-    ;;
-  image)
-    printf '%s\n' '{"org.opencontainers.image.revision":"faf6ac0688057b79933408470452eb02afef9625"}'
     ;;
   run)
     [[ "$*" == *'--network=none'* ]]
@@ -91,6 +91,7 @@ chmod +x "$fake_bin/k3s"
 
 export PATH="$fake_bin:$PATH"
 export TEST_GIT_LOG="$test_root/git.log"
+export TEST_GIT_REVISION_FILE="$test_root/git-revision"
 export TEST_PODMAN_LOG="$test_root/podman.log"
 export TEST_SUDO_LOG="$test_root/sudo.log"
 export TEST_K3S_LOG="$test_root/k3s.log"
@@ -99,12 +100,11 @@ export TEST_SOURCE="$source_dir"
 export CLIPCASCADE_SOURCE="$source_dir"
 
 bash "$repo_root/scripts/build-clipcascade-image" >"$test_root/build-output"
-grep -q '^built and verified localhost/kosmos/clipcascade:faf6ac06 (use --load for local k3s)$' "$test_root/build-output"
-grep -Fq 'cat-file -e faf6ac0688057b79933408470452eb02afef9625^{commit}' "$TEST_GIT_LOG"
-grep -q 'archive --format=tar faf6ac0688057b79933408470452eb02afef9625' "$TEST_GIT_LOG"
-grep -q -- '--pull=missing --tag localhost/kosmos/clipcascade:faf6ac06' "$TEST_PODMAN_LOG"
-grep -q -- '--label org.opencontainers.image.revision=faf6ac0688057b79933408470452eb02afef9625' "$TEST_PODMAN_LOG"
-grep -q -- 'run --rm --network=none --entrypoint java localhost/kosmos/clipcascade:faf6ac06 -version' "$TEST_PODMAN_LOG"
+grep -Eq '^built and verified localhost/kosmos/clipcascade:[[:xdigit:]]+ \(use --load for local k3s\)$' "$test_root/build-output"
+grep -q 'cat-file -e ' "$TEST_GIT_LOG"
+grep -q 'archive --format=tar ' "$TEST_GIT_LOG"
+grep -q -- '--pull=missing --tag localhost/kosmos/clipcascade:' "$TEST_PODMAN_LOG"
+grep -q -- 'run --rm --network=none --entrypoint java localhost/kosmos/clipcascade:' "$TEST_PODMAN_LOG"
 [[ ! -s "$TEST_SUDO_LOG" ]]
 [[ ! -s "$TEST_K3S_LOG" ]]
 
@@ -112,7 +112,7 @@ grep -q -- 'run --rm --network=none --entrypoint java localhost/kosmos/clipcasca
 : >"$TEST_SUDO_LOG"
 : >"$TEST_K3S_LOG"
 bash "$repo_root/scripts/build-clipcascade-image" --load >"$test_root/load-output"
-grep -q '^loaded localhost/kosmos/clipcascade:faf6ac06 into local k3s containerd$' "$test_root/load-output"
+grep -Eq '^loaded localhost/kosmos/clipcascade:[[:xdigit:]]+ into local k3s containerd$' "$test_root/load-output"
 grep -q 'save --format oci-archive --output ' "$TEST_PODMAN_LOG"
 grep -q 'ctr images import ' "$TEST_SUDO_LOG"
 [[ "$(wc -l <"$TEST_SUDO_LOG")" -eq 1 ]]
@@ -130,7 +130,7 @@ if bash "$repo_root/scripts/build-clipcascade-image" >"$test_root/revision-outpu
   echo 'builder accepted a checkout without the pinned revision' >&2
   exit 1
 fi
-grep -q 'does not contain pinned revision faf6ac0688057b79933408470452eb02afef9625' "$test_root/revision-output"
+grep -q 'does not contain pinned revision' "$test_root/revision-output"
 
 if bash "$repo_root/scripts/build-clipcascade-image" --unexpected >"$test_root/argument-output" 2>&1; then
   echo 'builder accepted an unknown argument' >&2

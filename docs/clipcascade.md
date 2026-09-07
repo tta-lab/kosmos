@@ -16,20 +16,21 @@ forwarding to the ClusterIP Service.
 
 ## Source and image
 
-The image is built from the upstream Git tag `3.2.0`, pinned to commit
-`faf6ac0688057b79933408470452eb02afef9625`. Register the checkout with
-Organon before building it:
+The image is built from a local-only ClipCascade patch branch
+`kosmos-relative-redirects`, including the redirect fix. This branch is not
+published upstream: a fresh `og clone` does not contain it and cannot build the
+configured image. Retain this checkout and branch on this host before building:
 
 ```bash
 og clone https://github.com/Sathvik-Rao/ClipCascade.git --alias clipcascade
 ```
 
-The builder exports only that commit with `git archive`; active branches,
+The builder exports only its configured source revision with `git archive`; active branches,
 working-tree edits, ignored files, and an existing `target/` directory are not
 part of the build context. Kosmos's multi-stage Dockerfile compiles the Maven
 server source and copies only the resulting JAR into a non-root JRE image. The
-image is tagged `localhost/kosmos/clipcascade:faf6ac06` and carries source,
-revision, and 3.2.0 provenance labels.
+image tag derives from that configured revision and carries source and revision
+provenance labels.
 
 Build and inspect the image without changing k3s:
 
@@ -156,7 +157,5 @@ performed by the repository render tests.
 proxy topology, not per-service deployment workflows. This runbook owns the
 ClipCascade operator contract.
 
-`AGENTS.md` remains unchanged: its existing Kubernetes-backed HTTP service
-workflow already covers a Tanka environment, canonical gateway route, local
-hosts entry, retained storage, and Kepos ACL. ClipCascade introduces no new
-agent convention.
+`AGENTS.md` supplies the existing Kubernetes-backed HTTP service workflow and
+the build-test guidance used by this deployment.

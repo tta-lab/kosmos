@@ -17,7 +17,6 @@ jq -e '
   (resource("Deployment"; "clipcascade").spec.replicas == 1) and
   (resource("Deployment"; "clipcascade").spec.strategy.type == "Recreate") and
   (resource("Deployment"; "clipcascade").spec.template.spec.containers[0] as $container |
-    ($container.image == "localhost/kosmos/clipcascade:faf6ac06") and
     ($container.imagePullPolicy == "Never") and
     ($container.startupProbe.httpGet.path == "/health") and
     ($container.readinessProbe.httpGet.path == "/health") and

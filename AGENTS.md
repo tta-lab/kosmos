@@ -103,6 +103,12 @@ networking, or agenix.
 Build `.#nixosConfigurations.kosmos...` only when touching shared or bare-metal modules.
 For simple package selection changes, rely on Nix evaluation and the system build.
 Do not add tests that only grep source files for the selected package expression.
+Do not assert build provenance labels, source revisions, commit hashes, image tags,
+or other mutable build metadata in tests; test artifact behavior or a stable
+machine-consumed contract instead.
+`pre-push` runs `nix --extra-experimental-features 'nix-command flakes' flake check`.
+When a push fails, run that command directly before diagnosing Git transport or
+credentials; treat its failing derivation and log as the primary cause.
 Before evaluating a Git-backed flake that references new files, stage those files with
 `git add`; untracked files are absent from the flake source and can cause misleading
 "file not found" failures. Staging is not committing. Review `git diff --cached`

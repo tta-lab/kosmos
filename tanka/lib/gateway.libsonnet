@@ -141,8 +141,9 @@ local gatewayLabels = labels('canonical-gateway');
 
           @clipcascade host clipcascade.localhost
           handle @clipcascade {
-            header_up Host clipcascade.localhost:17480
-            reverse_proxy clipcascade.clipcascade.svc.cluster.local:8080
+            reverse_proxy clipcascade.clipcascade.svc.cluster.local:8080 {
+              header_up Host clipcascade.localhost:17480
+            }
           }
 
           handle {
