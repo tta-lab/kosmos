@@ -5,7 +5,6 @@ FROM docker.io/library/maven:3.9.9-eclipse-temurin-21@sha256:3a4ab3276a087bf276f
 
 WORKDIR /src/ClipCascade_Server/ClipCascade_Backend
 COPY ClipCascade_Server/ClipCascade_Backend/pom.xml .
-RUN mvn --batch-mode --no-transfer-progress dependency:go-offline
 
 COPY ClipCascade_Server/ClipCascade_Backend/src src
 RUN mvn --batch-mode --no-transfer-progress -DskipTests package
