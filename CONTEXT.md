@@ -16,10 +16,6 @@ _Avoid_: Request, task
 The durable record that an action was approved or rejected.
 _Avoid_: Response, status
 
-**Telegram Approval**:
-A decision made through an Impri approval message by an explicitly authorized Telegram user.
-_Avoid_: Telegram notification
-
 **Polling Service**:
 A service that retrieves an action's decision from the Approval Inbox instead of receiving a callback.
 _Avoid_: Callback consumer

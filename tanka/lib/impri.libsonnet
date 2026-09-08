@@ -1,5 +1,4 @@
 local storage = import 'impri-storage.libsonnet';
-local proxy = import 'proxy.libsonnet';
 
 local serverLabels = {
   'app.kubernetes.io/name': 'impri-server',
@@ -60,15 +59,8 @@ local imageRevision = 'bff19604';
               { name: 'DB_PATH', value: '/app/data/impri.db' },
               { name: 'HOST', value: '0.0.0.0' },
               { name: 'PORT', value: '8484' },
-              { name: 'BASE_URL', value: 'https://approve.guion.io' },
+              { name: 'BASE_URL', value: 'http://impri.localhost:17480' },
               { name: 'APP_URL', value: 'http://impri.localhost:17480' },
-              { name: 'HTTP_PROXY', value: proxy.podUrl },
-              { name: 'HTTPS_PROXY', value: proxy.podUrl },
-              {
-                name: 'NO_PROXY',
-                value: proxy.clusterNoProxy(['.localhost']),
-              },
-              { name: 'NODE_USE_ENV_PROXY', value: '1' },
               { name: 'DISABLE_WATCHER_SCHEDULER', value: '1' },
               {
                 name: 'WEBHOOK_SECRET',

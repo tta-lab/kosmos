@@ -29,16 +29,6 @@ std.assertEqual(
   contains(caddy, 'reverse_proxy grafana.observability.svc.cluster.local:3000'),
   true
 ) &&
-std.assertEqual(contains(caddy, '@impriTelegramWebhook {'), true) &&
-std.assertEqual(contains(caddy, 'host approve.guion.io'), true) &&
-std.assertEqual(
-  contains(caddy, 'path /v1/integrations/telegram/webhook/*'),
-  true
-) &&
-std.assertEqual(
-  contains(caddy, 'reverse_proxy server.impri.svc.cluster.local:8484'),
-  true
-) &&
 std.assertEqual(contains(caddy, '@impri host impri.localhost'), true) &&
 std.assertEqual(
   contains(caddy, 'reverse_proxy impri-ui.impri.svc.cluster.local:8080'),

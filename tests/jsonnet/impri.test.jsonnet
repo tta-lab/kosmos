@@ -22,15 +22,8 @@ std.assertEqual(serverContainer.imagePullPolicy, 'Never') &&
 std.assertEqual(serverContainer.securityContext.runAsNonRoot, true) &&
 std.assertEqual(serverContainer.startupProbe.httpGet.path, '/readyz') &&
 std.assertEqual(serverContainer.readinessProbe.httpGet.path, '/readyz') &&
-std.assertEqual(serverEnv.BASE_URL.value, 'https://approve.guion.io') &&
+std.assertEqual(serverEnv.BASE_URL.value, 'http://impri.localhost:17480') &&
 std.assertEqual(serverEnv.APP_URL.value, 'http://impri.localhost:17480') &&
-std.assertEqual(serverEnv.HTTP_PROXY.value, 'http://10.42.0.1:7890') &&
-std.assertEqual(serverEnv.HTTPS_PROXY.value, 'http://10.42.0.1:7890') &&
-std.assertEqual(
-  serverEnv.NO_PROXY.value,
-  'localhost,127.0.0.1,::1,10.42.0.0/16,10.43.0.0/16,.svc,.cluster.local,.localhost'
-) &&
-std.assertEqual(serverEnv.NODE_USE_ENV_PROXY.value, '1') &&
 std.assertEqual(serverEnv.DISABLE_WATCHER_SCHEDULER.value, '1') &&
 std.assertEqual(serverEnv.WEBHOOK_SECRET.valueFrom.secretKeyRef, {
   name: 'impri-runtime',
