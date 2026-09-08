@@ -20,7 +20,7 @@ local forgejoEnv = [
   { name: 'FORGEJO__log__ROOT_PATH', value: '/var/lib/gitea/log' },
   { name: 'FORGEJO__packages__ENABLED', value: 'true' },
   { name: 'FORGEJO__service__DISABLE_REGISTRATION', value: 'true' },
-  { name: 'FORGEJO__service__REQUIRE_SIGNIN_VIEW', value: 'true' },
+  { name: 'FORGEJO__service__REQUIRE_SIGNIN_VIEW', value: 'false' },
   { name: 'FORGEJO__session__COOKIE_SECURE', value: 'false' },
   { name: 'FORGEJO__actions__ENABLED', value: 'false' },
   { name: 'FORGEJO__webhook__ALLOWED_HOST_LIST', value: 'external,woodpecker' },
