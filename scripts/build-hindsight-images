@@ -10,7 +10,8 @@ usage() {
   cat <<'EOF'
 usage: build-hindsight-images [--load]
 
-Build and inspect the pinned local Hindsight/PostgreSQL images. --load also
+Build and inspect the pinned local PostgreSQL image. Hindsight is pulled by k3s
+from its published digest. --load also
 exports temporary OCI archives and imports them into the local k3s containerd
 store through explicit sudo elevation.
 EOF
@@ -44,7 +45,6 @@ require() {
 require "$podman_bin"
 
 postgres_image="localhost/kosmos/hindsight-postgres:${stack_version}"
-hindsight_image="localhost/kosmos/hindsight:${stack_version}"
 
 "$podman_bin" build \
   --pull=missing \
@@ -52,20 +52,11 @@ hindsight_image="localhost/kosmos/hindsight:${stack_version}"
   --file "$repo_root/images/hindsight-postgres/Dockerfile" \
   "$repo_root/images/hindsight-postgres"
 
-"$podman_bin" build \
-  --pull=missing \
-  --tag "$hindsight_image" \
-  --file "$repo_root/images/hindsight/Dockerfile" \
-  "$repo_root/images/hindsight"
-
 # Inspection is deliberately separate from a k3s load. These checks are safe
 # to run in CI and prove that the built artifacts carry the expected labels.
-for image in "$postgres_image" "$hindsight_image"; do
-  "$podman_bin" image inspect "$image" >/dev/null
-done
+"$podman_bin" image inspect "$postgres_image" >/dev/null
 
 postgres_labels="$("$podman_bin" image inspect --format '{{json .Config.Labels}}' "$postgres_image")"
-hindsight_labels="$("$podman_bin" image inspect --format '{{json .Config.Labels}}' "$hindsight_image")"
 [[ "$postgres_labels" == *'PGroonga 4.0.8'* ]] || {
   printf 'PostgreSQL image is missing the PGroonga version label\n' >&2
   exit 1
@@ -74,13 +65,7 @@ hindsight_labels="$("$podman_bin" image inspect --format '{{json .Config.Labels}
   printf 'PostgreSQL image is missing the pgvector version label\n' >&2
   exit 1
 }
-[[ "$hindsight_labels" == *'paraphrase-multilingual-MiniLM-L12-v2'* ]] || {
-  printf 'Hindsight image is missing the multilingual model label\n' >&2
-  exit 1
-}
-
-# The model probe has no network namespace and explicitly checks the baked
-# 384-dimensional CPU model. PostgreSQL's --version proves the PG18 base.
+# Offline checks verify PostgreSQL 18 and both required extensions.
 "$podman_bin" run --rm --network=none --entrypoint postgres "$postgres_image" --version \
   | grep -qE 'PostgreSQL\)? 18' || {
     printf 'PostgreSQL image did not report PostgreSQL 18\n' >&2
@@ -98,31 +83,15 @@ hindsight_labels="$("$podman_bin" image inspect --format '{{json .Config.Labels}
     printf 'PostgreSQL image did not contain PGroonga 4.0.8\n' >&2
     exit 1
   }
-"$podman_bin" run --rm --network=none \
-  --interactive \
-  --env HF_HUB_OFFLINE=1 \
-  --env TRANSFORMERS_OFFLINE=1 \
-  --entrypoint /app/api/.venv/bin/python "$hindsight_image" - <<'PY'
-from sentence_transformers import SentenceTransformer
-
-model = SentenceTransformer(
-    "/opt/hindsight-models/paraphrase-multilingual-MiniLM-L12-v2",
-    device="cpu",
-    local_files_only=True,
-)
-assert model.get_sentence_embedding_dimension() == 384
-PY
-
 if [[ "$load_images" -eq 1 ]]; then
   require sudo
   require k3s
   postgres_source_ref="$("$podman_bin" image inspect --format '{{index .RepoTags 0}}' "$postgres_image")"
-  hindsight_source_ref="$("$podman_bin" image inspect --format '{{index .RepoTags 0}}' "$hindsight_image")"
-  [[ -n "$postgres_source_ref" && -n "$hindsight_source_ref" ]] || {
+  [[ -n "$postgres_source_ref" ]] || {
     printf 'could not resolve Podman image tags for k3s import\n' >&2
     exit 1
   }
-  [[ "$postgres_source_ref" == "$postgres_image" && "$hindsight_source_ref" == "$hindsight_image" ]] || {
+  [[ "$postgres_source_ref" == "$postgres_image" ]] || {
     printf 'Podman tags do not match the fully qualified Kubernetes image references\n' >&2
     exit 1
   }
@@ -131,10 +100,8 @@ if [[ "$load_images" -eq 1 ]]; then
   chmod 700 "$archive_dir"
 
   "$podman_bin" save --format oci-archive --output "$archive_dir/hindsight-postgres.tar" "$postgres_image"
-  "$podman_bin" save --format oci-archive --output "$archive_dir/hindsight.tar" "$hindsight_image"
   sudo -- k3s ctr images import "$archive_dir/hindsight-postgres.tar"
-  sudo -- k3s ctr images import "$archive_dir/hindsight.tar"
-  printf 'loaded %s and %s into local k3s containerd\n' "$postgres_image" "$hindsight_image"
+  printf 'loaded %s into local k3s containerd\n' "$postgres_image"
 else
-  printf 'built and verified %s and %s (use --load for local k3s)\n' "$postgres_image" "$hindsight_image"
+  printf 'built and verified %s (use --load for local k3s)\n' "$postgres_image"
 fi

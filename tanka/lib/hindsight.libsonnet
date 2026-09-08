@@ -14,7 +14,7 @@ local postgresLabels = {
   'app.kubernetes.io/part-of': 'kosmos-hindsight',
 };
 
-local hindsightImage = 'localhost/kosmos/hindsight:0.1.1';
+local hindsightImage = 'ghcr.io/lamplitisles/lamplit-hindsight:0.1.2@sha256:c95b8c604824c778c3ec63105c8382f23e3561c7a56b5334a60777efd8b809dd';
 local postgresImage = 'localhost/kosmos/hindsight-postgres:0.1.1';
 local databaseSecretName = 'hindsight-database';
 local secretEnv(name, key) = {
@@ -66,16 +66,9 @@ local appEnv = [
   secretEnv('HINDSIGHT_API_DATABASE_URL', 'HINDSIGHT_API_DATABASE_URL'),
   { name: 'HINDSIGHT_API_VECTOR_EXTENSION', value: 'pgvector' },
   { name: 'HINDSIGHT_API_TEXT_SEARCH_EXTENSION', value: 'pgroonga' },
-  { name: 'HINDSIGHT_API_EMBEDDINGS_PROVIDER', value: 'local' },
-  {
-    name: 'HINDSIGHT_API_EMBEDDINGS_LOCAL_MODEL',
-    value: '/opt/hindsight-models/paraphrase-multilingual-MiniLM-L12-v2',
-  },
-  { name: 'HINDSIGHT_API_EMBEDDINGS_LOCAL_FORCE_CPU', value: '1' },
+  { name: 'HINDSIGHT_API_EMBEDDINGS_PROVIDER', value: 'onnx' },
+  { name: 'HINDSIGHT_API_EMBEDDINGS_ONNX_INTRA_OP_THREADS', value: '4' },
   { name: 'HINDSIGHT_API_MODEL_INIT_TIMEOUT', value: '300' },
-  { name: 'HF_HOME', value: '/home/hindsight/.cache/huggingface' },
-  { name: 'TRANSFORMERS_CACHE', value: '/home/hindsight/.cache/huggingface' },
-  { name: 'CUDA_VISIBLE_DEVICES', value: '' },
 ];
 
 local probes = {
@@ -123,7 +116,7 @@ local hindsightDeployment = {
         containers: [{
           name: 'hindsight',
           image: hindsightImage,
-          imagePullPolicy: 'Never',
+          imagePullPolicy: 'IfNotPresent',
           ports: [
             { name: 'api', containerPort: 8888 },
             { name: 'ui', containerPort: 9999 },
@@ -132,7 +125,7 @@ local hindsightDeployment = {
         } + probes + {
           resources: {
             requests: { cpu: '500m', memory: '4Gi' },
-            limits: { cpu: '8', memory: '8Gi' },
+            limits: { cpu: '4', memory: '8Gi' },
           },
           securityContext: {
             allowPrivilegeEscalation: false,

@@ -18,12 +18,12 @@ jq -e '
     ($service.spec.selector == $app.spec.selector.matchLabels) and
     ($app.spec.replicas == 1) and
     ($app.spec.template.spec.containers[0] as $container |
-      ($container.image == "localhost/kosmos/hindsight:0.1.1") and
-      ($container.imagePullPolicy == "Never") and
+      ($container.image | test("@sha256:[a-f0-9]{64}$")) and
+      ($container.imagePullPolicy == "IfNotPresent") and
       (env($container).HINDSIGHT_API_DATABASE_URL.valueFrom.secretKeyRef.name == "hindsight-database") and
       (env($container).HINDSIGHT_API_TEXT_SEARCH_EXTENSION.value == "pgroonga") and
-      (env($container).HINDSIGHT_API_EMBEDDINGS_LOCAL_MODEL.value == "/opt/hindsight-models/paraphrase-multilingual-MiniLM-L12-v2") and
-      (env($container).HINDSIGHT_API_EMBEDDINGS_LOCAL_FORCE_CPU.value == "1") and
+      (env($container).HINDSIGHT_API_EMBEDDINGS_PROVIDER.value == "onnx") and
+      (env($container).HINDSIGHT_API_EMBEDDINGS_ONNX_INTRA_OP_THREADS.value == $container.resources.limits.cpu) and
       (($container.volumeMounts // []) | all(.mountPath != "/home/hindsight/.pg0"))
     )
   ) and

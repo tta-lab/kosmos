@@ -4,8 +4,8 @@ Kosmos runs Hindsight 0.9.2 in the local k3s cluster with one API Deployment
 and one external PostgreSQL StatefulSet. The API uses PGroonga for keyword
 search, pgvector for vectors, and the multilingual
 `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` embedding model
-on CPU. The embedding model is baked into the application image and loaded
-from a local path, so pod startup does not depend on Hugging Face.
+using ONNX INT8 on an AVX2-capable amd64 CPU. The embedding model is baked
+into the application image and loaded from a local path, so pod startup does not depend on Hugging Face.
 
 The canonical endpoints are:
 
@@ -23,10 +23,24 @@ The steady-state resources are rendered by
 - retained static PV/PVC backed by
   `/var/lib/kosmos-k3s/hindsight-postgres`
 
-The application image is `localhost/kosmos/hindsight:0.1.1`. The PostgreSQL
-image is `localhost/kosmos/hindsight-postgres:0.1.1` and contains PostgreSQL
-18, PGroonga 4.0.8, and pgvector 0.8.6. Both use `imagePullPolicy: Never`, so
-they must be loaded into k3s before apply.
+The application uses the published Lamplit Hindsight ONNX INT8 image, pinned in
+`tanka/lib/hindsight.libsonnet`:
+
+```text
+ghcr.io/lamplitisles/lamplit-hindsight:0.1.2@sha256:c95b8c604824c778c3ec63105c8382f23e3561c7a56b5334a60777efd8b809dd
+```
+
+K3s pulls it with `imagePullPolicy: IfNotPresent`. Lamplit owns its build and
+publication; Kosmos no longer builds the FP32 application image. The Deployment
+sets a four-CPU limit and four ONNX Runtime inference threads. The image bounds
+embedding batches to 16 and disables the CPU memory arena. Existing 4Gi memory
+requests and 8Gi limits remain until full-service capacity measurements justify
+changing them. Existing 384-dimensional vectors remain usable; the switch does
+not require re-embedding.
+
+The PostgreSQL image remains `localhost/kosmos/hindsight-postgres:0.1.1`, with
+PostgreSQL 18, PGroonga 4.0.8, and pgvector 0.8.6. Its `imagePullPolicy: Never`
+requires the local build/load step on a fresh node.
 
 The database Secret is generated once by `scripts/init-hindsight-secrets`.
 The script refuses a non-local Kubernetes API, never replaces an existing
@@ -35,7 +49,7 @@ the Secret.
 
 ## Deploy
 
-Build, test, load, and apply the complete workload:
+Build, verify, and load PostgreSQL, then apply the workload (k3s pulls Hindsight):
 
 ```bash
 just hindsight-deploy
@@ -51,6 +65,12 @@ just hindsight-diff
 just hindsight-apply
 just hindsight-status
 ```
+
+For an existing installation with PostgreSQL already loaded, review
+`just hindsight-diff` and run `just hindsight-apply`. The Hindsight Deployment
+uses `Recreate`, so the image switch causes a brief API/UI interruption.
+The PostgreSQL workload and retained storage are unchanged. Take the backup
+below before the switch and keep existing vectors for the initial rollout.
 
 The local-cluster guard requires the API server to be exactly
 `https://127.0.0.1:26443`. Apply the WSL tmpfiles ownership declaration after
