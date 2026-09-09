@@ -284,6 +284,18 @@ just apply
 just status
 ```
 
+### Codex Bridge image updates
+
+The Codex Bridge Deployment uses the published
+`ghcr.io/lamplitisles/kepos-codex-bridge:latest` image with
+`imagePullPolicy: Always`. Bridge main CI publishes this tag. Publishing a new
+image does not restart an existing Pod, so use the existing
+`just codex-bridge-deploy` path and deliberately restart or recreate the
+`codex-bridge` Deployment when you want a Pod to pull the current image. No
+automatic updater or rollout is configured. The paired DSH image-model consumer
+deployment remains a separate application change and should be coordinated
+before relying on its model-selection settings.
+
 Forgejo and Woodpecker use static local PVs with a `Retain` reclaim policy.
 Dagger starts with a fresh cache at `/var/lib/kosmos-k3s/dagger`.
 

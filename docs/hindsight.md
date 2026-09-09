@@ -47,6 +47,13 @@ The script refuses a non-local Kubernetes API, never replaces an existing
 Secret, and does not print credentials. Tanka intentionally does not render
 the Secret.
 
+Hindsight reflection uses the DeepSeek provider (`deepseek`) at
+`https://api.deepseek.com` with model `deepseek-v4-flash`. Before
+`just hindsight-apply` or `just hindsight-deploy`, the pre-existing
+`hindsight/hindsight-deepseek` Secret must contain the `api-key` key. Tanka does
+not render this Secret, and `scripts/init-hindsight-secrets` initializes only
+`hindsight-database`; neither provisions the reflection credential.
+
 ## Deploy
 
 Build, verify, and load PostgreSQL, then apply the workload (k3s pulls Hindsight):

@@ -17,10 +17,6 @@ std.assertEqual(resources.namespace.metadata.name, 'codex-bridge') &&
 std.assertEqual(deployment.spec.replicas, 1) &&
 std.assertEqual(deployment.spec.strategy.type, 'Recreate') &&
 std.assertEqual(deployment.spec.template.spec.automountServiceAccountToken, false) &&
-std.assertEqual(
-  bridge.image,
-  'ghcr.io/lamplitisles/kepos-codex-bridge:sha-11ca46c291fec14c2b3e88148a93786b8598c066@sha256:784e9e83424ad5a385739bcbd9e9428304d22d12c86c487b19b564c51c824408'
-) &&
 std.assertEqual(bridge.args, [
   'serve',
   '--auth-file',
@@ -28,7 +24,7 @@ std.assertEqual(bridge.args, [
   '--port',
   '8787',
 ]) &&
-std.assertEqual(bridge.imagePullPolicy, 'IfNotPresent') &&
+std.assertEqual(bridge.imagePullPolicy, 'Always') &&
 std.assertEqual(bridge.securityContext.runAsUser, 1000) &&
 std.assertEqual(bridge.securityContext.runAsGroup, 100) &&
 std.assertEqual(

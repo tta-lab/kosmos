@@ -52,6 +52,15 @@ local appEnv = [
   { name: 'HINDSIGHT_API_LLM_REASONING_EFFORT', value: 'high' },
   { name: 'HINDSIGHT_API_LLM_API_KEY', value: 'bridge-managed-oauth' },
   { name: 'HINDSIGHT_API_LLM_TIMEOUT', value: '300' },
+  { name: 'HINDSIGHT_API_REFLECT_LLM_PROVIDER', value: 'deepseek' },
+  { name: 'HINDSIGHT_API_REFLECT_LLM_BASE_URL', value: 'https://api.deepseek.com' },
+  { name: 'HINDSIGHT_API_REFLECT_LLM_MODEL', value: 'deepseek-v4-flash' },
+  {
+    name: 'HINDSIGHT_API_REFLECT_LLM_API_KEY',
+    valueFrom: {
+      secretKeyRef: { name: 'hindsight-deepseek', key: 'api-key' },
+    },
+  },
   { name: 'HINDSIGHT_API_RERANKER_PROVIDER', value: 'rrf' },
   { name: 'HINDSIGHT_API_WORKER_ID', value: 'hindsight' },
   { name: 'HTTP_PROXY', value: proxy.podUrl },

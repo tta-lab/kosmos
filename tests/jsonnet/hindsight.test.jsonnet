@@ -32,6 +32,13 @@ std.assertEqual(env.HINDSIGHT_API_DATABASE_URL.valueFrom.secretKeyRef, {
 std.assertEqual(env.HINDSIGHT_API_VECTOR_EXTENSION.value, 'pgvector') &&
 std.assertEqual(env.HINDSIGHT_API_TEXT_SEARCH_EXTENSION.value, 'pgroonga') &&
 std.assertEqual(env.HINDSIGHT_API_LLM_BASE_URL.value, 'http://codex-bridge.localhost:17480/codex/buffered') &&
+std.assertEqual(env.HINDSIGHT_API_REFLECT_LLM_PROVIDER.value, 'deepseek') &&
+std.assertEqual(env.HINDSIGHT_API_REFLECT_LLM_BASE_URL.value, 'https://api.deepseek.com') &&
+std.assertEqual(env.HINDSIGHT_API_REFLECT_LLM_MODEL.value, 'deepseek-v4-flash') &&
+std.assertEqual(env.HINDSIGHT_API_REFLECT_LLM_API_KEY.valueFrom.secretKeyRef, {
+  name: 'hindsight-deepseek',
+  key: 'api-key',
+}) &&
 std.assertEqual(env.HINDSIGHT_API_EMBEDDINGS_PROVIDER.value, 'onnx') &&
 std.assertEqual(env.HINDSIGHT_API_EMBEDDINGS_ONNX_INTRA_OP_THREADS.value, container.resources.limits.cpu) &&
 std.assertEqual(env.HINDSIGHT_API_RERANKER_PROVIDER.value, 'rrf') &&
