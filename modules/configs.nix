@@ -39,11 +39,15 @@ in {
           grep = "command rg";
           fn = "command flicknote";
           sc = "command spine-codex";
+          co = "command codex --model gpt-6-astra -c model_reasoning_effort=low";
+          cot = "command codex --model gpt-5.6-terra -c model_reasoning_effort=xhigh";
+          col = "command codex --model gpt-5.6-luna -c model_reasoning_effort=xhigh";
           pis = "command pi --model openai-codex/gpt-5.6-sol --thinking medium";
           pit = "command pi --model openai-codex/gpt-5.6-terra --thinking max";
           pil = "command pi --model openai-codex/gpt-5.6-luna --thinking max";
           pid = "command pi --model deepseek/deepseek-v4-flash --thinking high";
           ogv = "command og pr view";
+          opmw = "command og pr merge --wait";
           op = "command og push";
           ol = "command og pull";
         };
