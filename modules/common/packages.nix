@@ -101,7 +101,7 @@ in {
     # Languages
     gcc
     pkgsUnstable.bun
-    pkgsUnstable.pnpm
+    (pkgsUnstable.callPackage ../../packages/pnpm {})
     pkgsUnstable.go
     pkgsUnstable.golangci-lint
     pkgsUnstable.gotestsum
