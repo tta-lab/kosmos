@@ -1,5 +1,6 @@
 {
   pkgs,
+  pkgsUnstable,
   fenix,
   ...
 }: {
@@ -13,13 +14,17 @@
   };
 
   environment.systemPackages = [
-    (pkgs.fenix.stable.withComponents [
-      "cargo"
-      "rustc"
-      "rust-src"
-      "rustfmt"
-      "clippy"
+    (pkgs.fenix.combine [
+      (pkgs.fenix.stable.withComponents [
+        "cargo"
+        "rustc"
+        "rust-src"
+        "rustfmt"
+        "clippy"
+      ])
+      pkgs.fenix.targets.wasm32-unknown-unknown.stable.rust-std
     ])
+    (pkgsUnstable.callPackage ../../packages/wasm-bindgen-cli {})
     pkgs.rust-analyzer-nightly
   ];
 }

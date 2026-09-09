@@ -3,6 +3,9 @@
 Choose an environment-variable owner by scope. Do not put non-secret values in
 an agenix file merely because a shell can source it.
 
+Rust and WebAssembly use the [Nix-managed toolchain](rust-toolchain.md), not a
+shell-specific rustup or `PATH` override.
+
 | Need | Owner | Effective scope |
 | --- | --- | --- |
 | Non-secret interactive setting | `home.sessionVariables` in `modules/configs.nix` | Newly started Fish and Zsh sessions |
