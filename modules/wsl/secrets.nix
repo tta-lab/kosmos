@@ -68,6 +68,12 @@ in {
         kube-config = userSecret "kube-config.age" "/home/neil/.kube/config";
         sops-age-keys = userSecret "sops-age-keys.age" "/home/neil/.config/sops/age/keys.txt";
         env = userSecret "env.age" "/home/neil/.config/env";
+        cloudflare-ddns-token = {
+          file = secretsDir + "/cloudflare-ddns-token.age";
+          owner = "root";
+          group = "root";
+          mode = "0400";
+        };
         woodpecker-server-env = {
           file = secretsDir + "/woodpecker-server-env.age";
           owner = "root";

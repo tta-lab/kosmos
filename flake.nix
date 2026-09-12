@@ -67,6 +67,8 @@
           ];
         } ''
           shellcheck \
+            ${./scripts/build-caddy-image} \
+            ${./scripts/sync-caddy-secret} \
             ${./scripts/devops-gate-status} \
             ${./scripts/backup-ente} \
             ${./scripts/photos-gate-status} \
@@ -178,6 +180,7 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/wsl-devops-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-render-test}
+          python3 ${./.}/tests/public-ddns-test
           touch $out
         '';
 

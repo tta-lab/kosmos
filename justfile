@@ -40,6 +40,20 @@ diff target=environment: _local-k3s
 apply target=environment: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ target }}"
 
+caddy-image:
+  @scripts/build-caddy-image
+
+caddy-image-load:
+  @scripts/build-caddy-image --load
+
+public-https-diff: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ environment }}" --target='^(ConfigMap/canonical-gateway|Deployment/canonical-gateway|PersistentVolumeClaim/canonical-gateway-data)$'
+
+public-https-deploy: _local-k3s caddy-image-load
+  @sudo systemctl restart caddy-secret-sync
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}" --target='^(ConfigMap/canonical-gateway|Deployment/canonical-gateway|PersistentVolumeClaim/canonical-gateway-data)$'
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+
 forgejo-backup-show: _forgejo-r2-backup-secret
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show --tla-str forgejoR2BackupEnabled=true "{{ environment }}"
 

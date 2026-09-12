@@ -45,10 +45,13 @@ local gatewayLabels = labels('canonical-gateway');
       Caddyfile: |||
         {
           admin off
-          auto_https off
+          auto_https disable_redirects
+          servers {
+            protocols h1 h2
+          }
         }
 
-        :17480 {
+        http://:17480 {
           bind 0.0.0.0
 
           @forgejo host forgejo.localhost
@@ -130,9 +133,29 @@ local gatewayLabels = labels('canonical-gateway');
             reverse_proxy impri-ui.impri.svc.cluster.local:8080
           }
 
+          @clipcascade host clipcascade.localhost
+          handle @clipcascade {
+            reverse_proxy clipcascade.clipcascade.svc.cluster.local:8080 {
+              header_up Host clipcascade.localhost:17480
+            }
+          }
+
           handle {
             respond "unknown host" 421
           }
+        }
+
+        https://ddns-smoke.guion.io:18443 {
+          bind 0.0.0.0
+          tls {
+            issuer acme {
+              dir https://acme-v02.api.letsencrypt.org/directory
+              dns cloudflare {env.CF_API_TOKEN}
+            }
+          }
+          header Content-Type "text/html; charset=utf-8"
+          header Cache-Control "no-store"
+          respond "<!doctype html><html lang='en'><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>DDNS smoke</title><h1>DDNS smoke OK</h1><p>ddns-smoke.guion.io</p></html>" 200
         }
       |||,
     },
@@ -154,12 +177,22 @@ local gatewayLabels = labels('canonical-gateway');
         spec: {
           containers: [{
             name: 'caddy',
-            image: 'caddy:2.10.0-alpine',
+            image: 'localhost/kosmos/caddy-cloudflare:2.10.0-cf0.2.4',
+            imagePullPolicy: 'Never',
+            env: [{
+              name: 'CF_API_TOKEN',
+              valueFrom: { secretKeyRef: { name: 'caddy-cloudflare', key: 'CF_API_TOKEN' } },
+            }],
             args: ['caddy', 'run', '--config', '/etc/caddy/Caddyfile', '--adapter', 'caddyfile', '--watch'],
             ports: [{
               name: 'http',
               containerPort: 17480,
               hostPort: 17480,
+              hostIP: '127.0.0.1',
+            }, {
+              name: 'https-public',
+              containerPort: 18443,
+              hostPort: 18443,
               hostIP: '127.0.0.1',
             }],
             readinessProbe: {
@@ -171,11 +204,27 @@ local gatewayLabels = labels('canonical-gateway');
               requests: { cpu: '20m', memory: '32Mi' },
               limits: { cpu: '250m', memory: '128Mi' },
             },
-            volumeMounts: [{ name: 'config', mountPath: '/etc/caddy', readOnly: true }],
+            volumeMounts: [
+              { name: 'config', mountPath: '/etc/caddy', readOnly: true },
+              { name: 'data', mountPath: '/data' },
+            ],
           }],
-          volumes: [{ name: 'config', configMap: { name: 'canonical-gateway' } }],
+          volumes: [
+            { name: 'config', configMap: { name: 'canonical-gateway' } },
+            { name: 'data', persistentVolumeClaim: { claimName: 'canonical-gateway-data' } },
+          ],
         },
       },
+    },
+  },
+  gatewayData: {
+    apiVersion: 'v1',
+    kind: 'PersistentVolumeClaim',
+    metadata: { name: 'canonical-gateway-data', namespace: 'devops' },
+    spec: {
+      accessModes: ['ReadWriteOnce'],
+      storageClassName: 'local-path',
+      resources: { requests: { storage: '1Gi' } },
     },
   },
   gatewayService: {

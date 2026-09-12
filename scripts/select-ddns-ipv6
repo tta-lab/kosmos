@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+"""Select the WSL service address from `ip -j -6 address show dev eth1`."""
+
+import ipaddress
+import json
+import sys
+
+
+def select_address(interfaces):
+    candidates = set()
+    for interface in interfaces:
+        if interface.get("ifname") != "eth1":
+            continue
+        for entry in interface.get("addr_info", []):
+            if entry.get("family") != "inet6" or entry.get("scope") != "global":
+                continue
+            if any(entry.get(flag, False) for flag in ("deprecated", "temporary", "tentative", "dadfailed")):
+                continue
+            if entry.get("preferred_life_time") == 0 or entry.get("valid_life_time") == 0:
+                continue
+            address = ipaddress.IPv6Address(entry["local"])
+            # This host's DHCPv6 service identifier is ::8; the ISP prefix varies.
+            # Windows privacy addresses do not reliably carry `temporary` in WSL.
+            if address in ipaddress.IPv6Network("2000::/3") and int(address) & ((1 << 64) - 1) == 8:
+                candidates.add(str(address))
+    if len(candidates) != 1:
+        raise ValueError("expected exactly one preferred global IPv6 with service identifier ::8 on eth1")
+    return candidates.pop()
+
+
+if __name__ == "__main__":
+    try:
+        print(select_address(json.load(sys.stdin)))
+    except (ValueError, KeyError, TypeError) as error:
+        print(f"DDNS address unavailable: {error}", file=sys.stderr)
+        sys.exit(1)
