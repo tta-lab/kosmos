@@ -192,7 +192,7 @@ The observable behavior is split across these paths:
   after editing.
 - `tests/backup-forgejo-test` and `tests/forgejo-backup-render-test` — fake
   command behavior and rendered workload contract checks.
-- `flake.nix` and `kepos/publisher-policy.jsonnet` — verification wiring and
+- `flake.nix` and `kepos/peer-policy.jsonnet` — verification wiring and
   the pinned Kepos publisher cap.
 
 `README.md` was inspected: it has no Forgejo operator workflow, so it only

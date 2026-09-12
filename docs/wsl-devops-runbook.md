@@ -111,48 +111,24 @@ Local WSL clients connect directly to their loopback target: Caddy for
 gateway-routed apps or the service port for direct loopback apps. They do not
 traverse Kepos.
 
-## Kepos live publisher policy
+## Kepos live peer policy
 
-`kepos/publisher-policy.jsonnet` is the complete publisher policy source. It
-keeps named subscriber keys, reusable ACL groups, and service declarations in
-code. Render it with:
+`kepos/peer-policy.jsonnet` owns named peer keys, explicit service ACLs,
+local service sources, and bindings. Run `just kepos-policy-render` to write
+`~/.config/kepos/peer.toml` privately and atomically. This is unmanaged runtime
+output; edit the Jsonnet source rather than the TOML. Rendering a policy does
+not require a commit or NixOS switch.
 
-```bash
-just kepos-policy-render
-```
+The peer reloads valid changes within about one second. Invalid changes keep
+the last valid configuration active and report a failure in
+`journalctl --user -u kepos-peer.service -n 100 --no-pager`. Removing a peer or
+revoking a service grant closes its affected channels. Service `allow` lists
+are explicit immediate-peer public keys; missing or empty lists deny access.
 
-The renderer writes `~/.config/kepos/publisher.toml` privately and atomically
-in the same directory; that TOML is the unmanaged runtime output, not a file to
-edit by hand. The source is versioned in this checkout, but rendering an
-uncommitted policy edit neither requires a Git commit nor a NixOS switch.
-A fresh publisher needs a complete rendered policy and initialized publisher
-state before its user service is enabled.
-
-Kepos reads a valid save within about one second. An invalid or incomplete TOML
-keeps the last valid policy active and reports the reload failure in
-`journalctl --user -u kepos-publisher.service -n 100 --no-pager`; no Nix
-switch, Git commit, or Kepos restart is needed. Removing a labeled subscriber
-from `publisher.subscribers` disconnects that subscriber; service and
-per-service ACL changes apply to new registry requests and newly opened
-tunnels while existing tunnels drain.
-
-The labeled subscriber list is the outer gate and each service `allow` list can
-only narrow it. A service with no `allow` inherits the full subscriber set; an
-explicit empty list denies that service to everyone. Define those relationships
-in Jsonnet rather than copying keys between service entries:
-
-```jsonnet
-local subscribers = {
-  mac: {label: 'mac', public_key: '<subscriber-public-key>'},
-};
-local trusted = [subscribers.mac.public_key];
-local service(id, name, port, allow) = {
-  id: id,
-  name: name,
-  target_port: port,
-  allow: allow,
-};
-```
+All current remote devices use `connection = "accept"`, preserving their
+existing dial direction. `bindings` starts empty. Local sources use
+`source = {local_port: 17480}` for Caddy-routed services or their direct service
+port. WSL's peer gateway uses `127.0.0.1:17481`; Caddy owns `17480`.
 
 Leave `kind` unset for the current TCP-tunnel behavior. `kind = "http"` is an
 optional publisher-side HTTP/1.1 adapter that removes caller-provided
@@ -244,37 +220,25 @@ Verify the sync before applying the workloads:
 systemctl status woodpecker-secret-sync.service --no-pager
 ```
 
-The custom Kepos user unit reuses publisher state at
-`~/.local/state/kepos-neo/mux-publisher` and reads the rendered live policy at
-`~/.config/kepos/publisher.toml`. It deliberately does not create or modify
-either. Render `kepos/publisher-policy.jsonnet` before starting a fresh
-publisher. The live policy is intentionally not a Home Manager-managed
-`~/.config` file.
+Kepos is a Nix-pinned executable supervised by the `kepos-peer` user unit,
+not a Kubernetes container. Its canonical state is
+`~/.local/state/kepos-neo/peer`; its live policy is
+`~/.config/kepos/peer.toml`. Neither is created by activation. Prepare the
+identity and render the policy before activating a fresh installation.
+`just kepos-peer-key` prints only the public key, and `just kepos-status`
+checks supervision.
 
-Print the WSL publisher public key without exposing its private state:
+The peer cutover retains WSL's previous publisher key and the Mac's active
+subscriber key. The disabled reverse subscriber unit has been removed; the Mac
+can supply services over its existing dial connection once it runs the peer
+runtime and explicitly grants those services. Its old publisher identity is
+not a second alias. Backed-up legacy identity files are operator-owned and are
+not removed by Nix activation.
 
-```bash
-just kepos-publisher-key
-```
-
-The WSL subscriber for the Mac publisher is declaratively disabled because the
-current nested network cannot establish that direction. Its configuration,
-identity, pinned publisher contact, and state at
-`~/.local/state/kepos-neo/subscriber` remain intact for a future retry. The Mac
-publisher may keep the WSL subscriber key in its allowlist.
-
-While disabled, WSL does not listen on the subscriber gateway `17481` or the
-local SSH endpoint `127.0.0.1:2222`. To inspect the retained subscriber public
-key without starting the service:
-
-```bash
-just kepos-subscriber-key
-```
-
-Do not remove the subscriber state or Mac allowlist entry. Resume this direction
-only after selecting and verifying a network or relay path from orientation
-notes 1724 and 1725, then set `enableMacSubscriber` in
-`modules/wsl/kepos-neo.nix` to `true` and rebuild WSL.
+For a version update, change the Kepos input, validate/build the WSL closure,
+and run `nh os switch . -H wsl` after merging. Updating or restarting Codex
+Bridge does not update this peer. One-time identity conversion and rollback
+steps belong in the deployment PR handoff, not activation hooks.
 
 Apply the Kubernetes objects explicitly:
 

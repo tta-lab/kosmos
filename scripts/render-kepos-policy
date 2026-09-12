@@ -3,8 +3,8 @@ set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd -- "$script_dir/.." && pwd)"
-source_file="${KEPOS_POLICY_SOURCE:-$repo_root/kepos/publisher-policy.jsonnet}"
-target_file="${KEPOS_PUBLISHER_POLICY_FILE:-/home/neil/.config/kepos/publisher.toml}"
+source_file="${KEPOS_POLICY_SOURCE:-$repo_root/kepos/peer-policy.jsonnet}"
+target_file="${KEPOS_PEER_POLICY_FILE:-/home/neil/.config/kepos/peer.toml}"
 target_dir="$(dirname -- "$target_file")"
 
 if [[ ! -f "$source_file" ]]; then
@@ -13,13 +13,13 @@ if [[ ! -f "$source_file" ]]; then
 fi
 
 if ! command -v jsonnet >/dev/null 2>&1; then
-  echo "jsonnet is required to render the Kepos publisher policy" >&2
+  echo "jsonnet is required to render the Kepos peer policy" >&2
   exit 1
 fi
 
 umask 077
 mkdir -p -- "$target_dir"
-temporary_file="$(mktemp "$target_dir/.publisher.toml.XXXXXX")"
+temporary_file="$(mktemp "$target_dir/.peer.toml.XXXXXX")"
 cleanup() {
   rm -f -- "$temporary_file"
 }
