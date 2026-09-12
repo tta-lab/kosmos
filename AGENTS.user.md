@@ -21,6 +21,11 @@ instructions. It is outside this repository and untouched by
   Organon's MCP tools in Codex and its native typed adapter in Pi. Use `og`
   for forge authentication status, comments, and CI status or logs; keep
   governed forge workflows off `gh` and `tea`.
+- For authorized local GitHub artifact releases that `og` does not support,
+  use `gh` with its existing login to check release authentication, create or
+  publish the release, upload assets, and verify downloads. This exception
+  covers release operations only; keep Git and pull-request workflows,
+  including approval-gated merges, on `og`.
 
 ## Tools
 
