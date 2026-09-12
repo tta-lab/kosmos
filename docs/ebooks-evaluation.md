@@ -20,7 +20,7 @@ nh os switch . -H wsl
 ```
 
 Then add the `bookorbit` service and its ACL to
-`kepos/publisher-policy.jsonnet` and run `just kepos-policy-render`; Kepos
+`kepos/peer-policy.jsonnet` and run `just kepos-policy-render`; Kepos
 hot-reloads that rendered policy without a rebuild or restart.
 
 Then create missing credentials and apply the Tanka environments:

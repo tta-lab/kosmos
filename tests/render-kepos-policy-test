@@ -5,9 +5,9 @@ repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
 test_root="$(mktemp -d)"
 trap 'rm -rf "$test_root"' EXIT
 
-source_file="$repo_root/kepos/publisher-policy.jsonnet"
+source_file="$repo_root/kepos/peer-policy.jsonnet"
 renderer="$repo_root/scripts/render-kepos-policy"
-target_file="$test_root/publisher.toml"
+target_file="$test_root/peer.toml"
 expected_file="$test_root/expected.toml"
 before_file="$test_root/before.toml"
 broken_source="$test_root/broken.jsonnet"
@@ -24,17 +24,11 @@ fi
 
 jsonnet -S "$source_file" >"$expected_file"
 KEPOS_POLICY_SOURCE="$source_file" \
-  KEPOS_PUBLISHER_POLICY_FILE="$target_file" \
+  KEPOS_PEER_POLICY_FILE="$target_file" \
   bash "$renderer"
 
 cmp --silent "$expected_file" "$target_file"
 [[ "$(stat -c '%a' "$target_file")" == "600" ]]
-awk '$0 == "[publisher]" { found = 1 } END { exit !found }' "$target_file"
-if grep -q '^  allow = ' "$target_file"; then
-  echo 'Kepos publisher policy still uses the removed bare-key allowlist' >&2
-  exit 1
-fi
-
 python3 - "$target_file" <<'PY'
 import sys
 import tomllib
@@ -42,9 +36,8 @@ import tomllib
 with open(sys.argv[1], "rb") as handle:
     policy = tomllib.load(handle)
 
-publisher = policy["publisher"]
-subscribers = publisher["subscribers"]
-assert {device["label"] for device in subscribers} == {
+peers = policy["peers"]
+assert {device["label"] for device in peers} == {
     "mac",
     "nuc-win",
     "pixel7a",
@@ -60,33 +53,37 @@ assert {device["label"] for device in subscribers} == {
     "codex-bridge",
     "lili",
 }
-keys = {device["public_key"] for device in subscribers}
-assert len(keys) == len(subscribers)
-assert "allow" not in publisher
-services = {service["id"]: service for service in publisher["services"]}
-assert "max_publisher_to_subscriber_bps" not in publisher
+keys = {device["public_key"] for device in peers}
+assert len(keys) == len(peers)
+assert "publisher" not in policy and "subscriber" not in policy
+assert policy["bindings"] == []
+assert policy["gateway"] == {"host": "127.0.0.1", "port": 17481}
+assert all(peer["connection"] == "accept" for peer in peers)
+services = {service["id"]: service for service in policy["services"]}
+assert "max_publisher_to_subscriber_bps" not in policy
 assert services["forgejo"]["max_publisher_to_subscriber_bps"] == 2000000
 assert set(services["grafana"]["allow"]) == {
-    next(device["public_key"] for device in subscribers if device["label"] == "mac"),
-    next(device["public_key"] for device in subscribers if device["label"] == "nuc-win"),
+    next(device["public_key"] for device in peers if device["label"] == "mac"),
+    next(device["public_key"] for device in peers if device["label"] == "nuc-win"),
 }
-xiaomi = next(device["public_key"] for device in subscribers if device["label"] == "xiaomi")
+xiaomi = next(device["public_key"] for device in peers if device["label"] == "xiaomi")
 for service_id in ("dsh", "ente", "ente-storage", "memos", "mihomo", "navidrome"):
     assert xiaomi in services[service_id]["allow"]
 for service_id in ("anki", "bookorbit", "cloudreve", "miniflux", "ssh"):
     assert xiaomi not in services[service_id]["allow"]
+assert all(set(service["source"]) == {"local_port"} for service in services.values())
 assert all(set(service.get("allow", [])) <= keys for service in services.values())
 PY
 
 cp "$target_file" "$before_file"
 printf '%s\n' '{ this is not valid Jsonnet' >"$broken_source"
 if KEPOS_POLICY_SOURCE="$broken_source" \
-  KEPOS_PUBLISHER_POLICY_FILE="$target_file" \
+  KEPOS_PEER_POLICY_FILE="$target_file" \
   bash "$renderer" >/dev/null 2>&1; then
   echo 'Kepos renderer accepted invalid Jsonnet' >&2
   exit 1
 fi
 cmp --silent "$before_file" "$target_file"
-[[ -z "$(find "$test_root" -maxdepth 1 -name '.publisher.toml.*' -print -quit)" ]]
+[[ -z "$(find "$test_root" -maxdepth 1 -name '.peer.toml.*' -print -quit)" ]]
 
 printf 'Kepos Jsonnet policy renders atomically as a private TOML file\n'

@@ -19,7 +19,7 @@
     moonbit-overlay.url = "github:moonbit-community/moonbit-overlay";
     moonbit-overlay.inputs.nixpkgs.follows = "nixpkgs-unstable";
     kepos-neo = {
-      url = "github:LamplitIsles/kepos/105a22fc963c195f0ec03f6b0a76e037e31e4865";
+      url = "github:LamplitIsles/kepos/225ce7691d0bb463c40fd35ae1dcac4626b560a8";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
@@ -511,37 +511,42 @@
         home = cfg.home-manager.users.neil;
         package = kepos-neo.packages.${system}.kepos;
         dashboardPackage = kepos-neo.packages.${system}.grafana-dashboard;
-        publisherUnit = home.systemd.user.services.kepos-publisher;
+        peerUnit = home.systemd.user.services.kepos-peer;
         dshEnv = home.systemd.user.services.dsh.Service.Environment;
-        publisherPolicyFile = "/home/neil/.config/kepos/publisher.toml";
-        publisherStateDir = "/home/neil/.local/state/kepos-neo/mux-publisher";
+        peerPolicyFile = "/home/neil/.config/kepos/peer.toml";
+        peerStateDir = "/home/neil/.local/state/kepos-neo/peer";
       in
         # Policy is intentionally external to the Nix closure and is migrated
         # manually before this generation is activated.
         assert !(builtins.hasAttr "kepos" home.services);
-        assert !(builtins.hasAttr "kepos/config.toml" home.xdg.configFile);
-        assert !(builtins.hasAttr "keposPublisherPolicyMigration" home.home.activation);
+        assert !(builtins.hasAttr "kepos/peer.toml" home.xdg.configFile);
         assert home.systemd.user.startServices;
-        assert publisherUnit.Install.WantedBy == ["default.target"];
-        assert publisherUnit.Service.UMask == "0077";
-        assert !(publisherUnit.Service ? ExecStartPre);
-        assert !(publisherUnit.Service ? Environment);
-        assert nixpkgs.lib.hasInfix "--state ${publisherStateDir}" publisherUnit.Service.ExecStart;
-        assert nixpkgs.lib.hasInfix "--config ${publisherPolicyFile}" publisherUnit.Service.ExecStart;
-        assert nixpkgs.lib.hasInfix "--metrics-listen 10.255.255.1:9475" publisherUnit.Service.ExecStart;
+        assert peerUnit.Install.WantedBy == ["default.target"];
+        assert peerUnit.Service.UMask == "0077";
+        assert !(peerUnit.Service ? ExecStartPre);
+        assert !(peerUnit.Service ? Environment);
+        assert nixpkgs.lib.hasInfix "--state ${peerStateDir}" peerUnit.Service.ExecStart;
+        assert nixpkgs.lib.hasInfix "--config ${peerPolicyFile}" peerUnit.Service.ExecStart;
+        assert nixpkgs.lib.hasInfix "--metrics-listen 10.255.255.1:9475" peerUnit.Service.ExecStart;
         assert builtins.elem dashboardPackage cfg.environment.systemPackages;
         assert builtins.elem "/share/kepos" cfg.environment.pathsToLink;
         # The DSH unit reads its key from the agenix file, never hardcodes it.
         assert !builtins.any (entry: nixpkgs.lib.hasPrefix "DEEPSEEK_API_KEY=" entry) dshEnv;
           pkgs.runCommand "kepos-live-policy-check" {
-            nativeBuildInputs = [package];
+            nativeBuildInputs = [
+              package
+              pkgs.jsonnet
+            ];
           } ''
             set -euo pipefail
 
-            state_dir="$TMPDIR/publisher"
-            kepos setup publisher --state "$state_dir" >/dev/null
-            key_output="$(kepos publisher key --state "$state_dir")"
-            [[ "$key_output" =~ ^Publisher\ key:\ [0-9a-f]{64}$ ]]
+            state_dir="$TMPDIR/peer"
+            config_file="$TMPDIR/peer.toml"
+            jsonnet -S ${./kepos/peer-policy.jsonnet} >"$config_file"
+            kepos setup peer --state "$state_dir" --config "$config_file" >/dev/null
+            key_output="$(kepos peer key --state "$state_dir")"
+            [[ "$key_output" =~ ^Peer\ key:\ [0-9a-f]{64}$ ]]
+            kepos peer status --state "$state_dir" --config "$config_file"
             test -f ${dashboardPackage}/share/kepos/grafana/kepos-publisher-observability.json
             touch "$out"
           '';

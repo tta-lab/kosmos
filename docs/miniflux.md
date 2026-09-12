@@ -35,7 +35,7 @@ subscriber's gateway port — no per-service `[[subscriber.services]]` entry is
 needed (that mechanism is only for raw TCP/SSH services such as `dagger` or
 `ssh`, which get their own local listener).
 
-Once `miniflux` is present in `kepos/publisher-policy.jsonnet` and
+Once `miniflux` is present in `kepos/peer-policy.jsonnet` and
 `just kepos-policy-render` has run, Kepos advertises it within about one second
 and the Mac Kepos Desktop shows it with an Open action. Access it at:
 

@@ -154,17 +154,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1788690583,
-        "narHash": "sha256-VB5ENtEOBy06ABVi7PCAcc005chVQgHKTrR1TOWelm4=",
+        "lastModified": 1789135563,
+        "narHash": "sha256-pj2dyQkgXre8M6GIrC0gw/pR0lJv5U6Pf81KXfEADvk=",
         "owner": "LamplitIsles",
         "repo": "kepos",
-        "rev": "105a22fc963c195f0ec03f6b0a76e037e31e4865",
+        "rev": "225ce7691d0bb463c40fd35ae1dcac4626b560a8",
         "type": "github"
       },
       "original": {
         "owner": "LamplitIsles",
         "repo": "kepos",
-        "rev": "105a22fc963c195f0ec03f6b0a76e037e31e4865",
+        "rev": "225ce7691d0bb463c40fd35ae1dcac4626b560a8",
         "type": "github"
       }
     },
