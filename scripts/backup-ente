@@ -4,7 +4,7 @@ set -euo pipefail
 kubeconfig="/etc/rancher/k3s/k3s.yaml"
 namespace="photos"
 expected_destination_uuid="441ba8bb-d21b-40e4-a921-ef5553e07ff3"
-data_root="${KOSMOS_ENTE_DATA_ROOT:-/var/lib/kosmos-k3s/ente}"
+data_root="${KOSMOS_ENTE_DATA_ROOT:-/mnt/kosmos-cloudreve/ente}"
 
 usage() {
   echo "usage: backup-ente BACKUP_ROOT" >&2

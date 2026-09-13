@@ -25,12 +25,13 @@ admin dashboard and adjust users, groups, and storage quotas there.
 
 The retained disk is Windows `\\.\PHYSICALDRIVE0` (`Micron_5200_MTFDDAK1T9TDD`),
 partition 1, ext4 UUID `441ba8bb-d21b-40e4-a921-ef5553e07ff3`. NixOS mounts it
-at `/mnt/kosmos-cloudreve`; Cloudreve uses only its `cloudreve/` subdirectory.
+at `/mnt/kosmos-cloudreve`. Cloudreve, Ente Photos, and Navidrome each use a
+separate application subdirectory there.
 
 `cloudreve-storage.service` verifies that exact filesystem UUID before creating
-any hostPath directories. The static PVs use `hostPath.type: Directory`, so an
-unavailable disk leaves the Pods pending rather than writing data to the WSL
-root filesystem.
+application data directories. The static PVs use `hostPath.type: Directory`,
+so an unavailable disk leaves the Pods pending rather than writing data to the
+WSL root filesystem.
 
 Install the Windows logon task once from an elevated Windows PowerShell. It
 copies its runtime script into `%LOCALAPPDATA%`, takes only the verified Micron

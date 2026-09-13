@@ -7,7 +7,8 @@ The WSL module is `modules/wsl/navidrome.nix`.
 
 Current settings:
 
-- Music library: `/home/neil/music`
+- Music library: `/mnt/kosmos-cloudreve/navidrome/music`
+- Database and caches: `/mnt/kosmos-cloudreve/navidrome/{data,cache}`
 - Local bind: `127.0.0.1:4533`
 - Public route: none
 - Downloads: disabled
@@ -16,7 +17,7 @@ Current settings:
 Create the music directory before adding music:
 
 ```bash
-mkdir -p /home/neil/music
+mkdir -p /mnt/kosmos-cloudreve/navidrome/music
 ```
 
 After switching the NixOS configuration, create the first admin user in the

@@ -320,9 +320,6 @@
         assert !(builtins.elem 9475 eval.config.networking.firewall.allowedTCPPorts);
         assert builtins.elem "k3s-node-address.service" eval.config.systemd.services.k3s.requires;
         assert builtins.elem "d /var/lib/kosmos-k3s/dagger 0750 root root - -" rules;
-        assert builtins.elem "d /var/lib/kosmos-k3s/ente 0750 root root - -" rules;
-        assert builtins.elem "d /var/lib/kosmos-k3s/ente/postgres 0700 999 999 - -" rules;
-        assert builtins.elem "d /var/lib/kosmos-k3s/ente/garage 0750 root root - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit/data 0750 1000 1000 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit/books 0750 1000 1000 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit-db 0700 999 999 - -" rules;

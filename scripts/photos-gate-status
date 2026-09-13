@@ -147,7 +147,7 @@ else
 fi
 
 printf 'Garage storage filesystem:\n'
-df -h /var/lib/kosmos-k3s
+df -h /mnt/kosmos-cloudreve
 
 printf 'summary: %s failed\n' "$failures"
 

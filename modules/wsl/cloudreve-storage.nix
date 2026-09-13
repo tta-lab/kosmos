@@ -18,7 +18,7 @@ in {
   # Never create the hostPath directories with tmpfiles: without the Micron
   # filesystem mounted, that would silently put Cloudreve data on the WSL root.
   systemd.services.cloudreve-storage = {
-    description = "Prepare Cloudreve storage on the Micron data disk";
+    description = "Prepare persistent application storage on the Micron data disk";
     wantedBy = ["multi-user.target"];
     after = ["local-fs.target"];
     path = [
@@ -38,6 +38,14 @@ in {
           install -d -m 0750 -o root -g root ${lib.escapeShellArg "${mountPoint}/cloudreve/data"}
           # postgres:17-alpine runs its postgres account as uid/gid 70.
           install -d -m 0700 -o 70 -g 70 ${lib.escapeShellArg "${mountPoint}/cloudreve/postgres"}
+          install -d -m 0750 -o root -g root ${lib.escapeShellArg "${mountPoint}/ente"}
+          # postgres:16-alpine runs its postgres account as uid/gid 999.
+          install -d -m 0700 -o 999 -g 999 ${lib.escapeShellArg "${mountPoint}/ente/postgres"}
+          install -d -m 0750 -o root -g root ${lib.escapeShellArg "${mountPoint}/ente/garage"}
+          install -d -m 0700 -o neil -g users ${lib.escapeShellArg "${mountPoint}/navidrome"}
+          install -d -m 0700 -o neil -g users ${lib.escapeShellArg "${mountPoint}/navidrome/data"}
+          install -d -m 0700 -o neil -g users ${lib.escapeShellArg "${mountPoint}/navidrome/cache"}
+          install -d -m 0700 -o neil -g users ${lib.escapeShellArg "${mountPoint}/navidrome/music"}
 
           while [ "$(findmnt --first-only --noheadings --raw --output UUID --target ${lib.escapeShellArg mountPoint} 2>/dev/null || true)" = "${diskUuid}" ]; do
             sleep 30

@@ -17,7 +17,7 @@ local labels(name) = {
       persistentVolumeReclaimPolicy: 'Retain',
       storageClassName: 'kosmos-static',
       hostPath: {
-        path: '/var/lib/kosmos-k3s/ente/postgres',
+        path: '/mnt/kosmos-cloudreve/ente/postgres',
         type: 'Directory',
       },
     },
@@ -50,7 +50,7 @@ local labels(name) = {
       persistentVolumeReclaimPolicy: 'Retain',
       storageClassName: 'kosmos-static',
       hostPath: {
-        path: '/var/lib/kosmos-k3s/ente/garage',
+        path: '/mnt/kosmos-cloudreve/ente/garage',
         type: 'Directory',
       },
     },
