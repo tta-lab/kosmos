@@ -108,7 +108,13 @@ std.manifestTomlEx({
   network: {bootstrap: bootstrap},
   gateway: {host: '127.0.0.1', port: 17481},
   peers: peerDevices,
-  bindings: [],
+  bindings: [
+    {
+      peer: 'mac',
+      service: 'ssh',
+      listen: {local_port: 2222},
+    },
+  ],
   services: [
     service('anki', 'Anki', 17480, personalDevicesAllow + guaziAllow),
     service('bookorbit', 'BookOrbit', 17480, personalDevicesAllow + baiheAllow),

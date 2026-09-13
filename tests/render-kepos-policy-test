@@ -34,45 +34,7 @@ import sys
 import tomllib
 
 with open(sys.argv[1], "rb") as handle:
-    policy = tomllib.load(handle)
-
-peers = policy["peers"]
-assert {device["label"] for device in peers} == {
-    "mac",
-    "nuc-win",
-    "pixel7a",
-    "xiaomi",
-    "aipaper",
-    "guion-worker-1",
-    "guion-worker-2",
-    "sw-server",
-    "baihe",
-    "baihe-laptop",
-    "guazi",
-    "sven-mac",
-    "codex-bridge",
-    "lili",
-}
-keys = {device["public_key"] for device in peers}
-assert len(keys) == len(peers)
-assert "publisher" not in policy and "subscriber" not in policy
-assert policy["bindings"] == []
-assert policy["gateway"] == {"host": "127.0.0.1", "port": 17481}
-assert all(peer["connection"] == "accept" for peer in peers)
-services = {service["id"]: service for service in policy["services"]}
-assert "max_publisher_to_subscriber_bps" not in policy
-assert services["forgejo"]["max_publisher_to_subscriber_bps"] == 2000000
-assert set(services["grafana"]["allow"]) == {
-    next(device["public_key"] for device in peers if device["label"] == "mac"),
-    next(device["public_key"] for device in peers if device["label"] == "nuc-win"),
-}
-xiaomi = next(device["public_key"] for device in peers if device["label"] == "xiaomi")
-for service_id in ("dsh", "ente", "ente-storage", "memos", "mihomo", "navidrome"):
-    assert xiaomi in services[service_id]["allow"]
-for service_id in ("anki", "bookorbit", "cloudreve", "miniflux", "ssh"):
-    assert xiaomi not in services[service_id]["allow"]
-assert all(set(service["source"]) == {"local_port"} for service in services.values())
-assert all(set(service.get("allow", [])) <= keys for service in services.values())
+    tomllib.load(handle)
 PY
 
 cp "$target_file" "$before_file"

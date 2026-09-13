@@ -126,7 +126,8 @@ revoking a service grant closes its affected channels. Service `allow` lists
 are explicit immediate-peer public keys; missing or empty lists deny access.
 
 All current remote devices use `connection = "accept"`, preserving their
-existing dial direction. `bindings` starts empty. Local sources use
+existing dial direction. Mac's SSH service is bound to `127.0.0.1:2222` for
+NUC-local SSH clients. Local sources use
 `source = {local_port: 17480}` for Caddy-routed services or their direct service
 port. WSL's peer gateway uses `127.0.0.1:17481`; Caddy owns `17480`.
 
