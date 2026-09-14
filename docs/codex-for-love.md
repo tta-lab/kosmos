@@ -114,11 +114,46 @@ images, discarded kinds), and no message text. Repeat the same hashes after a
 successful import; they must match. Do not start DSH and do not modify its log,
 relationship file, settings, or attachment objects.
 
-This is one-time initialization only. After a successful import, do not rerun
-this block: it would correctly refuse the initialized prod root. Subsequent
-verification is read-only—inspect the existing config, report, service/API
-snapshot, and source hashes without copying a persona, rewriting a TOML, or
-running `import-session` again.
+This is one-time initialization only. After its successful dry-run, do not
+rerun this block: it would correctly refuse the initialized prod root. Preserve
+the generated `partner.toml` and persona, then use the standalone real-import
+command below. After that real import succeeds, subsequent verification is
+read-only—inspect the existing config, report, service/API snapshot, and source
+hashes without copying a persona, rewriting a TOML, or running
+`import-session` again.
+
+## Real import after the successful dry-run
+
+This standalone command re-hashes the current stopped DSH source tuple and
+imports into the prepared, still-empty destination. It never copies the persona
+or writes `partner.toml`. It refuses a previously initialized state or
+non-empty workspace, so it cannot overwrite an existing prod import.
+
+```sh
+set -euo pipefail
+repo=/home/neil/code/projects/lamplitisles/codex-for-love
+node=/run/current-system/sw/bin/node
+prod=/home/neil/.local/state/codex-for-love/prod
+partner="$prod/partner.toml"
+persona="$prod/persona.md"
+workspace="$prod/workspace"
+report_dir=/home/neil/.local/state/codex-for-love/reports
+session=/home/neil/.local/state/dsh/sessions/--home-neil-.openclaw-workspace--/session-bdea60ea-c8ae-45c5-b34a-e2db554435d9/session.jsonl.zstd
+relationship=/home/neil/.openclaw/workspace/.dsh/dsh-companion/state.jsonl
+attachments=/home/neil/.local/state/dsh/attachments/v1
+settings=/home/neil/.local/state/dsh/settings.yaml
+test "$(systemctl --user is-active dsh.service)" = inactive
+test -r "$partner" && test -r "$persona"
+test -d "$report_dir"
+test ! -e "$prod/state" || test -z "$(find "$prod/state" -mindepth 1 -maxdepth 1 -print -quit)"
+test ! -e "$workspace" || test -z "$(find "$workspace" -mindepth 1 -maxdepth 1 -print -quit)"
+sha256sum "$partner" "$persona" >"$report_dir/prod-initialization-before-import.sha256"
+sha256sum "$session" "$relationship" "$settings" >"$report_dir/pre-import-source.sha256"
+find "$attachments" -type f -printf '%P\\t%s\\n' | sort | sha256sum >"$report_dir/pre-import-attachments.sha256"
+"$node" "$repo/apps/partner/runtime/cli.ts" import-session \
+  "$partner" "$session" "$relationship" "$attachments" "$workspace" "$settings" \
+  | tee "$report_dir/yuki-import.json"
+```
 
 ## Pre-merge deployment and cutover (immutable reviewed PR head)
 
@@ -143,10 +178,10 @@ running `import-session` again.
    to `dev/persona.md`. Copy the reviewed assets `assets/mika-avatar.png` and
    `assets/dev-user-avatar.png` into that workspace's `.lamplit/profile/`, set
    them as companion and user avatars. Do not copy Yuki data or avatars.
-4. Preflight creates the prod TOML with display name `Shio` and copies only the
-   hash-pinned Yuki persona before dry-run. Re-run it immediately before import, then run the same
-   Node 24 `import-session` command without `--dry-run` with only its new
-   `prod/workspace` absent or empty. The importer creates the official thread and imports
+4. Run preflight once to create the prod TOML/persona and complete the dry-run.
+   Preserve those generated files, then run the standalone real-import command
+   above without `--dry-run`; do not rerun initialization. It requires an empty
+   prod state/workspace, creates the official thread, and imports
    history, relationship records, historical images, and Yuki avatars. Do not
    initialize prod separately or replace the preview candidate.
 5. From the immutable reviewed Kosmos PR head before merge, run
