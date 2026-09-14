@@ -18,42 +18,70 @@ and published separately until its later removal.
 
 - CFL checkout: `/home/neil/code/projects/lamplitisles/codex-for-love` at
   `17542aee587779e795b149f17311473b65ebf3d2`.
-- Node is the Nix-pinned Node 24 and application dependencies are selected by
-  the checkout's pnpm lockfile.
+- Node is the Nix-pinned Node 24. pnpm selects and installs the checkout's
+  locked application dependencies, but services directly execute CFL's
+  `apps/partner/runtime/cli.ts` with Node rather than asking Node to execute
+  pnpm's native binary.
 - Install the verified `codex`, `codex.provenance.json`, and
   `codex-code-mode-host` together at
   `~/.local/share/codex-for-love/artifacts/codex-0.154.0/`. CFL verifies the
   executable and provenance at startup; the helper must remain beside `codex`.
   Do not point a service at CFL's prunable `.cache`.
-- Each root contains its own `partner.toml`, persona, workspace, SQLite
-  projection, attachments, profile images, and official Codex thread. The
-  services only create a missing root directory; missing configuration, a bad
-  CFL commit, absent artifact member, or an occupied port fails explicitly.
+- Each root contains its own `partner.toml`, persona, `state`, workspace,
+  SQLite projection, attachments, profile images, and official Codex thread.
+  Services require their own exact name, Luna model, `/home/neil/.codex`, fixed
+  port, and root-contained persona/state/workspace paths before launch. They
+  only create a missing root directory; missing configuration, a bad CFL
+  commit, absent artifact member, a cross-environment path, or an occupied port
+  fails explicitly.
 - The existing authorized `~/.codex` device login is used in place. Never copy,
   parse, manage, or back up credentials as part of this procedure.
 
 ## Preflight (before any cutover)
 
-Run this from the CFL checkout. It is read-only except for the dry-run's
-operator-selected report file; choose a new path outside either destination.
+Run this from the CFL checkout. It does not import a conversation or mutate a
+DSH source. It creates only the new prod TOML, its copied authoritative persona,
+and a private report directory before the dry-run.
 
 ```sh
 set -euo pipefail
 repo=/home/neil/code/projects/lamplitisles/codex-for-love
+node=/run/current-system/sw/bin/node
 prod=/home/neil/.local/state/codex-for-love/prod
+workspace="$prod/workspace"
+report_dir=/home/neil/.local/state/codex-for-love/reports
+artifact=/home/neil/.local/share/codex-for-love/artifacts/codex-0.154.0
+yuki_persona=/home/neil/.local/state/codex-for-love/migrations/yuki-20260914T1252/persona.md
 session=/home/neil/.local/state/dsh/sessions/--home-neil-.openclaw-workspace--/session-bdea60ea-c8ae-45c5-b34a-e2db554435d9/session.jsonl.zstd
 relationship=/home/neil/.openclaw/workspace/.dsh/dsh-companion/state.jsonl
 attachments=/home/neil/.local/state/dsh/attachments/v1
 settings=/home/neil/.local/state/dsh/settings.yaml
-systemctl --user is-active --quiet dsh.service && { echo 'dsh.service must be inactive' >&2; exit 1; } || true
 test "$(systemctl --user is-active dsh.service)" = inactive
-test ! -e "$prod" || test -z "$(find "$prod" -mindepth 1 -maxdepth 1 -print -quit)"
+case "$("$node" --version)" in v24.*) ;; *) echo 'Node 24 is required' >&2; exit 1 ;; esac
+install -d -m 0700 "$prod" "$report_dir"
+test "$(sha256sum "$yuki_persona" | cut -d' ' -f1)" = b811d2f3e9dc447b0a3bc15c593aa7fc4313e210facbc41d788f8bbe743244b2
+cp -- "$yuki_persona" "$prod/persona.md"
+cat >"$prod/partner.toml" <<EOF
+name = "Yuki"
+persona = "$prod/persona.md"
+state = "$prod/state"
+workspace = "$workspace"
+port = 3084
+[codex]
+command = "$artifact/codex"
+provenance = "$artifact/codex.provenance.json"
+model = "gpt-5.6-luna"
+version = "0.154.0"
+home = "/home/neil/.codex"
+local_compaction = true
+EOF
+test ! -e "$workspace" || test -z "$(find "$workspace" -mindepth 1 -maxdepth 1 -print -quit)"
 sha256sum "$session" "$relationship" "$settings"
 find "$attachments" -type f -printf '%P\\t%s\\n' | sort | sha256sum
 git -C "$repo" rev-parse HEAD
-pnpm --dir "$repo" --filter @lamplitisles/partner cli import-session \
+"$node" "$repo/apps/partner/runtime/cli.ts" import-session \
   "$prod/partner.toml" "$session" "$relationship" "$attachments" \
-  "$prod/workspace" "$settings" --dry-run | tee /safe/operator-records/yuki-import-dry-run.txt
+  "$workspace" "$settings" --dry-run | tee "$report_dir/yuki-import-dry-run.txt"
 ```
 
 Record the DSH source hashes, attachment manifest hash and count, CFL commit,
@@ -73,18 +101,18 @@ relationship file, settings, or attachment objects.
 2. Stop `cfl-preview-3082.service`, record its status and candidate path, and
    retain that candidate untouched until both new environments pass acceptance.
    It is recovery evidence, not a compatibility service.
-3. Create `dev/partner.toml` from CFL's `apps/partner/config.example.toml`.
-   Use name `Mica`, port `3082`, model `gpt-5.6-luna`, the stable artifact and
-   provenance paths, `local_compaction = true`, and a new `dev/workspace`.
-   Copy the reviewed assets `assets/mika-avatar.png` and
+3. Create `dev/partner.toml` before starting its unit. Use the exact absolute
+   `dev/persona.md`, `dev/state`, and `dev/workspace` paths; name `Mika`, port
+   `3082`, model `gpt-5.6-luna`, `codex.home = "/home/neil/.codex"`, the stable
+   artifact and provenance paths, and `local_compaction = true`. Copy
+   `assets/mika-persona.md` (the CFL test persona with Mika's selected name)
+   to `dev/persona.md`. Copy the reviewed assets `assets/mika-avatar.png` and
    `assets/dev-user-avatar.png` into that workspace's `.lamplit/profile/`, set
-   them as companion and user avatars, and copy CFL's test-only
-   `apps/partner/persona.example.md` as the Mika persona. Do not copy Yuki
-   data or avatars.
-4. Create the prod TOML with port `3084`, model `gpt-5.6-luna`, stable artifact
-   paths, and its own `prod/workspace`. Re-run preflight, then run the same
-   `import-session` command without `--dry-run` only with an absent or empty
-   prod destination. The importer creates the official thread and imports
+   them as companion and user avatars. Do not copy Yuki data or avatars.
+4. Preflight creates the prod TOML and copies only the hash-pinned Yuki persona
+   before dry-run. Re-run it immediately before import, then run the same
+   Node 24 `import-session` command without `--dry-run` with only its new
+   `prod/workspace` absent or empty. The importer creates the official thread and imports
    history, relationship records, historical images, and Yuki avatars. Do not
    initialize prod separately or replace the preview candidate.
 5. From merged Kosmos main, run `nh os switch . -H wsl`, then

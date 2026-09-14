@@ -10,36 +10,46 @@
   checkoutCommit = "17542aee587779e795b149f17311473b65ebf3d2";
   artifactDirectory = "/home/neil/.local/share/codex-for-love/artifacts/codex-0.154.0";
   node = lib.getExe pkgsUnstable.nodejs_24;
-  pnpm = "${pkgsUnstable.callPackage ../../packages/pnpm {}}/bin/pnpm";
   service = {
     name,
+    partnerName,
     port,
   }: let
     stateRoot = "/home/neil/.local/state/codex-for-love/${name}";
     configFile = "${stateRoot}/partner.toml";
     start = pkgs.writeShellScript "codex-for-love-${name}-start" ''
-      set -eu
+            set -eu
 
-      actual_commit="$(${pkgs.git}/bin/git -C ${lib.escapeShellArg checkout} rev-parse HEAD)"
-      if [ "$actual_commit" != ${lib.escapeShellArg checkoutCommit} ]; then
-        echo "codex-for-love-${name}: expected CFL ${checkoutCommit}, got $actual_commit" >&2
-        exit 1
-      fi
-      for artifact in codex codex.provenance.json codex-code-mode-host; do
-        if [ ! -r ${lib.escapeShellArg artifactDirectory}/"$artifact" ]; then
-          echo "codex-for-love-${name}: missing artifact $artifact in ${artifactDirectory}" >&2
-          exit 1
-        fi
-      done
-      if [ ! -r ${lib.escapeShellArg configFile} ]; then
-        echo "codex-for-love-${name}: missing operator configuration ${configFile}" >&2
-        exit 1
-      fi
-      if ! ${pkgs.gnugrep}/bin/grep -Fqx ${lib.escapeShellArg "port = ${toString port}"} ${lib.escapeShellArg configFile}; then
-        echo "codex-for-love-${name}: configuration must bind fixed port ${toString port}" >&2
-        exit 1
-      fi
-      exec ${node} ${pnpm} --dir ${lib.escapeShellArg checkout} --filter @lamplitisles/partner cli serve ${lib.escapeShellArg configFile}
+            actual_commit="$(${pkgs.git}/bin/git -C ${lib.escapeShellArg checkout} rev-parse HEAD)"
+            if [ "$actual_commit" != ${lib.escapeShellArg checkoutCommit} ]; then
+              echo "codex-for-love-${name}: expected CFL ${checkoutCommit}, got $actual_commit" >&2
+              exit 1
+            fi
+            for artifact in codex codex.provenance.json codex-code-mode-host; do
+              if [ ! -r ${lib.escapeShellArg artifactDirectory}/"$artifact" ]; then
+                echo "codex-for-love-${name}: missing artifact $artifact in ${artifactDirectory}" >&2
+                exit 1
+              fi
+            done
+            if [ ! -r ${lib.escapeShellArg configFile} ]; then
+              echo "codex-for-love-${name}: missing operator configuration ${configFile}" >&2
+              exit 1
+            fi
+            while IFS= read -r expected; do
+              if ! ${pkgs.gnugrep}/bin/grep -Fqx "$expected" ${lib.escapeShellArg configFile}; then
+                echo "codex-for-love-${name}: configuration is missing required setting: $expected" >&2
+                exit 1
+              fi
+            done <<'EOF'
+      name = "${partnerName}"
+      persona = "${stateRoot}/persona.md"
+      state = "${stateRoot}/state"
+      workspace = "${stateRoot}/workspace"
+      port = ${toString port}
+      model = "gpt-5.6-luna"
+      home = "/home/neil/.codex"
+      EOF
+            exec ${node} ${lib.escapeShellArg "${checkout}/apps/partner/runtime/cli.ts"} serve ${lib.escapeShellArg configFile}
     '';
   in {
     Unit = {
@@ -73,10 +83,12 @@ in {
     home-manager.users.neil.systemd.user.services = {
       codex-for-love-dev = service {
         name = "dev";
+        partnerName = "Mika";
         port = 3082;
       };
       codex-for-love-prod = service {
         name = "prod";
+        partnerName = "Yuki";
         port = 3084;
       };
     };
