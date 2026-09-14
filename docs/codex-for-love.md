@@ -16,8 +16,7 @@ and published separately until its later removal.
 
 ## Invariants
 
-- CFL checkout: `/home/neil/code/projects/lamplitisles/codex-for-love` at
-  `17542aee587779e795b149f17311473b65ebf3d2`.
+- CFL checkout: `/home/neil/code/projects/lamplitisles/codex-for-love`.
 - Node is the Nix-pinned Node 24. pnpm selects and installs the checkout's
   locked application dependencies, but services directly execute CFL's
   `apps/partner/runtime/cli.ts` with Node rather than asking Node to execute
@@ -25,17 +24,17 @@ and published separately until its later removal.
 - Install the verified `codex`, `codex.provenance.json`, and
   `codex-code-mode-host` together at
   `~/.local/share/codex-for-love/artifacts/codex-0.154.0/`. CFL verifies the
-  executable and provenance at startup; the helper must remain beside `codex`.
-  The service additionally requires `codex` and `codex-code-mode-host` to be
-  executable, and the provenance sidecar to be readable. Do not point a service
-  at CFL's prunable `.cache`.
+  executable and provenance selected by `partner.toml` at startup; the helper
+  must remain beside `codex`. Kosmos does not pin or validate CFL/Codex release
+  internals (commit, version, provenance fields, patches, hashes, or
+  `local_compaction`). Do not point a service at CFL's prunable `.cache`.
 - Each root contains its own `partner.toml`, persona, `state`, workspace,
   SQLite projection, attachments, profile images, and official Codex thread.
   Services require their own exact name, Luna model, `/home/neil/.codex`, fixed
   port, and root-contained persona/state/workspace paths before launch. They
-  only create a missing root directory; missing configuration, a bad CFL
-  commit, absent artifact member, a cross-environment path, or an occupied port
-  fails explicitly.
+  only create a missing root directory; missing configuration, a
+  cross-environment path, or an occupied port fails explicitly. CFL validates
+  the Codex artifact fields selected in `partner.toml`.
 - The existing authorized `~/.codex` device login is used in place. Never copy,
   parse, manage, or back up credentials as part of this procedure.
 
@@ -94,12 +93,16 @@ relationship file, settings, or attachment objects.
 
 ## Post-merge installation and cutover
 
-1. Verify the checkout is the pinned commit and its `pnpm install --frozen-lockfile`
-   and `pnpm build` completed at that commit. Build or select the verified
+1. Record the checkout revision and verify its `pnpm install --frozen-lockfile`
+   and `pnpm build` completed. Build or select the verified
    patched Codex 0.154.0 artifact, hash all three artifact members and its
    provenance sidecar, then copy them with mode `0700` (executables) and `0600`
    (sidecar) into the stable artifact directory above. Record source and
-   installed hashes; never use `.cache` as the deployed location.
+   installed hashes; never use `.cache` as the deployed location. For the
+   current pragmatic cutover, change only the installed provenance sidecar's
+   `binaryPath` to the final stable `codex` path, then re-verify every retained
+   source, patch, version, identity, binary, and helper hash. A self-contained
+   CFL build/install workflow is deferred.
 2. Stop `cfl-preview-3082.service`, record its status and candidate path, and
    retain that candidate untouched until both new environments pass acceptance.
    It is recovery evidence, not a compatibility service.
