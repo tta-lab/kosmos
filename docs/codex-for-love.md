@@ -281,12 +281,12 @@ systemctl --user start codex-for-love-prod.service
 ## One-time Shio model-marker migration
 
 Only after the owner has explicitly approved switching the already imported
-Shio thread from Luna to Sol, stop prod and apply this guarded migration. It is
-not an import, does not create another workspace, and must never edit the
-official Codex rollout JSONL. The command reads only the rollout header to
-prove that its `session_id` is the existing marker's thread ID. It retains a
-private mode-`0600` rollback marker, records only the marker digest, thread ID,
-and models, and atomically replaces only the marker's `model` field.
+Shio thread from Luna to Sol, apply this guarded migration. It is not an
+import, does not create another workspace, and must never edit the official
+Codex rollout JSONL. Complete every read-only path, marker, mode, rollout, and
+header guard while prod is still running. The brief stopped window begins only
+after a private rollback marker exists and an EXIT trap can restore that marker
+and restart the previously running prod service on any failure.
 
 ```sh
 set -euo pipefail
@@ -297,20 +297,17 @@ report_dir=/home/neil/.local/state/codex-for-love/reports
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
 migration_dir="$report_dir/shio-sol-marker-$stamp"
 install -d -m 0700 "$migration_dir"
-systemctl --user stop codex-for-love-prod.service
 thread_id=$("/run/current-system/sw/bin/node" -e 'const fs=require("node:fs"); const marker=JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (marker.model !== "gpt-5.6-luna" || typeof marker.threadId !== "string") process.exit(1); process.stdout.write(marker.threadId)' "$thread")
 mapfile -t rollouts < <(find /home/neil/.codex/sessions -type f -name "*-$thread_id.jsonl" -print)
 test "${#rollouts[@]}" -eq 1
 rollout="${rollouts[0]}"
 
-"/run/current-system/sw/bin/node" - "$thread" "$rollout" "$migration_dir" <<'NODE'
-const { createHash, randomUUID } = await import('node:crypto');
-const { chmod, copyFile, open, readFile, rename, stat, unlink } = await import('node:fs/promises');
-const { basename, dirname, join } = await import('node:path');
+"/run/current-system/sw/bin/node" - "$thread" "$rollout" <<'NODE' >"$migration_dir/preflight.json"
+const { createHash } = await import('node:crypto');
+const { readFile, stat } = await import('node:fs/promises');
 
-const [, , threadPath, rolloutPath, reportPath] = process.argv;
+const [, , threadPath, rolloutPath] = process.argv;
 const oldModel = 'gpt-5.6-luna';
-const newModel = 'gpt-5.6-sol';
 const digest = (data) => createHash('sha256').update(data).digest('hex');
 const original = await readFile(threadPath);
 const marker = JSON.parse(original);
@@ -323,10 +320,48 @@ const header = firstRecord.payload;
 if (firstRecord.type !== 'session_meta' || header?.session_id !== marker.threadId || header.id !== marker.threadId) {
   throw new Error('refusing Shio marker migration: rollout header does not match marker threadId');
 }
-const rollback = join(reportPath, 'thread.json.before');
-await copyFile(threadPath, rollback);
-await chmod(rollback, 0o600);
-const replacement = Buffer.from(JSON.stringify({ threadId: marker.threadId, model: newModel }));
+console.log(JSON.stringify({
+  threadId: marker.threadId,
+  model: marker.model,
+  markerSha256: digest(original),
+}, null, 2));
+NODE
+grep -Fqx 'model_reasoning_effort = "low"' "$workspace/.codex/config.toml"
+
+rollback="$migration_dir/thread.json.before"
+test ! -e "$rollback"
+cp -- "$thread" "$rollback"
+chmod 0600 "$rollback" "$migration_dir/preflight.json"
+prod_was_active=false
+test "$(systemctl --user is-active codex-for-love-prod.service)" = active && prod_was_active=true
+rollback_armed=true
+restore_on_failure() {
+  status=$?
+  trap - EXIT HUP INT TERM
+  set +e
+  if "$rollback_armed"; then
+    temporary=$(mktemp "$(dirname "$thread")/.thread.json.rollback.XXXXXX")
+    chmod 0600 "$temporary"
+    cp -- "$rollback" "$temporary"
+    chmod 0600 "$temporary"
+    mv -f -- "$temporary" "$thread"
+    if "$prod_was_active"; then
+      systemctl --user start codex-for-love-prod.service
+    fi
+  fi
+  exit "$status"
+}
+trap restore_on_failure EXIT HUP INT TERM
+
+# The mutation window starts here: stop only prod, then replace only model.
+systemctl --user stop codex-for-love-prod.service
+"/run/current-system/sw/bin/node" - "$rollback" "$thread" <<'NODE'
+const { randomUUID } = await import('node:crypto');
+const { chmod, open, readFile, rename, unlink } = await import('node:fs/promises');
+const { basename, dirname, join } = await import('node:path');
+const [, , rollback, threadPath] = process.argv;
+const marker = JSON.parse(await readFile(rollback, 'utf8'));
+const replacement = Buffer.from(JSON.stringify({ threadId: marker.threadId, model: 'gpt-5.6-sol' }));
 const temporary = join(dirname(threadPath), `.${basename(threadPath)}.${randomUUID()}.tmp`);
 try {
   const handle = await open(temporary, 'wx', 0o600);
@@ -337,25 +372,37 @@ try {
   await unlink(temporary).catch(() => {});
   throw error;
 }
-console.log(JSON.stringify({
-  threadId: marker.threadId,
-  previousModel: marker.model,
-  model: newModel,
-  beforeSha256: digest(original),
-  afterSha256: digest(replacement),
-}, null, 2));
 NODE
+systemctl --user start codex-for-love-prod.service
+for attempt in $(seq 1 20); do
+  curl --fail --silent http://127.0.0.1:3084/api/session >/dev/null && break
+  sleep 1
+done
+curl --fail --silent http://127.0.0.1:3084/api/session >/dev/null
+grep -Fqx 'model_reasoning_effort = "low"' "$workspace/.codex/config.toml"
+"/run/current-system/sw/bin/node" - "$rollback" "$thread" <<'NODE'
+const { readFile, stat } = await import('node:fs/promises');
+const [, , rollback, threadPath] = process.argv;
+const original = JSON.parse(await readFile(rollback, 'utf8'));
+const marker = JSON.parse(await readFile(threadPath, 'utf8'));
+if (marker.threadId !== original.threadId || marker.model !== 'gpt-5.6-sol' || ((await stat(threadPath)).mode & 0o777) !== 0o600) {
+  throw new Error('Shio marker did not retain Sol with mode 0600 after readiness');
+}
+NODE
+rollback_armed=false
+trap - EXIT HUP INT TERM
 ```
 
-Require the emitted summary to show the same thread ID, Luna-to-Sol transition,
-and both marker digests. Preserve `thread.json.before` privately; do not use it
-to rewrite the marker while prod is active. Then start only prod and require
-the CFL `thread/resume` response to accept Sol, the marker to retain that same
-thread ID and mode `0600`, and the workspace project config to retain
-`model_reasoning_effort = "low"`. Compare the read-only UI/API and SQLite
-counts for imported messages, history, compact boundaries, relationships, and
-historical media before and after. Do not send a prod message. Mika remains on
-Luna and is not restarted by this migration.
+Require the preflight summary to show the existing thread ID, Luna marker, and
+digest. Preserve `thread.json.before` privately; do not use it to rewrite the
+marker while prod is active. CFL's successful `thread/resume` verifies that
+the response selected Sol. Separately, require the exact workspace project
+config to be set to `model_reasoning_effort = "low"`; the Kosmos launcher
+enforces that setting before CFL starts. Low effort is not exposed as
+thread-response or service telemetry, so do not claim it is. Compare the
+read-only UI/API and SQLite counts for imported messages, history, compact
+boundaries, relationships, and historical media before and after. Do not send
+a prod message. Mika remains on Luna and is not restarted by this migration.
 
 ## Acceptance and evidence
 
