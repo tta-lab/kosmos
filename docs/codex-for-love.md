@@ -36,7 +36,10 @@ and published separately until its later removal.
   cross-environment path, or an occupied port fails explicitly. CFL validates
   the Codex artifact fields selected in `partner.toml`.
 - The existing authorized `~/.codex` device login is used in place. Never copy,
-  parse, manage, or back up credentials as part of this procedure.
+  parse, manage, or back up credentials as part of this procedure. The sole
+  exception is the one-time, direct-pipe migration of the existing DashScope
+  STT reference described below; do not copy the DSH credential database or any
+  other credential record.
 
 ## Preflight (before any cutover)
 
@@ -75,6 +78,10 @@ attachments=/home/neil/.local/state/dsh/attachments/v1
 settings=/home/neil/.local/state/dsh/settings.yaml
 test "$(systemctl --user is-active dsh.service)" = inactive
 case "$("$node" --version)" in v24.*) ;; *) echo 'Node 24 is required' >&2; exit 1 ;; esac
+if [ -e "$prod" ] && [ -n "$(find "$prod" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
+  echo "refusing one-time prod initialization: $prod is already initialized or non-empty" >&2
+  exit 1
+fi
 install -d -m 0700 "$prod" "$report_dir"
 test "$(sha256sum "$yuki_persona" | cut -d' ' -f1)" = b811d2f3e9dc447b0a3bc15c593aa7fc4313e210facbc41d788f8bbe743244b2
 cp -- "$yuki_persona" "$prod/persona.md"
@@ -107,7 +114,13 @@ images, discarded kinds), and no message text. Repeat the same hashes after a
 successful import; they must match. Do not start DSH and do not modify its log,
 relationship file, settings, or attachment objects.
 
-## Post-merge installation and cutover
+This is one-time initialization only. After a successful import, do not rerun
+this block: it would correctly refuse the initialized prod root. Subsequent
+verification is read-only—inspect the existing config, report, service/API
+snapshot, and source hashes without copying a persona, rewriting a TOML, or
+running `import-session` again.
+
+## Pre-merge deployment and cutover (immutable reviewed PR head)
 
 1. Record the checkout revision and verify its `pnpm install --frozen-lockfile`
    and `pnpm build` completed. Build or select the verified
@@ -136,14 +149,16 @@ relationship file, settings, or attachment objects.
    `prod/workspace` absent or empty. The importer creates the official thread and imports
    history, relationship records, historical images, and Yuki avatars. Do not
    initialize prod separately or replace the preview candidate.
-5. From merged Kosmos main, run `nh os switch . -H wsl`, then require
+5. From the immutable reviewed Kosmos PR head before merge, run
+   `nh os switch . -H wsl`, then require
    `dsh.service` to remain inactive before and after the switch. DSH remains
    configured and published for later removal, but is intentionally not wanted
    by the user `default.target`.
 6. Before starting either CFL unit, migrate only the existing DashScope speech
    reference from DSH's credential store through CFL's write-only credential
    command. Keep the command's standard output out of logs and reports; it must
-   never print, store, or copy the secret or unrelated DSH records:
+   never print, store, or copy the secret or unrelated DSH records. This is the
+   sole credential migration in scope:
 
    Both stable partner TOMLs must also select the DashScope endpoint:
 
@@ -178,8 +193,9 @@ Check unit health and loopback isolation with `systemctl --user status`,
 `ss -ltn '( sport = :3082 or sport = :3084 )'`, and `curl --fail
 http://127.0.0.1:3082/` / `:3084/`. Check Kepos render output contains exactly
 the two ids, ports, and Mac/Pixel allow lists, then verify each peer-visible URL
-from the owner devices. Record service journal excerpts without credentials or
-message contents.
+from the owner devices. Mac/Pixel subscriber acceptance is owner-observed; do
+not infer it from a publisher-local curl. Record service journal excerpts
+without credentials or message contents.
 
 In browsers, verify Mika's fresh identity and the two configured avatars; send
 one bounded real Luna response only there. Verify Shio's display name alongside
