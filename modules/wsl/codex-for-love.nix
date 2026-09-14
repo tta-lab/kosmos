@@ -12,9 +12,12 @@
     name,
     partnerName,
     port,
+    model,
+    modelReasoningEffort ? null,
   }: let
     stateRoot = "/home/neil/.local/state/codex-for-love/${name}";
     configFile = "${stateRoot}/partner.toml";
+    workspaceConfig = "${stateRoot}/workspace/.codex/config.toml";
     start = pkgs.writeShellScript "codex-for-love-${name}-start" ''
             set -eu
 
@@ -33,9 +36,15 @@
       state = "${stateRoot}/state"
       workspace = "${stateRoot}/workspace"
       port = ${toString port}
-      model = "gpt-5.6-luna"
+      model = "${model}"
       home = "/home/neil/.codex"
       EOF
+            ${lib.optionalString (modelReasoningEffort != null) ''
+        if [ ! -r ${lib.escapeShellArg workspaceConfig} ] || ! ${pkgs.gnugrep}/bin/grep -Fqx ${lib.escapeShellArg "model_reasoning_effort = \"${modelReasoningEffort}\""} ${lib.escapeShellArg workspaceConfig}; then
+          echo "codex-for-love-${name}: workspace Codex config must select reasoning effort ${modelReasoningEffort}" >&2
+          exit 1
+        fi
+      ''}
             exec ${node} ${lib.escapeShellArg "${checkout}/apps/partner/runtime/cli.ts"} serve ${lib.escapeShellArg configFile}
     '';
   in {
@@ -72,11 +81,14 @@ in {
         name = "dev";
         partnerName = "Mika";
         port = 3082;
+        model = "gpt-5.6-luna";
       };
       codex-for-love-prod = service {
         name = "prod";
         partnerName = "Shio";
         port = 3084;
+        model = "gpt-5.6-sol";
+        modelReasoningEffort = "low";
       };
     };
   };

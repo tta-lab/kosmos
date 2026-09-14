@@ -30,8 +30,10 @@ and published separately until its later removal.
   `local_compaction`). Do not point a service at CFL's prunable `.cache`.
 - Each root contains its own `partner.toml`, persona, `state`, workspace,
   SQLite projection, attachments, profile images, and official Codex thread.
-  Services require their own exact name, Luna model, `/home/neil/.codex`, fixed
-  port, and root-contained persona/state/workspace paths before launch. They
+  Services require their own exact name, model (Mika: `gpt-5.6-luna`; Shio:
+  `gpt-5.6-sol`), `/home/neil/.codex`, fixed port, and root-contained
+  persona/state/workspace paths before launch. Shio's exact workspace Codex
+  project config also requires `model_reasoning_effort = "low"`. They
   only create a missing root directory; missing configuration, a
   cross-environment path, or an occupied port fails explicitly. CFL validates
   the Codex artifact fields selected in `partner.toml`.
@@ -94,7 +96,7 @@ write_import_summary() {
         omitted: report.omitted,
         warningCount: report.warnings.length,
       };
-      process.stdout.write(`${JSON.stringify(summary, null, 2)}\\n`);
+      console.log(JSON.stringify(summary, null, 2));
     });
   '
 }
@@ -116,7 +118,7 @@ port = 3084
 [codex]
 command = "$artifact/codex"
 provenance = "$artifact/codex.provenance.json"
-model = "gpt-5.6-luna"
+model = "gpt-5.6-sol"
 version = "0.154.0"
 home = "/home/neil/.codex"
 local_compaction = true
@@ -186,7 +188,7 @@ write_import_summary() {
         warningCount: report.warnings.length,
         destinationCreated: payload.destination.created === true,
       };
-      process.stdout.write(`${JSON.stringify(summary, null, 2)}\\n`);
+      console.log(JSON.stringify(summary, null, 2));
     });
   '
 }
@@ -231,7 +233,13 @@ find "$attachments" -type f -printf '%P\\t%s\\n' | sort | sha256sum >"$report_di
    above without `--dry-run`; do not rerun initialization. It requires an empty
    prod state/workspace, creates the official thread, and imports
    history, relationship records, historical images, and Yuki avatars. Do not
-   initialize prod separately or replace the preview candidate.
+   initialize prod separately or replace the preview candidate. Before starting
+   Shio, use a TOML-aware update on only
+   `prod/workspace/.codex/config.toml` to add or retain
+   `model_reasoning_effort = "low"`; preserve CFL-owned hooks, MCP entries, and
+   every unrelated workspace setting. CFL has no separate Partner effort field:
+   the prod Partner TOML selects `gpt-5.6-sol` and this exact workspace config
+   selects its low reasoning effort.
 5. From the immutable reviewed Kosmos PR head before merge, run
    `nh os switch . -H wsl`, then require
    `dsh.service` to remain inactive before and after the switch. DSH remains
