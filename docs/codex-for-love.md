@@ -76,6 +76,28 @@ session=/home/neil/.local/state/dsh/sessions/--home-neil-.openclaw-workspace--/s
 relationship=/home/neil/.openclaw/workspace/.dsh/dsh-companion/state.jsonl
 attachments=/home/neil/.local/state/dsh/attachments/v1
 settings=/home/neil/.local/state/dsh/settings.yaml
+write_import_summary() {
+  "$node" -e '
+    let input = "";
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (chunk) => { input += chunk; });
+    process.stdin.on("end", () => {
+      const payload = JSON.parse(input);
+      const report = payload.report;
+      const summary = {
+        dryRun: payload.dryRun === true,
+        messages: report.messages,
+        compactionCount: report.compactions.length,
+        relationshipCount: report.relationships,
+        mediaCount: report.media,
+        avatarCount: report.avatars,
+        omitted: report.omitted,
+        warningCount: report.warnings.length,
+      };
+      process.stdout.write(`${JSON.stringify(summary, null, 2)}\\n`);
+    });
+  '
+}
 test "$(systemctl --user is-active dsh.service)" = inactive
 case "$("$node" --version)" in v24.*) ;; *) echo 'Node 24 is required' >&2; exit 1 ;; esac
 if [ -e "$prod" ] && [ -n "$(find "$prod" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
@@ -105,12 +127,15 @@ find "$attachments" -type f -printf '%P\\t%s\\n' | sort | sha256sum
 git -C "$repo" rev-parse HEAD
 "$node" "$repo/apps/partner/runtime/cli.ts" import-session \
   "$prod/partner.toml" "$session" "$relationship" "$attachments" \
-  "$workspace" "$settings" --dry-run | tee "$report_dir/yuki-import-dry-run.txt"
+  "$workspace" "$settings" --dry-run \
+  | write_import_summary >"$report_dir/yuki-import-dry-run-summary.json"
 ```
 
 Record the DSH source hashes, attachment manifest hash and count, CFL commit,
 dry-run source counts (messages, compact boundaries, relationship records,
-images, discarded kinds), and no message text. Repeat the same hashes after a
+images, discarded kinds), and no message text. The summary writer never
+persists the importer's `records` payload; with `set -o pipefail`, an importer
+or summary failure still stops the command. Repeat the same hashes after a
 successful import; they must match. Do not start DSH and do not modify its log,
 relationship file, settings, or attachment objects.
 
@@ -142,6 +167,29 @@ session=/home/neil/.local/state/dsh/sessions/--home-neil-.openclaw-workspace--/s
 relationship=/home/neil/.openclaw/workspace/.dsh/dsh-companion/state.jsonl
 attachments=/home/neil/.local/state/dsh/attachments/v1
 settings=/home/neil/.local/state/dsh/settings.yaml
+write_import_summary() {
+  "$node" -e '
+    let input = "";
+    process.stdin.setEncoding("utf8");
+    process.stdin.on("data", (chunk) => { input += chunk; });
+    process.stdin.on("end", () => {
+      const payload = JSON.parse(input);
+      const report = payload.report;
+      const summary = {
+        dryRun: payload.dryRun === true,
+        messages: report.messages,
+        compactionCount: report.compactions.length,
+        relationshipCount: report.relationships,
+        mediaCount: report.media,
+        avatarCount: report.avatars,
+        omitted: report.omitted,
+        warningCount: report.warnings.length,
+        destinationCreated: payload.destination.created === true,
+      };
+      process.stdout.write(`${JSON.stringify(summary, null, 2)}\\n`);
+    });
+  '
+}
 test "$(systemctl --user is-active dsh.service)" = inactive
 test -r "$partner" && test -r "$persona"
 test -d "$report_dir"
@@ -152,7 +200,7 @@ sha256sum "$session" "$relationship" "$settings" >"$report_dir/pre-import-source
 find "$attachments" -type f -printf '%P\\t%s\\n' | sort | sha256sum >"$report_dir/pre-import-attachments.sha256"
 "$node" "$repo/apps/partner/runtime/cli.ts" import-session \
   "$partner" "$session" "$relationship" "$attachments" "$workspace" "$settings" \
-  | tee "$report_dir/yuki-import.json"
+  | write_import_summary >"$report_dir/yuki-import-summary.json"
 ```
 
 ## Pre-merge deployment and cutover (immutable reviewed PR head)
