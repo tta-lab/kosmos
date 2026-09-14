@@ -72,7 +72,6 @@ in {
 
       systemd.user.services.dsh = {
         Unit.Description = "DeepSeek Harness web UI";
-        Install.WantedBy = ["default.target"];
         Service = {
           WorkingDirectory = "/home/neil";
           ExecStartPre = lib.escapeShellArgs [

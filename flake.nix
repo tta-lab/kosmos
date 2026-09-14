@@ -113,6 +113,7 @@
             ${./tests/forgejo-backup-render-test} \
             ${./tests/prepare-mihomo-config-test} \
             ${./tests/render-kepos-policy-test} \
+            ${./tests/codex-for-love-kepos-policy-test} \
             ${./tests/observability-render-test} \
             ${./tests/init-observability-secrets-test} \
             ${./tests/observability-just-test} \
@@ -153,6 +154,7 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-backup-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/prepare-mihomo-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/render-kepos-policy-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/codex-for-love-kepos-policy-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/observability-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-observability-secrets-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/observability-just-test}
