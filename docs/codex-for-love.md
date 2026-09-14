@@ -44,6 +44,22 @@ Run this from the CFL checkout. It does not import a conversation or mutate a
 DSH source. It creates only the new prod TOML, its copied authoritative persona,
 and a private report directory before the dry-run.
 
+Before the first import, preserve the existing `~/.codex/config.toml` and use a
+TOML-aware update to add (or retain) only these exact project entries:
+
+```toml
+[projects."/home/neil/.local/state/codex-for-love/dev/workspace"]
+trust_level = "trusted"
+
+[projects."/home/neil/.local/state/codex-for-love/prod/workspace"]
+trust_level = "trusted"
+```
+
+Do not trust a parent directory, replace unrelated Codex configuration, or set
+`bypass_hook_trust`. This enables official Codex to discover CFL's project-owned
+`SessionStart` hook; CFL must then register and verify the hook's exact trusted
+hash. These are operator-owned runtime entries, not Nix configuration.
+
 ```sh
 set -euo pipefail
 repo=/home/neil/code/projects/lamplitisles/codex-for-love
