@@ -37,6 +37,7 @@ in {
     "erpnext.localhost"
     "grafana.localhost"
     "impri.localhost"
+    "navidrome.localhost"
   ];
 
   networking.firewall.interfaces.cni0.allowedTCPPorts = [
@@ -105,9 +106,6 @@ in {
     "d /var/lib/kosmos-k3s/forgejo 0750 1000 1000 - -"
     "d /var/lib/kosmos-k3s/woodpecker-postgres 0700 70 70 - -"
     "d /var/lib/kosmos-k3s/dagger 0750 root root - -"
-    "d /var/lib/kosmos-k3s/ente 0750 root root - -"
-    "d /var/lib/kosmos-k3s/ente/postgres 0700 999 999 - -"
-    "d /var/lib/kosmos-k3s/ente/garage 0750 root root - -"
     "d /var/lib/kosmos-k3s/ebooks 0750 root root - -"
     "d /var/lib/kosmos-k3s/ebooks/bookorbit 0750 1000 1000 - -"
     "d /var/lib/kosmos-k3s/ebooks/bookorbit/data 0750 1000 1000 - -"

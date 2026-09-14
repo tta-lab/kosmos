@@ -105,6 +105,9 @@ Do not add tests that only grep source files for the selected package expression
 Do not assert build provenance labels, source revisions, commit hashes, image tags,
 or other mutable build metadata in tests; test artifact behavior or a stable
 machine-consumed contract instead.
+Kepos policy tests cover rendering behavior—valid private TOML and atomic
+replacement—not the policy's peer, service, ACL, or binding entries. Jsonnet is
+the single source of truth for those entries.
 `pre-push` runs `nix --extra-experimental-features 'nix-command flakes' flake check`.
 When a push fails, run that command directly before diagnosing Git transport or
 credentials; treat its failing derivation and log as the primary cause.

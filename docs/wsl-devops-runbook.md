@@ -21,6 +21,7 @@ Tanka.
 - Hindsight API and MCP: `http://hindsight.localhost:17480` through Kepos
 - Hindsight Control Plane: `http://hindsightui.localhost:17480` through Kepos
 - ERPNext: `http://erpnext.localhost:17480` through Kepos
+- Navidrome: `http://navidrome.localhost:17480` through Kepos
 - Grafana: `http://grafana.localhost:17480` through the loopback gateway and
   full-trust Kepos subscribers
 - Impri: `http://impri.localhost:17480` through Kepos (Mac + Pixel 7a)
@@ -35,7 +36,8 @@ Kepos publishes application service IDs including:
 
 - `forgejo` and `woodpecker` both target port `17480`; the preserved HTTP Host
   header selects the Caddy route.
-- `navidrome` targets port `4533`.
+- `navidrome` targets the canonical gateway port `17480`; Caddy routes it to
+  the Navidrome Service in the `navidrome` namespace.
 - `dsh` targets its loopback-only Home Manager user service on port `3080` and
   is restricted to the Mac and Pixel 7a subscribers. Kepos exposes it as
   `http://dsh.localhost:17480`; it has no Caddy or CoreDNS route.
@@ -76,7 +78,7 @@ TCP tunnel to a WSL loopback port (`target_port`). How a peer reaches a service
 depends on the *kind* of service, decided on the subscriber side (Kepos
 Desktop / CLI), not by the publisher:
 
-- **Gateway-routed HTTP web services** (`bookorbit`, `forgejo`,
+- **Gateway-routed HTTP web services** (`bookorbit`, `forgejo`, `navidrome`,
   `woodpecker`, `memos`, `anki`, `hindsight`, `hindsightui`, `codex-bridge`,
   `miniflux`, `ente`, `erpnext`, `grafana`, `impri`, …): target the canonical gateway port `17480` and are
   routed by the preserved `Host` header.
@@ -126,7 +128,8 @@ revoking a service grant closes its affected channels. Service `allow` lists
 are explicit immediate-peer public keys; missing or empty lists deny access.
 
 All current remote devices use `connection = "accept"`, preserving their
-existing dial direction. `bindings` starts empty. Local sources use
+existing dial direction. Mac's SSH service is bound to `127.0.0.1:2222` for
+NUC-local SSH clients. Local sources use
 `source = {local_port: 17480}` for Caddy-routed services or their direct service
 port. WSL's peer gateway uses `127.0.0.1:17481`; Caddy owns `17480`.
 

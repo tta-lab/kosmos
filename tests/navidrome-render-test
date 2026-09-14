@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+rendered="$(mktemp)"
+trap 'rm -f "$rendered"' EXIT
+
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/navidrome" \
+  | yq -s '.' >"$rendered"
+
+jq -e '
+  . as $resources |
+  def resource($kind; $name):
+    $resources | map(select(.kind == $kind and .metadata.name == $name)) | first;
+
+  (resource("Namespace"; "navidrome").metadata.name == "navidrome") and
+  (resource("Deployment"; "navidrome").spec.replicas == 1) and
+  (resource("Deployment"; "navidrome").spec.strategy.type == "Recreate") and
+  (resource("Deployment"; "navidrome").spec.template.spec.initContainers[0] as $waiter |
+    ($waiter.name == "wait-for-micron-storage") and
+    ($waiter.command | join(" ") | contains(".kosmos-storage-ready")) and
+    ($waiter.command | join(" ") | contains("441ba8bb-d21b-40e4-a921-ef5553e07ff3")) and
+    ($waiter.volumeMounts | any(.name == "micron-storage-ready" and .mountPath == "/storage" and .readOnly == true))
+  ) and
+  (resource("Deployment"; "navidrome").spec.template.spec.containers[0] as $container |
+    ($container.image == "deluan/navidrome:0.64.0@sha256:a384948b81bd1529986c5960169e7fc4fa00f46bde6bd517971a4c36671db2af") and
+    ($container.securityContext.runAsNonRoot == true) and
+    ($container.env | any(.name == "ND_MUSICFOLDER" and .value == "/music")) and
+    ($container.env | any(.name == "ND_ENFORCENONROOTUSER" and .value == "true")) and
+    ($container.volumeMounts | any(.name == "data" and .mountPath == "/data")) and
+    ($container.volumeMounts | any(.name == "cache" and .mountPath == "/cache")) and
+    ($container.volumeMounts | any(.name == "music" and .mountPath == "/music" and .readOnly == true))
+  ) and
+  (resource("Deployment"; "navidrome").spec.template.spec.volumes | any(
+    .name == "micron-storage-ready" and
+    .hostPath.path == "/mnt/kosmos-cloudreve" and
+    .hostPath.type == "Directory"
+  )) and
+  (resource("Service"; "navidrome").spec.type == "ClusterIP") and
+  (resource("Service"; "navidrome").spec.ports[0].port == 4533) and
+  ([
+    "kosmos-navidrome-data",
+    "kosmos-navidrome-cache",
+    "kosmos-navidrome-music"
+  ] | map(. as $name |
+    (resource("PersistentVolume"; $name).spec.persistentVolumeReclaimPolicy == "Retain") and
+    (resource("PersistentVolume"; $name).spec.hostPath.type == "Directory") and
+    (resource("PersistentVolume"; $name).spec.hostPath.path | startswith("/mnt/kosmos-cloudreve/navidrome/"))
+  ) | all) and
+  (map(select(.kind == "Secret")) | length == 0)
+' "$rendered" >/dev/null
+
+printf 'Navidrome manifests retain Micron storage and wait for its ready marker\n'

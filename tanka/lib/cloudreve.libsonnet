@@ -7,6 +7,7 @@ local appLabels = labels('cloudreve');
 local postgresLabels = labels('cloudreve-postgres');
 local redisLabels = labels('cloudreve-redis');
 local postgresImage = 'postgres:17-alpine@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73';
+local micronStorage = import './micron-storage.libsonnet';
 
 {
   cloudreveService: {
@@ -66,19 +67,22 @@ local postgresImage = 'postgres:17-alpine@sha256:18cfe3ef5e6815560c98237d6216d1e
       template: {
         metadata: { labels: appLabels },
         spec: {
-          initContainers: [{
-            name: 'wait-for-postgres',
-            image: postgresImage,
-            command: [
-              'sh',
-              '-ec',
-              'until pg_isready --host=cloudreve-postgres --username=cloudreve --dbname=cloudreve >/dev/null 2>&1; do sleep 2; done',
-            ],
-            securityContext: {
-              allowPrivilegeEscalation: false,
-              capabilities: { drop: ['ALL'] },
+          initContainers: [
+            micronStorage.waitForReady,
+            {
+              name: 'wait-for-postgres',
+              image: postgresImage,
+              command: [
+                'sh',
+                '-ec',
+                'until pg_isready --host=cloudreve-postgres --username=cloudreve --dbname=cloudreve >/dev/null 2>&1; do sleep 2; done',
+              ],
+              securityContext: {
+                allowPrivilegeEscalation: false,
+                capabilities: { drop: ['ALL'] },
+              },
             },
-          }],
+          ],
           containers: [{
             name: 'cloudreve',
             image: 'cloudreve/cloudreve:4.18.0@sha256:f7a464100bf6325e9ba58cb2b0ee60f9a24c58fc2eb90647720bc4b8f3cddd9a',
@@ -119,6 +123,7 @@ local postgresImage = 'postgres:17-alpine@sha256:18cfe3ef5e6815560c98237d6216d1e
             ],
           }],
           volumes: [
+            micronStorage.readyVolume,
             { name: 'data', persistentVolumeClaim: { claimName: 'cloudreve-data' } },
             {
               name: 'config',
@@ -148,6 +153,7 @@ local postgresImage = 'postgres:17-alpine@sha256:18cfe3ef5e6815560c98237d6216d1e
         metadata: { labels: postgresLabels },
         spec: {
           securityContext: { fsGroup: 70 },
+          initContainers: [micronStorage.waitForReady],
           containers: [{
             name: 'postgres',
             image: postgresImage,
@@ -171,7 +177,10 @@ local postgresImage = 'postgres:17-alpine@sha256:18cfe3ef5e6815560c98237d6216d1e
             },
             volumeMounts: [{ name: 'data', mountPath: '/var/lib/postgresql/data' }],
           }],
-          volumes: [{ name: 'data', persistentVolumeClaim: { claimName: 'cloudreve-postgres' } }],
+          volumes: [
+            micronStorage.readyVolume,
+            { name: 'data', persistentVolumeClaim: { claimName: 'cloudreve-postgres' } },
+          ],
         },
       },
     },

@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+rendered="$(mktemp)"
+trap 'rm -f "$rendered"' EXIT
+
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/photos" \
+  | yq -s '.' >"$rendered"
+
+jq -e '
+  . as $resources |
+  def resource($kind; $name):
+    $resources | map(select(.kind == $kind and .metadata.name == $name)) | first;
+  def waits_for_micron($resource):
+    ($resource.spec.template.spec.initContainers | any(
+      .name == "wait-for-micron-storage" and
+      (.command | join(" ") | contains("441ba8bb-d21b-40e4-a921-ef5553e07ff3")) and
+      (.volumeMounts | any(.name == "micron-storage-ready" and .mountPath == "/storage" and .readOnly == true))
+    )) and
+    ($resource.spec.template.spec.volumes | any(
+      .name == "micron-storage-ready" and
+      .hostPath.path == "/mnt/kosmos-cloudreve" and
+      .hostPath.type == "Directory"
+    ));
+
+  waits_for_micron(resource("StatefulSet"; "postgres")) and
+  waits_for_micron(resource("StatefulSet"; "garage")) and
+  (["kosmos-ente-postgres", "kosmos-ente-garage"] | map(. as $name |
+    (resource("PersistentVolume"; $name).spec.persistentVolumeReclaimPolicy == "Retain") and
+    (resource("PersistentVolume"; $name).spec.hostPath.type == "Directory") and
+    (resource("PersistentVolume"; $name).spec.hostPath.path | startswith("/mnt/kosmos-cloudreve/ente/"))
+  ) | all)
+' "$rendered" >/dev/null
+
+printf 'Ente storage workloads wait for the Micron ready marker\n'

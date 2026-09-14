@@ -135,6 +135,9 @@ in {
       sqlite
       stdenv.cc.cc
       zlib
+      xorg.libX11
+      xorg.libXi
+      libxkbcommon
     ];
   };
 }

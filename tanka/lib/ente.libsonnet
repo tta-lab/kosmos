@@ -5,6 +5,7 @@ local labels(name) = {
 
 local postgresLabels = labels('postgres');
 local museumLabels = labels('museum');
+local micronStorage = import './micron-storage.libsonnet';
 
 {
   museumConfig: {
@@ -53,6 +54,7 @@ local museumLabels = labels('museum');
       template: {
         metadata: { labels: postgresLabels },
         spec: {
+          initContainers: [micronStorage.waitForReady],
           containers: [{
             name: 'postgres',
             image: 'postgres:15.18-bookworm@sha256:b0c5bab0fbba8e0c221f73b1dc6359ec35f8650074377e727299df248fc8ad51',
@@ -81,7 +83,10 @@ local museumLabels = labels('museum');
             },
             volumeMounts: [{ name: 'data', mountPath: '/var/lib/postgresql/data' }],
           }],
-          volumes: [{ name: 'data', persistentVolumeClaim: { claimName: 'postgres-data' } }],
+          volumes: [
+            micronStorage.readyVolume,
+            { name: 'data', persistentVolumeClaim: { claimName: 'postgres-data' } },
+          ],
         },
       },
     },

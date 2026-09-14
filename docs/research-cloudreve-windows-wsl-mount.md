@@ -26,7 +26,7 @@ The task validates Disk 0's size and partition layout, takes it offline when
 needed, runs `wsl.exe --mount \\.\PHYSICALDRIVE0 --bare`, waits for the UUID
 in the `NixOS` distribution, then holds that distribution open with `sleep
 infinity`. The NixOS service then mounts the ext4 filesystem at
-`/mnt/kosmos-cloudreve` and creates its two hostPath directories.
+`/mnt/kosmos-cloudreve` and creates the persistent application directories.
 
 Microsoft documents that `wsl --mount <disk> --bare` only attaches the block
 device: Linux must mount it itself; elevation is required and Windows cannot

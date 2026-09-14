@@ -6,6 +6,7 @@ local corsLabels = {
   'app.kubernetes.io/name': 'garage-cors',
   'app.kubernetes.io/part-of': 'kosmos-photos',
 };
+local micronStorage = import './micron-storage.libsonnet';
 
 {
   garageConfig: {
@@ -53,6 +54,7 @@ local corsLabels = {
       template: {
         metadata: { labels: labels },
         spec: {
+          initContainers: [micronStorage.waitForReady],
           containers: [{
             name: 'garage',
             image: 'dxflrs/garage:v2.3.0@sha256:866bd13ed2038ba7e7190e840482bc27234c4afaf77be8cfa439ae088c1e4690',
@@ -98,6 +100,7 @@ local corsLabels = {
             ],
           }],
           volumes: [
+            micronStorage.readyVolume,
             { name: 'config', configMap: { name: 'garage' } },
             { name: 'data', persistentVolumeClaim: { claimName: 'garage-data' } },
           ],

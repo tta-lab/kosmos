@@ -106,7 +106,7 @@ grep -q '^Garage storage filesystem:$' "$test_root/output"
 grep -q '^summary: 0 failed$' "$test_root/output"
 [[ "$(cat "$TEST_SYSTEMCTL_LOG")" == 'is-active --quiet ente-secret-sync.service' ]]
 [[ "$(cat "$TEST_CURL_LOG")" == $'http://ente.localhost:17480/ping\nhttp://ente-storage.localhost:17480/\nhttp://ente-storage.localhost:17480/b2-eu-cen/cors-probe' ]]
-[[ "$(cat "$TEST_DF_LOG")" == '-h /var/lib/kosmos-k3s' ]]
+[[ "$(cat "$TEST_DF_LOG")" == '-h /mnt/kosmos-cloudreve' ]]
 awk '$1 != "--kubeconfig" || $2 != "/etc/rancher/k3s/k3s.yaml" { exit 1 }' "$TEST_KUBECTL_LOG"
 [[ "$(wc -l <"$TEST_KUBECTL_LOG")" -eq 5 ]]
 

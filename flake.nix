@@ -100,6 +100,7 @@
             ${./tests/devops-gate-status-test} \
             ${./tests/backup-ente-test} \
             ${./tests/photos-gate-status-test} \
+            ${./tests/photos-storage-render-test} \
             ${./tests/sync-woodpecker-secret-test} \
             ${./tests/sync-ente-secret-test} \
             ${./tests/init-ebook-secrets-test} \
@@ -125,6 +126,7 @@
             ${./tests/notes-gateway-render-test} \
             ${./tests/feeds-render-test} \
             ${./tests/feeds-gateway-render-test} \
+            ${./tests/navidrome-render-test} \
             ${./tests/erpnext-gateway-render-test} \
             ${./tests/sync-anki-secret-test} \
             ${./tests/sync-codex-auth-test} \
@@ -139,6 +141,7 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/devops-gate-status-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/backup-ente-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/photos-gate-status-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/photos-storage-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-woodpecker-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-ente-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-ebook-secrets-test}
@@ -168,11 +171,14 @@
           tk show --dangerous-allow-redirect ${./.}/tanka/environments/codex-bridge >/dev/null
           tk show --dangerous-allow-redirect ${./.}/tanka/environments/devops >/dev/null
           tk show --dangerous-allow-redirect ${./.}/tanka/environments/impri >/dev/null
+          tk show --dangerous-allow-redirect ${./.}/tanka/environments/navidrome >/dev/null
+          tk show --dangerous-allow-redirect ${./.}/tanka/environments/photos >/dev/null
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/feeds-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/feeds-gateway-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/navidrome-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/erpnext-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-anki-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-codex-auth-test}
@@ -320,9 +326,6 @@
         assert !(builtins.elem 9475 eval.config.networking.firewall.allowedTCPPorts);
         assert builtins.elem "k3s-node-address.service" eval.config.systemd.services.k3s.requires;
         assert builtins.elem "d /var/lib/kosmos-k3s/dagger 0750 root root - -" rules;
-        assert builtins.elem "d /var/lib/kosmos-k3s/ente 0750 root root - -" rules;
-        assert builtins.elem "d /var/lib/kosmos-k3s/ente/postgres 0700 999 999 - -" rules;
-        assert builtins.elem "d /var/lib/kosmos-k3s/ente/garage 0750 root root - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit/data 0750 1000 1000 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit/books 0750 1000 1000 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit-db 0700 999 999 - -" rules;

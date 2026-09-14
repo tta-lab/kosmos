@@ -7,6 +7,7 @@ anki_environment := "tanka/environments/anki"
 notes_environment := "tanka/environments/notes"
 feeds_environment := "tanka/environments/feeds"
 cloudreve_environment := "tanka/environments/cloudreve"
+navidrome_environment := "tanka/environments/navidrome"
 hindsight_environment := "tanka/environments/hindsight"
 codex_bridge_environment := "tanka/environments/codex-bridge"
 observability_environment := "tanka/environments/observability"
@@ -30,6 +31,8 @@ tanka-test:
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ hindsight_environment }}" >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ codex_bridge_environment }}" >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ environment }}" >/dev/null
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ navidrome_environment }}" >/dev/null
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ photos_environment }}" >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ observability_environment }}" >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ impri_environment }}" >/dev/null
   @bash tests/observability-render-test
@@ -261,6 +264,26 @@ cloudreve-deploy: cloudreve-apply
 
 cloudreve-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n cloudreve -o wide
+
+navidrome-show:
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ navidrome_environment }}"
+
+navidrome-diff: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ navidrome_environment }}"
+
+navidrome-apply: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ navidrome_environment }}"
+
+navidrome-deploy: navidrome-apply _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}" --target='^ConfigMap/(canonical-gateway|coredns-custom)$'
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/navidrome -n navidrome --timeout=120s
+  @curl --fail --header 'Host: navidrome.localhost' http://127.0.0.1:17480 >/dev/null
+  @bash scripts/render-kepos-policy
+
+navidrome-status: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n navidrome -o wide
 
 hindsight-logs: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl logs deployment/hindsight-multilingual -n hindsight --tail=200

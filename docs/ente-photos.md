@@ -128,16 +128,16 @@ KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl -n photos get pods,svc,pvc -o wide
 KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl -n photos logs deployment/museum
 KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl -n photos logs statefulset/garage
 KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl -n photos logs statefulset/postgres
-df -h /var/lib/kosmos-k3s
+df -h /mnt/kosmos-cloudreve
 ```
 
 Application state remains in:
 
-- `/var/lib/kosmos-k3s/ente/postgres`
-- `/var/lib/kosmos-k3s/ente/garage`
+- `/mnt/kosmos-cloudreve/ente/postgres`
+- `/mnt/kosmos-cloudreve/ente/garage`
 
-Both static PVs use `Retain`, but they are on the same WSL virtual disk and are
-not a backup. Stop the affected workload before restoring either directory.
+Both static PVs use `Retain`, but they share one physical disk and are not a
+backup. Stop the affected workload before restoring either directory.
 
 ## Migration backup and restore
 
@@ -147,14 +147,14 @@ reconnected from Garage object blocks alone because PostgreSQL holds the Ente
 account, album, object, and sharing records. Garage's `meta`, `snapshots`, and
 `data` directories must also stay together.
 
-For the 2026 bare-metal migration, mount the Micron ext4 filesystem with UUID
-`441ba8bb-d21b-40e4-a921-ef5553e07ff3` at
-`/mnt/kosmos-data-backup`. The backup command rejects any other filesystem so
-an unmounted directory on the WSL root disk cannot silently receive the copy:
+The Micron ext4 filesystem with UUID `441ba8bb-d21b-40e4-a921-ef5553e07ff3`
+is mounted at `/mnt/kosmos-cloudreve`. The backup command rejects any other
+filesystem so an unmounted directory on the WSL root disk cannot silently
+receive the copy:
 
 ```bash
 sudo kosmos-backup-ente \
-  /mnt/kosmos-data-backup/kosmos-backup-20260727
+  /mnt/kosmos-cloudreve/kosmos-backup-20260727
 ```
 
 The command performs one coordinated backup:
