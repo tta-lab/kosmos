@@ -25,12 +25,16 @@
               echo "codex-for-love-${name}: expected CFL ${checkoutCommit}, got $actual_commit" >&2
               exit 1
             fi
-            for artifact in codex codex.provenance.json codex-code-mode-host; do
-              if [ ! -r ${lib.escapeShellArg artifactDirectory}/"$artifact" ]; then
-                echo "codex-for-love-${name}: missing artifact $artifact in ${artifactDirectory}" >&2
+            for artifact in codex codex-code-mode-host; do
+              if [ ! -x ${lib.escapeShellArg artifactDirectory}/"$artifact" ]; then
+                echo "codex-for-love-${name}: artifact $artifact must be executable in ${artifactDirectory}" >&2
                 exit 1
               fi
             done
+            if [ ! -r ${lib.escapeShellArg "${artifactDirectory}/codex.provenance.json"} ]; then
+              echo "codex-for-love-${name}: missing artifact provenance in ${artifactDirectory}" >&2
+              exit 1
+            fi
             if [ ! -r ${lib.escapeShellArg configFile} ]; then
               echo "codex-for-love-${name}: missing operator configuration ${configFile}" >&2
               exit 1
@@ -46,8 +50,12 @@
       state = "${stateRoot}/state"
       workspace = "${stateRoot}/workspace"
       port = ${toString port}
+      command = "${artifactDirectory}/codex"
+      provenance = "${artifactDirectory}/codex.provenance.json"
       model = "gpt-5.6-luna"
+      version = "0.154.0"
       home = "/home/neil/.codex"
+      local_compaction = true
       EOF
             exec ${node} ${lib.escapeShellArg "${checkout}/apps/partner/runtime/cli.ts"} serve ${lib.escapeShellArg configFile}
     '';
@@ -88,7 +96,7 @@ in {
       };
       codex-for-love-prod = service {
         name = "prod";
-        partnerName = "Yuki";
+        partnerName = "Shio";
         port = 3084;
       };
     };

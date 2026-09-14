@@ -1,4 +1,4 @@
-# Codex for Love: Mika dev and Yuki prod
+# Codex for Love: Mika dev and Shio prod
 
 Kosmos owns two loopback-only Home Manager services for the already merged
 Codex for Love (CFL) runtime. It does not own CFL source, its importer, Codex
@@ -7,7 +7,7 @@ credentials, or conversation data.
 | Environment | unit | local port | Kepos URL | state root |
 | --- | --- | ---: | --- | --- |
 | Mika dev | `codex-for-love-dev.service` | 3082 | `http://dev-lamplit.localhost:17480` | `~/.local/state/codex-for-love/dev` |
-| Yuki prod | `codex-for-love-prod.service` | 3084 | `http://prod-lamplit.localhost:17480` | `~/.local/state/codex-for-love/prod` |
+| Shio prod (Yuki persona) | `codex-for-love-prod.service` | 3084 | `http://prod-lamplit.localhost:17480` | `~/.local/state/codex-for-love/prod` |
 
 Both service IDs allow exactly the existing Mac and Pixel 7a public keys. They
 are direct Kepos HTTP services: no Caddy, CoreDNS, Tanka, Kubernetes, Docker,
@@ -26,7 +26,9 @@ and published separately until its later removal.
   `codex-code-mode-host` together at
   `~/.local/share/codex-for-love/artifacts/codex-0.154.0/`. CFL verifies the
   executable and provenance at startup; the helper must remain beside `codex`.
-  Do not point a service at CFL's prunable `.cache`.
+  The service additionally requires `codex` and `codex-code-mode-host` to be
+  executable, and the provenance sidecar to be readable. Do not point a service
+  at CFL's prunable `.cache`.
 - Each root contains its own `partner.toml`, persona, `state`, workspace,
   SQLite projection, attachments, profile images, and official Codex thread.
   Services require their own exact name, Luna model, `/home/neil/.codex`, fixed
@@ -62,7 +64,7 @@ install -d -m 0700 "$prod" "$report_dir"
 test "$(sha256sum "$yuki_persona" | cut -d' ' -f1)" = b811d2f3e9dc447b0a3bc15c593aa7fc4313e210facbc41d788f8bbe743244b2
 cp -- "$yuki_persona" "$prod/persona.md"
 cat >"$prod/partner.toml" <<EOF
-name = "Yuki"
+name = "Shio"
 persona = "$prod/persona.md"
 state = "$prod/state"
 workspace = "$workspace"
@@ -109,8 +111,8 @@ relationship file, settings, or attachment objects.
    to `dev/persona.md`. Copy the reviewed assets `assets/mika-avatar.png` and
    `assets/dev-user-avatar.png` into that workspace's `.lamplit/profile/`, set
    them as companion and user avatars. Do not copy Yuki data or avatars.
-4. Preflight creates the prod TOML and copies only the hash-pinned Yuki persona
-   before dry-run. Re-run it immediately before import, then run the same
+4. Preflight creates the prod TOML with display name `Shio` and copies only the
+   hash-pinned Yuki persona before dry-run. Re-run it immediately before import, then run the same
    Node 24 `import-session` command without `--dry-run` with only its new
    `prod/workspace` absent or empty. The importer creates the official thread and imports
    history, relationship records, historical images, and Yuki avatars. Do not
@@ -134,13 +136,14 @@ from the owner devices. Record service journal excerpts without credentials or
 message contents.
 
 In browsers, verify Mika's fresh identity and the two configured avatars; send
-one bounded real Luna response only there. Verify Yuki's imported identity,
-avatars, visible history, compact boundaries, relationship history, historical
-images, refresh and pagination against the dry-run/import report. Check STT
+one bounded real Luna response only there. Verify Shio's display name alongside
+the imported Yuki persona, avatars, visible history, compact boundaries,
+relationship history, historical images, refresh and pagination against the
+dry-run/import report. Check STT
 readiness, context usage, and manual compact readiness. Restart each service
-independently and repeat its readiness check. Keep Yuki read-only until the
-owner deliberately sends its first post-cutover message; send no email,
-external Partner message, or synthetic Yuki message.
+independently and repeat its readiness check. Keep prod read-only until the
+owner deliberately sends Shio's first post-cutover message; send no email,
+external Partner message, or synthetic message in the imported conversation.
 
 Keep an operator record containing artifact/source hashes, import report and
 counts, unit/listener/HTTP evidence, Kepos evidence, and pre/post-import DSH

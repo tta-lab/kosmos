@@ -14,7 +14,7 @@ Tanka.
   `tcp://127.0.0.1:8080` for the local CLI
 - DeepSeek Harness: `http://dsh.localhost:17480` through Kepos (Mac + Pixel 7a)
 - Codex for Love Mika dev: `http://dev-lamplit.localhost:17480` through Kepos (Mac + Pixel 7a)
-- Codex for Love Yuki prod: `http://prod-lamplit.localhost:17480` through Kepos (Mac + Pixel 7a)
+- Codex for Love Shio prod (Yuki persona): `http://prod-lamplit.localhost:17480` through Kepos (Mac + Pixel 7a)
 - Codex Bridge: `http://codex-bridge.localhost:17480` through Kepos (Mac + Baihe)
 - k3s API: `https://127.0.0.1:26443`
 - Anki Sync: `http://anki.localhost:17480/` through Kepos
@@ -108,7 +108,7 @@ Adding a direct loopback HTTP app needs a Home Manager user service bound to
 `127.0.0.1` plus its direct-port publisher entry in the live policy.
 
 Codex for Love follows this direct-loopback model: Mika dev binds `127.0.0.1:3082`
-and Yuki prod binds `127.0.0.1:3084`. Neither has a Tanka environment, Caddy
+and Shio prod (with the Yuki persona) binds `127.0.0.1:3084`. Neither has a Tanka environment, Caddy
 route, CoreDNS rewrite, or subscriber binding. Its initialization, import,
 verification, backup, and rollback procedure is in [codex-for-love.md](codex-for-love.md).
 
