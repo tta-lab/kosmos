@@ -145,6 +145,13 @@ relationship file, settings, or attachment objects.
    command. Keep the command's standard output out of logs and reports; it must
    never print, store, or copy the secret or unrelated DSH records:
 
+   Both stable partner TOMLs must also select the DashScope endpoint:
+
+```toml
+[speech]
+endpoint = "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation"
+```
+
 ```sh
 set -euo pipefail
 source=/home/neil/.local/state/dsh/.credentials.yaml
