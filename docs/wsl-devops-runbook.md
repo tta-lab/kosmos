@@ -13,6 +13,8 @@ Tanka.
 - Dagger: `tcp://dagger.devops.svc.cluster.local:8080` in-cluster and
   `tcp://127.0.0.1:8080` for the local CLI
 - DeepSeek Harness: `http://dsh.localhost:17480` through Kepos (Mac + Pixel 7a)
+- Codex for Love Mika dev: `http://dev-lamplit.localhost:17480` through Kepos (Mac + Pixel 7a)
+- Codex for Love Yuki prod: `http://prod-lamplit.localhost:17480` through Kepos (Mac + Pixel 7a)
 - Codex Bridge: `http://codex-bridge.localhost:17480` through Kepos (Mac + Baihe)
 - k3s API: `https://127.0.0.1:26443`
 - Anki Sync: `http://anki.localhost:17480/` through Kepos
@@ -82,7 +84,7 @@ Desktop / CLI), not by the publisher:
   `woodpecker`, `memos`, `anki`, `hindsight`, `hindsightui`, `codex-bridge`,
   `miniflux`, `ente`, `erpnext`, `grafana`, `impri`, …): target the canonical gateway port `17480` and are
   routed by the preserved `Host` header.
-- **Direct loopback HTTP services** (`dsh`): a Home Manager user service binds
+- **Direct loopback HTTP services** (`dsh`, `dev-lamplit`, `prod-lamplit`): a Home Manager user service binds
   its own `127.0.0.1` port and Kepos publishes that port directly. It has no
   Tanka environment, Caddy route, or CoreDNS rewrite.
 - **Raw TCP/SSH services** (`dagger`, `mihomo`, `ssh`): the peer must add a
@@ -104,6 +106,11 @@ app needs a Tanka environment, gateway route, and
 `[[publisher.services]]` entry in the live policy with `target_port = 17480`.
 Adding a direct loopback HTTP app needs a Home Manager user service bound to
 `127.0.0.1` plus its direct-port publisher entry in the live policy.
+
+Codex for Love follows this direct-loopback model: Mika dev binds `127.0.0.1:3082`
+and Yuki prod binds `127.0.0.1:3084`. Neither has a Tanka environment, Caddy
+route, CoreDNS rewrite, or subscriber binding. Its initialization, import,
+verification, backup, and rollback procedure is in [codex-for-love.md](codex-for-love.md).
 
 The separate Ente Photos stack publishes `ente` and `ente-storage`, both through
 the canonical gateway on port `17480`. See [ente-photos.md](ente-photos.md) for
