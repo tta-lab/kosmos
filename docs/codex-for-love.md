@@ -136,8 +136,28 @@ relationship file, settings, or attachment objects.
    `prod/workspace` absent or empty. The importer creates the official thread and imports
    history, relationship records, historical images, and Yuki avatars. Do not
    initialize prod separately or replace the preview candidate.
-5. From merged Kosmos main, run `nh os switch . -H wsl`, then
-   `just kepos-policy-render`. The latter atomically replaces only the generated
+5. From merged Kosmos main, run `nh os switch . -H wsl`, then require
+   `dsh.service` to remain inactive before and after the switch. DSH remains
+   configured and published for later removal, but is intentionally not wanted
+   by the user `default.target`.
+6. Before starting either CFL unit, migrate only the existing DashScope speech
+   reference from DSH's credential store through CFL's write-only credential
+   command. Keep the command's standard output out of logs and reports; it must
+   never print, store, or copy the secret or unrelated DSH records:
+
+```sh
+set -euo pipefail
+source=/home/neil/.local/state/dsh/.credentials.yaml
+for env in dev prod; do
+  yq -er '.refs.DSH_SPEECH_DASHSCOPE_API_KEY' "$source" \
+    | "$node" "$repo/apps/partner/runtime/cli.ts" credential \
+      "/home/neil/.local/state/codex-for-love/$env/partner.toml" speech >/dev/null
+done
+```
+
+   Restart both CFL units after this migration and require each `/api/session`
+   snapshot to report `speech: true`.
+7. Run `just kepos-policy-render`. The latter atomically replaces only the generated
    Kepos TOML; never edit that TOML directly. Start each unit independently:
 
 ```sh
