@@ -278,6 +278,85 @@ systemctl --user start codex-for-love-dev.service
 systemctl --user start codex-for-love-prod.service
 ```
 
+## One-time Shio model-marker migration
+
+Only after the owner has explicitly approved switching the already imported
+Shio thread from Luna to Sol, stop prod and apply this guarded migration. It is
+not an import, does not create another workspace, and must never edit the
+official Codex rollout JSONL. The command reads only the rollout header to
+prove that its `session_id` is the existing marker's thread ID. It retains a
+private mode-`0600` rollback marker, records only the marker digest, thread ID,
+and models, and atomically replaces only the marker's `model` field.
+
+```sh
+set -euo pipefail
+prod=/home/neil/.local/state/codex-for-love/prod
+workspace="$prod/workspace"
+thread="$workspace/.lamplit/thread.json"
+report_dir=/home/neil/.local/state/codex-for-love/reports
+stamp=$(date -u +%Y%m%dT%H%M%SZ)
+migration_dir="$report_dir/shio-sol-marker-$stamp"
+install -d -m 0700 "$migration_dir"
+systemctl --user stop codex-for-love-prod.service
+thread_id=$("/run/current-system/sw/bin/node" -e 'const fs=require("node:fs"); const marker=JSON.parse(fs.readFileSync(process.argv[1], "utf8")); if (marker.model !== "gpt-5.6-luna" || typeof marker.threadId !== "string") process.exit(1); process.stdout.write(marker.threadId)' "$thread")
+mapfile -t rollouts < <(find /home/neil/.codex/sessions -type f -name "*-$thread_id.jsonl" -print)
+test "${#rollouts[@]}" -eq 1
+rollout="${rollouts[0]}"
+
+"/run/current-system/sw/bin/node" - "$thread" "$rollout" "$migration_dir" <<'NODE'
+const { createHash, randomUUID } = await import('node:crypto');
+const { chmod, copyFile, open, readFile, rename, stat, unlink } = await import('node:fs/promises');
+const { basename, dirname, join } = await import('node:path');
+
+const [, , threadPath, rolloutPath, reportPath] = process.argv;
+const oldModel = 'gpt-5.6-luna';
+const newModel = 'gpt-5.6-sol';
+const digest = (data) => createHash('sha256').update(data).digest('hex');
+const original = await readFile(threadPath);
+const marker = JSON.parse(original);
+const mode = (await stat(threadPath)).mode & 0o777;
+if (mode !== 0o600 || Object.keys(marker).sort().join(',') !== 'model,threadId' || typeof marker.threadId !== 'string' || marker.model !== oldModel) {
+  throw new Error('refusing Shio marker migration: expected only a Luna threadId/model marker');
+}
+const firstRecord = JSON.parse((await readFile(rolloutPath, 'utf8')).split('\n', 1)[0]);
+const header = firstRecord.payload;
+if (firstRecord.type !== 'session_meta' || header?.session_id !== marker.threadId || header.id !== marker.threadId) {
+  throw new Error('refusing Shio marker migration: rollout header does not match marker threadId');
+}
+const rollback = join(reportPath, 'thread.json.before');
+await copyFile(threadPath, rollback);
+await chmod(rollback, 0o600);
+const replacement = Buffer.from(JSON.stringify({ threadId: marker.threadId, model: newModel }));
+const temporary = join(dirname(threadPath), `.${basename(threadPath)}.${randomUUID()}.tmp`);
+try {
+  const handle = await open(temporary, 'wx', 0o600);
+  try { await handle.writeFile(replacement); await handle.sync(); } finally { await handle.close(); }
+  await rename(temporary, threadPath);
+  await chmod(threadPath, 0o600);
+} catch (error) {
+  await unlink(temporary).catch(() => {});
+  throw error;
+}
+console.log(JSON.stringify({
+  threadId: marker.threadId,
+  previousModel: marker.model,
+  model: newModel,
+  beforeSha256: digest(original),
+  afterSha256: digest(replacement),
+}, null, 2));
+NODE
+```
+
+Require the emitted summary to show the same thread ID, Luna-to-Sol transition,
+and both marker digests. Preserve `thread.json.before` privately; do not use it
+to rewrite the marker while prod is active. Then start only prod and require
+the CFL `thread/resume` response to accept Sol, the marker to retain that same
+thread ID and mode `0600`, and the workspace project config to retain
+`model_reasoning_effort = "low"`. Compare the read-only UI/API and SQLite
+counts for imported messages, history, compact boundaries, relationships, and
+historical media before and after. Do not send a prod message. Mika remains on
+Luna and is not restarted by this migration.
+
 ## Acceptance and evidence
 
 Check unit health and loopback isolation with `systemctl --user status`,
