@@ -1,363 +1,77 @@
-# Codex for Love: Mika dev and Shio prod
+# Codex for Love
 
-Kosmos owns two loopback-only Home Manager services for the already merged
-Codex for Love (CFL) runtime. It does not own CFL source, its importer, Codex
-credentials, or conversation data.
+Kosmos owns two loopback-only Home Manager services for the Codex for Love
+(CFL) runtime. CFL source, Codex credentials, and conversation data remain
+operator-owned.
 
-| Environment | unit | local port | Kepos URL | state root |
+| Environment | Unit | Local port | Kepos URL | State root |
 | --- | --- | ---: | --- | --- |
 | Mika dev | `codex-for-love-dev.service` | 3082 | `http://dev-lamplit.localhost:17480` | `~/.local/state/codex-for-love/dev` |
-| Shio prod (Yuki persona) | `codex-for-love-prod.service` | 3084 | `http://prod-lamplit.localhost:17480` | `~/.local/state/codex-for-love/prod` |
+| Shio prod | `codex-for-love-prod.service` | 3084 | `http://prod-lamplit.localhost:17480` | `~/.local/state/codex-for-love/prod` |
 
-Both service IDs allow exactly the existing Mac and Pixel 7a public keys. They
-are direct Kepos HTTP services: no Caddy, CoreDNS, Tanka, Kubernetes, Docker,
-subscriber binding, or application login is involved. `dsh` remains configured
-and published separately until its later removal.
+Both services are direct Kepos HTTP services. They do not use Tanka, Caddy,
+CoreDNS, Kubernetes, Docker, a subscriber binding, or an application login.
+Their Kepos services permit the existing Mac and Pixel 7a keys only.
 
-## Invariants
+## Service contract
 
-- CFL checkout: `/home/neil/code/projects/lamplitisles/codex-for-love`.
-- Node is the Nix-pinned Node 24. pnpm selects and installs the checkout's
-  locked application dependencies, but services directly execute CFL's
-  `apps/partner/runtime/cli.ts` with Node rather than asking Node to execute
-  pnpm's native binary.
-- Install the verified `codex`, `codex.provenance.json`, and
-  `codex-code-mode-host` together at
-  `~/.local/share/codex-for-love/artifacts/codex-0.154.0/`. CFL verifies the
-  executable and provenance selected by `partner.toml` at startup; the helper
-  must remain beside `codex`. Kosmos does not pin or validate CFL/Codex release
-  internals (commit, version, provenance fields, patches, hashes, or
-  `local_compaction`). Do not point a service at CFL's prunable `.cache`.
-- Each root contains its own `partner.toml`, persona, `state`, workspace,
-  SQLite projection, attachments, profile images, and official Codex thread.
-  Services require their own exact name, model (Mika: `gpt-5.6-luna`; Shio:
-  `gpt-5.6-sol`), `/home/neil/.codex`, fixed port, and root-contained
-  persona/state/workspace paths before launch. Shio's exact workspace Codex
-  project config also requires `model_reasoning_effort = "low"`. They
-  only create a missing root directory; missing configuration, a
-  cross-environment path, or an occupied port fails explicitly. CFL validates
-  the Codex artifact fields selected in `partner.toml`.
-- The existing authorized `~/.codex` device login is used in place. Never copy,
-  parse, manage, or back up credentials as part of this procedure. The sole
-  exception is the one-time, direct-pipe migration of the existing DashScope
-  STT reference described below; do not copy the DSH credential database or any
-  other credential record.
+- Services run CFL's TypeScript CLI with the Nix-pinned Node 24 executable.
+- Each environment owns its own `partner.toml`, persona, state, workspace,
+  SQLite projection, attachments, profile images, and Codex thread. Do not
+  copy or merge one root into the other.
+- The launcher requires its own exact name, persona, state, workspace, port,
+  model, and `/home/neil/.codex` settings before it starts. Shio's workspace
+  also requires `model_reasoning_effort = "low"`.
+- `flicknote`, `project`, and `web` must be available on the service `PATH`.
+  The launcher fails closed when any is unavailable.
 
-## Preflight (before any cutover)
+## Deploy and verify
 
-Run this from the CFL checkout. It does not import a conversation or mutate a
-DSH source. It creates only the new prod TOML, its copied authoritative persona,
-and a private report directory before the dry-run.
-
-Before the first import, preserve the existing `~/.codex/config.toml` and use a
-TOML-aware update to add (or retain) only these exact project entries:
-
-```toml
-[projects."/home/neil/.local/state/codex-for-love/dev/workspace"]
-trust_level = "trusted"
-
-[projects."/home/neil/.local/state/codex-for-love/prod/workspace"]
-trust_level = "trusted"
-```
-
-Do not trust a parent directory, replace unrelated Codex configuration, or set
-`bypass_hook_trust`. This enables official Codex to discover CFL's project-owned
-`SessionStart` hook; CFL must then register and verify the hook's exact trusted
-hash. These are operator-owned runtime entries, not Nix configuration.
+For a configuration change, validate the branch before merge:
 
 ```sh
-set -euo pipefail
-repo=/home/neil/code/projects/lamplitisles/codex-for-love
-node=/run/current-system/sw/bin/node
-prod=/home/neil/.local/state/codex-for-love/prod
-workspace="$prod/workspace"
-report_dir=/home/neil/.local/state/codex-for-love/reports
-artifact=/home/neil/.local/share/codex-for-love/artifacts/codex-0.154.0
-yuki_persona=/home/neil/.local/state/codex-for-love/migrations/yuki-20260914T1252/persona.md
-session=/home/neil/.local/state/dsh/sessions/--home-neil-.openclaw-workspace--/session-bdea60ea-c8ae-45c5-b34a-e2db554435d9/session.jsonl.zstd
-relationship=/home/neil/.openclaw/workspace/.dsh/dsh-companion/state.jsonl
-attachments=/home/neil/.local/state/dsh/attachments/v1
-settings=/home/neil/.local/state/dsh/settings.yaml
-write_import_summary() {
-  "$node" -e '
-    let input = "";
-    process.stdin.setEncoding("utf8");
-    process.stdin.on("data", (chunk) => { input += chunk; });
-    process.stdin.on("end", () => {
-      const payload = JSON.parse(input);
-      const report = payload.report;
-      const summary = {
-        dryRun: payload.dryRun === true,
-        messages: report.messages,
-        compactionCount: report.compactions.length,
-        relationshipCount: report.relationships,
-        mediaCount: report.media,
-        avatarCount: report.avatars,
-        omitted: report.omitted,
-        warningCount: report.warnings.length,
-      };
-      console.log(JSON.stringify(summary, null, 2));
-    });
-  '
-}
-test "$(systemctl --user is-active dsh.service)" = inactive
-case "$("$node" --version)" in v24.*) ;; *) echo 'Node 24 is required' >&2; exit 1 ;; esac
-if [ -e "$prod" ] && [ -n "$(find "$prod" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
-  echo "refusing one-time prod initialization: $prod is already initialized or non-empty" >&2
-  exit 1
-fi
-install -d -m 0700 "$prod" "$report_dir"
-test "$(sha256sum "$yuki_persona" | cut -d' ' -f1)" = b811d2f3e9dc447b0a3bc15c593aa7fc4313e210facbc41d788f8bbe743244b2
-cp -- "$yuki_persona" "$prod/persona.md"
-cat >"$prod/partner.toml" <<EOF
-name = "Shio"
-persona = "$prod/persona.md"
-state = "$prod/state"
-workspace = "$workspace"
-port = 3084
-[codex]
-command = "$artifact/codex"
-provenance = "$artifact/codex.provenance.json"
-model = "gpt-5.6-sol"
-version = "0.154.0"
-home = "/home/neil/.codex"
-local_compaction = true
-EOF
-test ! -e "$workspace" || test -z "$(find "$workspace" -mindepth 1 -maxdepth 1 -print -quit)"
-sha256sum "$session" "$relationship" "$settings"
-find "$attachments" -type f -printf '%P\\t%s\\n' | sort | sha256sum
-git -C "$repo" rev-parse HEAD
-"$node" "$repo/apps/partner/runtime/cli.ts" import-session \
-  "$prod/partner.toml" "$session" "$relationship" "$attachments" \
-  "$workspace" "$settings" --dry-run \
-  | write_import_summary >"$report_dir/yuki-import-dry-run-summary.json"
+nix-instantiate --parse configuration.nix
+statix check .
+nix --extra-experimental-features 'nix-command flakes' flake check
+nix build .#nixosConfigurations.wsl.config.system.build.toplevel --no-link
 ```
 
-Record the DSH source hashes, attachment manifest hash and count, CFL commit,
-dry-run source counts (messages, compact boundaries, relationship records,
-images, discarded kinds), and no message text. The summary writer never
-persists the importer's `records` payload; with `set -o pipefail`, an importer
-or summary failure still stops the command. Repeat the same hashes after a
-successful import; they must match. Do not start DSH and do not modify its log,
-relationship file, settings, or attachment objects.
-
-This is one-time initialization only. After its successful dry-run, do not
-rerun this block: it would correctly refuse the initialized prod root. Preserve
-the generated `partner.toml` and persona, then use the standalone real-import
-command below. After that real import succeeds, subsequent verification is
-read-only—inspect the existing config, report, service/API snapshot, and source
-hashes without copying a persona, rewriting a TOML, or running
-`import-session` again.
-
-## Real import after the successful dry-run
-
-This standalone command re-hashes the current stopped DSH source tuple and
-imports into the prepared, still-empty destination. It never copies the persona
-or writes `partner.toml`. It refuses a previously initialized state or
-non-empty workspace, so it cannot overwrite an existing prod import.
+After merge, apply the WSL generation and render the Kepos policy from its
+Jsonnet source:
 
 ```sh
-set -euo pipefail
-repo=/home/neil/code/projects/lamplitisles/codex-for-love
-node=/run/current-system/sw/bin/node
-prod=/home/neil/.local/state/codex-for-love/prod
-partner="$prod/partner.toml"
-persona="$prod/persona.md"
-workspace="$prod/workspace"
-report_dir=/home/neil/.local/state/codex-for-love/reports
-session=/home/neil/.local/state/dsh/sessions/--home-neil-.openclaw-workspace--/session-bdea60ea-c8ae-45c5-b34a-e2db554435d9/session.jsonl.zstd
-relationship=/home/neil/.openclaw/workspace/.dsh/dsh-companion/state.jsonl
-attachments=/home/neil/.local/state/dsh/attachments/v1
-settings=/home/neil/.local/state/dsh/settings.yaml
-write_import_summary() {
-  "$node" -e '
-    let input = "";
-    process.stdin.setEncoding("utf8");
-    process.stdin.on("data", (chunk) => { input += chunk; });
-    process.stdin.on("end", () => {
-      const payload = JSON.parse(input);
-      const report = payload.report;
-      const summary = {
-        dryRun: payload.dryRun === true,
-        messages: report.messages,
-        compactionCount: report.compactions.length,
-        relationshipCount: report.relationships,
-        mediaCount: report.media,
-        avatarCount: report.avatars,
-        omitted: report.omitted,
-        warningCount: report.warnings.length,
-        destinationCreated: payload.destination.created === true,
-      };
-      console.log(JSON.stringify(summary, null, 2));
-    });
-  '
-}
-test "$(systemctl --user is-active dsh.service)" = inactive
-test -r "$partner" && test -r "$persona"
-test -d "$report_dir"
-test ! -e "$prod/state" || test -z "$(find "$prod/state" -mindepth 1 -maxdepth 1 -print -quit)"
-test ! -e "$workspace" || test -z "$(find "$workspace" -mindepth 1 -maxdepth 1 -print -quit)"
-sha256sum "$partner" "$persona" >"$report_dir/prod-initialization-before-import.sha256"
-sha256sum "$session" "$relationship" "$settings" >"$report_dir/pre-import-source.sha256"
-find "$attachments" -type f -printf '%P\\t%s\\n' | sort | sha256sum >"$report_dir/pre-import-attachments.sha256"
-"$node" "$repo/apps/partner/runtime/cli.ts" import-session \
-  "$partner" "$session" "$relationship" "$attachments" "$workspace" "$settings" \
-  | write_import_summary >"$report_dir/yuki-import-summary.json"
+nh os switch . -H wsl
+just kepos-policy-render
 ```
 
-## Pre-merge deployment and cutover (immutable reviewed PR head)
-
-1. Record the checkout revision and verify its `pnpm install --frozen-lockfile`
-   and `pnpm build` completed. Build or select the verified
-   patched Codex 0.154.0 artifact, hash all three artifact members and its
-   provenance sidecar, then copy them with mode `0700` (executables) and `0600`
-   (sidecar) into the stable artifact directory above. Record source and
-   installed hashes; never use `.cache` as the deployed location. For the
-   current pragmatic cutover, change only the installed provenance sidecar's
-   `binaryPath` to the final stable `codex` path, then re-verify every retained
-   source, patch, version, identity, binary, and helper hash. A self-contained
-   CFL build/install workflow is deferred.
-2. Stop `cfl-preview-3082.service`, record its status and candidate path, and
-   retain that candidate untouched until both new environments pass acceptance.
-   It is recovery evidence, not a compatibility service.
-3. Create `dev/partner.toml` before starting its unit. Use the exact absolute
-   `dev/persona.md`, `dev/state`, and `dev/workspace` paths; name `Mika`, port
-   `3082`, model `gpt-5.6-luna`, `codex.home = "/home/neil/.codex"`, the stable
-   artifact and provenance paths, and `local_compaction = true`. Copy
-   `assets/mika-persona.md` (the CFL test persona with Mika's selected name)
-   to `dev/persona.md`. Copy the reviewed assets `assets/mika-avatar.png` and
-   `assets/dev-user-avatar.png` into that workspace's `.lamplit/profile/`, set
-   them as companion and user avatars. Do not copy Yuki data or avatars.
-4. Run preflight once to create the prod TOML/persona and complete the dry-run.
-   Preserve those generated files, then run the standalone real-import command
-   above without `--dry-run`; do not rerun initialization. It requires an empty
-   prod state/workspace, creates the official thread, and imports
-   history, relationship records, historical images, and Yuki avatars. Do not
-   initialize prod separately or replace the preview candidate. Before starting
-   Shio, use a TOML-aware update on only
-   `prod/workspace/.codex/config.toml` to add or retain
-   `model_reasoning_effort = "low"`; preserve CFL-owned hooks, MCP entries, and
-   every unrelated workspace setting. CFL has no separate Partner effort field:
-   the prod Partner TOML selects `gpt-5.6-sol` and this exact workspace config
-   selects its low reasoning effort.
-5. From the immutable reviewed Kosmos PR head before merge, run
-   `nh os switch . -H wsl`, then require
-   `dsh.service` to remain inactive before and after the switch. DSH remains
-   configured and published for later removal, but is intentionally not wanted
-   by the user `default.target`.
-6. Before starting either CFL unit, migrate only the existing DashScope speech
-   reference from DSH's credential store through CFL's write-only credential
-   command. Keep the command's standard output out of logs and reports; it must
-   never print, store, or copy the secret or unrelated DSH records. This is the
-   sole credential migration in scope:
-
-   Both stable partner TOMLs must also select the DashScope endpoint:
-
-```toml
-[speech]
-endpoint = "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation"
-```
+Check each service independently:
 
 ```sh
-set -euo pipefail
-source=/home/neil/.local/state/dsh/.credentials.yaml
-for env in dev prod; do
-  yq -er '.refs.DSH_SPEECH_DASHSCOPE_API_KEY' "$source" \
-    | "$node" "$repo/apps/partner/runtime/cli.ts" credential \
-      "/home/neil/.local/state/codex-for-love/$env/partner.toml" speech >/dev/null
-done
+systemctl --user is-active codex-for-love-dev.service
+systemctl --user is-active codex-for-love-prod.service
+ss -ltn '( sport = :3082 or sport = :3084 )'
+curl --fail http://127.0.0.1:3082/
+curl --fail http://127.0.0.1:3084/
 ```
 
-   Restart both CFL units after this migration and require each `/api/session`
-   snapshot to report `speech: true`.
-7. Run `just kepos-policy-render`. The latter atomically replaces only the generated
-   Kepos TOML; never edit that TOML directly. Start each unit independently:
+Peer-visible URLs must be accepted from the intended Mac and Pixel devices;
+publisher-local checks cannot prove the subscriber path.
+
+## Routine operation
+
+Restart only the affected environment:
 
 ```sh
-systemctl --user start codex-for-love-dev.service
-systemctl --user start codex-for-love-prod.service
+systemctl --user restart codex-for-love-dev.service
+systemctl --user restart codex-for-love-prod.service
 ```
 
-## Completed Shio model-marker migration
-
-The owner-approved migration is complete deployment history, not a reusable
-operator procedure. It changed only CFL's
-`prod/workspace/.lamplit/thread.json` marker from `gpt-5.6-luna` to
-`gpt-5.6-sol`, preserving thread ID
-`f2d8d800-a844-4de8-9ad2-04ee5b98c9ff`. The official Codex rollout JSONL was
-not edited, and the imported projection remains unchanged: 1,993 message
-metadata/input/revision rows, 31 compact boundaries, 54 relationships, and 144
-historical media files. The private bounded evidence and mode-`0600` backup are
-at `/home/neil/.local/state/codex-for-love/reports/shio-sol-marker-20260914T094525Z/`.
-
-CFL's successful `thread/resume` check established Sol for the resumed thread.
-The exact workspace project config is set to
-`model_reasoning_effort = "low"`, and the Kosmos launcher enforces that
-prerequisite before CFL starts. Effective low effort is not thread-response or
-service telemetry and is not claimed as such.
-
-Use only this read-only current-state verification; it does not start, stop,
-restart, import, or modify any service or session:
+Inspect its recent failure evidence without exposing credentials or
+conversation contents:
 
 ```sh
-set -euo pipefail
-prod=/home/neil/.local/state/codex-for-love/prod
-workspace="$prod/workspace"
-thread="$workspace/.lamplit/thread.json"
-rollout=/home/neil/.codex/sessions/2026/09/14/rollout-2026-09-14T08-42-25-f2d8d800-a844-4de8-9ad2-04ee5b98c9ff.jsonl
-python3 - "$thread" "$rollout" "$workspace/.codex/config.toml" "$workspace/.lamplit/session.sqlite" "$workspace/.lamplit/historical-media" <<'PY'
-import json, os, sqlite3, sys
-
-thread, rollout, config, database, media = sys.argv[1:]
-marker = json.load(open(thread, encoding="utf-8"))
-header = json.loads(open(rollout, encoding="utf-8").readline())["payload"]
-assert marker == {"threadId": "f2d8d800-a844-4de8-9ad2-04ee5b98c9ff", "model": "gpt-5.6-sol"}
-assert (os.stat(thread).st_mode & 0o777) == 0o600
-assert header["session_id"] == marker["threadId"] == header["id"]
-assert 'model_reasoning_effort = "low"' in open(config, encoding="utf-8").read().splitlines()
-with sqlite3.connect(f"file:{database}?mode=ro&immutable=1", uri=True) as db:
-    counts = {name: db.execute(f'SELECT count(*) FROM "{name}"').fetchone()[0] for name in ("input_segments", "message_meta", "message_revisions", "compact_boundaries", "relationship")}
-assert counts == {"input_segments": 1993, "message_meta": 1993, "message_revisions": 1993, "compact_boundaries": 31, "relationship": 54}
-historical_media = sum(1 for entry in os.scandir(media) if entry.is_file() and entry.name != "manifest.json")
-assert historical_media == 144
-print(json.dumps({"threadId": marker["threadId"], "model": marker["model"], "markerMode": "0600", "counts": counts, "historicalMedia": historical_media}, sort_keys=True))
-PY
+journalctl --user -u codex-for-love-dev.service -n 100 --no-pager
+journalctl --user -u codex-for-love-prod.service -n 100 --no-pager
 ```
 
-## Acceptance and evidence
-
-Check unit health and loopback isolation with `systemctl --user status`,
-`ss -ltn '( sport = :3082 or sport = :3084 )'`, and `curl --fail
-http://127.0.0.1:3082/` / `:3084/`. Check Kepos render output contains exactly
-the two ids, ports, and Mac/Pixel allow lists, then verify each peer-visible URL
-from the owner devices. Mac/Pixel subscriber acceptance is owner-observed; do
-not infer it from a publisher-local curl. Record service journal excerpts
-without credentials or message contents.
-
-In browsers, verify Mika's fresh identity and the two configured avatars; send
-one bounded real Luna response only there. Verify Shio's display name alongside
-the imported Yuki persona, avatars, visible history, compact boundaries,
-relationship history, historical images, refresh and pagination against the
-dry-run/import report. Check STT
-readiness, context usage, and manual compact readiness. Restart each service
-independently and repeat its readiness check. Keep prod read-only until the
-owner deliberately sends Shio's first post-cutover message; send no email,
-external Partner message, or synthetic message in the imported conversation.
-
-Keep an operator record containing artifact/source hashes, import report and
-counts, unit/listener/HTTP evidence, Kepos evidence, and pre/post-import DSH
-hashes. This record must not contain credentials or message contents.
-
-## Backup and rollback
-
-Back up each stopped environment as a private filesystem copy of its complete
-state root plus the matching artifact hashes and import evidence. Never merge
-or restore one environment into the other.
-
-For a failed activation before data replacement, stop only the affected new
-unit, restore the previous Kepos source/policy by rendering its committed
-Jsonnet revision, and restart `cfl-preview-3082.service` only if reverting the
-Mika port is needed. The retained preview directory remains available for
-inspection. Do not delete or overwrite imported prod data as a routine rollback:
-that is destructive and requires an explicit owner decision after preserving
-evidence. DSH sources remain stopped and untouched throughout.
+Do not overwrite or delete production conversation state as routine recovery.
