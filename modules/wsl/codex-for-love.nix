@@ -8,6 +8,13 @@
   cfg = config.kosmos.wsl.codexForLove;
   checkout = "/home/neil/code/projects/lamplitisles/codex-for-love";
   node = lib.getExe pkgsUnstable.nodejs_24;
+  agentToolPath = lib.concatStringsSep ":" [
+    "/home/neil/.local/bin"
+    "/home/neil/go/bin"
+    "/home/neil/.local/share/npm-global/bin"
+    "/run/current-system/sw/bin"
+  ];
+  requiredAgentTools = ["flicknote" "project" "web"];
   service = {
     name,
     partnerName,
@@ -45,6 +52,13 @@
           exit 1
         fi
       ''}
+            export PATH=${lib.escapeShellArg agentToolPath}
+            for tool in ${lib.escapeShellArgs requiredAgentTools}; do
+              if ! command -v "$tool" >/dev/null 2>&1; then
+                echo "codex-for-love-${name}: required agent tool is not available on PATH: $tool" >&2
+                exit 1
+              fi
+            done
             exec ${node} ${lib.escapeShellArg "${checkout}/apps/partner/runtime/cli.ts"} serve ${lib.escapeShellArg configFile}
     '';
   in {
@@ -68,7 +82,7 @@
       UMask = "0077";
       Environment = [
         "HOME=/home/neil"
-        "PATH=/home/neil/.local/bin:/run/current-system/sw/bin"
+        "PATH=${agentToolPath}"
       ];
     };
   };

@@ -56,9 +56,6 @@ and service entries in `kepos/peer-policy.jsonnet`, then render
 atomically with `just kepos-policy-render`. Rendering does not require the
 Jsonnet edit to be committed or a NixOS switch.
 
-**Changing DSH MCP clients:** Read `docs/dsh-mcp-integration.md` before changing
-the overlay, stdio command, or credential handoff.
-
 ## Module Map
 
 | What you're changing | File(s) |

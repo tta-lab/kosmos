@@ -12,7 +12,6 @@ Tanka.
 - Woodpecker: `http://woodpecker.localhost:17480`
 - Dagger: `tcp://dagger.devops.svc.cluster.local:8080` in-cluster and
   `tcp://127.0.0.1:8080` for the local CLI
-- DeepSeek Harness: `http://dsh.localhost:17480` through Kepos (Mac + Pixel 7a)
 - Codex for Love Mika dev: `http://dev-lamplit.localhost:17480` through Kepos (Mac + Pixel 7a)
 - Codex for Love Shio prod (Yuki persona): `http://prod-lamplit.localhost:17480` through Kepos (Mac + Pixel 7a)
 - Codex Bridge: `http://codex-bridge.localhost:17480` through Kepos (Mac + Baihe)
@@ -40,9 +39,6 @@ Kepos publishes application service IDs including:
   header selects the Caddy route.
 - `navidrome` targets the canonical gateway port `17480`; Caddy routes it to
   the Navidrome Service in the `navidrome` namespace.
-- `dsh` targets its loopback-only Home Manager user service on port `3080` and
-  is restricted to the Mac and Pixel 7a subscribers. Kepos exposes it as
-  `http://dsh.localhost:17480`; it has no Caddy or CoreDNS route.
 - `codex-bridge` targets the canonical gateway on port `17480` and is
   restricted to the Mac, NUC Windows, Baihe, and the named Bridge subscriber.
   Caddy routes `codex-bridge.localhost` to the Kubernetes Bridge Service. The
@@ -84,7 +80,7 @@ Desktop / CLI), not by the publisher:
   `woodpecker`, `memos`, `anki`, `hindsight`, `hindsightui`, `codex-bridge`,
   `miniflux`, `ente`, `erpnext`, `grafana`, `impri`, …): target the canonical gateway port `17480` and are
   routed by the preserved `Host` header.
-- **Direct loopback HTTP services** (`dsh`, `dev-lamplit`, `prod-lamplit`): a Home Manager user service binds
+- **Direct loopback HTTP services** (`dev-lamplit`, `prod-lamplit`): a Home Manager user service binds
   its own `127.0.0.1` port and Kepos publishes that port directly. It has no
   Tanka environment, Caddy route, or CoreDNS rewrite.
 - **Raw TCP/SSH services** (`dagger`, `mihomo`, `ssh`): the peer must add a
@@ -109,8 +105,8 @@ Adding a direct loopback HTTP app needs a Home Manager user service bound to
 
 Codex for Love follows this direct-loopback model: Mika dev binds `127.0.0.1:3082`
 and Shio prod (with the Yuki persona) binds `127.0.0.1:3084`. Neither has a Tanka environment, Caddy
-route, CoreDNS rewrite, or subscriber binding. Its initialization, import,
-verification, backup, and rollback procedure is in [codex-for-love.md](codex-for-love.md).
+route, CoreDNS rewrite, or subscriber binding. Its configuration and verification
+steps are in [codex-for-love.md](codex-for-love.md).
 
 The separate Ente Photos stack publishes `ente` and `ente-storage`, both through
 the canonical gateway on port `17480`. See [ente-photos.md](ente-photos.md) for
@@ -266,9 +262,7 @@ The Codex Bridge Deployment uses the published
 image does not restart an existing Pod, so use the existing
 `just codex-bridge-deploy` path and deliberately restart or recreate the
 `codex-bridge` Deployment when you want a Pod to pull the current image. No
-automatic updater or rollout is configured. The paired DSH image-model consumer
-deployment remains a separate application change and should be coordinated
-before relying on its model-selection settings.
+automatic updater or rollout is configured.
 
 Forgejo and Woodpecker use static local PVs with a `Retain` reclaim policy.
 Dagger starts with a fresh cache at `/var/lib/kosmos-k3s/dagger`.
@@ -287,12 +281,6 @@ nh os switch . -H wsl
 Open a fresh shell after activation so Node receives the session variable. To
 replace the Root CA, update that PEM in a reviewed configuration change and
 rebuild; do not retain a mutable `/usr/local` copy or disable TLS verification.
-
-## DeepSeek Harness runtime
-
-The `dsh` Web profile runtime is a standalone npm tree outside the Nix
-closure. Install, upgrade, swap, rollback, and plugin troubleshooting:
-[`docs/dsh-deployment.md`](dsh-deployment.md).
 
 ## Recover
 

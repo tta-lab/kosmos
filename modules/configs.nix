@@ -40,6 +40,7 @@ in {
           fn = "command flicknote";
           sc = "command spine-codex";
           co = "command codex --model gpt-6-astra -c model_reasoning_effort=low";
+          cos = "command codex --model gpt-5.6-sol -c model_reasoning_effort=low";
           cot = "command codex --model gpt-5.6-terra -c model_reasoning_effort=xhigh";
           col = "command codex --model gpt-5.6-luna -c model_reasoning_effort=xhigh";
           pis = "command pi --model openai-codex/gpt-5.6-sol --thinking medium";
@@ -93,7 +94,6 @@ in {
       home.sessionVariables =
         {
           NPM_CONFIG_PREFIX = "/home/neil/.local/share/npm-global";
-          DSH_HOME = "/home/neil/.local/state/dsh";
           EDITOR = "hx";
           VISUAL = "hx";
           PI_RETRY_STALL_TIMEOUT_MS = "0";

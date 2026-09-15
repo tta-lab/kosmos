@@ -19,5 +19,4 @@ for service_id, port in (("dev-lamplit", 3082), ("prod-lamplit", 3084)):
     service = services[service_id]
     assert service["source"]["local_port"] == port
     assert service["allow"] == [mac, pixel]
-assert "dsh" in services
 PY

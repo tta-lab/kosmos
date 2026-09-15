@@ -123,8 +123,6 @@ in {
           mode = "0400";
           path = "/run/agenix/openvpn-auth";
         };
-        deepseek-key = userSecret "deepseek-key.age" "/home/neil/.config/deepseek/key";
-        miniflux-password = userSecret "miniflux-password.age" "/home/neil/.config/miniflux/password";
       }
       # Soniox key: declared only once the .age file exists (agenix build
       # fails on missing secret files), same pattern as forgejo-smoke-token.
