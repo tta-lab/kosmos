@@ -122,7 +122,6 @@ std.manifestTomlEx({
     service('codex-bridge', 'Codex Bridge', 17480, fullTrustAllow + guionWorkersAllow + baiheAllow + codexBridgeAllow + liliAllow),
     service('dagger', 'Dagger', 8080, fullTrustAllow + svenMacAllow),
     service('dev-lamplit', 'Lamplit Dev', 3082, impriAllow),
-    service('dsh', 'DeepSeek Harness', 3080, fullTrustAllow + [peers.pixel7a.public_key] + xiaomiAllow),
     service('prod-lamplit', 'Lamplit Prod', 3084, impriAllow),
     service('ente', 'Ente Photos', 17480, personalDevicesAllow + xiaomiAllow + baiheAllow + guaziAllow + svenMacAllow),
     service('ente-storage', 'Ente Storage', 17480, personalDevicesAllow + xiaomiAllow + baiheAllow + guaziAllow + svenMacAllow),

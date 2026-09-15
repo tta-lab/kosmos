@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-# Wrapper for the DSH Miniflux MCP client. Home Manager deploys it at the
-# immutable Cordis command path. Read the agenix-managed password here (strip
-# the trailing newline; bash builtins only so it works under the DSH PATH).
-set -euo pipefail
-export MINIFLUX_PASSWORD
-MINIFLUX_PASSWORD="$(< /home/neil/.config/miniflux/password)"
-MINIFLUX_PASSWORD="${MINIFLUX_PASSWORD%$'\n'}"
-exec /home/neil/go/bin/miniflux-mcp "$@"

@@ -40,9 +40,6 @@ Kepos publishes application service IDs including:
   header selects the Caddy route.
 - `navidrome` targets the canonical gateway port `17480`; Caddy routes it to
   the Navidrome Service in the `navidrome` namespace.
-- `dsh` targets its loopback-only Home Manager user service on port `3080` and
-  is restricted to the Mac and Pixel 7a subscribers. Kepos exposes it as
-  `http://dsh.localhost:17480`; it has no Caddy or CoreDNS route.
 - `codex-bridge` targets the canonical gateway on port `17480` and is
   restricted to the Mac, NUC Windows, Baihe, and the named Bridge subscriber.
   Caddy routes `codex-bridge.localhost` to the Kubernetes Bridge Service. The
@@ -287,12 +284,6 @@ nh os switch . -H wsl
 Open a fresh shell after activation so Node receives the session variable. To
 replace the Root CA, update that PEM in a reviewed configuration change and
 rebuild; do not retain a mutable `/usr/local` copy or disable TLS verification.
-
-## DeepSeek Harness runtime
-
-The `dsh` Web profile runtime is a standalone npm tree outside the Nix
-closure. Install, upgrade, swap, rollback, and plugin troubleshooting:
-[`docs/dsh-deployment.md`](dsh-deployment.md).
 
 ## Recover
 

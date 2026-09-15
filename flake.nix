@@ -80,7 +80,6 @@
             ${./scripts/init-observability-secrets} \
             ${./scripts/build-hindsight-images} \
             ${./scripts/build-impri-images} \
-            ${./scripts/miniflux-mcp-wrapper} \
             ${./scripts/sync-cloudreve-secret} \
             ${./scripts/backup-forgejo} \
             ${./scripts/check-forgejo-r2-backup-secret} \
@@ -377,11 +376,6 @@
           "::1"
         ];
         expectedNoProxy = nixpkgs.lib.concatStringsSep "," expectedNoProxyEntries;
-        expectedDshNoProxyEntries = expectedNoProxyEntries ++ [
-          "mail.guion.io"
-          "guionai.cloudflareaccess.com"
-        ];
-        expectedDshNoProxy = nixpkgs.lib.concatStringsSep "," expectedDshNoProxyEntries;
         expectedProxyEnvironment = {
           HTTP_PROXY = expectedProxy;
           HTTPS_PROXY = expectedProxy;
@@ -391,10 +385,6 @@
           https_proxy = expectedProxy;
           all_proxy = expectedProxy;
           no_proxy = expectedNoProxy;
-        };
-        expectedDshProxyEnvironment = expectedProxyEnvironment // {
-          NO_PROXY = expectedDshNoProxy;
-          no_proxy = expectedDshNoProxy;
         };
         expectedK3sNoProxy = nixpkgs.lib.concatStringsSep "," (
           expectedNoProxyEntries
@@ -418,7 +408,6 @@
         proxyEnvironment = cfg.kosmos.wsl.proxy.environment;
         k3sEnvironment = cfg.systemd.services.k3s.environment;
         homeSessionVariables = cfg.home-manager.users.neil.home.sessionVariables;
-        dshEnvironment = cfg.home-manager.users.neil.systemd.user.services.dsh.Service.Environment;
         temenosEnvironment = cfg.home-manager.users.neil.systemd.user.services.temenos.Service.Environment;
         proxyEnvironmentEntries = nixpkgs.lib.mapAttrsToList (name: value: "${name}=${value}") expectedProxyEnvironment;
       in
@@ -458,7 +447,6 @@
         assert k3sEnvironment.all_proxy == expectedProxy;
         assert k3sEnvironment.NO_PROXY == expectedK3sNoProxy;
         assert k3sEnvironment.no_proxy == expectedK3sNoProxy;
-        assert builtins.all (entry: has entry dshEnvironment) (nixpkgs.lib.mapAttrsToList (name: value: "${name}=${value}") expectedDshProxyEnvironment);
         assert builtins.all (entry: has entry temenosEnvironment) proxyEnvironmentEntries;
         assert has "mihomo.service" cfg.systemd.services.k3s.wants;
         assert has "mihomo.service" cfg.systemd.services.k3s.after;
@@ -514,13 +502,21 @@
         assert cfg.nix.settings.trusted-users == ["root"];
           pkgs.runCommand "nix-cache-policy-check" {} "touch $out";
 
+      wsl-codex-for-love-services = let
+        cfg = self.nixosConfigurations.wsl.config;
+        inherit (cfg.home-manager.users.neil.systemd.user) services;
+        expectedPath = "PATH=/home/neil/.local/bin:/home/neil/go/bin:/home/neil/.local/share/npm-global/bin:/run/current-system/sw/bin";
+      in
+        assert builtins.elem expectedPath services.codex-for-love-dev.Service.Environment;
+        assert builtins.elem expectedPath services.codex-for-love-prod.Service.Environment;
+          pkgs.runCommand "wsl-codex-for-love-services-check" {} "touch $out";
+
       kepos-live-policy = let
         cfg = self.nixosConfigurations.wsl.config;
         home = cfg.home-manager.users.neil;
         package = kepos-neo.packages.${system}.kepos;
         dashboardPackage = kepos-neo.packages.${system}.grafana-dashboard;
         peerUnit = home.systemd.user.services.kepos-peer;
-        dshEnv = home.systemd.user.services.dsh.Service.Environment;
         peerPolicyFile = "/home/neil/.config/kepos/peer.toml";
         peerStateDir = "/home/neil/.local/state/kepos-neo/peer";
       in
@@ -538,8 +534,6 @@
         assert nixpkgs.lib.hasInfix "--metrics-listen 10.255.255.1:9475" peerUnit.Service.ExecStart;
         assert builtins.elem dashboardPackage cfg.environment.systemPackages;
         assert builtins.elem "/share/kepos" cfg.environment.pathsToLink;
-        # The DSH unit reads its key from the agenix file, never hardcodes it.
-        assert !builtins.any (entry: nixpkgs.lib.hasPrefix "DEEPSEEK_API_KEY=" entry) dshEnv;
           pkgs.runCommand "kepos-live-policy-check" {
             nativeBuildInputs = [
               package

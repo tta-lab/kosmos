@@ -21,7 +21,6 @@ _: {
     ../../modules/wsl/cloudreve-storage.nix
     ../../modules/wsl/kepos-neo.nix
     ../../modules/wsl/kepos-tunnel.nix
-    ../../modules/wsl/deepseek-harness.nix
     ../../modules/wsl/codex-for-love.nix
     ../../modules/wsl/apt-cacher-ng.nix
     ../../modules/wsl/openvpn.nix
@@ -43,7 +42,6 @@ _: {
     frpcSsh.enable = true;
     keposTunnel.enable = true;
     mihomo.enable = true;
-    deepseekHarness.enable = true;
     codexForLove.enable = true;
   };
   system.stateVersion = "25.05";
