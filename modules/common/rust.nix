@@ -23,6 +23,7 @@
         "clippy"
       ])
       pkgs.fenix.targets.wasm32-unknown-unknown.stable.rust-std
+      pkgs.fenix.targets.x86_64-unknown-linux-musl.stable.rust-std
     ])
     (pkgsUnstable.callPackage ../../packages/wasm-bindgen-cli {})
     pkgs.rust-analyzer-nightly

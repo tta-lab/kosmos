@@ -48,6 +48,9 @@ in {
 
     cmake
     gnumake
+    perl
+    pkg-config
+    pkgs.pkgsStatic.stdenv.cc
 
     # Archive tools
     unzip
