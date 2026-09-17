@@ -32,6 +32,7 @@ local gatewayLabels = labels('canonical-gateway');
         rewrite name exact impri.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact clipcascade.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact navidrome.localhost canonical-gateway.devops.svc.cluster.local
+        rewrite name exact meilisearch.localhost canonical-gateway.devops.svc.cluster.local
       |||,
     },
   },
@@ -138,6 +139,11 @@ local gatewayLabels = labels('canonical-gateway');
           @navidrome host navidrome.localhost
           handle @navidrome {
             reverse_proxy navidrome.navidrome.svc.cluster.local:4533
+          }
+
+          @meilisearch host meilisearch.localhost
+          handle @meilisearch {
+            reverse_proxy meilisearch.meilisearch.svc.cluster.local:7700
           }
 
           @clipcascade host clipcascade.localhost

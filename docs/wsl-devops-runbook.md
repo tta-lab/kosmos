@@ -78,7 +78,7 @@ Desktop / CLI), not by the publisher:
 
 - **Gateway-routed HTTP web services** (`bookorbit`, `forgejo`, `navidrome`,
   `woodpecker`, `memos`, `anki`, `hindsight`, `hindsightui`, `codex-bridge`,
-  `miniflux`, `ente`, `erpnext`, `grafana`, `impri`, …): target the canonical gateway port `17480` and are
+  `miniflux`, `ente`, `erpnext`, `grafana`, `impri`, `meilisearch`, …): target the canonical gateway port `17480` and are
   routed by the preserved `Host` header.
 - **Direct loopback HTTP services** (`dev-lamplit`, `prod-lamplit`): a Home Manager user service binds
   its own `127.0.0.1` port and Kepos publishes that port directly. It has no
@@ -111,6 +111,10 @@ steps are in [codex-for-love.md](codex-for-love.md).
 The separate Ente Photos stack publishes `ente` and `ente-storage`, both through
 the canonical gateway on port `17480`. See [ente-photos.md](ente-photos.md) for
 its deployment order and mobile acceptance checks.
+
+Meilisearch is a gateway-routed HTTP service published only to the `mac` peer.
+It is available there at `http://meilisearch.localhost:17480`; see
+[meilisearch.md](meilisearch.md) for its key-handling and deployment contract.
 
 Local WSL clients connect directly to their loopback target: Caddy for
 gateway-routed apps or the service port for direct loopback apps. They do not

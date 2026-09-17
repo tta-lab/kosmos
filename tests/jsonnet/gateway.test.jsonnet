@@ -39,6 +39,11 @@ std.assertEqual(
   contains(caddy, 'reverse_proxy navidrome.navidrome.svc.cluster.local:4533'),
   true
 ) &&
+std.assertEqual(contains(caddy, '@meilisearch host meilisearch.localhost'), true) &&
+std.assertEqual(
+  contains(caddy, 'reverse_proxy meilisearch.meilisearch.svc.cluster.local:7700'),
+  true
+) &&
 std.assertEqual(
   contains(dns, 'rewrite name exact hindsight.localhost canonical-gateway.devops.svc.cluster.local'),
   true
@@ -65,6 +70,10 @@ std.assertEqual(
 ) &&
 std.assertEqual(
   contains(dns, 'rewrite name exact navidrome.localhost canonical-gateway.devops.svc.cluster.local'),
+  true
+) &&
+std.assertEqual(
+  contains(dns, 'rewrite name exact meilisearch.localhost canonical-gateway.devops.svc.cluster.local'),
   true
 ) &&
 std.assertEqual(contains(caddy, 'respond "unknown host" 421'), true) &&

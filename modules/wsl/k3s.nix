@@ -38,6 +38,7 @@ in {
     "grafana.localhost"
     "impri.localhost"
     "navidrome.localhost"
+    "meilisearch.localhost"
   ];
 
   networking.firewall.interfaces.cni0.allowedTCPPorts = [
@@ -121,5 +122,7 @@ in {
     "d /var/lib/kosmos-k3s/observability/victoria-metrics 0750 65534 65534 - -"
     "d /var/lib/kosmos-k3s/observability/grafana 0750 472 472 - -"
     "d /var/lib/kosmos-k3s/impri 0750 10001 10001 - -"
+    "d /var/lib/kosmos-k3s/meilisearch 0750 1000 1000 - -"
+    "d /var/lib/kosmos-k3s/meilisearch/data 0750 1000 1000 - -"
   ];
 }

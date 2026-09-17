@@ -12,6 +12,7 @@ hindsight_environment := "tanka/environments/hindsight"
 codex_bridge_environment := "tanka/environments/codex-bridge"
 observability_environment := "tanka/environments/observability"
 impri_environment := "tanka/environments/impri"
+meilisearch_environment := "tanka/environments/meilisearch"
 kubeconfig := env_var_or_default("KUBECONFIG", "/etc/rancher/k3s/k3s.yaml")
 api_server := "https://127.0.0.1:26443"
 
@@ -35,7 +36,10 @@ tanka-test:
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ photos_environment }}" >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ observability_environment }}" >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ impri_environment }}" >/dev/null
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ meilisearch_environment }}" >/dev/null
   @bash tests/observability-render-test
+  @bash tests/meilisearch-render-test
+  @bash tests/meilisearch-gateway-render-test
 
 diff target=environment: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ target }}"
@@ -157,6 +161,29 @@ impri-deploy: impri-images-load impri-apply
 
 impri-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n impri -o wide
+
+meilisearch-show:
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ meilisearch_environment }}"
+
+meilisearch-diff: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ meilisearch_environment }}"
+
+meilisearch-secrets: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" scripts/init-meilisearch-secret
+
+meilisearch-apply: _local-k3s meilisearch-secrets
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ meilisearch_environment }}"
+
+meilisearch-deploy: meilisearch-apply _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}" --target='^ConfigMap/(canonical-gateway|coredns-custom)$'
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/meilisearch -n meilisearch --timeout=120s
+  @curl --fail --retry 10 --retry-all-errors --retry-delay 1 --header 'Host: meilisearch.localhost' http://127.0.0.1:17480/health >/dev/null
+  @bash scripts/render-kepos-policy
+
+meilisearch-status: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n meilisearch -o wide
 
 impri-images:
   @scripts/build-impri-images

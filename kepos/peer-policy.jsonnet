@@ -134,6 +134,7 @@ std.manifestTomlEx({
     service('hindsightui', 'Hindsight UI', 17480, fullTrustAllow),
     service('impri', 'Impri', 17480, impriAllow),
     service('memos', 'Memos', 17480, personalDevicesAllow + xiaomiAllow + baiheAllow + guaziAllow),
+    service('meilisearch', 'Meilisearch', 17480, [peers.mac.public_key]),
     service('mihomo', 'Mihomo', 7890, personalDevicesAllow + xiaomiAllow + liliAllow),
     service('mihomo-dashboard', 'Mihomo Dashboard', 9090, fullTrustAllow),
     service('miniflux', 'Miniflux', 17480, personalDevicesAllow),
