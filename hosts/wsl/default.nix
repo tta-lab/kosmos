@@ -12,7 +12,6 @@ _: {
     ../../modules/common/tunnel-rathole-client.nix
     ../../modules/users/neil.nix
     ../../modules/wsl
-    ../../modules/wsl/frpc-ssh.nix
     ../../modules/wsl/secrets.nix
     ../../modules/wsl/mihomo.nix
     ../../modules/wsl/proxy.nix
@@ -39,7 +38,6 @@ _: {
     }
   ];
   kosmos.wsl = {
-    frpcSsh.enable = true;
     keposTunnel.enable = true;
     mihomo.enable = true;
     codexForLove.enable = true;

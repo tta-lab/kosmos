@@ -7,7 +7,6 @@ in {
   "secrets/ttal.env.age".publicKeys = users ++ systems;
   "secrets/kube-config.age".publicKeys = users ++ systems;
   "secrets/sops-age-keys.age".publicKeys = users ++ systems;
-  "secrets/frpc-env.age".publicKeys = users ++ systems;
   "secrets/env.age".publicKeys = users ++ systems;
   "secrets/cloudflared-kepos-credentials.age".publicKeys = users ++ systems;
   "secrets/forgejo-smoke-token.age".publicKeys = users ++ systems;
