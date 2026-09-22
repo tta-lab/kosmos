@@ -154,17 +154,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1789949324,
-        "narHash": "sha256-y2R04/vVQEqIF61B1aMCnuPgG5d5eXk+YT+afGBaru4=",
+        "lastModified": 1790063215,
+        "narHash": "sha256-JyS3JCn77uDj66yc9+lCFFdYJ4okxi2aQzVGoPq5AK0=",
         "ref": "main",
-        "rev": "b04663c8f5145e1590a3b572800eeaf4f03d721e",
-        "revCount": 86,
+        "rev": "3a34e3bea2f3afe49f833a5bd1f29d3ff48bb387",
+        "revCount": 93,
         "type": "git",
         "url": "http://forgejo.localhost:17480/LamplitIsles/kepos.git"
       },
       "original": {
         "ref": "main",
-        "rev": "b04663c8f5145e1590a3b572800eeaf4f03d721e",
+        "rev": "3a34e3bea2f3afe49f833a5bd1f29d3ff48bb387",
         "type": "git",
         "url": "http://forgejo.localhost:17480/LamplitIsles/kepos.git"
       }

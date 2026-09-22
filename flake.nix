@@ -19,7 +19,7 @@
     moonbit-overlay.url = "github:moonbit-community/moonbit-overlay";
     moonbit-overlay.inputs.nixpkgs.follows = "nixpkgs-unstable";
     kepos-neo = {
-      url = "git+http://forgejo.localhost:17480/LamplitIsles/kepos.git?ref=main&rev=b04663c8f5145e1590a3b572800eeaf4f03d721e";
+      url = "git+http://forgejo.localhost:17480/LamplitIsles/kepos.git?ref=main&rev=3a34e3bea2f3afe49f833a5bd1f29d3ff48bb387";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
