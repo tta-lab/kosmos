@@ -12,9 +12,11 @@ Tanka.
 - Woodpecker: `http://woodpecker.localhost:17480`
 - Dagger: `tcp://dagger.devops.svc.cluster.local:8080` in-cluster and
   `tcp://127.0.0.1:8080` for the local CLI
-- Codex for Love Mika dev: `http://dev-lamplit.localhost:17480` through Kepos (Mac + Pixel 7a)
+- Codex for Love Mika dev: `http://dev-her.localhost:17480` through Kepos (Mac + Sven), or `http://192.168.1.179:3082` from the WSL LAN
+- Codex for Love Mika staging: `http://staging-her.localhost:17480` through Kepos (Mac + Sven)
 - Codex for Love Shio prod (Yuki persona): `http://prod-lamplit.localhost:17480` through Kepos (Mac + Pixel 7a)
 - Codex Bridge: `http://codex-bridge.localhost:17480` through Kepos (Mac + Baihe)
+- Mac SSH: raw `mac-ssh` service through Kepos (Pixel 7a)
 - k3s API: `https://127.0.0.1:26443`
 - Anki Sync: `http://anki.localhost:17480/` through Kepos
 - Cloudreve: `http://cloudreve.localhost:17480` through Kepos
@@ -80,10 +82,11 @@ Desktop / CLI), not by the publisher:
   `woodpecker`, `memos`, `anki`, `hindsight`, `hindsightui`, `codex-bridge`,
   `miniflux`, `ente`, `erpnext`, `grafana`, `impri`, `meilisearch`, …): target the canonical gateway port `17480` and are
   routed by the preserved `Host` header.
-- **Direct loopback HTTP services** (`dev-lamplit`, `prod-lamplit`): a Home Manager user service binds
-  its own `127.0.0.1` port and Kepos publishes that port directly. It has no
+- **Direct Partner HTTP services** (`dev-her`, `staging-her`, `prod-lamplit`): a Home Manager user service
+  owns its port and Kepos publishes that port directly. Mika dev binds all IPv4
+  interfaces for the WSL LAN; staging and prod bind `127.0.0.1`. They have no
   Tanka environment, Caddy route, or CoreDNS rewrite.
-- **Raw TCP/SSH services** (`dagger`, `mihomo`, `ssh`): the peer must add a
+- **Raw TCP/SSH services** (`dagger`, `mihomo`, `ssh`, `mac-ssh`): the peer must add a
   `[[subscriber.services]]` entry with a free `local_port` to its
   `~/.config/kepos/config.toml` and restart Kepos Desktop; seeing the service
   in the list alone does not create the local listener.
@@ -100,13 +103,16 @@ Do not add `[[subscriber.services]]` entries for any HTTP service — the
 subscriber gateway port already serves them all. Adding a gateway-routed HTTP
 app needs a Tanka environment, gateway route, and
 `[[publisher.services]]` entry in the live policy with `target_port = 17480`.
-Adding a direct loopback HTTP app needs a Home Manager user service bound to
-`127.0.0.1` plus its direct-port publisher entry in the live policy.
+Adding a direct HTTP app needs a Home Manager user service and its direct-port
+publisher entry in the live policy. Bind it to `127.0.0.1` unless LAN access is
+an explicit requirement.
 
-Codex for Love follows this direct-loopback model: Mika dev binds `127.0.0.1:3082`
-and Shio prod (with the Yuki persona) binds `127.0.0.1:3084`. Neither has a Tanka environment, Caddy
-route, CoreDNS rewrite, or subscriber binding. Its configuration and verification
-steps are in [codex-for-love.md](codex-for-love.md).
+Codex for Love follows this direct-service model: Mika dev binds
+`0.0.0.0:3082` (including WSL LAN `192.168.1.179`), Mika staging binds
+`127.0.0.1:3083`, and Shio prod (with the Yuki persona) binds
+`127.0.0.1:3084`. None has a Tanka environment, Caddy route, CoreDNS rewrite,
+or subscriber binding. Its configuration and verification steps are in
+[codex-for-love.md](codex-for-love.md).
 
 The separate Ente Photos stack publishes `ente` and `ente-storage`, both through
 the canonical gateway on port `17480`. See [ente-photos.md](ente-photos.md) for
@@ -136,7 +142,9 @@ are explicit immediate-peer public keys; missing or empty lists deny access.
 
 All current remote devices use `connection = "accept"`, preserving their
 existing dial direction. Mac's SSH service is bound to `127.0.0.1:2222` for
-NUC-local SSH clients. Local sources use
+NUC-local SSH clients. The separate `mac-ssh` service explicitly republishes
+that upstream Mac service to Pixel 7a: Mac grants only Kosmos upstream access,
+and Kosmos grants only Pixel downstream access. Local sources use
 `source = {local_port: 17480}` for Caddy-routed services or their direct service
 port. WSL's peer gateway uses `127.0.0.1:17481`; Caddy owns `17480`.
 

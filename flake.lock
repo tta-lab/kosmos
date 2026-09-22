@@ -154,18 +154,19 @@
         ]
       },
       "locked": {
-        "lastModified": 1789135563,
-        "narHash": "sha256-pj2dyQkgXre8M6GIrC0gw/pR0lJv5U6Pf81KXfEADvk=",
-        "owner": "LamplitIsles",
-        "repo": "kepos",
-        "rev": "225ce7691d0bb463c40fd35ae1dcac4626b560a8",
-        "type": "github"
+        "lastModified": 1789949324,
+        "narHash": "sha256-y2R04/vVQEqIF61B1aMCnuPgG5d5eXk+YT+afGBaru4=",
+        "ref": "main",
+        "rev": "b04663c8f5145e1590a3b572800eeaf4f03d721e",
+        "revCount": 86,
+        "type": "git",
+        "url": "http://forgejo.localhost:17480/LamplitIsles/kepos.git"
       },
       "original": {
-        "owner": "LamplitIsles",
-        "repo": "kepos",
-        "rev": "225ce7691d0bb463c40fd35ae1dcac4626b560a8",
-        "type": "github"
+        "ref": "main",
+        "rev": "b04663c8f5145e1590a3b572800eeaf4f03d721e",
+        "type": "git",
+        "url": "http://forgejo.localhost:17480/LamplitIsles/kepos.git"
       }
     },
     "moonbit-overlay": {

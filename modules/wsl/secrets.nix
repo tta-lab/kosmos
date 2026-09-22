@@ -10,6 +10,7 @@
   haveForgejoR2Backup = builtins.pathExists (secretsDir + "/forgejo-r2-backup.age");
   haveSonioxKey = builtins.pathExists (secretsDir + "/soniox-key.age");
   haveVolcengineKey = builtins.pathExists (secretsDir + "/volcengine-key.age");
+  haveCodexForLoveProdEnv = builtins.pathExists (secretsDir + "/codex-for-love-prod.env.age");
   userSecret = fileName: path: {
     file = secretsDir + "/${fileName}";
     owner = "neil";
@@ -134,6 +135,14 @@ in {
       # Create it with: agenix -e secrets/volcengine-key.age
       // lib.optionalAttrs haveVolcengineKey {
         volcengine-key = userSecret "volcengine-key.age" "/home/neil/.config/volcengine/key";
+      }
+      // lib.optionalAttrs haveCodexForLoveProdEnv {
+        "codex-for-love-prod.env" = {
+          file = secretsDir + "/codex-for-love-prod.env.age";
+          owner = "neil";
+          group = "users";
+          mode = "0400";
+        };
       }
       // lib.optionalAttrs haveForgejoSmokeToken {
         forgejo-smoke-token = userSecret "forgejo-smoke-token.age" "/home/neil/.config/kosmos/forgejo-smoke-token";

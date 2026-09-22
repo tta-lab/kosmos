@@ -5,6 +5,46 @@ This stage supports secrets only on `kosmos-wsl`.
 Private keys and plaintext secrets must never be committed. Agents must not read,
 decrypt, print, grep, diff, migrate, or inspect plaintext secret files.
 
+## Declare and consume
+
+1. Register `secrets/<name>.age` with its recipients in `secrets.nix`.
+2. Declare the secret in `modules/wsl/secrets.nix`, setting `file`, `owner`,
+   `group`, and `mode`. Use agenix's default `path` for runtime consumers:
+
+   ```nix
+   age.secrets."example.env" = {
+     file = ../../secrets/example.env.age;
+     owner = "neil";
+     group = "users";
+     mode = "0400";
+   };
+   ```
+
+3. Reference `config.age.secrets."example.env".path` from consumers.
+   Systemd services use `EnvironmentFile` for `NAME=value` files. For Home
+   Manager nested inside a NixOS module, capture this path in the outer
+   `let`, or use the Home Manager module's `osConfig` argument. Its own
+   `config` refers to Home Manager options, not NixOS options.
+4. Give Neil the exact `agenix -e secrets/<name>.age` command and expected
+   plaintext format. Commit only the encrypted `.age` file. Follow the
+   repository's existing optional-secret convention when the file has not
+   been provisioned; consumers check the declared `config.age.secrets`
+   attribute rather than independently checking the filesystem.
+
+Nix may interpolate a secret's runtime **path**, never its plaintext content.
+Keep secrets out of `home.sessionVariables`, unit `Environment`, generated
+Nix-store files, and `builtins.readFile`. Interactive shells load secret
+values at runtime; use parsing appropriate to the file format. A systemd
+environment file is not a Fish script. See [Meilisearch](meilisearch.md) for
+the shared Fish/service environment file and its single-line format.
+
+Only override `path` when an application requires a fixed external location,
+such as `~/.kube/config`. Within `age.secretsDir`, use the default
+`${age.secretsDir}/${name}`. A different basename there creates a broken
+activation sequence: agenix writes the alias into the old generation,
+switches the directory link, then removes that old generation. The secret
+decrypts successfully but its custom alias disappears.
+
 ## Keys
 
 `kosmos-wsl` decrypts deployed secrets with:
@@ -165,3 +205,26 @@ KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
   kubectl get secret woodpecker-server-env woodpecker-postgres-env \
     -n devops -o name
 ```
+
+## Verify activation
+
+Run the Nix checks and system build required by `AGENTS.md`, then activate
+with `nh os switch . -H wsl`. A successful build or a "decrypting" log line
+does not establish that a consumer can access its secret.
+
+Check the evaluated `.path` with `stat` or `test -r` as the consuming user.
+For a missing path, inspect `readlink /run/agenix` and generation directory
+metadata using `sudo find`; do not print decrypted files. Compare `name`,
+`path`, and the generated activation script before blaming the deploy tool.
+
+For shell variables, start a fresh shell and assert the value is nonempty,
+printing only PASS/FAIL. Existing shells retain their old environment;
+`exec fish` reloads the secret. To reload Home Manager session variables too,
+run `set -e __HM_SESS_VARS_SOURCED; exec fish` in Fish. Restart an affected service to load
+its environment file, check its state, and verify an authenticated operation
+without logging credentials. Keep this live verification separate from tests:
+automated tests use temporary fixtures and must not touch live secrets.
+
+The upstream [agenix module](https://github.com/ryantm/agenix/blob/main/modules/age.nix)
+defines the default path and generation-switch ordering; the pinned module
+and generated activation script are authoritative for the deployed system.

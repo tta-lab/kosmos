@@ -21,4 +21,5 @@ in {
   "secrets/cloudreve-env.age".publicKeys = users ++ systems;
   "secrets/cloudflare-ddns-token.age".publicKeys = users ++ systems;
   "secrets/forgejo-r2-backup.age".publicKeys = users ++ systems;
+  "secrets/codex-for-love-prod.env.age".publicKeys = users ++ systems;
 }

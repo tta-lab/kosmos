@@ -19,7 +19,7 @@
     moonbit-overlay.url = "github:moonbit-community/moonbit-overlay";
     moonbit-overlay.inputs.nixpkgs.follows = "nixpkgs-unstable";
     kepos-neo = {
-      url = "github:LamplitIsles/kepos/225ce7691d0bb463c40fd35ae1dcac4626b560a8";
+      url = "git+http://forgejo.localhost:17480/LamplitIsles/kepos.git?ref=main&rev=b04663c8f5145e1590a3b572800eeaf4f03d721e";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
@@ -112,7 +112,6 @@
             ${./tests/forgejo-backup-render-test} \
             ${./tests/prepare-mihomo-config-test} \
             ${./tests/render-kepos-policy-test} \
-            ${./tests/codex-for-love-kepos-policy-test} \
             ${./tests/observability-render-test} \
             ${./tests/init-observability-secrets-test} \
             ${./tests/observability-just-test} \
@@ -153,7 +152,6 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-backup-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/prepare-mihomo-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/render-kepos-policy-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/codex-for-love-kepos-policy-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/observability-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-observability-secrets-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/observability-just-test}
@@ -505,10 +503,19 @@
       wsl-codex-for-love-services = let
         cfg = self.nixosConfigurations.wsl.config;
         inherit (cfg.home-manager.users.neil.systemd.user) services;
-        expectedPath = "PATH=/home/neil/.local/bin:/home/neil/go/bin:/home/neil/.local/share/npm-global/bin:/run/current-system/sw/bin";
+        homeSessionVariables = cfg.home-manager.users.neil.home.sessionVariables;
+        expectedBasePath = "PATH=/home/neil/.local/bin:/home/neil/go/bin:/home/neil/.local/share/npm-global/bin:/run/current-system/sw/bin";
+        expectedProdPath = "PATH=/home/neil/.local/bin:/home/neil/go/bin:/home/neil/.local/share/npm-global/bin:/run/current-system/sw/bin:/home/neil/.cache/.bun/bin";
+        haveProdMeiliSecret = builtins.pathExists ./secrets/codex-for-love-prod.env.age;
+        prodMeiliSecret = cfg.age.secrets."codex-for-love-prod.env";
       in
-        assert builtins.elem expectedPath services.codex-for-love-dev.Service.Environment;
-        assert builtins.elem expectedPath services.codex-for-love-prod.Service.Environment;
+        assert builtins.elem expectedBasePath services.codex-for-love-dev.Service.Environment;
+        assert builtins.elem expectedBasePath services.codex-for-love-staging.Service.Environment;
+        assert builtins.elem expectedProdPath services.codex-for-love-prod.Service.Environment;
+        assert homeSessionVariables.FLICKLOG_MEILI_URL == "http://meilisearch.localhost:17480/";
+        assert !haveProdMeiliSecret || builtins.elem "FLICKLOG_MEILI_URL=http://meilisearch.localhost:17480/" services.codex-for-love-prod.Service.Environment;
+        assert !haveProdMeiliSecret || services.codex-for-love-prod.Service.EnvironmentFile == [prodMeiliSecret.path];
+        assert !haveProdMeiliSecret || prodMeiliSecret.path == "${cfg.age.secretsDir}/${prodMeiliSecret.name}";
           pkgs.runCommand "wsl-codex-for-love-services-check" {} "touch $out";
 
       kepos-live-policy = let

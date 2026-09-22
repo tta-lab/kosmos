@@ -21,7 +21,7 @@ path. Only the portable agent rules (`AGENTS.user.md`) are synced by
 `scripts/sync-agent-config`.
 
 **Adding a secret:**
-1) register in `secrets.nix`, 2) declare in `modules/wsl/secrets.nix`, 3) `agenix -e secrets/<name>.age`.
+Read [docs/secrets.md](docs/secrets.md) for registration, runtime consumption, and verification.
 
 **Adding a Kepos-exposed service (WSL):**
 For a Kubernetes-backed HTTP app, add a Tanka environment + lib under `tanka/`
@@ -129,14 +129,8 @@ before the commit as usual.
 
 ## Secrets (agenix)
 
-WSL decrypt key: `/etc/ssh/ssh_host_ed25519_key`.
-
-Expected secret targets:
-- `~/.config/ttal/.env`
-- `~/.kube/config`
-- `~/.config/sops/age/keys.txt`
-
-Adding a secret: (1) register `.age` file in `secrets.nix` with public keys, (2) declare path/owner/mode/target in `modules/wsl/secrets.nix`, (3) run `agenix -e secrets/<name>.age` and paste plaintext. Commit the `.age` file.
+Before adding a secret, wiring a consumer, or diagnosing missing secret files or
+environment variables, read [docs/secrets.md](docs/secrets.md).
 
 Agents must not read, decrypt, or inspect plaintext secrets. If a task needs one, tell Neil the exact command.
 

@@ -24,8 +24,10 @@ jq -e '
     ($container.env | any(.name == "MEILI_NO_ANALYTICS" and .value == "true")) and
     ($container.env | any(.name == "MEILI_MASTER_KEY" and .valueFrom.secretKeyRef.name == "meilisearch-master-key")) and
     ($container.volumeMounts | any(.name == "data" and .mountPath == "/meili_data")) and
+    ($container.volumeMounts | any(.name == "tmp" and .mountPath == "/tmp" and .readOnly != true)) and
     ($container.readinessProbe.httpGet.path == "/health")
   ) and
+  (resource("Deployment"; "meilisearch").spec.template.spec.volumes | any(.name == "tmp" and has("emptyDir"))) and
   (resource("Service"; "meilisearch").spec.type == "ClusterIP") and
   (resource("Service"; "meilisearch").spec.ports[0].port == 7700) and
   (resource("PersistentVolume"; "kosmos-meilisearch-data").spec.persistentVolumeReclaimPolicy == "Retain") and

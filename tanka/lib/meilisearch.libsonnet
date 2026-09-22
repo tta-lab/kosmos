@@ -73,9 +73,15 @@ local labels = {
               requests: { cpu: '100m', memory: '512Mi' },
               limits: { cpu: '1', memory: '2Gi' },
             },
-            volumeMounts: [{ name: 'data', mountPath: '/meili_data' }],
+            volumeMounts: [
+              { name: 'data', mountPath: '/meili_data' },
+              { name: 'tmp', mountPath: '/tmp' },
+            ],
           }],
-          volumes: [{ name: 'data', persistentVolumeClaim: { claimName: 'meilisearch-data' } }],
+          volumes: [
+            { name: 'data', persistentVolumeClaim: { claimName: 'meilisearch-data' } },
+            { name: 'tmp', emptyDir: {} },
+          ],
         },
       },
     },

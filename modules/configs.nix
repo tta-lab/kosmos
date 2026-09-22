@@ -6,6 +6,8 @@
   inherit (config.system) stateVersion;
   systemCaBundle = config.security.pki.caBundle;
   proxyEnvironment = config.kosmos.wsl.proxy.environment;
+  haveFlicklogSecret = config.age.secrets ? "codex-for-love-prod.env";
+  flicklogEnvironmentFile = config.age.secrets."codex-for-love-prod.env".path;
 in {
   home-manager = {
     useGlobalPkgs = true;
@@ -100,11 +102,13 @@ in {
           TACT_MODEL = "terra";
           NODE_EXTRA_CA_CERTS = systemCaBundle;
           AGENT_BROWSER_EXECUTABLE_PATH = "/run/current-system/sw/bin/chromium";
+          FLICKLOG_MEILI_URL = "http://meilisearch.localhost:17480/";
         }
         // proxyEnvironment;
 
       home.sessionPath = [
         "/home/neil/.local/bin"
+        "/home/neil/.cache/.bun/bin"
         "/home/neil/go/bin"
         "/home/neil/.local/share/npm-global/bin"
       ];
@@ -123,11 +127,17 @@ in {
 
         fish = {
           enable = true;
-          shellInit = ''
-            if test -r "$HOME/.config/env"
-              source "$HOME/.config/env"
-            end
-          '';
+          shellInit =
+            ''
+              if test -r "$HOME/.config/env"
+                source "$HOME/.config/env"
+              end
+            ''
+            + lib.optionalString haveFlicklogSecret ''
+              if test -r ${lib.escapeShellArg flicklogEnvironmentFile}
+                set -gx FLICKLOG_MEILI_KEY (string replace -r '^FLICKLOG_MEILI_KEY=' "" < ${lib.escapeShellArg flicklogEnvironmentFile})
+              end
+            '';
           functions = {
             p = ''
               set -l dir (command project jump $argv)
