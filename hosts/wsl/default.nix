@@ -23,6 +23,7 @@ _: {
     ../../modules/wsl/codex-for-love.nix
     ../../modules/wsl/apt-cacher-ng.nix
     ../../modules/wsl/openvpn.nix
+    ../../modules/wsl/openai-tunnel.nix
     ../../modules/configs.nix
   ];
 

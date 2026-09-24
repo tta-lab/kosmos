@@ -84,6 +84,8 @@ Encrypted files live in `secrets/` and are safe to commit:
 - `secrets/forgejo-r2-backup.age` (optional; encrypted and safe to commit;
   enables the Forgejo source-recovery backup secret synchronizer when the
   operator creates it)
+- `secrets/openai-tunnel.env.age` (optional; enables the OpenAI Secure MCP
+  Tunnel user service when the operator creates it)
 
 They decrypt to:
 
@@ -103,6 +105,8 @@ They decrypt to:
 - `/run/agenix/forgejo-r2-backup` (root-owned R2/restic environment, synchronized
   to the local `devops/forgejo-r2-backup` Kubernetes Secret by
   `forgejo-r2-backup-secret-sync.service`)
+- `/run/agenix/openai-tunnel.env` (user-readable systemd environment file for
+  the OpenAI Secure MCP Tunnel runtime key)
 
 `lenos/config.json` in this repo is non-secret and still maps to
 `/home/neil/.config/lenos/config.json`.
@@ -132,6 +136,13 @@ agenix -e secrets/woodpecker-postgres-env.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/soniox-key.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/volcengine-key.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/forgejo-r2-backup.age -i ~/.ssh/agenix_ed25519
+agenix -e secrets/openai-tunnel.env.age -i ~/.ssh/agenix_ed25519
+```
+
+The OpenAI tunnel file must contain one systemd environment assignment:
+
+```text
+CONTROL_PLANE_API_KEY=<runtime API key>
 ```
 
 The optional Forgejo source-recovery file must contain only the four required
