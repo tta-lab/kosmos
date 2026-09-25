@@ -101,13 +101,10 @@ ssot = single source of truth
 cpr = create pr
 anno = annotate (task annotation)
 
-## FlickNote Projects
+## FlickNote Notes and Projects
 
 Use FlickNote MCP `note_*` and `project_*` tools for all agent-initiated note and project operations. Do not invoke FlickNote note-management CLI commands through the shell. If MCP is unavailable or lacks the required operation, report the blocker instead of falling back to the CLI. Starting the MCP server and managing the FlickNote daemon are operational exceptions.
 
-Use only these two projects for all agent-written notes:
+When creating a note, omit the `project` argument so FlickNote's built-in classifier assigns it. Set or change a note's project only when the user explicitly requests a specific destination or you are correcting a verified classification error.
 
-- **orientation** — plan-like notes: task plans, design decisions, implementation strategies, orientation context
-- **research** — research and knowledge notes: findings, reference material, discoveries, accumulated knowledge
-
-Create a new project only when explicitly asked by the user. If in doubt, use `orientation` for structured plans and `research` for collected information.
+Create a new project only when explicitly asked by the user. Scope projects to durable products, initiatives, or responsibilities rather than repositories or note types. Write each project's summary as a stable membership boundary that states what work belongs there and clarifies nearby ambiguous boundaries. Pin only projects the user wants considered for automatic routing.
