@@ -19,12 +19,16 @@ only `KEET_MCP_TOKEN=<at least 32 characters>`. To rotate it, run
 single-line format. The key must never be placed in a Nix string or URL.
 
 Serein uses the verified runtime copy at
-`/home/neil/.local/share/keet-runtime/4.22.0-linux-x64`, private identity,
+`/home/neil/.local/share/keet-runtime/4.22.0-linux-x64` and private identity,
 state, and workspace directories under
-`/home/neil/.local/state/keet-mcp-serein`, and the avatar at
-`/home/neil/.local/share/keet-mcp-serein/avatar.png`. Her avatar is copied from
-`pi-on-cf/frontend/static/avatars/jiji-v2.png` on the Mac. No webhook URL is
-configured yet because `pi-on-cf` has no Keet webhook receiver route. Starting
+`/home/neil/.local/state/keet-mcp-serein`. The runtime directory must contain
+`bare`, `core-worker.bundle`, and the full `node_modules` tree with the 25
+native addons selected by the bundle manifest. Copying only the two top-level
+files causes `Keet native-addon closure is incomplete` on startup. The avatar
+from `pi-on-cf/frontend/static/avatars/jiji-v2.png` is available at
+`/home/neil/.local/share/keet-mcp-serein/avatar.png`, but is not applied to
+the Keet profile. No webhook URL is configured yet because `pi-on-cf` has no
+Keet webhook receiver route. Starting
 the gateway exposes its loopback MCP endpoint but does not wake the Cloudflare
 Agent on incoming Keet messages.
 
@@ -51,8 +55,8 @@ switch fails, move the backup back to its original path and reload the user
 daemon before retrying. Do not alter the existing `gateway.env` or delete a
 Keet identity lock file.
 
-After Serein's gateway has created its identity, stop only its unit to apply
-the display name and avatar through KFA's human setup CLI, then restart it:
+After Serein's gateway has created its identity, stop only its unit to set the
+display name through KFA's human setup CLI, then restart it:
 
 ```sh
 systemctl --user stop keet-mcp-serein.service
@@ -60,10 +64,28 @@ KEET_MCP_RUNTIME_DIR=/home/neil/.local/share/keet-runtime/4.22.0-linux-x64 \
 KEET_MCP_IDENTITY_DIR=/home/neil/.local/state/keet-mcp-serein/identity \
   /run/current-system/sw/bin/node \
   /home/neil/code/projects/lamplitisles/keet-for-agent/packages/keet-mcp/dist/setup.js \
-  profile --display-name Serein \
-  --avatar /home/neil/.local/share/keet-mcp-serein/avatar.png
+  profile --display-name Serein
 systemctl --user start keet-mcp-serein.service
 ```
 
 The setup CLI does not need the MCP token. The gateway discovers newly joined
 rooms only at startup, so restart that specific unit after later room setup.
+
+To join a group as Serein, paste its invitation only at the hidden terminal
+prompt. This keeps the invitation out of shell arguments, history, files, and
+logs, and restarts her gateway even if joining fails:
+
+```sh
+(
+  set -e
+  trap 'systemctl --user start keet-mcp-serein.service' EXIT
+  systemctl --user stop keet-mcp-serein.service
+  read -r -s -p 'Keet invitation: ' invitation
+  printf '\n'
+  printf '%s' "$invitation" | \
+    KEET_MCP_RUNTIME_DIR=/home/neil/.local/share/keet-runtime/4.22.0-linux-x64 \
+    KEET_MCP_IDENTITY_DIR=/home/neil/.local/state/keet-mcp-serein/identity \
+    /run/current-system/sw/bin/node \
+    /home/neil/code/projects/lamplitisles/keet-for-agent/packages/keet-mcp/dist/setup.js join
+)
+```
