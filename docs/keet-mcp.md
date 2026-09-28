@@ -18,6 +18,15 @@ only `KEET_MCP_TOKEN=<at least 32 characters>`. To rotate it, run
 `agenix -e secrets/keet-mcp-serein.env.age` in this checkout and retain that
 single-line format. The key must never be placed in a Nix string or URL.
 
+The existing `nuc-wsl` Cloudflare Tunnel routes `serein-keet.guion.io` to
+Serein's loopback listener. The remote MCP endpoint is
+`https://serein-keet.guion.io/mcp`; retained images use the same host under
+`/images/{ref}`. Both routes require Serein's existing `KEET_MCP_TOKEN` as an
+`Authorization: Bearer` header on every request. Store that token only in the
+Cloudflare Agent's secret store when configuring its MCP client. This route
+does not use a Cloudflare Access service token. Do not copy the webhook bearer
+token here: it authenticates the opposite, KFA-to-Agent direction.
+
 Serein uses the verified runtime copy at
 `/home/neil/.local/share/keet-runtime/4.22.0-linux-x64` and private identity,
 state, and workspace directories under

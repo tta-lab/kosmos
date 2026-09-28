@@ -208,6 +208,7 @@
         assert cfg.services.cloudflared.enable;
         assert tunnel.default == "http_status:404";
         assert tunnel.credentialsFile == cfg.age.secrets.cloudflared-kepos-credentials.path;
+        assert tunnel.ingress."serein-keet.guion.io" == "http://127.0.0.1:8767";
         assert tunnel.ingress."test.guion.io" == "http://127.0.0.1:8080";
         assert cfg.systemd.services.cloudflared-tunnel-kepos.environment.TUNNEL_TRANSPORT_PROTOCOL == "http2";
           pkgs.runCommand "kepos-tunnel-module-check" {} "touch $out";

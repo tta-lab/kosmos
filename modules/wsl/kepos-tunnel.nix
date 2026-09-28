@@ -32,6 +32,7 @@ in {
 
         tunnels.kepos = {
           credentialsFile = config.age.secrets.cloudflared-kepos-credentials.path;
+          ingress."serein-keet.guion.io" = "http://127.0.0.1:8767";
           default = "http_status:404";
         };
       };
