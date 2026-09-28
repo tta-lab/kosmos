@@ -23,4 +23,5 @@ in {
   "secrets/forgejo-r2-backup.age".publicKeys = users ++ systems;
   "secrets/codex-for-love-prod.env.age".publicKeys = users ++ systems;
   "secrets/openai-tunnel.env.age".publicKeys = users ++ systems;
+  "secrets/keet-mcp-serein.env.age".publicKeys = users ++ systems;
 }

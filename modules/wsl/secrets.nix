@@ -153,6 +153,14 @@ in {
           mode = "0400";
         };
       }
+      // {
+        "keet-mcp-serein.env" = {
+          file = secretsDir + "/keet-mcp-serein.env.age";
+          owner = "neil";
+          group = "users";
+          mode = "0400";
+        };
+      }
       // lib.optionalAttrs haveForgejoSmokeToken {
         forgejo-smoke-token = userSecret "forgejo-smoke-token.age" "/home/neil/.config/kosmos/forgejo-smoke-token";
       }

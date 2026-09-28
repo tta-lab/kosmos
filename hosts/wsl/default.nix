@@ -21,6 +21,7 @@ _: {
     ../../modules/wsl/kepos-neo.nix
     ../../modules/wsl/kepos-tunnel.nix
     ../../modules/wsl/codex-for-love.nix
+    ../../modules/wsl/keet-mcp.nix
     ../../modules/wsl/apt-cacher-ng.nix
     ../../modules/wsl/openvpn.nix
     ../../modules/wsl/openai-tunnel.nix
@@ -42,6 +43,7 @@ _: {
     keposTunnel.enable = true;
     mihomo.enable = true;
     codexForLove.enable = true;
+    keetMcp.enable = true;
   };
   system.stateVersion = "25.05";
 }
