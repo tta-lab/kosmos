@@ -18,6 +18,14 @@ only `KEET_MCP_TOKEN=<at least 32 characters>`. To rotate it, run
 `agenix -e secrets/keet-mcp-serein.env.age` in this checkout and retain that
 single-line format. The key must never be placed in a Nix string or URL.
 
+The same managed Serein unit sets
+`KEET_WEBHOOK_URL=https://lamplit-keet.guion.io/api/keet/events` and reads
+`/home/neil/.local/state/keet-mcp-serein/webhook.env` for
+`KEET_WEBHOOK_BEARER_TOKEN`. This owner-only operator file uses the same value
+as the Worker's `KEET_INGEST_TOKEN`; it is separate from `KEET_MCP_TOKEN` and
+must not be committed. Keep the webhook URL in this module and the secret in
+the environment file. Do not add a service drop-in for the webhook.
+
 The existing `nuc-wsl` Cloudflare Tunnel routes `serein-keet.guion.io` to
 Serein's loopback listener. The remote MCP endpoint is
 `https://serein-keet.guion.io/mcp`; retained images use the same host under
@@ -36,10 +44,9 @@ native addons selected by the bundle manifest. Copying only the two top-level
 files causes `Keet native-addon closure is incomplete` on startup. The avatar
 from `pi-on-cf/frontend/static/avatars/jiji-v2.png` is available at
 `/home/neil/.local/share/keet-mcp-serein/avatar.png`, but is not applied to
-the Keet profile. No webhook URL is configured yet because `pi-on-cf` has no
-Keet webhook receiver route. Starting
-the gateway exposes its loopback MCP endpoint but does not wake the Cloudflare
-Agent on incoming Keet messages.
+the Keet profile. The separate `lamplit-keet.guion.io` Worker hostname admits
+only `/api/keet/events` and checks the webhook bearer before processing an
+event; the main `lamplit-cf.guion.io` site remains behind Cloudflare Access.
 
 ## One-time unit handoff
 

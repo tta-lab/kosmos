@@ -44,8 +44,12 @@ in {
             "KEET_MCP_WORKSPACE_ROOT=${sereinRoot}/workspace"
             "KEET_MCP_STATE_DIR=${sereinRoot}/state"
             "KEET_MCP_LISTEN=127.0.0.1:8767"
+            "KEET_WEBHOOK_URL=https://lamplit-keet.guion.io/api/keet/events"
           ];
-          EnvironmentFile = [config.age.secrets."keet-mcp-serein.env".path];
+          EnvironmentFile = [
+            config.age.secrets."keet-mcp-serein.env".path
+            "${sereinRoot}/webhook.env"
+          ];
           Restart = "on-failure";
           RestartSec = 5;
           UMask = "0077";
