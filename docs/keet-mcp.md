@@ -18,6 +18,12 @@ only `KEET_MCP_TOKEN=<at least 32 characters>`. To rotate it, run
 `agenix -e secrets/keet-mcp-serein.env.age` in this checkout and retain that
 single-line format. The key must never be placed in a Nix string or URL.
 
+The existing gateway delivers Shio's incoming Keet events to CFL production at
+`http://127.0.0.1:3084/api/keet/events`. CFL accepts this route only from a
+loopback peer and records accepted events before responding. This local webhook
+URL belongs to the managed `keet-mcp.service` unit; the existing gateway
+environment file retains its private MCP token and identity settings.
+
 The same managed Serein unit sets
 `KEET_WEBHOOK_URL=https://lamplit-keet.guion.io/api/keet/events` and reads
 `/home/neil/.local/state/keet-mcp-serein/webhook.env` for

@@ -22,6 +22,7 @@ in {
         Install.WantedBy = ["default.target"];
         Service = {
           ExecStart = "/run/current-system/sw/bin/node ${gateway}";
+          Environment = ["KEET_WEBHOOK_URL=http://127.0.0.1:3084/api/keet/events"];
           EnvironmentFile = ["/home/neil/.local/state/keet-mcp/gateway.env"];
           Restart = "on-failure";
           RestartSec = 5;
