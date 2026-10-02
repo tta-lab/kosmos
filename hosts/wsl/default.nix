@@ -17,6 +17,7 @@ _: {
     ../../modules/wsl/proxy.nix
     ../../modules/wsl/k3s.nix
     ../../modules/wsl/public-services.nix
+    ../../modules/wsl/android-development.nix
     ../../modules/wsl/cloudreve-storage.nix
     ../../modules/wsl/kepos-neo.nix
     ../../modules/wsl/kepos-tunnel.nix
