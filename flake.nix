@@ -76,9 +76,7 @@
             ${./scripts/forgejo-k8s-pull-secret-smoke} \
             ${./scripts/init-ebook-secrets} \
             ${./scripts/init-miniflux-secrets} \
-            ${./scripts/init-hindsight-secrets} \
             ${./scripts/init-observability-secrets} \
-            ${./scripts/build-hindsight-images} \
             ${./scripts/build-impri-images} \
             ${./scripts/sync-cloudreve-secret} \
             ${./scripts/backup-forgejo} \
@@ -103,10 +101,6 @@
             ${./tests/sync-woodpecker-secret-test} \
             ${./tests/sync-ente-secret-test} \
             ${./tests/init-ebook-secrets-test} \
-            ${./tests/init-hindsight-secrets-test} \
-            ${./tests/hindsight-images-test} \
-            ${./tests/hindsight-render-test} \
-            ${./tests/hindsight-recall-eval-test} \
             ${./tests/sync-cloudreve-secret-test} \
             ${./tests/backup-forgejo-test} \
             ${./tests/forgejo-backup-render-test} \
@@ -144,9 +138,6 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-woodpecker-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-ente-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-ebook-secrets-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-hindsight-secrets-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-images-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-recall-eval-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-cloudreve-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/backup-forgejo-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-backup-render-test}
@@ -162,11 +153,9 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-render-test}
           tk fmt --test ${./.}/tests/jsonnet
           tk lint ${./.}/tests/jsonnet
-          tk eval ${./.}/tests/jsonnet/hindsight.test.jsonnet >/dev/null
           tk eval ${./.}/tests/jsonnet/codex-bridge.test.jsonnet >/dev/null
           tk eval ${./.}/tests/jsonnet/gateway.test.jsonnet >/dev/null
           tk eval ${./.}/tests/jsonnet/impri.test.jsonnet >/dev/null
-          tk show --dangerous-allow-redirect ${./.}/tanka/environments/hindsight >/dev/null
           tk show --dangerous-allow-redirect ${./.}/tanka/environments/codex-bridge >/dev/null
           tk show --dangerous-allow-redirect ${./.}/tanka/environments/devops >/dev/null
           tk show --dangerous-allow-redirect ${./.}/tanka/environments/impri >/dev/null
@@ -184,7 +173,6 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-agent-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/wsl-devops-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/hindsight-render-test}
           python3 ${./.}/tests/public-ddns-test
           touch $out
         '';
@@ -331,7 +319,6 @@
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit-db 0700 999 999 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/anki 0750 1000 1000 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/notes/memos 0750 10001 10001 - -" rules;
-        assert builtins.elem "d /var/lib/kosmos-k3s/hindsight-postgres 0700 999 999 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/observability 0750 root root - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/observability/victoria-metrics 0750 65534 65534 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/observability/grafana 0750 472 472 - -" rules;

@@ -1,3 +1,6 @@
+> Historical research. Kosmos has retired its local Hindsight deployment; local
+> setup instructions below are historical examples, not active service endpoints.
+
 # OpenClaw alternatives for a single long-term companion agent
 
 Research date: 2026-08-28. This is a primary-source comparison of self-hosted
@@ -135,8 +138,8 @@ and persistence after a turn, with an inspectable/deleteable source of truth.
 
 ## Hindsight: preferred integration and why it does not remove compaction
 
-The existing local Hindsight deployment already exposes an API/MCP route and
-has retained storage; see [the local deployment note](hindsight.md). The goal
+At the time of this research, the local Hindsight deployment exposed an API/MCP
+route and retained storage. That deployment has since been retired. The goal
 is to use Hindsight as an **additive, durable knowledge graph**, not to replace
 the chat runtime's own short-term transcript.
 
@@ -278,7 +281,7 @@ retention, and add provenance for future filtering:
 ```jsonc
 // ~/.hindsight/coding-agent.json
 {
-  "apiUrl": "http://hindsight.localhost:17480",
+  "apiUrl": "http://YOUR_HINDSIGHT_HOST:8888",
   "harnesses": {
     "dsh": {
       "mapPathToBank": {
@@ -312,10 +315,10 @@ workspace runtimes do not retain the old configuration. [configuration and
 bank recipes](https://hindsight.vectorize.io/sdks/integrations/coding-agents)
 
 This integration currently declares `@vectorize-io/hindsight-all` `^0.8.6`,
-which has the same lower bound as Kosmos's local **0.8.6** Hindsight server, but
+which had the same lower bound as Kosmos's former **0.8.6** Hindsight server, but
 that is not an end-to-end guarantee. Pin the plugin for a pilot and verify one
 write, one fresh-session retrieval, an outage/retry, and a long session before
-changing the deployed Hindsight image. [package manifest](https://github.com/vectorize-io/hindsight/blob/20e66093dc5b27cc2fee94e1a924ea20ecb73dc7/hindsight-integrations/coding-agents/package.json) · [local version and endpoint](hindsight.md)
+changing the deployed Hindsight image. [package manifest](https://github.com/vectorize-io/hindsight/blob/20e66093dc5b27cc2fee94e1a924ea20ecb73dc7/hindsight-integrations/coding-agents/package.json)
 
 ### Pi: a small custom memory adapter is feasible, the companion is not
 

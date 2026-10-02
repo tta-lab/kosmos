@@ -194,7 +194,7 @@ placeholder 的“两个值都允许”断言。
 
 不需要一次性重写所有历史测试。推荐：
 
-1. 本次新 Codex Bridge 和正在升级的 Hindsight 先采用 Jsonnet tests；
+1. 新 Codex Bridge 先采用 Jsonnet tests；
 2. 原 Bash render test 若仅做 manifest 字段查询，就在下次触碰该服务时迁到对应
    `*.test.jsonnet`；
 3. shell test 只保留真正测试 shell 行为、临时文件、进程和退出码的用例；

@@ -24,8 +24,6 @@ local gatewayLabels = labels('canonical-gateway');
         rewrite name exact anki.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact memos.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact miniflux.localhost canonical-gateway.devops.svc.cluster.local
-        rewrite name exact hindsight.localhost canonical-gateway.devops.svc.cluster.local
-        rewrite name exact hindsightui.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact codex-bridge.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact erpnext.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact grafana.localhost canonical-gateway.devops.svc.cluster.local
@@ -104,16 +102,6 @@ local gatewayLabels = labels('canonical-gateway');
           @miniflux host miniflux.localhost
           handle @miniflux {
             reverse_proxy miniflux.feeds.svc.cluster.local:8080
-          }
-
-          @hindsight host hindsight.localhost
-          handle @hindsight {
-            reverse_proxy hindsight.hindsight.svc.cluster.local:8888
-          }
-
-          @hindsightui host hindsightui.localhost
-          handle @hindsightui {
-            reverse_proxy hindsight.hindsight.svc.cluster.local:9999
           }
 
           @codexBridge host codex-bridge.localhost codex-bridge.kepos.internal

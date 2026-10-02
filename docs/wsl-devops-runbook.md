@@ -21,8 +21,6 @@ Tanka.
 - Anki Sync: `http://anki.localhost:17480/` through Kepos
 - Cloudreve: `http://cloudreve.localhost:17480` through Kepos
 - Miniflux: `http://miniflux.localhost:17480` through Kepos
-- Hindsight API and MCP: `http://hindsight.localhost:17480` through Kepos
-- Hindsight Control Plane: `http://hindsightui.localhost:17480` through Kepos
 - ERPNext: `http://erpnext.localhost:17480` through Kepos
 - Navidrome: `http://navidrome.localhost:17480` through Kepos
 - Grafana: `http://grafana.localhost:17480` through the loopback gateway and
@@ -54,10 +52,6 @@ Kepos publishes application service IDs including:
 - `cloudreve` targets the canonical gateway on port `17480`; see
   [cloudreve.md](cloudreve.md) for the Micron-backed storage, deployment, and
   Sven subscriber placeholder.
-- `hindsight` and `hindsightui` are Mac-only services targeting the canonical
-  gateway on port `17480`; the preserved Host header selects the API or Control
-  Plane route. See [hindsight.md](hindsight.md) for deployment and storage
-  details.
 - `miniflux` targets the canonical gateway on port `17480`; the preserved HTTP
   Host header selects the RSS reader route. See [miniflux.md](miniflux.md) for
   credentials and first login.
@@ -79,7 +73,7 @@ depends on the *kind* of service, decided on the subscriber side (Kepos
 Desktop / CLI), not by the publisher:
 
 - **Gateway-routed HTTP web services** (`bookorbit`, `forgejo`, `navidrome`,
-  `woodpecker`, `memos`, `anki`, `hindsight`, `hindsightui`, `codex-bridge`,
+  `woodpecker`, `memos`, `anki`, `codex-bridge`,
   `miniflux`, `ente`, `erpnext`, `grafana`, `impri`, `meilisearch`, …): target the canonical gateway port `17480` and are
   routed by the preserved `Host` header.
 - **Direct Partner HTTP services** (`dev-her`, `staging-her`, `prod-lamplit`): a Home Manager user service

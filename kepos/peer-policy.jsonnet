@@ -140,8 +140,6 @@ std.manifestTomlEx({
       max_publisher_to_subscriber_bps: 2000000,
     },
     service('grafana', 'Grafana', 17480, fullTrustAllow),
-    service('hindsight', 'Hindsight', 17480, fullTrustAllow),
-    service('hindsightui', 'Hindsight UI', 17480, fullTrustAllow),
     service('impri', 'Impri', 17480, impriAllow),
     {
       id: 'mac-ssh',

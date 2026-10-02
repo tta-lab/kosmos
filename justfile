@@ -8,7 +8,6 @@ notes_environment := "tanka/environments/notes"
 feeds_environment := "tanka/environments/feeds"
 cloudreve_environment := "tanka/environments/cloudreve"
 navidrome_environment := "tanka/environments/navidrome"
-hindsight_environment := "tanka/environments/hindsight"
 codex_bridge_environment := "tanka/environments/codex-bridge"
 observability_environment := "tanka/environments/observability"
 impri_environment := "tanka/environments/impri"
@@ -25,11 +24,9 @@ show target=environment:
 tanka-test:
   @tk fmt --test tests/jsonnet
   @tk lint tests/jsonnet
-  @tk eval tests/jsonnet/hindsight.test.jsonnet >/dev/null
   @tk eval tests/jsonnet/codex-bridge.test.jsonnet >/dev/null
   @tk eval tests/jsonnet/gateway.test.jsonnet >/dev/null
   @tk eval tests/jsonnet/impri.test.jsonnet >/dev/null
-  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ hindsight_environment }}" >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ codex_bridge_environment }}" >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ environment }}" >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ navidrome_environment }}" >/dev/null
@@ -194,29 +191,6 @@ impri-images-load:
 impri-logs: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl logs deployment/impri-server -n impri --tail=200
 
-hindsight-show:
-  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ hindsight_environment }}"
-
-hindsight-diff: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ hindsight_environment }}"
-
-hindsight-secrets: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" scripts/init-hindsight-secrets
-
-hindsight-apply: _local-k3s hindsight-secrets
-  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ hindsight_environment }}"
-
-hindsight-deploy: hindsight-images-load hindsight-apply
-
-hindsight-status: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n hindsight -o wide
-
-hindsight-images:
-  @scripts/build-hindsight-images
-
-hindsight-images-load:
-  @scripts/build-hindsight-images --load
-
 codex-bridge-show:
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ codex_bridge_environment }}"
 
@@ -311,9 +285,6 @@ navidrome-deploy: navidrome-apply _local-k3s
 
 navidrome-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n navidrome -o wide
-
-hindsight-logs: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" kubectl logs deployment/hindsight-multilingual -n hindsight --tail=200
 
 codex-bridge-logs: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl logs deployment/codex-bridge -n codex-bridge -c bridge --tail=200
