@@ -12,9 +12,10 @@ credentials, and conversation data remain operator-owned.
 
 All three services are direct Kepos HTTP services. They do not use Tanka,
 Caddy, CoreDNS, Kubernetes, Docker, a subscriber binding, or an application
-login. Mika dev and staging permit Mac and Sven through Kepos; Shio prod keeps
-its Mac and Pixel 7a ACL. Dev additionally binds all IPv4 interfaces so Mac can
-reach `http://192.168.1.179:3082` directly.
+login. Mika dev permits Mac and Sven through Kepos; Mika staging additionally
+permits Pixel 7a for installed-PWA acceptance. Shio prod keeps its Mac and
+Pixel 7a ACL. Dev additionally binds all IPv4 interfaces so Mac can reach
+`http://192.168.1.179:3082` directly.
 
 ## Service contract
 
