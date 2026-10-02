@@ -1,6 +1,7 @@
 _: {
   imports = [
     ../../modules/common/nix.nix
+    ../../modules/wsl/nix-gc.nix
     ../../modules/common/system.nix
     ../../modules/common/packages.nix
     ../../modules/common/rust.nix
