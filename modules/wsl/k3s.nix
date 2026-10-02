@@ -37,6 +37,7 @@ in {
     "impri.localhost"
     "navidrome.localhost"
     "meilisearch.localhost"
+    "penpot.localhost"
   ];
 
   networking.firewall.interfaces.cni0.allowedTCPPorts = [
@@ -121,5 +122,8 @@ in {
     "d /var/lib/kosmos-k3s/impri 0750 10001 10001 - -"
     "d /var/lib/kosmos-k3s/meilisearch 0750 1000 1000 - -"
     "d /var/lib/kosmos-k3s/meilisearch/data 0750 1000 1000 - -"
+    "d /var/lib/kosmos-k3s/penpot 0750 root root - -"
+    "d /var/lib/kosmos-k3s/penpot/postgres-data 0700 999 999 - -"
+    "d /var/lib/kosmos-k3s/penpot/assets 0750 1001 1001 - -"
   ];
 }

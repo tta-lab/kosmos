@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+test_root="$(mktemp -d)"
+trap 'rm -rf -- "$test_root"' EXIT
+
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/penpot" | yq -s '.' >"$test_root/penpot.json"
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/devops" | yq -s '.' >"$test_root/gateway.json"
+jq -e '
+  . as $resources |
+  def resource($kind; $name): $resources | map(select(.kind == $kind and .metadata.name == $name)) | first;
+  def container($name): resource("Deployment"; "penpot-" + $name).spec.template.spec.containers[0];
+  def env($component; $name): container($component).env | map(select(.name == $name)) | first;
+  (map(select(.kind == "Deployment")) | length == 7) and
+  (map(select(.kind == "Secret")) | length == 0) and
+  (map(select(.kind == "Service")) | all(.spec.type == "ClusterIP")) and
+  (map(select(.kind == "Deployment")) | all(.spec.replicas == 1 and .spec.template.spec.automountServiceAccountToken == false)) and
+  (env("frontend"; "PENPOT_PUBLIC_URI").value == "http://penpot.localhost:17480") and
+  (env("frontend"; "PENPOT_FLAGS").value | contains("enable-mcp")) and
+  (env("frontend"; "PENPOT_MCP_URI").value == "http://penpot-mcp.penpot.svc.cluster.local:4401") and
+  (env("frontend"; "PENPOT_MCP_URI_WS").value == "http://penpot-mcp.penpot.svc.cluster.local:4402") and
+  (env("mcp"; "PENPOT_MCP_REMOTE_MODE").value == "true") and
+  (resource("Service"; "penpot-mcp").spec.ports | map(.port) | sort == [4401, 4402]) and
+  (env("backend"; "PENPOT_DATABASE_PASSWORD").valueFrom.secretKeyRef == env("postgres"; "POSTGRES_PASSWORD").valueFrom.secretKeyRef) and
+  (env("admin-console"; "PENPOT_DATABASE_PASSWORD").valueFrom.secretKeyRef == env("postgres"; "POSTGRES_PASSWORD").valueFrom.secretKeyRef) and
+  (env("backend"; "PENPOT_SECRET_KEY").valueFrom.secretKeyRef == env("admin-console"; "PENPOT_SECRET_KEY").valueFrom.secretKeyRef) and
+  (env("exporter"; "PENPOT_INTERNAL_URI").value == "http://penpot-frontend.penpot.svc.cluster.local:8080") and
+  (container("frontend").volumeMounts | any(.mountPath == "/opt/data/assets" and .readOnly == true)) and
+  (container("backend").volumeMounts | any(.mountPath == "/opt/data/assets" and .readOnly != true)) and
+  (map(select(.kind == "PersistentVolume")) | length == 2 and all(.spec.persistentVolumeReclaimPolicy == "Retain" and .spec.hostPath.type == "Directory")) and
+  (resource("PersistentVolumeClaim"; "penpot-assets").spec.volumeName == "kosmos-penpot-assets") and
+  (resource("PersistentVolumeClaim"; "penpot-postgres-data").spec.volumeName == "kosmos-penpot-postgres-data")
+' "$test_root/penpot.json" >/dev/null
+jq -e '
+  (map(select(.kind == "ConfigMap" and .metadata.name == "canonical-gateway"))[0].data.Caddyfile |
+    contains("@penpot host penpot.localhost") and contains("reverse_proxy penpot-frontend.penpot.svc.cluster.local:8080")) and
+  (map(select(.kind == "ConfigMap" and .metadata.name == "coredns-custom"))[0].data["kosmos.override"] |
+    contains("rewrite name exact penpot.localhost canonical-gateway.devops.svc.cluster.local"))
+' "$test_root/gateway.json" >/dev/null
+printf 'Penpot renders shared credentials, retained storage, and one gateway for web and MCP\n'

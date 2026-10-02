@@ -77,6 +77,7 @@
             ${./scripts/init-ebook-secrets} \
             ${./scripts/init-miniflux-secrets} \
             ${./scripts/init-observability-secrets} \
+            ${./scripts/init-penpot-secrets} \
             ${./scripts/build-impri-images} \
             ${./scripts/sync-cloudreve-secret} \
             ${./scripts/backup-forgejo} \
@@ -108,6 +109,8 @@
             ${./tests/render-kepos-policy-test} \
             ${./tests/observability-render-test} \
             ${./tests/init-observability-secrets-test} \
+            ${./tests/init-penpot-secrets-test} \
+            ${./tests/penpot-render-test} \
             ${./tests/observability-just-test} \
             ${./tests/ebooks-render-test} \
             ${./tests/cloudreve-render-test} \
@@ -145,6 +148,8 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/render-kepos-policy-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/observability-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-observability-secrets-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-penpot-secrets-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/penpot-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/observability-just-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ebooks-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudreve-render-test}

@@ -12,6 +12,7 @@ codex_bridge_environment := "tanka/environments/codex-bridge"
 observability_environment := "tanka/environments/observability"
 impri_environment := "tanka/environments/impri"
 meilisearch_environment := "tanka/environments/meilisearch"
+penpot_environment := "tanka/environments/penpot"
 kubeconfig := env_var_or_default("KUBECONFIG", "/etc/rancher/k3s/k3s.yaml")
 api_server := "https://127.0.0.1:26443"
 
@@ -37,6 +38,8 @@ tanka-test:
   @bash tests/observability-render-test
   @bash tests/meilisearch-render-test
   @bash tests/meilisearch-gateway-render-test
+  @bash tests/penpot-render-test
+  @bash tests/init-penpot-secrets-test
 
 diff target=environment: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ target }}"
@@ -181,6 +184,29 @@ meilisearch-deploy: meilisearch-apply _local-k3s
 
 meilisearch-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n meilisearch -o wide
+
+penpot-show:
+  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ penpot_environment }}"
+
+penpot-diff: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ penpot_environment }}"
+
+penpot-secrets: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" scripts/init-penpot-secrets
+
+penpot-apply approve="never": _local-k3s penpot-secrets
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ penpot_environment }}" --auto-approve="{{ approve }}"
+
+penpot-deploy approve="never": (penpot-apply approve) _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment -n penpot --timeout=600s
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}" --target='^ConfigMap/(canonical-gateway|coredns-custom)$' --auto-approve="{{ approve }}"
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+  @curl --fail --retry 10 --retry-all-errors --retry-delay 1 --header 'Host: penpot.localhost' http://127.0.0.1:17480/readyz >/dev/null
+  @bash scripts/render-kepos-policy
+
+penpot-status: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n penpot -o wide
 
 impri-images:
   @scripts/build-impri-images

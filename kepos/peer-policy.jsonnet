@@ -155,6 +155,7 @@ std.manifestTomlEx({
     service('mihomo', 'Mihomo', 7890, personalDevicesAllow + xiaomiAllow + liliAllow),
     service('mihomo-dashboard', 'Mihomo Dashboard', 9090, fullTrustAllow),
     service('miniflux', 'Miniflux', 17480, personalDevicesAllow),
+    service('penpot', 'Penpot', 17480, [peers.mac.public_key]),
     service('navidrome', 'Navidrome', 17480, personalDevicesAllow + xiaomiAllow + guaziAllow),
     service('ssh', 'SSH', 22, personalDevicesAllow),
     service('woodpecker', 'Woodpecker', 17480, forgeClientsAllow + baiheAllow + svenMacAllow),

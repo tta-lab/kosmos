@@ -34,6 +34,7 @@ owned by WSL.
 - Miniflux: `http://miniflux.localhost:17480` through Kepos
 - ERPNext: `http://erpnext.localhost:17480` through Kepos
 - Navidrome: `http://navidrome.localhost:17480` through Kepos
+- Penpot: `http://penpot.localhost:17480` through Kepos (Mac), including official MCP; see [penpot.md](penpot.md)
 - Grafana: `http://grafana.localhost:17480` through the loopback gateway and
   full-trust Kepos subscribers
 - Impri: `http://impri.localhost:17480` through Kepos (Mac + Pixel 7a)
@@ -122,6 +123,10 @@ or subscriber binding. Its configuration and verification steps are in
 The separate Ente Photos stack publishes `ente` and `ente-storage`, both through
 the canonical gateway on port `17480`. See [ente-photos.md](ente-photos.md) for
 its deployment order and mobile acceptance checks.
+
+Penpot and its official MCP share the gateway-routed `penpot` service, published
+only to Mac. See [penpot.md](penpot.md) for credential generation, retained
+storage, deployment, and MCP activation.
 
 Meilisearch is a gateway-routed HTTP service published only to the `mac` peer.
 It is available there at `http://meilisearch.localhost:17480`; see
