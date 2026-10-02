@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+test_root="$(mktemp -d)"
+trap 'rm -rf -- "$test_root"' EXIT
+
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/devops" \
+  | yq -s '.' >"$test_root/resources.json"
+
+jq -e '
+  . as $resources |
+  def resource($kind; $name):
+    $resources | map(select(.kind == $kind and .metadata.name == $name)) | first;
+  def env($workload; $name):
+    resource("Deployment"; $workload).spec.template.spec.containers[0].env
+      | map(select(.name == $name)) | first | .value;
+  (env("forgejo"; "FORGEJO__server__ROOT_URL") == "https://git.guion.io:27443/") and
+  (env("forgejo"; "FORGEJO__server__LOCAL_ROOT_URL") == "http://localhost:3000/") and
+  (env("forgejo"; "FORGEJO__session__COOKIE_SECURE") == "true") and
+  (env("forgejo"; "FORGEJO__repository__DEFAULT_PRIVATE") == "private") and
+  (env("woodpecker"; "WOODPECKER_FORGEJO_URL") == "http://forgejo:3000") and
+  (env("woodpecker"; "WOODPECKER_EXPERT_FORGE_OAUTH_HOST") == "https://git.guion.io:27443") and
+  (env("woodpecker"; "WOODPECKER_EXPERT_WEBHOOK_HOST") == "http://woodpecker:8000") and
+  (env("woodpecker"; "WOODPECKER_ENVIRONMENT") | split(",") | any(. == "NO_PROXY:git.guion.io")) and
+  (resource("Service"; "canonical-gateway").spec.ports
+    | any(.port == 27443 and .targetPort == "https-public")) and
+  (resource("ConfigMap"; "dagger-engine").data["engine.json"] | fromjson | .registries["docker.io"] != null)
+' "$test_root/resources.json" >/dev/null
+
+printf 'Forgejo HTTPS, internal API/webhook and CI contracts are valid\n'

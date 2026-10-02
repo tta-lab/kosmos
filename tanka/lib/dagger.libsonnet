@@ -25,9 +25,6 @@ local proxy = import 'proxy.libsonnet';
           "registries": {
             "docker.io": {
               "mirrors": ["mirror.gcr.io"]
-            },
-            "forgejo.localhost:17480": {
-              "http": true
             }
           }
         }
@@ -59,7 +56,6 @@ local proxy = import 'proxy.libsonnet';
                 value: proxy.clusterNoProxy([
                   '10.89.0.0/16',
                   '10.90.0.0/16',
-                  'forgejo.localhost',
                   'woodpecker.localhost',
                 ]),
               },

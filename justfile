@@ -40,6 +40,7 @@ tanka-test:
   @bash tests/observability-render-test
   @bash tests/meilisearch-render-test
   @bash tests/meilisearch-gateway-render-test
+  @bash tests/forgejo-public-render-test
 
 diff target=environment: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ target }}"
@@ -60,6 +61,16 @@ public-https-deploy: _local-k3s caddy-image-load
   @sudo systemctl restart caddy-secret-sync
   @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}" --target='^(ConfigMap/canonical-gateway|Deployment/canonical-gateway|PersistentVolumeClaim/canonical-gateway-data)$'
   @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+
+forgejo-public-diff: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ environment }}" --target='^(ConfigMap/(canonical-gateway|coredns-custom|dagger-engine)|Deployment/(canonical-gateway|forgejo|woodpecker)|DaemonSet/dagger|Service/canonical-gateway|PersistentVolumeClaim/canonical-gateway-data)$'
+
+forgejo-public-deploy: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}" --target='^(ConfigMap/(canonical-gateway|coredns-custom|dagger-engine)|Deployment/(canonical-gateway|forgejo|woodpecker)|DaemonSet/dagger|Service/canonical-gateway|PersistentVolumeClaim/canonical-gateway-data)$'
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/forgejo -n devops --timeout=120s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/woodpecker -n devops --timeout=120s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status daemonset/dagger -n devops --timeout=120s
 
 forgejo-backup-show: _forgejo-r2-backup-secret
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show --tla-str forgejoR2BackupEnabled=true "{{ environment }}"

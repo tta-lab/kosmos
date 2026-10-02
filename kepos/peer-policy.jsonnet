@@ -131,9 +131,6 @@ std.manifestTomlEx({
     service('ente', 'Ente Photos', 17480, personalDevicesAllow + xiaomiAllow + baiheAllow + guaziAllow + svenMacAllow),
     service('ente-storage', 'Ente Storage', 17480, personalDevicesAllow + xiaomiAllow + baiheAllow + guaziAllow + svenMacAllow),
     service('erpnext', 'ERPNext', 17480, fullTrustAllow + svenMacAllow),
-    service('forgejo', 'Forgejo', 17480, forgeClientsAllow + baiheAllow + svenMacAllow + liliAllow) + {
-      max_publisher_to_subscriber_bps: 2000000,
-    },
     service('grafana', 'Grafana', 17480, fullTrustAllow),
     service('hindsight', 'Hindsight', 17480, fullTrustAllow),
     service('hindsightui', 'Hindsight UI', 17480, fullTrustAllow),

@@ -19,7 +19,7 @@
     moonbit-overlay.url = "github:moonbit-community/moonbit-overlay";
     moonbit-overlay.inputs.nixpkgs.follows = "nixpkgs-unstable";
     kepos-neo = {
-      url = "git+http://forgejo.localhost:17480/LamplitIsles/kepos.git?ref=main&rev=3a34e3bea2f3afe49f833a5bd1f29d3ff48bb387";
+      url = "git+https://git.guion.io:27443/LamplitIsles/kepos.git?ref=main&rev=3a34e3bea2f3afe49f833a5bd1f29d3ff48bb387";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
@@ -150,6 +150,7 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-cloudreve-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/backup-forgejo-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-backup-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-public-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/prepare-mihomo-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/render-kepos-policy-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/observability-render-test}
@@ -373,6 +374,7 @@
           "localhost"
           "127.0.0.1"
           "::1"
+          "git.guion.io"
         ];
         expectedNoProxy = nixpkgs.lib.concatStringsSep "," expectedNoProxyEntries;
         expectedProxyEnvironment = {
@@ -393,7 +395,6 @@
             ".svc"
             ".cluster.local"
             "10.255.255.1"
-            "forgejo.localhost"
             "woodpecker.localhost"
             "grafana.localhost"
             "impri.localhost"
@@ -466,7 +467,7 @@
           source ${nixpkgs.lib.escapeShellArg proxyFile}
           test "$HTTP_PROXY" = http://127.0.0.1:7890
           test "$http_proxy" = "$HTTP_PROXY"
-          test "$NO_PROXY" = localhost,127.0.0.1,::1
+          test "$NO_PROXY" = localhost,127.0.0.1,::1,git.guion.io
           test "$no_proxy" = "$NO_PROXY"
           touch "$out"
         '';

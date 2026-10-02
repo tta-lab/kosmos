@@ -14,46 +14,41 @@
       ".svc"
       ".cluster.local"
       "10.255.255.1"
-      "forgejo.localhost"
       "woodpecker.localhost"
       "grafana.localhost"
       "impri.localhost"
     ]
   );
 in {
-  networking.hosts."127.0.0.1" = [
-    "forgejo.localhost"
-    "woodpecker.localhost"
-    "ente.localhost"
-    "ente-storage.localhost"
-    "bookorbit.localhost"
-    "cloudreve.localhost"
-    "anki.localhost"
-    "memos.localhost"
-    "miniflux.localhost"
-    "hindsight.localhost"
-    "hindsightui.localhost"
-    "codex-bridge.localhost"
-    "erpnext.localhost"
-    "grafana.localhost"
-    "impri.localhost"
-    "navidrome.localhost"
-    "meilisearch.localhost"
-  ];
+  networking = {
+    hosts."127.0.0.1" = [
+      "woodpecker.localhost"
+      "ente.localhost"
+      "ente-storage.localhost"
+      "bookorbit.localhost"
+      "cloudreve.localhost"
+      "anki.localhost"
+      "memos.localhost"
+      "miniflux.localhost"
+      "hindsight.localhost"
+      "hindsightui.localhost"
+      "codex-bridge.localhost"
+      "erpnext.localhost"
+      "grafana.localhost"
+      "impri.localhost"
+      "navidrome.localhost"
+      "meilisearch.localhost"
+    ];
 
-  networking.firewall.interfaces.cni0.allowedTCPPorts = [
-    26443
-    9475
-  ];
+    firewall.interfaces.cni0.allowedTCPPorts = [
+      26443
+      9475
+    ];
+
+    hosts."::1" = ["git.guion.io"];
+  };
 
   users.groups.k3s.members = ["neil"];
-
-  environment.etc."rancher/k3s/registries.yaml".text = ''
-    mirrors:
-      "forgejo.localhost:17480":
-        endpoint:
-          - "http://forgejo.localhost:17480"
-  '';
 
   services.k3s = {
     enable = true;

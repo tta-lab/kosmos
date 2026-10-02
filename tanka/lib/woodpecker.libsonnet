@@ -46,14 +46,15 @@ local proxy = import 'proxy.libsonnet';
               { name: 'WOODPECKER_GRPC_ADDR', value: ':9000' },
               { name: 'WOODPECKER_FORGEJO', value: 'true' },
               { name: 'WOODPECKER_FORGEJO_URL', value: 'http://forgejo:3000' },
-              { name: 'WOODPECKER_EXPERT_FORGE_OAUTH_HOST', value: 'http://forgejo.localhost:17480' },
+              { name: 'WOODPECKER_EXPERT_FORGE_OAUTH_HOST', value: 'https://git.guion.io:27443' },
               { name: 'WOODPECKER_EXPERT_WEBHOOK_HOST', value: 'http://woodpecker:8000' },
+              { name: 'NO_PROXY', value: proxy.clusterNoProxy() },
               { name: 'WOODPECKER_OPEN', value: 'false' },
               { name: 'WOODPECKER_ADMIN', value: 'neil' },
               {
                 name: 'WOODPECKER_ENVIRONMENT',
                 value:
-                  '_EXPERIMENTAL_DAGGER_RUNNER_HOST:tcp://dagger:8080,GIT_CONFIG_COUNT:1,GIT_CONFIG_KEY_0:http.http://forgejo.localhost:17480.proxy,GIT_CONFIG_VALUE_0:http://canonical-gateway.devops.svc.cluster.local:17480,HTTPS_PROXY:'
+                  '_EXPERIMENTAL_DAGGER_RUNNER_HOST:tcp://dagger:8080,NO_PROXY:git.guion.io,HTTPS_PROXY:'
                   + proxy.podUrl,
               },
             ],

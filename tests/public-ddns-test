@@ -59,7 +59,7 @@ class PublicDdnsTest(unittest.TestCase):
             conf = json.loads(output.read_text())["dnsconf"][0]
             self.assertFalse(conf["ipv4"]["enable"])
             self.assertEqual(conf["ipv6"]["cmd"], "/fixture/select-address")
-            self.assertEqual(conf["ipv6"]["domains"], ["ddns-smoke.guion.io?proxied=false"])
+            self.assertEqual(conf["ipv6"]["domains"], ["ddns-smoke.guion.io?proxied=false", "git.guion.io?proxied=false"])
             self.assertEqual(conf["dns"]["secret"], "fixture-token")
             token.write_text("")
             output.unlink()

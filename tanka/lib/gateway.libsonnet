@@ -15,7 +15,10 @@ local gatewayLabels = labels('canonical-gateway');
     },
     data: {
       'kosmos.override': |||
-        rewrite name exact forgejo.localhost canonical-gateway.devops.svc.cluster.local
+        rewrite stop {
+          name exact git.guion.io canonical-gateway.devops.svc.cluster.local
+          answer auto
+        }
         rewrite name exact woodpecker.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact ente.localhost canonical-gateway.devops.svc.cluster.local
         rewrite name exact ente-storage.localhost canonical-gateway.devops.svc.cluster.local
@@ -56,11 +59,6 @@ local gatewayLabels = labels('canonical-gateway');
 
         http://:17480 {
           bind 0.0.0.0
-
-          @forgejo host forgejo.localhost
-          handle @forgejo {
-            reverse_proxy forgejo:3000
-          }
 
           @woodpecker host woodpecker.localhost
           handle @woodpecker {
@@ -158,6 +156,17 @@ local gatewayLabels = labels('canonical-gateway');
           }
         }
 
+        https://git.guion.io:18443 {
+          bind 0.0.0.0
+          tls {
+            issuer acme {
+              dir https://acme-v02.api.letsencrypt.org/directory
+              dns cloudflare {env.CF_API_TOKEN}
+            }
+          }
+          reverse_proxy forgejo:3000
+        }
+
         https://ddns-smoke.guion.io:18443 {
           bind 0.0.0.0
           tls {
@@ -250,7 +259,10 @@ local gatewayLabels = labels('canonical-gateway');
     },
     spec: {
       selector: gatewayLabels,
-      ports: [{ name: 'http', port: 17480, targetPort: 'http' }],
+      ports: [
+        { name: 'http', port: 17480, targetPort: 'http' },
+        { name: 'https-public', port: 27443, targetPort: 'https-public' },
+      ],
     },
   },
 }
