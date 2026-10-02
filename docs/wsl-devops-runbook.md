@@ -6,6 +6,17 @@ service and ACL policy is modeled in Jsonnet and rendered into an unmanaged
 TOML file. Tanka manages the Kubernetes objects. A NixOS switch never applies
 Tanka.
 
+## Local host mappings
+
+NixOS owns `/etc/hosts`; `wsl.wslConf.network.generateHosts = false` prevents
+WSL from replacing it at startup. Keep service aliases in
+`modules/wsl/k3s.nix` under `networking.hosts`. The WSL module preserves the
+base hostname and IPv6 aliases from the former WSL-generated file.
+After deploying this setting, check `/etc/hosts` and
+`getent hosts forgejo.localhost`. Repeat the checks after the next WSL restart to confirm
+that WSL leaves the managed file intact. DNS resolver generation remains
+owned by WSL.
+
 ## Endpoints
 
 - Forgejo: `http://forgejo.localhost:17480`

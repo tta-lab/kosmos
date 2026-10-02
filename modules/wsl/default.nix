@@ -1,4 +1,6 @@
 {
+  config,
+  lib,
   pkgs,
   pkgsUnstable,
   ...
@@ -103,7 +105,25 @@ in {
 
     wslConf = {
       interop.appendWindowsPath = false;
+      network.generateHosts = false;
     };
+  };
+
+  # Keep WSL's base host mappings when Nix takes ownership of /etc/hosts.
+  networking.hosts = {
+    "127.0.0.2" = lib.mkForce [];
+    "127.0.1.1" = [
+      "${config.networking.hostName}.localdomain"
+      config.networking.hostName
+    ];
+    "::1" = [
+      "ip6-localhost"
+      "ip6-loopback"
+    ];
+    "fe00::0" = ["ip6-localnet"];
+    "ff00::0" = ["ip6-mcastprefix"];
+    "ff02::1" = ["ip6-allnodes"];
+    "ff02::2" = ["ip6-allrouters"];
   };
 
   security.pki.certificateFiles = [
