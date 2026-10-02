@@ -25,7 +25,7 @@ a web UI and publishes AAAA records for `ddns-smoke.guion.io` and `git.guion.io`
 a systemd credential; edit the repository's renderer to change the domain.
 
 `scripts/select-ddns-ipv6` selects the preferred global IPv6 on `eth1` whose
-interface identifier is `::8`, the DHCPv6 service address observed on this host.
+interface identifier is `::7`, the DHCPv6 service address observed on this host.
 The ISP prefix is not fixed. Deprecated, temporary, tentative, failed and expired
 addresses are rejected. This explicit identifier also excludes Windows privacy
 addresses that WSL does not mark temporary. If no unique address matches, the

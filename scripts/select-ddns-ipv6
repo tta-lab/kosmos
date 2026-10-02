@@ -19,12 +19,12 @@ def select_address(interfaces):
             if entry.get("preferred_life_time") == 0 or entry.get("valid_life_time") == 0:
                 continue
             address = ipaddress.IPv6Address(entry["local"])
-            # This host's DHCPv6 service identifier is ::8; the ISP prefix varies.
+            # This host's DHCPv6 service identifier is ::7; the ISP prefix varies.
             # Windows privacy addresses do not reliably carry `temporary` in WSL.
-            if address in ipaddress.IPv6Network("2000::/3") and int(address) & ((1 << 64) - 1) == 8:
+            if address in ipaddress.IPv6Network("2000::/3") and int(address) & ((1 << 64) - 1) == 7:
                 candidates.add(str(address))
     if len(candidates) != 1:
-        raise ValueError("expected exactly one preferred global IPv6 with service identifier ::8 on eth1")
+        raise ValueError("expected exactly one preferred global IPv6 with service identifier ::7 on eth1")
     return candidates.pop()
 
 

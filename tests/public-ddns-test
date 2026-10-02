@@ -24,24 +24,25 @@ class PublicDdnsTest(unittest.TestCase):
 
     def test_prefix_rotation_ignores_old_and_privacy_addresses(self):
         result = self.select([
-            address("240e:393:331c:f480::8", preferred_life_time=0),
+            address("240e:393:331c:f480::7", preferred_life_time=0),
+            address("240e:393:331c:f481::7"),
             address("240e:393:331c:f481::8"),
             address("240e:393:331c:f481:75bb:482c:53d1:7444"),
         ])
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(result.stdout.strip(), "240e:393:331c:f481::8")
+        self.assertEqual(result.stdout.strip(), "240e:393:331c:f481::7")
 
     def test_no_publishable_address_fails_without_output(self):
-        cases = [[], [address("fd00::8")], [address("240e::9")],
-                 [address("240e::8"), address("240f::8")]]
+        cases = [[], [address("fd00::7")], [address("240e::8")],
+                 [address("240e::7"), address("240f::7")]]
         for flag in ("temporary", "deprecated", "tentative", "dadfailed"):
-            cases.append([address("240e::8", **{flag: True})])
+            cases.append([address("240e::7", **{flag: True})])
         for entries in cases:
             with self.subTest(entries=entries):
                 result = self.select(entries)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, "")
-        self.assertNotEqual(self.select([address("240e::8")], "eth0").returncode, 0)
+        self.assertNotEqual(self.select([address("240e::7")], "eth0").returncode, 0)
 
     def test_private_runtime_config(self):
         with tempfile.TemporaryDirectory() as directory:
