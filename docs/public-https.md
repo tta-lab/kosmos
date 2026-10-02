@@ -4,12 +4,6 @@
 local k3s canonical Caddy gateway. Cloudflare hosts DNS with proxying disabled.
 Clients need IPv6 connectivity, either directly or through their proxy.
 
-Forgejo uses `https://git.guion.io:27443/` on the same TLS listener. It has
-one HTTPS origin for the web UI, Git/LFS, OAuth and OCI registry. The old
-`forgejo.localhost:17480` and Kepos Forgejo service are retired. See the
-[Forgejo cutover runbook](forgejo-public-https.md) for the coordinated deployment
-and client handoff.
-
 The WSL `public-https.socket` listens on IPv6 TCP 27443. Its socket-activated
 service forwards TLS unchanged to `127.0.0.1:18443`, the gateway Pod's host port.
 Caddy terminates TLS and obtains and renews its certificate using Cloudflare
@@ -20,7 +14,7 @@ using `127.0.0.1:17480`.
 ## Automatic DNS updates
 
 The host's `ddns-go.service` checks the address every 300 seconds. It runs without
-a web UI and publishes AAAA records for `ddns-smoke.guion.io` and `git.guion.io`, with
+a web UI and publishes only the AAAA record for `ddns-smoke.guion.io`, with
 `proxied=false` and a 300-second TTL. Configuration is generated at startup from
 a systemd credential; edit the repository's renderer to change the domain.
 

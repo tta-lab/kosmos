@@ -20,7 +20,7 @@ def main():
                 "enable": True,
                 "gettype": "cmd",
                 "cmd": address_command,
-                "domains": ["ddns-smoke.guion.io?proxied=false", "git.guion.io?proxied=false"],
+                "domains": ["ddns-smoke.guion.io?proxied=false"],
             },
             "dns": {"name": "cloudflare", "id": "", "secret": token},
             "ttl": "300",

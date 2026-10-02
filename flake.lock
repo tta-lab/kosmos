@@ -160,13 +160,13 @@
         "rev": "3a34e3bea2f3afe49f833a5bd1f29d3ff48bb387",
         "revCount": 93,
         "type": "git",
-        "url": "https://git.guion.io:27443/LamplitIsles/kepos.git"
+        "url": "http://forgejo.localhost:17480/LamplitIsles/kepos.git"
       },
       "original": {
         "ref": "main",
         "rev": "3a34e3bea2f3afe49f833a5bd1f29d3ff48bb387",
         "type": "git",
-        "url": "https://git.guion.io:27443/LamplitIsles/kepos.git"
+        "url": "http://forgejo.localhost:17480/LamplitIsles/kepos.git"
       }
     },
     "moonbit-overlay": {

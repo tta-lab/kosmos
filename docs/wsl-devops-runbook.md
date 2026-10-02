@@ -8,7 +8,7 @@ Tanka.
 
 ## Endpoints
 
-- Forgejo: `https://git.guion.io:27443`
+- Forgejo: `http://forgejo.localhost:17480`
 - Woodpecker: `http://woodpecker.localhost:17480`
 - Dagger: `tcp://dagger.devops.svc.cluster.local:8080` in-cluster and
   `tcp://127.0.0.1:8080` for the local CLI
@@ -29,17 +29,16 @@ Tanka.
   full-trust Kepos subscribers
 - Impri: `http://impri.localhost:17480` through Kepos (Mac + Pixel 7a)
 
-For private Kubernetes-backed HTTP apps, Caddy binds the host gateway only on
+For Kubernetes-backed HTTP apps, Caddy binds the host gateway only on
 `127.0.0.1:17480`. CoreDNS rewrites their canonical `.localhost` names to that
-same gateway inside the cluster. Forgejo uses HTTPS on public port 27443, with
-internal DNS routing the same origin to the gateway Service. See the
-[Forgejo cutover runbook](forgejo-public-https.md). The remaining direct
+same gateway inside the cluster. This keeps browser, Git, Woodpecker OAuth,
+webhooks, and container-registry URLs consistent. The remaining direct
 loopback HTTP service bypasses Caddy and CoreDNS; see the service model below.
 
 Kepos publishes application service IDs including:
 
-- `woodpecker` targets port `17480`; the preserved HTTP Host header selects
-  the Caddy route. Forgejo uses its public HTTPS origin and is not a Kepos service.
+- `forgejo` and `woodpecker` both target port `17480`; the preserved HTTP Host
+  header selects the Caddy route.
 - `navidrome` targets the canonical gateway port `17480`; Caddy routes it to
   the Navidrome Service in the `navidrome` namespace.
 - `codex-bridge` targets the canonical gateway on port `17480` and is
@@ -399,7 +398,7 @@ or restore data into a removed legacy service.
 just status
 kosmos-devops-gate-status --strict
 just kepos-status
-curl --fail https://git.guion.io:27443/api/healthz
+curl --fail http://forgejo.localhost:17480/api/healthz
 curl --fail http://woodpecker.localhost:17480/healthz
 ```
 

@@ -105,7 +105,7 @@ else
   fail "K3s service active"
 fi
 
-if http_status_ok https://git.guion.io:27443/api/healthz; then
+if http_status_ok http://forgejo.localhost:17480/api/healthz; then
   ok "Forgejo endpoint responds (K3s)"
 else
   fail "Forgejo endpoint responds (K3s)"

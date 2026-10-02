@@ -1,23 +1,8 @@
 # Kosmos Service Hosting
 
-Kosmos hosts applications and makes selected capabilities available to trusted devices or public visitors. This glossary names the service access, approval, and recovery concepts within that environment.
+Kosmos hosts private applications and makes selected capabilities available to trusted devices. This glossary names the concepts that define the Impri approval workflow within that environment.
 
 ## Language
-
-**Public Forgejo Access**:
-The ability of an Internet client to reach the hosted Forgejo instance. Public
-access does not imply permission to read a repository or artifact anonymously.
-_Avoid_: Public repositories, open-source publication
-
-**Anonymous Forgejo Content**:
-Forgejo content readable without signing in, including repository content and
-any separately accessible wiki, issue, release, attachment, or package.
-_Avoid_: Public Forgejo Access
-
-**Forgejo Publication Audit**:
-A review of which hosted repositories and associated artifacts are intended
-for anonymous access before public Forgejo access is enabled.
-_Avoid_: Connectivity smoke test
 
 **Approval Inbox**:
 A private queue where a human reviews proposed actions before an agent may proceed.

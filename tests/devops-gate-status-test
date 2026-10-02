@@ -78,7 +78,7 @@ grep -q '^ok: Dagger workload ready$' "$test_root/output"
 grep -q '^ok: Woodpecker endpoint responds (K3s)$' "$test_root/output"
 grep -q '^summary: 0 failed, 0 pending$' "$test_root/output"
 [[ "$(cat "$TEST_SYSTEMCTL_LOG")" == $'is-active --quiet k3s.service\nis-active --quiet woodpecker-secret-sync.service' ]]
-[[ "$(cat "$TEST_CURL_LOG")" == $'https://git.guion.io:27443/api/healthz\nhttp://woodpecker.localhost:17480/healthz' ]]
+[[ "$(cat "$TEST_CURL_LOG")" == $'http://forgejo.localhost:17480/api/healthz\nhttp://woodpecker.localhost:17480/healthz' ]]
 awk '$1 != "--kubeconfig" || $2 != "/etc/rancher/k3s/k3s.yaml" { exit 1 }' "$TEST_KUBECTL_LOG"
 [[ "$(wc -l <"$TEST_KUBECTL_LOG")" -eq 5 ]]
 
