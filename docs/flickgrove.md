@@ -8,20 +8,19 @@ It uses Nix's `/run/current-system/sw/bin/bun`, the existing Codex login and og
 project registry. Host-local MCP is configured automatically for its sessions.
 Neil's user linger is enabled.
 
-- Runtime source: `~/.local/share/flickgrove-runtime` (detached worktree of
-  `~/code/projects/lamplitisles/experiments`; keep the parent checkout).
+- Runtime source: `~/code/projects/lamplitisles/experiments` (local checkout).
 - Persistent state: `~/.local/share/flickgrove` (SQLite and private identity
   credentials; preserve this directory).
 - Unit source: `modules/wsl/flickgrove.nix`.
 
 ## Upgrade
 
-Update the experiments checkout with `og pull`, then deploy a reviewed commit:
+Update and build the local checkout, then start the service:
 
 ```bash
 systemctl --user stop flickgrove.service
-cd ~/.local/share/flickgrove-runtime
-git switch --detach <reviewed-commit>
+cd ~/code/projects/lamplitisles/experiments
+og pull
 bun install --frozen-lockfile
 bun run --cwd flickgrove build
 systemctl --user start flickgrove.service

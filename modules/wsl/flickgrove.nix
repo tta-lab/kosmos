@@ -12,10 +12,10 @@
     Install.WantedBy = ["default.target"];
     Service = {
       Type = "exec";
-      WorkingDirectory = "/home/neil/.local/share/flickgrove-runtime/flickgrove";
+      WorkingDirectory = "/home/neil/code/projects/lamplitisles/experiments/flickgrove";
       ExecStart = lib.escapeShellArgs [
         "/run/current-system/sw/bin/bun"
-        "/home/neil/.local/share/flickgrove-runtime/flickgrove/server/main.ts"
+        "/home/neil/code/projects/lamplitisles/experiments/flickgrove/server/main.ts"
         "--hub"
         "--name"
         "ko"
