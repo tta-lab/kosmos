@@ -139,6 +139,7 @@ std.manifestTomlEx({
     service('forgejo', 'Forgejo', 17480, forgeClientsAllow + baiheAllow + svenMacAllow + liliAllow) + {
       max_publisher_to_subscriber_bps: 2000000,
     },
+    service('flickgrove', 'FlickGrove', 4318, [peers.mac.public_key]),
     service('grafana', 'Grafana', 17480, fullTrustAllow),
     service('impri', 'Impri', 17480, impriAllow),
     {

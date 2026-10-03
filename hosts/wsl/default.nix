@@ -24,6 +24,7 @@ _: {
     ../../modules/wsl/kepos-tunnel.nix
     ../../modules/wsl/codex-for-love.nix
     ../../modules/wsl/keet-mcp.nix
+    ../../modules/wsl/flickgrove.nix
     ../../modules/wsl/apt-cacher-ng.nix
     ../../modules/wsl/openvpn.nix
     ../../modules/wsl/openai-tunnel.nix
