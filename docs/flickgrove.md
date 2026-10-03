@@ -1,8 +1,8 @@
 # FlickGrove on ko
 
 FlickGrove is Neil's Home Manager user service `flickgrove.service`. ko runs the
-fixed Hub; Mac visits `http://flickgrove.localhost:17480` through Kepos. The
-service listens on `127.0.0.1:4318`, with a Mac-only ACL.
+fixed Hub; Mac and Pixel 7a visit `http://flickgrove.localhost:17480` through
+Kepos. The service listens on `127.0.0.1:4318`, allowing these two peers.
 
 It uses Nix's `/run/current-system/sw/bin/bun`, the existing Codex login and og
 project registry. Host-local MCP is configured automatically for its sessions.
