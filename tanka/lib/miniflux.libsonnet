@@ -1,3 +1,4 @@
+local ingress = import 'ingress.libsonnet';
 local appLabels = {
   'app.kubernetes.io/name': 'miniflux',
   'app.kubernetes.io/part-of': 'kosmos-feeds',
@@ -142,4 +143,4 @@ local dbLabels = {
       },
     },
   },
-}
+} + { minifluxIngress: ingress('miniflux') }

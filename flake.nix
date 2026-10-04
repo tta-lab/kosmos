@@ -45,6 +45,9 @@
     moonbitToolchain = moonbit-overlay.packages.${system}.default;
   in {
     checks.${system} = {
+      wsl-k3s-forwarding =
+        assert self.nixosConfigurations.wsl.config.boot.kernel.sysctl."net.ipv4.conf.all.forwarding" == 1;
+          pkgs.runCommand "wsl-k3s-forwarding-check" {} "touch $out";
       shell-tests =
         pkgs.runCommand "kosmos-shell-tests" {
           nativeBuildInputs = with pkgs; [
@@ -60,6 +63,8 @@
             just
             jsonnet
             python3
+            caddy
+            pkgsUnstable.traefik
             shellcheck
             tanka
             yq
@@ -67,8 +72,6 @@
           ];
         } ''
           shellcheck \
-            ${./scripts/build-caddy-image} \
-            ${./scripts/sync-caddy-secret} \
             ${./scripts/devops-gate-status} \
             ${./scripts/backup-ente} \
             ${./scripts/photos-gate-status} \
@@ -108,22 +111,17 @@
             ${./tests/prepare-mihomo-config-test} \
             ${./tests/render-kepos-policy-test} \
             ${./tests/observability-render-test} \
+            ${./tests/ingress-render-test} \
             ${./tests/init-observability-secrets-test} \
             ${./tests/init-penpot-secrets-test} \
             ${./tests/penpot-render-test} \
             ${./tests/observability-just-test} \
             ${./tests/ebooks-render-test} \
             ${./tests/cloudreve-render-test} \
-            ${./tests/cloudreve-gateway-render-test} \
-            ${./tests/ebook-gateway-render-test} \
             ${./tests/anki-render-test} \
-            ${./tests/anki-gateway-render-test} \
             ${./tests/notes-render-test} \
-            ${./tests/notes-gateway-render-test} \
             ${./tests/feeds-render-test} \
-            ${./tests/feeds-gateway-render-test} \
             ${./tests/navidrome-render-test} \
-            ${./tests/erpnext-gateway-render-test} \
             ${./tests/sync-anki-secret-test} \
             ${./tests/sync-codex-auth-test} \
             ${./tests/sync-agent-config-test} \
@@ -147,14 +145,13 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/prepare-mihomo-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/render-kepos-policy-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/observability-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/ingress-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-observability-secrets-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-penpot-secrets-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/penpot-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/observability-just-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ebooks-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudreve-render-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/cloudreve-gateway-render-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/ebook-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-render-test}
           tk fmt --test ${./.}/tests/jsonnet
           tk lint ${./.}/tests/jsonnet
@@ -166,19 +163,15 @@
           tk show --dangerous-allow-redirect ${./.}/tanka/environments/impri >/dev/null
           tk show --dangerous-allow-redirect ${./.}/tanka/environments/navidrome >/dev/null
           tk show --dangerous-allow-redirect ${./.}/tanka/environments/photos >/dev/null
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/anki-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-render-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/notes-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/feeds-render-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/feeds-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/navidrome-render-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/erpnext-gateway-render-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-anki-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-codex-auth-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-agent-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/wsl-devops-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
-          python3 ${./.}/tests/public-ddns-test
+          KOSMOS_REPO_ROOT=${./.} KOSMOS_CADDYFILE=${self.nixosConfigurations.wsl.config.services.caddy.configFile} python3 ${./tests/http-gateway-test.py}
           touch $out
         '';
 

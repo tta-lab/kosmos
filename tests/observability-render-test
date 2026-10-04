@@ -7,9 +7,6 @@ trap 'rm -rf "$test_root"' EXIT
 
 tk show --dangerous-allow-redirect "$repo_root/tanka/environments/observability" \
   | yq -s '.' >"$test_root/observability.json"
-tk show --dangerous-allow-redirect "$repo_root/tanka/environments/devops" \
-  | yq -s '.' >"$test_root/devops.json"
-
 jq -e '
   . as $resources |
   def resource($kind; $name):
@@ -65,14 +62,5 @@ jq -e '
   (map(select(.kind | test("Prometheus|VM|Alertmanager"; "i"))) | length == 0) and
   (tostring | test("clickhouse|energy-observatory|energy_secret|kepos_publisher_"; "i") | not)
 ' "$test_root/observability.json" >/dev/null
-
-jq -e '
-  . as $resources |
-  (map(select(.kind == "ConfigMap" and .metadata.name == "canonical-gateway")) | first | .data.Caddyfile) as $caddy |
-  (map(select(.kind == "ConfigMap" and .metadata.name == "coredns-custom")) | first | .data["kosmos.override"]) as $dns |
-  ($caddy | contains("@grafana host grafana.localhost")) and
-  ($caddy | contains("reverse_proxy grafana.observability.svc.cluster.local:3000")) and
-  ($dns | contains("rewrite name exact grafana.localhost canonical-gateway.devops.svc.cluster.local"))
-' "$test_root/devops.json" >/dev/null
 
 printf 'observability manifests render a local VictoriaMetrics scrape and Victoria-only Grafana\n'

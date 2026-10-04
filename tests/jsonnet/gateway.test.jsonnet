@@ -1,67 +1,15 @@
 local resources = (import '../../tanka/environments/devops/main.jsonnet')('false');
-local caddy = resources.gatewayConfig.data.Caddyfile;
+local container = resources.ingressDeployment.spec.template.spec.containers[0];
+local routes = import '../../http/cluster-routes.json';
+local hosts = std.flattenArrays([routes[id].hosts for id in std.objectFields(routes)]);
 local dns = resources.coreDnsOverrides.data['kosmos.override'];
-local deployment = resources.gatewayDeployment;
-local container = deployment.spec.template.spec.containers[0];
-local configMount = [mount for mount in container.volumeMounts if mount.name == 'config'][0];
-local contains(haystack, needle) = std.findSubstr(needle, haystack) != [];
 
-std.assertEqual(
-  contains(caddy, '@codexBridge host codex-bridge.localhost codex-bridge.kepos.internal'),
-  true
-) &&
-std.assertEqual(
-  contains(caddy, 'reverse_proxy codex-bridge.codex-bridge.svc.cluster.local:8787'),
-  true
-) &&
-std.assertEqual(contains(caddy, '@grafana host grafana.localhost'), true) &&
-std.assertEqual(
-  contains(caddy, 'reverse_proxy grafana.observability.svc.cluster.local:3000'),
-  true
-) &&
-std.assertEqual(contains(caddy, '@impri host impri.localhost'), true) &&
-std.assertEqual(
-  contains(caddy, 'reverse_proxy impri-ui.impri.svc.cluster.local:8080'),
-  true
-) &&
-std.assertEqual(contains(caddy, '@navidrome host navidrome.localhost'), true) &&
-std.assertEqual(
-  contains(caddy, 'reverse_proxy navidrome.navidrome.svc.cluster.local:4533'),
-  true
-) &&
-std.assertEqual(contains(caddy, '@meilisearch host meilisearch.localhost'), true) &&
-std.assertEqual(
-  contains(caddy, 'reverse_proxy meilisearch.meilisearch.svc.cluster.local:7700'),
-  true
-) &&
-std.assertEqual(
-  contains(dns, 'rewrite name exact codex-bridge.localhost canonical-gateway.devops.svc.cluster.local'),
-  true
-) &&
-std.assertEqual(
-  contains(dns, 'rewrite name exact grafana.localhost canonical-gateway.devops.svc.cluster.local'),
-  true
-) &&
-std.assertEqual(
-  contains(dns, 'rewrite name exact impri.localhost canonical-gateway.devops.svc.cluster.local'),
-  true
-) &&
-std.assertEqual(
-  contains(dns, 'rewrite name exact clipcascade.localhost canonical-gateway.devops.svc.cluster.local'),
-  true
-) &&
-std.assertEqual(
-  contains(dns, 'rewrite name exact navidrome.localhost canonical-gateway.devops.svc.cluster.local'),
-  true
-) &&
-std.assertEqual(
-  contains(dns, 'rewrite name exact meilisearch.localhost canonical-gateway.devops.svc.cluster.local'),
-  true
-) &&
-std.assertEqual(contains(caddy, 'respond "unknown host" 421'), true) &&
-std.assertEqual(std.member(container.args, '--watch'), true) &&
-std.assertEqual(configMount, {
-  name: 'config',
-  mountPath: '/etc/caddy',
-  readOnly: true,
-})
+std.assertEqual(resources.ingressService.spec.selector, resources.ingressDeployment.spec.selector.matchLabels) &&
+std.assertEqual(resources.ingressService.spec.type, 'ClusterIP') &&
+std.assertEqual(resources.ingressService.spec.ports[0], { name: 'http', port: 17480, targetPort: 'http' }) &&
+std.assertEqual(container.ports[0], { name: 'http', containerPort: 17480, hostPort: 27480, hostIP: '127.0.0.1' }) &&
+std.assertEqual(container.securityContext.runAsNonRoot, true) &&
+std.assertEqual(resources.ingressClass.spec.controller, 'traefik.io/ingress-controller') &&
+std.assertEqual(std.length(std.split(dns, '\n')) - 1, std.length(hosts)) &&
+std.assertEqual(resources.forgejoIngress.spec.rules[0].http.paths[0].backend.service, { name: 'forgejo', port: { number: 3000 } }) &&
+std.assertEqual(resources.erpnextIngress.metadata.namespace, 'erpnext')

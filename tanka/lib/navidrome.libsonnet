@@ -1,3 +1,4 @@
+local ingress = import 'ingress.libsonnet';
 local labels = {
   'app.kubernetes.io/name': 'navidrome',
   'app.kubernetes.io/part-of': 'kosmos-navidrome',
@@ -85,4 +86,4 @@ local micronStorage = import './micron-storage.libsonnet';
       ports: [{ name: 'http', port: 4533, targetPort: 'http' }],
     },
   },
-}
+} + { navidromeIngress: ingress('navidrome') }

@@ -1,3 +1,4 @@
+local ingress = import 'ingress.libsonnet';
 local labels(name) = {
   'app.kubernetes.io/name': 'penpot-' + name,
   'app.kubernetes.io/part-of': 'kosmos-penpot',
@@ -158,4 +159,4 @@ workload('valkey', {
   },
   readinessProbe: { exec: { command: ['valkey-cli', 'ping'] }, periodSeconds: 10, timeoutSeconds: 5 },
   resources: { requests: { cpu: '20m', memory: '64Mi' }, limits: { cpu: '500m', memory: '256Mi' } },
-})
+}) + { penpotIngress: ingress('penpot') }

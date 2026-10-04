@@ -1,3 +1,4 @@
+local ingress = import 'ingress.libsonnet';
 local labels(name) = {
   'app.kubernetes.io/name': name,
   'app.kubernetes.io/part-of': 'kosmos-devops',
@@ -53,7 +54,7 @@ local proxy = import 'proxy.libsonnet';
               {
                 name: 'WOODPECKER_ENVIRONMENT',
                 value:
-                  '_EXPERIMENTAL_DAGGER_RUNNER_HOST:tcp://dagger:8080,GIT_CONFIG_COUNT:1,GIT_CONFIG_KEY_0:http.http://forgejo.localhost:17480.proxy,GIT_CONFIG_VALUE_0:http://canonical-gateway.devops.svc.cluster.local:17480,HTTPS_PROXY:'
+                  '_EXPERIMENTAL_DAGGER_RUNNER_HOST:tcp://dagger:8080,GIT_CONFIG_COUNT:1,GIT_CONFIG_KEY_0:http.http://forgejo.localhost:17480.proxy,GIT_CONFIG_VALUE_0:http://cluster-http.devops.svc.cluster.local:17480,HTTPS_PROXY:'
                   + proxy.podUrl,
               },
             ],
@@ -254,4 +255,4 @@ local proxy = import 'proxy.libsonnet';
       },
     },
   },
-}
+} + { woodpeckerIngress: ingress('woodpecker') }

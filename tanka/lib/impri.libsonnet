@@ -1,3 +1,4 @@
+local ingress = import 'ingress.libsonnet';
 local storage = import 'impri-storage.libsonnet';
 
 local serverLabels = {
@@ -198,4 +199,4 @@ local imageRevision = 'bff19604';
       },
     },
   },
-} + storage
+} + storage + { impriIngress: ingress('impri') }

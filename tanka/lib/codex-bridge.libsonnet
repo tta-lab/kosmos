@@ -1,3 +1,4 @@
+local ingress = import 'ingress.libsonnet';
 local labels = {
   'app.kubernetes.io/name': 'codex-bridge',
   'app.kubernetes.io/part-of': 'kosmos-codex-bridge',
@@ -152,4 +153,4 @@ local relayImage = 'docker.io/alpine/socat:1.8.0.3@sha256:beb4a68d9e4fe6b0f21ea7
       },
     },
   },
-}
+} + { codexbridgeIngress: ingress('codex-bridge') }

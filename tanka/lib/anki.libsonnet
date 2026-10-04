@@ -1,3 +1,4 @@
+local ingress = import 'ingress.libsonnet';
 local labels = {
   'app.kubernetes.io/name': 'anki-sync-server',
   'app.kubernetes.io/part-of': 'kosmos-anki',
@@ -66,4 +67,4 @@ local labels = {
       },
     },
   },
-}
+} + { ankiIngress: ingress('anki') }

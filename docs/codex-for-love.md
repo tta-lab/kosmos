@@ -10,9 +10,9 @@ credentials, and conversation data remain operator-owned.
 | Mika staging | `codex-for-love-staging.service` | 3083 | `http://staging-her.localhost:17480` | `~/.local/state/codex-for-love/staging` |
 | Shio prod | `codex-for-love-prod.service` | 3084 | `http://prod-lamplit.localhost:17480` | `~/.local/state/codex-for-love/prod` |
 
-All three services are direct Kepos HTTP services. They do not use Tanka,
-Caddy, CoreDNS, Kubernetes, Docker, a subscriber binding, or an application
-login. Mika dev permits Mac and Sven through Kepos; Mika staging additionally
+All three services remain direct Kepos HTTP services and also have host Caddy
+routes for SSH access at the same `.localhost:17480` addresses. Their workloads
+do not use Kubernetes, Docker, a subscriber binding, or an application login. Mika dev permits Mac and Sven through Kepos; Mika staging additionally
 permits Pixel 7a for installed-PWA acceptance. Shio prod keeps its Mac and
 Pixel 7a ACL. Dev additionally binds all IPv4 interfaces so Mac can reach
 `http://192.168.1.179:3082` directly.

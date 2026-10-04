@@ -1,3 +1,4 @@
+local ingress = import 'ingress.libsonnet';
 local labels = {
   'app.kubernetes.io/name': 'meilisearch',
   'app.kubernetes.io/part-of': 'kosmos-meilisearch',
@@ -100,4 +101,4 @@ local labels = {
       ports: [{ name: 'http', port: 7700, targetPort: 'http' }],
     },
   },
-}
+} + { meilisearchIngress: ingress('meilisearch') }

@@ -54,7 +54,7 @@ canonical gateway routes to Miniflux.
 ```bash
 just feeds-status          # pods, svc, pvc in the feeds namespace
 just feeds-diff            # review pending changes
-just feeds-deploy          # apply feeds env + gateway, restart Caddy
+just feeds-deploy          # apply feeds env and its Ingress
 ```
 
 Verify the web app is serving through the gateway:

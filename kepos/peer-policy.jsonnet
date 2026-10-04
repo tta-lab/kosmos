@@ -115,11 +115,6 @@ std.manifestTomlEx({
   bindings: [
     {
       peer: 'mac',
-      service: 'adb',
-      listen: {local_port: 15037},
-    },
-    {
-      peer: 'mac',
       service: 'ssh',
       listen: {local_port: 2222},
     },

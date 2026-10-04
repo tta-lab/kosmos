@@ -1,3 +1,4 @@
+local ingress = import 'ingress.libsonnet';
 local labels = {
   'app.kubernetes.io/name': 'forgejo',
   'app.kubernetes.io/part-of': 'kosmos-devops',
@@ -96,4 +97,4 @@ local dataMount = [{ name: 'data', mountPath: '/var/lib/gitea' }];
       ports: [{ name: 'http', port: 3000, targetPort: 'http' }],
     },
   },
-}
+} + { forgejoIngress: ingress('forgejo') }

@@ -5,7 +5,6 @@ test_root="$(mktemp -d)"
 trap 'rm -rf -- "$test_root"' EXIT
 
 tk show --dangerous-allow-redirect "$repo_root/tanka/environments/penpot" | yq -s '.' >"$test_root/penpot.json"
-tk show --dangerous-allow-redirect "$repo_root/tanka/environments/devops" | yq -s '.' >"$test_root/gateway.json"
 jq -e '
   . as $resources |
   def resource($kind; $name): $resources | map(select(.kind == $kind and .metadata.name == $name)) | first;
@@ -31,10 +30,4 @@ jq -e '
   (resource("PersistentVolumeClaim"; "penpot-assets").spec.volumeName == "kosmos-penpot-assets") and
   (resource("PersistentVolumeClaim"; "penpot-postgres-data").spec.volumeName == "kosmos-penpot-postgres-data")
 ' "$test_root/penpot.json" >/dev/null
-jq -e '
-  (map(select(.kind == "ConfigMap" and .metadata.name == "canonical-gateway"))[0].data.Caddyfile |
-    contains("@penpot host penpot.localhost") and contains("reverse_proxy penpot-frontend.penpot.svc.cluster.local:8080")) and
-  (map(select(.kind == "ConfigMap" and .metadata.name == "coredns-custom"))[0].data["kosmos.override"] |
-    contains("rewrite name exact penpot.localhost canonical-gateway.devops.svc.cluster.local"))
-' "$test_root/gateway.json" >/dev/null
-printf 'Penpot renders shared credentials, retained storage, and one gateway for web and MCP\n'
+printf 'Penpot renders shared credentials, retained storage, and one ingress for web and MCP\n'

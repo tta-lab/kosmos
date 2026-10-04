@@ -1,8 +1,20 @@
 # Kosmos Service Hosting
 
-Kosmos hosts private applications and makes selected capabilities available to trusted devices. This glossary names the concepts that define the Impri approval workflow within that environment.
+Kosmos hosts private applications and makes selected capabilities available to trusted devices. This glossary names its service access boundaries, approval workflow, and recovery concepts.
 
 ## Language
+
+**Host HTTP Entry**:
+The shared entry through which trusted clients access Kosmos's named HTTP applications, whether hosted on the machine or in its cluster.
+_Avoid_: Kepos gateway, cluster ingress
+
+**Cluster HTTP Entry**:
+The entry that routes requests for Kosmos's cluster-hosted applications to their cluster services.
+_Avoid_: Host HTTP Entry, public endpoint
+
+**Service Authority**:
+The hostname and port a client uses to address a Kosmos application, including the address used in links and redirects.
+_Avoid_: Upstream address, listening port
 
 **Approval Inbox**:
 A private queue where a human reviews proposed actions before an agent may proceed.

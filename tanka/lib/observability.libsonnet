@@ -1,3 +1,4 @@
+local ingress = import 'ingress.libsonnet';
 local partOf = 'kosmos-observability';
 
 local labels(name) = {
@@ -346,4 +347,4 @@ local dashboardPath = '/run/current-system/sw/share/kepos/grafana/kepos-publishe
       },
     },
   },
-}
+} + { observabilityIngress: ingress('grafana') }

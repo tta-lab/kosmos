@@ -61,8 +61,8 @@ just kepos-status
 
 The deployment uses the pinned Anki 26.05 image digest, one replica, and a
 retained 10 GiB static volume at `/var/lib/kosmos-k3s/anki`. The canonical
-Caddy gateway supplies the 512 KiB HTTP read buffer required by Anki media
-downloads.
+host Caddy retains a 512 KiB upstream read buffer. Traefik forwards media
+responses without body buffering; gateway behavior checks cover large headers.
 
 ## First sync
 

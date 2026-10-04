@@ -1,3 +1,4 @@
+local ingress = import 'ingress.libsonnet';
 local labels(name) = {
   'app.kubernetes.io/name': name,
   'app.kubernetes.io/part-of': 'kosmos-cloudreve',
@@ -225,4 +226,4 @@ local micronStorage = import './micron-storage.libsonnet';
       },
     },
   },
-}
+} + { cloudreveIngress: ingress('cloudreve') }

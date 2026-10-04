@@ -36,8 +36,8 @@ tanka-test:
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ impri_environment }}" >/dev/null
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ meilisearch_environment }}" >/dev/null
   @bash tests/observability-render-test
+  @bash tests/ingress-render-test
   @bash tests/meilisearch-render-test
-  @bash tests/meilisearch-gateway-render-test
   @bash tests/penpot-render-test
   @bash tests/init-penpot-secrets-test
 
@@ -47,19 +47,12 @@ diff target=environment: _local-k3s
 apply target=environment: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ target }}"
 
-caddy-image:
-  @scripts/build-caddy-image
+gateway-diff: _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ environment }}" --target='^(ConfigMap/coredns-custom|Deployment/cluster-http|Service/cluster-http|ServiceAccount/cluster-http|ClusterRole/kosmos-cluster-http|ClusterRoleBinding/kosmos-cluster-http|IngressClass/kosmos|Ingress/erpnext)$'
 
-caddy-image-load:
-  @scripts/build-caddy-image --load
-
-public-https-diff: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" tk diff "{{ environment }}" --target='^(ConfigMap/canonical-gateway|Deployment/canonical-gateway|PersistentVolumeClaim/canonical-gateway-data)$'
-
-public-https-deploy: _local-k3s caddy-image-load
-  @sudo systemctl restart caddy-secret-sync
-  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}" --target='^(ConfigMap/canonical-gateway|Deployment/canonical-gateway|PersistentVolumeClaim/canonical-gateway-data)$'
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+gateway-apply approve="never": _local-k3s
+  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}" --target='^(ConfigMap/coredns-custom|Deployment/cluster-http|Service/cluster-http|ServiceAccount/cluster-http|ClusterRole/kosmos-cluster-http|ClusterRoleBinding/kosmos-cluster-http|IngressClass/kosmos|Ingress/erpnext)$' --auto-approve="{{ approve }}"
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/cluster-http -n devops --timeout=120s
 
 forgejo-backup-show: _forgejo-r2-backup-secret
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show --tla-str forgejoR2BackupEnabled=true "{{ environment }}"
@@ -101,9 +94,7 @@ ebooks-apply: _local-k3s ebooks-secrets
   @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ ebooks_environment }}"
 
 ebooks-deploy: ebooks-apply
-  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}"
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/cluster-http -n devops --timeout=120s
 
 ebooks-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n ebooks -o wide
@@ -118,9 +109,7 @@ anki-apply: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ anki_environment }}"
 
 anki-deploy: anki-apply
-  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}"
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/cluster-http -n devops --timeout=120s
 
 anki-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n anki -o wide
@@ -135,9 +124,7 @@ notes-apply: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ notes_environment }}"
 
 notes-deploy: notes-apply
-  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}"
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/cluster-http -n devops --timeout=120s
 
 notes-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n notes -o wide
@@ -155,9 +142,7 @@ impri-apply: _local-k3s impri-secrets
   @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ impri_environment }}"
 
 impri-deploy: impri-images-load impri-apply
-  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}"
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/cluster-http -n devops --timeout=120s
 
 impri-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n impri -o wide
@@ -175,9 +160,7 @@ meilisearch-apply: _local-k3s meilisearch-secrets
   @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ meilisearch_environment }}"
 
 meilisearch-deploy: meilisearch-apply _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}" --target='^ConfigMap/(canonical-gateway|coredns-custom)$'
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/cluster-http -n devops --timeout=120s
   @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/meilisearch -n meilisearch --timeout=120s
   @curl --fail --retry 10 --retry-all-errors --retry-delay 1 --header 'Host: meilisearch.localhost' http://127.0.0.1:17480/health >/dev/null
   @bash scripts/render-kepos-policy
@@ -199,9 +182,7 @@ penpot-apply approve="never": _local-k3s penpot-secrets
 
 penpot-deploy approve="never": (penpot-apply approve) _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment -n penpot --timeout=600s
-  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}" --target='^ConfigMap/(canonical-gateway|coredns-custom)$' --auto-approve="{{ approve }}"
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/cluster-http -n devops --timeout=120s
   @curl --fail --retry 10 --retry-all-errors --retry-delay 1 --header 'Host: penpot.localhost' http://127.0.0.1:17480/readyz >/dev/null
   @bash scripts/render-kepos-policy
 
@@ -227,9 +208,7 @@ codex-bridge-apply: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ codex_bridge_environment }}"
 
 codex-bridge-deploy: codex-bridge-apply
-  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}"
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/cluster-http -n devops --timeout=120s
 
 codex-bridge-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n codex-bridge -o wide
@@ -247,9 +226,7 @@ observability-apply: _local-k3s observability-secrets
   @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ observability_environment }}"
 
 observability-deploy: observability-apply
-  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}"
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/cluster-http -n devops --timeout=120s
 
 observability-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n observability -o wide
@@ -267,9 +244,7 @@ feeds-apply: _local-k3s feeds-secrets
   @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ feeds_environment }}"
 
 feeds-deploy: feeds-apply
-  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}"
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/cluster-http -n devops --timeout=120s
 
 feeds-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n feeds -o wide
@@ -285,9 +260,7 @@ cloudreve-apply: _local-k3s
 
 cloudreve-deploy: cloudreve-apply
   @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/cloudreve -n cloudreve --timeout=300s
-  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}"
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/cluster-http -n devops --timeout=120s
 
 cloudreve-status: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n cloudreve -o wide
@@ -302,9 +275,7 @@ navidrome-apply: _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ navidrome_environment }}"
 
 navidrome-deploy: navidrome-apply _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}" --target='^ConfigMap/(canonical-gateway|coredns-custom)$'
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout restart deployment/canonical-gateway -n devops
-  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/canonical-gateway -n devops --timeout=120s
+  @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/cluster-http -n devops --timeout=120s
   @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/navidrome -n navidrome --timeout=120s
   @curl --fail --header 'Host: navidrome.localhost' http://127.0.0.1:17480 >/dev/null
   @bash scripts/render-kepos-policy

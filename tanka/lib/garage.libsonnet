@@ -1,3 +1,4 @@
+local ingress = import 'ingress.libsonnet';
 local labels = {
   'app.kubernetes.io/name': 'garage',
   'app.kubernetes.io/part-of': 'kosmos-photos',
@@ -196,4 +197,4 @@ local micronStorage = import './micron-storage.libsonnet';
       },
     },
   },
-}
+} + { garageIngress: ingress('ente-storage') }

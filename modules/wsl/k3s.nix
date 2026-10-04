@@ -21,6 +21,9 @@
     ]
   );
 in {
+  # k3s enables forwarding at runtime; keep NixOS sysctl reloads from resetting it.
+  boot.kernel.sysctl."net.ipv4.conf.all.forwarding" = 1;
+
   networking.hosts."127.0.0.1" = [
     "forgejo.localhost"
     "woodpecker.localhost"

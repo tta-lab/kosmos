@@ -25,18 +25,21 @@ Read [docs/secrets.md](docs/secrets.md) for registration, runtime consumption, a
 
 **Adding a Kepos-exposed service (WSL):**
 For a Kubernetes-backed HTTP app, add a Tanka environment + lib under `tanka/`
-(namespace/Service/Deployment), wire the route in `tanka/lib/gateway.libsonnet`
-(Caddy + CoreDNS rewrite), add the `<app>.localhost` hosts entry and storage
+(namespace/Service/Deployment), add its authority and Service to
+`http/cluster-routes.json` and its Ingress with `tanka/lib/ingress.libsonnet`,
+add the `<app>.localhost` hosts entry and storage
 dirs in `modules/wsl/k3s.nix`, then add the peer service and ACL in the
 Jsonnet source `kepos/peer-policy.jsonnet`, then run
-`just kepos-policy-render`. Run `nh os switch` + `just <app>-deploy` for the
+`just kepos-policy-render`. Run `nh os switch` + `just <app>-deploy` + `just gateway-apply` for the
 infrastructure; rendering a valid policy takes effect within one second without
 a rebuild or Kepos restart. These services normally use `source.local_port = 17480`
 (canonical gateway, Host-header routed).
 
 A loopback-only user service that Kepos exposes directly uses a Home Manager
 `systemd.user` unit bound to `127.0.0.1` and publishes that port in
-`kepos/peer-policy.jsonnet`; it needs no Tanka, Caddy, or CoreDNS route.
+`kepos/peer-policy.jsonnet`. For access through SSH's shared HTTP entry,
+add its route to `modules/wsl/http-gateway.nix`; no Tanka workload is needed.
+See `docs/http-ingress.md` for host Caddy and cluster Traefik ownership.
 Configure any app-level trusted authority as `<id>.localhost:17480`. Peers
 reach HTTP services through their local Kepos gateway; use explicit `bindings`
 for raw TCP/SSH or Unix-socket listeners such as `dagger`. See `docs/wsl-devops-runbook.md` for the full service model.

@@ -48,7 +48,7 @@ just impri-status
 ```
 
 `just impri-deploy` loads the pinned Impri images, applies the Impri
-environment, and refreshes the canonical gateway. Impri requires no Cloudflare
+environment and its Ingress. Impri requires no Cloudflare
 Tunnel route. Both `BASE_URL` and `APP_URL` use the private service address.
 
 `just impri-secrets` creates the webhook-signing secret if it is absent and

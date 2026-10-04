@@ -1,3 +1,4 @@
+local ingress = import 'ingress.libsonnet';
 local labels = {
   'app.kubernetes.io/name': 'memos',
   'app.kubernetes.io/part-of': 'kosmos-notes',
@@ -90,4 +91,4 @@ local labels = {
       },
     },
   },
-}
+} + { memosIngress: ingress('memos') }

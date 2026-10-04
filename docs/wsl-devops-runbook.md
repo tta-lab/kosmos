@@ -39,11 +39,11 @@ owned by WSL.
   full-trust Kepos subscribers
 - Impri: `http://impri.localhost:17480` through Kepos (Mac + Pixel 7a)
 
-For Kubernetes-backed HTTP apps, Caddy binds the host gateway only on
-`127.0.0.1:17480`. CoreDNS rewrites their canonical `.localhost` names to that
-same gateway inside the cluster. This keeps browser, Git, Woodpecker OAuth,
-webhooks, and container-registry URLs consistent. The remaining direct
-loopback HTTP service bypasses Caddy and CoreDNS; see the service model below.
+The host Caddy system service binds only `127.0.0.1:17480`. It connects
+local applications directly and forwards cluster application hosts to Traefik
+at `127.0.0.1:27480`. CoreDNS rewrites cluster application names to the
+`cluster-http.devops` Service on port 17480. See [HTTP ingress](http-ingress.md)
+for route ownership, deployment and SSH access.
 
 Kepos publishes application service IDs including:
 
@@ -90,8 +90,8 @@ Desktop / CLI), not by the publisher:
   routed by the preserved `Host` header.
 - **Direct Partner HTTP services** (`dev-her`, `staging-her`, `prod-lamplit`): a Home Manager user service
   owns its port and Kepos publishes that port directly. Mika dev binds all IPv4
-  interfaces for the WSL LAN; staging and prod bind `127.0.0.1`. They have no
-  Tanka environment, Caddy route, or CoreDNS rewrite.
+  interfaces for the WSL LAN; staging and prod bind `127.0.0.1`. They also have host Caddy routes; their workloads have no
+  Tanka environment or CoreDNS rewrite.
 - **Raw TCP/SSH services** (`dagger`, `mihomo`, `ssh`, `mac-ssh`): the peer must add a
   `[[subscriber.services]]` entry with a free `local_port` to its
   `~/.config/kepos/config.toml` and restart Kepos Desktop; seeing the service
@@ -116,7 +116,7 @@ an explicit requirement.
 Codex for Love follows this direct-service model: Mika dev binds
 `0.0.0.0:3082` (including WSL LAN `192.168.1.179`), Mika staging binds
 `127.0.0.1:3083`, and Shio prod (with the Yuki persona) binds
-`127.0.0.1:3084`. None has a Tanka environment, Caddy route, CoreDNS rewrite,
+`127.0.0.1:3084`. All three have host Caddy routes, but no Tanka workload, CoreDNS rewrite,
 or subscriber binding. Its configuration and verification steps are in
 [codex-for-love.md](codex-for-love.md).
 

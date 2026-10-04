@@ -73,7 +73,8 @@ agenix -r -i ~/.ssh/agenix_ed25519
 Encrypted files live in `secrets/` and are safe to commit:
 
 - `secrets/ttal.env.age`
-- `secrets/cloudflare-ddns-token.age`
+- `secrets/cloudflare-ddns-token.age` (retired smoke credential, retained encrypted
+  for operator cleanup; no runtime consumer)
 - `secrets/env.age`
 - `secrets/kube-config.age`
 - `secrets/sops-age-keys.age`
@@ -127,7 +128,6 @@ From the repo root, run `agenix` directly (the rules file `secrets.nix` lives at
 ```bash
 cd /home/neil/code/projects/tta-lab/kosmos
 agenix -e secrets/ttal.env.age -i ~/.ssh/agenix_ed25519
-agenix -e secrets/cloudflare-ddns-token.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/env.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/kube-config.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/sops-age-keys.age -i ~/.ssh/agenix_ed25519

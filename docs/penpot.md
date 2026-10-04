@@ -7,8 +7,8 @@ design data; Valkey 8.1 handles transient notifications.
 
 ## Access
 
-Open `http://penpot.localhost:17480` on WSL or Mac. Caddy routes the canonical
-host to `penpot-frontend.penpot.svc.cluster.local:8080`. Kepos publishes the
+Open `http://penpot.localhost:17480` on WSL or Mac. The host Caddy forwards the canonical
+host to Traefik, whose Ingress targets the Penpot frontend Service. Kepos publishes the
 single `penpot` service only to the named `mac` peer. Leave publisher `kind`
 unset; the existing TCP tunnel carries HTTP and WebSocket traffic. The Mac
 subscriber gateway needs no separate service binding.
@@ -77,11 +77,10 @@ just penpot-status
 ```
 
 `penpot-deploy` initializes credentials, applies the Penpot environment, waits
-for all seven Deployments, updates only the gateway/CoreDNS ConfigMaps, restarts
-the gateway, checks `/readyz`, and atomically renders the Kepos policy. Tanka
+for all seven Deployments, checks the cluster ingress, checks `/readyz`, and atomically renders the Kepos policy. Tanka
 asks for confirmation before apply; after reviewing the diff, automation can
 run `just penpot-deploy always` to use Tanka’s documented
-`--auto-approve=always` flag for both applies. Initial
+`--auto-approve=always` flag for the apply. Initial
 image pulls and backend migrations can take several minutes.
 
 ## MCP on Mac

@@ -1,3 +1,4 @@
+local ingress = import 'ingress.libsonnet';
 local labels(name) = {
   'app.kubernetes.io/name': name,
   'app.kubernetes.io/part-of': 'kosmos-ebooks-evaluation',
@@ -147,4 +148,4 @@ local dbLabels = labels('bookorbit-postgres');
       },
     },
   },
-}
+} + { bookorbitIngress: ingress('bookorbit') }

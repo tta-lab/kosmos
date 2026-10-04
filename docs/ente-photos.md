@@ -62,8 +62,8 @@ just kepos-status
 
 The `photos-apply` command creates the namespace and workloads. On the first
 deployment, Pods can remain pending until `ente-secret-sync.service` creates
-their Secret. The normal `just apply` then updates the shared Caddy and CoreDNS
-gateway configuration in the `devops` environment.
+their Secret. The environment also owns both Ingresses. Apply `just gateway-apply`
+when changing the shared CoreDNS or Traefik configuration.
 
 The `garage-cors-v1` Job idempotently applies the bucket CORS policy required
 by Ente Desktop's browser runtime. The wildcard origin does not make objects

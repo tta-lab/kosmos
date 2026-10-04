@@ -1,3 +1,4 @@
+local ingress = import 'ingress.libsonnet';
 local labels(name) = {
   'app.kubernetes.io/name': name,
   'app.kubernetes.io/part-of': 'kosmos-photos',
@@ -182,4 +183,4 @@ local micronStorage = import './micron-storage.libsonnet';
       ports: [{ name: 'http', port: 8080, targetPort: 'http' }],
     },
   },
-}
+} + { enteIngress: ingress('ente') }

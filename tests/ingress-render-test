@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+python3 - "$repo_root" <<'PY'
+import json, subprocess, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+routes = json.loads((root / 'http/cluster-routes.json').read_text())
+resources = []
+for main in sorted((root / 'tanka/environments').glob('*/main.jsonnet')):
+    expr = f'local value = import {json.dumps(str(main))}; local r = if std.type(value) == "function" then value("false") else value; [r[k] for k in std.objectFields(r)]'
+    resources.extend(json.loads(subprocess.check_output(['jsonnet', '-e', expr])))
+ingresses = {(r['metadata']['namespace'], r['metadata']['name']): r for r in resources if r['kind'] == 'Ingress'}
+for name, route in routes.items():
+    ingress = ingresses[(route['namespace'], name)]
+    assert ingress['spec']['ingressClassName'] == 'kosmos'
+    assert 'tls' not in ingress['spec'] and 'defaultBackend' not in ingress['spec']
+    assert [r['host'] for r in ingress['spec']['rules']] == route['hosts']
+    for rule in ingress['spec']['rules']:
+        assert rule['http']['paths'] == [{'path': '/', 'pathType': 'Prefix', 'backend': {'service': {'name': route['service'], 'port': {'number': route['port']}}}}]
+    # ERPNext is operator-managed; all other Ingresses must target their app's Service.
+    if name != 'erpnext':
+        service = next(r for r in resources if r['kind'] == 'Service' and r['metadata']['namespace'] == route['namespace'] and r['metadata']['name'] == route['service'])
+        assert route['port'] in [p['port'] for p in service['spec']['ports']]
+assert len(ingresses) == len(routes)
+print('all HTTP Ingresses target the declared application Services without TLS or catch-all routes')
+PY
