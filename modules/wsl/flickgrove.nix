@@ -5,7 +5,7 @@
 }: {
   home-manager.users.neil.systemd.user.services.flickgrove = {
     Unit = {
-      Description = "FlickGrove fixed Hub";
+      Description = "FlickGrove ko Peer";
       StartLimitIntervalSec = 60;
       StartLimitBurst = 5;
     };
@@ -16,7 +16,6 @@
       ExecStart = lib.escapeShellArgs [
         "/run/current-system/sw/bin/bun"
         "/home/neil/code/projects/lamplitisles/experiments/flickgrove/server/main.ts"
-        "--hub"
         "--name"
         "ko"
         "--listen"

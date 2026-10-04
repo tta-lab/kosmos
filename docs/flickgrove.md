@@ -1,8 +1,13 @@
 # FlickGrove on ko
 
-FlickGrove is Neil's Home Manager user service `flickgrove.service`. ko runs the
-fixed Hub; Mac and Pixel 7a visit `http://flickgrove.localhost:17480` through
-Kepos. The service listens on `127.0.0.1:4318`, allowing these two peers.
+FlickGrove is Neil's Home Manager user service `flickgrove.service`. ko runs an
+independent Peer; Mac and Pixel 7a visit `http://flickgrove.localhost:17480`
+through Kepos. The service listens on `127.0.0.1:4318`; Kepos allows these two
+devices. Every Peer serves the frontend and owns its local session trees.
+Browsers connect directly to each configured Peer; ko does not relay remote
+business calls. Configure additional Peers and their access credentials in
+each browser's Settings → Hosts. Preserve WebSocket upgrades and
+`Sec-WebSocket-Protocol` through proxies.
 
 It uses Nix's `/run/current-system/sw/bin/bun`, the existing Codex login and og
 project registry. Host-local MCP is configured automatically for its sessions.
@@ -43,5 +48,5 @@ compatibility before opening newer data with older code.
 systemctl --user status flickgrove.service
 journalctl --user -u flickgrove.service -f
 curl --fail -H 'Host: flickgrove.localhost:17480' \
-  http://127.0.0.1:4318/api/snapshot
+  http://127.0.0.1:4318/
 ```
