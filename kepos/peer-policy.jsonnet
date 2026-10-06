@@ -28,14 +28,6 @@ local peers = {
     label: 'aipaper',
     public_key: '0d88922a7b6de68ca5011398c846f60de49129bc0d9592e0437b580c41a7e625',
   },
-  'guion-worker-1': {
-    label: 'guion-worker-1',
-    public_key: 'ff9e2bee88a324ccf9ccdcc680a597e8798d008d57b54a4ae2873d26ddfea43e',
-  },
-  'guion-worker-2': {
-    label: 'guion-worker-2',
-    public_key: '682276873f44fd590054f68af34798651089b34d5dc70d9ecd151e8bd1a03a90',
-  },
   'sw-server': {
     label: 'sw-server',
     public_key: 'de087b86a5ced0d4f85e63463b8508e42ede89d2d4c9c9a64efd52697b1ce78b',
@@ -74,10 +66,6 @@ local fullTrustAllow = [
 local personalDevicesAllow = fullTrustAllow + [
   peers.pixel7a.public_key,
   peers.aipaper.public_key,
-];
-local guionWorkersAllow = [
-  peers['guion-worker-1'].public_key,
-  peers['guion-worker-2'].public_key,
 ];
 local baiheAllow = [
   peers.baihe.public_key,
@@ -118,7 +106,7 @@ std.manifestTomlEx({
     service('anki', 'Anki', 17480, personalDevicesAllow + guaziAllow),
     service('bookorbit', 'BookOrbit', 17480, personalDevicesAllow + baiheAllow),
     service('cloudreve', 'Cloudreve', 17480, personalDevicesAllow + baiheAllow + svenMacAllow + liliAllow),
-    service('codex-bridge', 'Codex Bridge', 17480, fullTrustAllow + guionWorkersAllow + baiheAllow + codexBridgeAllow + liliAllow),
+    service('codex-bridge', 'Codex Bridge', 17480, fullTrustAllow + baiheAllow + codexBridgeAllow + liliAllow),
     service('dagger', 'Dagger', 8080, fullTrustAllow + svenMacAllow + [peers['sw-server'].public_key]),
     service('dev-her', 'Lamplit Dev', 3082, cflMikaAllow),
     service('staging-her', 'Lamplit Staging', 3083, cflMikaAllow + [peers.pixel7a.public_key]),
