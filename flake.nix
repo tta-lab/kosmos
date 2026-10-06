@@ -19,7 +19,7 @@
     moonbit-overlay.url = "github:moonbit-community/moonbit-overlay";
     moonbit-overlay.inputs.nixpkgs.follows = "nixpkgs-unstable";
     kepos-neo = {
-      url = "git+http://forgejo.localhost:17480/LamplitIsles/kepos.git?ref=main&rev=3a34e3bea2f3afe49f833a5bd1f29d3ff48bb387";
+      url = "git+https://192.168.6.186:8086/LamplitIsles/kepos.git?ref=main&rev=3a34e3bea2f3afe49f833a5bd1f29d3ff48bb387";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.home-manager.follows = "home-manager";
     };
@@ -73,6 +73,8 @@
         } ''
           shellcheck \
             ${./scripts/devops-gate-status} \
+            ${./scripts/sw-kubectl} \
+            ${./scripts/validate-woodpecker-env} \
             ${./scripts/backup-ente} \
             ${./scripts/photos-gate-status} \
             ${./scripts/forgejo-https-git-smoke} \
@@ -84,8 +86,6 @@
             ${./scripts/build-impri-images} \
             ${./scripts/sync-cloudreve-secret} \
             ${./scripts/backup-forgejo} \
-            ${./scripts/check-forgejo-r2-backup-secret} \
-            ${./scripts/sync-forgejo-r2-backup-secret} \
             ${./scripts/sync-agent-config} \
             ${./scripts/install-tta-lab-go} \
             ${./scripts/sync-anki-secret} \
@@ -102,12 +102,13 @@
             ${./tests/backup-ente-test} \
             ${./tests/photos-gate-status-test} \
             ${./tests/photos-storage-render-test} \
-            ${./tests/sync-woodpecker-secret-test} \
             ${./tests/sync-ente-secret-test} \
             ${./tests/init-ebook-secrets-test} \
             ${./tests/sync-cloudreve-secret-test} \
             ${./tests/backup-forgejo-test} \
             ${./tests/forgejo-backup-render-test} \
+            ${./tests/sw-devops-render-test} \
+            ${./tests/validate-woodpecker-env-test} \
             ${./tests/prepare-mihomo-config-test} \
             ${./tests/render-kepos-policy-test} \
             ${./tests/observability-render-test} \
@@ -136,12 +137,13 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/backup-ente-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/photos-gate-status-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/photos-storage-render-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-woodpecker-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-ente-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/init-ebook-secrets-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-cloudreve-secret-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/backup-forgejo-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/forgejo-backup-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/sw-devops-render-test}
+          KOSMOS_REPO_ROOT=${./.} bash ${./tests/validate-woodpecker-env-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/prepare-mihomo-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/render-kepos-policy-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/observability-render-test}
@@ -198,30 +200,6 @@
         assert tunnel.ingress."test.guion.io" == "http://127.0.0.1:8080";
         assert cfg.systemd.services.cloudflared-tunnel-kepos.environment.TUNNEL_TRANSPORT_PROTOCOL == "http2";
           pkgs.runCommand "kepos-tunnel-module-check" {} "touch $out";
-
-      woodpecker-secret-sync-module = let
-        eval = nixpkgs.lib.nixosSystem {
-          inherit system;
-          specialArgs = {inherit agenix;};
-          modules = [
-            agenix.nixosModules.default
-            ./modules/wsl/secrets.nix
-            (_: {system.stateVersion = "25.05";})
-          ];
-        };
-        cfg = eval.config;
-        serverSecret = cfg.age.secrets.woodpecker-server-env;
-        postgresSecret = cfg.age.secrets.woodpecker-postgres-env;
-        unit = cfg.systemd.services.woodpecker-secret-sync;
-        has = value: list: builtins.elem value list;
-      in
-        assert unit.restartTriggers == [serverSecret.file postgresSecret.file];
-        assert has "k3s.service" unit.after;
-        assert has "k3s.service" unit.wants;
-        assert has "multi-user.target" unit.wantedBy;
-        assert unit.serviceConfig.Type == "oneshot";
-        assert unit.serviceConfig.RemainAfterExit;
-          pkgs.runCommand "woodpecker-secret-sync-module-check" {} "touch $out";
 
       ente-secret-sync-module = let
         eval = nixpkgs.lib.nixosSystem {
@@ -329,6 +307,7 @@
         assert builtins.elem "dagger" packageNames;
         assert builtins.elem "kosmos-photos-gate-status" packageNames;
         assert cfg.environment.variables._EXPERIMENTAL_DAGGER_RUNNER_HOST == "tcp://127.0.0.1:8080";
+        assert cfg.home-manager.users.neil.home.sessionVariables.WOODPECKER_URL == "https://192.168.6.186:8087";
           pkgs.runCommand "wsl-devops-cli-check" {} "touch $out";
 
       wsl-seafarer-ca-trust = let
@@ -358,6 +337,7 @@
           "localhost"
           "127.0.0.1"
           "::1"
+          "192.168.6.186"
         ];
         expectedNoProxy = nixpkgs.lib.concatStringsSep "," expectedNoProxyEntries;
         expectedProxyEnvironment = {
@@ -378,8 +358,6 @@
             ".svc"
             ".cluster.local"
             "10.255.255.1"
-            "forgejo.localhost"
-            "woodpecker.localhost"
             "grafana.localhost"
             "impri.localhost"
           ]
@@ -451,7 +429,7 @@
           source ${nixpkgs.lib.escapeShellArg proxyFile}
           test "$HTTP_PROXY" = http://127.0.0.1:7890
           test "$http_proxy" = "$HTTP_PROXY"
-          test "$NO_PROXY" = localhost,127.0.0.1,::1
+          test "$NO_PROXY" = localhost,127.0.0.1,::1,192.168.6.186
           test "$no_proxy" = "$NO_PROXY"
           touch "$out"
         '';

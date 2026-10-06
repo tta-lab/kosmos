@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+python3 - "$repo_root" <<'PY'
+import json, subprocess, sys
+from pathlib import Path
+root = Path(sys.argv[1])
+def render(enabled):
+    path = json.dumps(str(root / 'tanka/environments/sw-devops/main.jsonnet'))
+    return json.loads(subprocess.check_output(['jsonnet', '-e', f'(import {path})("{enabled}")']))
+restore, active = render('false'), render('true')
+for r in active.values():
+    assert r['metadata']['namespace'] == 'seafarer'
+assert not any(r['kind'] == 'Ingress' for r in active.values())
+for name in ['forgejoDeployment', 'woodpeckerServer', 'woodpeckerAgent']:
+    assert restore[name]['spec']['replicas'] == 0
+    assert active[name]['spec']['replicas'] > 0
+for name in ['forgejoPvc', 'woodpeckerPostgresPvc']:
+    assert active[name]['spec']['storageClassName'] == 'zfs-local'
+assert restore['woodpeckerPostgres']['spec']['replicas'] == 1
+server = active['woodpeckerServer']['spec']['template']['spec']['containers'][0]
+env = {e['name']:e['value'] for e in server['env'] if 'value' in e}
+assert env['WOODPECKER_HOST'] == 'https://192.168.6.186:8087'
+assert env['WOODPECKER_EXPERT_FORGE_OAUTH_HOST'] == 'https://192.168.6.186:8086'
+assert env['WOODPECKER_BACKEND_NO_PROXY'] == env['NO_PROXY']
+for host in ['forgejo', 'woodpecker', 'woodpecker-postgres', '192.168.6.186', '.svc', '10.42.0.0/16']:
+    assert host in env['WOODPECKER_BACKEND_NO_PROXY'].split(',')
+assert env['WOODPECKER_BACKEND_HTTP_PROXY'] == env['HTTP_PROXY']
+assert env['WOODPECKER_BACKEND_HTTPS_PROXY'] == env['HTTPS_PROXY']
+assignments = dict(x.split(':', 1) for x in env['WOODPECKER_ENVIRONMENT'].split(','))
+assert 'NO_PROXY' not in assignments
+assert not any(k.startswith('GIT_CONFIG_') for k in assignments)
+from urllib.parse import urlparse
+cert_url = urlparse(assignments['PLUGIN_CUSTOM_SSL_URL'])
+assert cert_url.scheme == 'https' and cert_url.hostname == 'raw.githubusercontent.com'
+assert cert_url.path.endswith('/certs/seafarer-root-ca.pem')
+assert assignments['_EXPERIMENTAL_DAGGER_RUNNER_HOST'] == 'tcp://10.42.0.1:18081'
+ports = active['edge']['spec']['template']['spec']['containers'][0]['ports']
+assert {(p['hostIP'], p['hostPort']) for p in ports} == {('192.168.6.186', 8086), ('192.168.6.186', 8087)}
+local = json.loads(subprocess.check_output(['jsonnet', str(root / 'tanka/environments/devops/main.jsonnet')]))
+assert 'daggerDaemonSet' in local
+assert not any(r['metadata']['name'].startswith(('forgejo', 'woodpecker', 'kosmos-forgejo', 'kosmos-woodpecker')) for r in local.values())
+assert active['ca']['data']['ca.crt'] == (root / 'certs/seafarer-root-ca.pem').read_text()
+fresh = json.loads(subprocess.check_output(['jsonnet', '-e', f'(import {json.dumps(str(root / "tanka/environments/sw-devops/main.jsonnet"))})("false", "false", "zfs-local-forgejo-shared")']))
+sc = fresh['forgejoSharedStorageClass']
+assert sc['parameters']['poolname'] == 'tank/k8s'
+assert sc['parameters']['shared'] == 'yes'
+assert sc['reclaimPolicy'] == 'Retain'
+assert fresh['forgejoPvc']['spec']['storageClassName'] == sc['metadata']['name']
+assert fresh['woodpeckerPostgresPvc']['spec']['storageClassName'] == 'zfs-local'
+assert 'forgejoSharedStorageClass' not in active
+print('SW storage, restore mode, canonical endpoints and pipeline proxy contract valid')
+PY

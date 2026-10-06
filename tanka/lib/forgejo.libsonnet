@@ -1,4 +1,3 @@
-local ingress = import 'ingress.libsonnet';
 local labels = {
   'app.kubernetes.io/name': 'forgejo',
   'app.kubernetes.io/part-of': 'kosmos-devops',
@@ -7,8 +6,8 @@ local forgejoEnv = [
   { name: 'FORGEJO_WORK_DIR', value: '/var/lib/gitea' },
   { name: 'FORGEJO____WORK_PATH', value: '/var/lib/gitea' },
   { name: 'FORGEJO____RUN_USER', value: 'git' },
-  { name: 'FORGEJO__server__DOMAIN', value: 'forgejo.localhost' },
-  { name: 'FORGEJO__server__ROOT_URL', value: 'http://forgejo.localhost:17480/' },
+  { name: 'FORGEJO__server__DOMAIN', value: '192.168.6.186' },
+  { name: 'FORGEJO__server__ROOT_URL', value: 'https://192.168.6.186:8086/' },
   { name: 'FORGEJO__server__LOCAL_ROOT_URL', value: 'http://localhost:3000/' },
   { name: 'FORGEJO__repository__DEFAULT_PRIVATE', value: 'private' },
   { name: 'FORGEJO__server__HTTP_ADDR', value: '0.0.0.0' },
@@ -97,4 +96,4 @@ local dataMount = [{ name: 'data', mountPath: '/var/lib/gitea' }];
       ports: [{ name: 'http', port: 3000, targetPort: 'http' }],
     },
   },
-} + { forgejoIngress: ingress('forgejo') }
+}

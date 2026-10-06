@@ -101,6 +101,7 @@ in {
           TACT_MODEL = "terra";
           NODE_EXTRA_CA_CERTS = systemCaBundle;
           AGENT_BROWSER_EXECUTABLE_PATH = "/run/current-system/sw/bin/chromium";
+          WOODPECKER_URL = "https://192.168.6.186:8087";
           FLICKLOG_MEILI_URL = "http://meilisearch.localhost:17480/";
         }
         // proxyEnvironment;

@@ -25,14 +25,17 @@ local proxy = import 'proxy.libsonnet';
           "registries": {
             "docker.io": {
               "mirrors": ["mirror.gcr.io"]
-            },
-            "forgejo.localhost:17480": {
-              "http": true
             }
           }
         }
       |||,
     },
+  },
+  daggerCa: {
+    apiVersion: 'v1',
+    kind: 'ConfigMap',
+    metadata: { name: 'dagger-sw-ca', namespace: 'devops' },
+    data: { 'seafarer.crt': importstr '../../certs/seafarer-root-ca.pem' },
   },
   daggerDaemonSet: {
     apiVersion: 'apps/v1',
@@ -59,8 +62,7 @@ local proxy = import 'proxy.libsonnet';
                 value: proxy.clusterNoProxy([
                   '10.89.0.0/16',
                   '10.90.0.0/16',
-                  'forgejo.localhost',
-                  'woodpecker.localhost',
+                  '192.168.6.186',
                 ]),
               },
             ],
@@ -94,11 +96,13 @@ local proxy = import 'proxy.libsonnet';
               limits: { cpu: '4', memory: '4Gi' },
             },
             volumeMounts: [
+              { name: 'sw-ca', mountPath: '/usr/local/share/ca-certificates/seafarer.crt', subPath: 'seafarer.crt', readOnly: true },
               { name: 'config', mountPath: '/etc/dagger/engine.json', subPath: 'engine.json', readOnly: true },
               { name: 'state', mountPath: '/var/lib/dagger' },
             ],
           }],
           volumes: [
+            { name: 'sw-ca', configMap: { name: 'dagger-sw-ca' } },
             { name: 'config', configMap: { name: 'dagger-engine' } },
             { name: 'state', hostPath: { path: '/var/lib/kosmos-k3s/dagger', type: 'Directory' } },
           ],

@@ -75,11 +75,6 @@ local personalDevicesAllow = fullTrustAllow + [
   peers.pixel7a.public_key,
   peers.aipaper.public_key,
 ];
-local forgeClientsAllow = fullTrustAllow + [
-  peers['guion-worker-1'].public_key,
-  peers['guion-worker-2'].public_key,
-  peers['sw-server'].public_key,
-];
 local guionWorkersAllow = [
   peers['guion-worker-1'].public_key,
   peers['guion-worker-2'].public_key,
@@ -124,16 +119,13 @@ std.manifestTomlEx({
     service('bookorbit', 'BookOrbit', 17480, personalDevicesAllow + baiheAllow),
     service('cloudreve', 'Cloudreve', 17480, personalDevicesAllow + baiheAllow + svenMacAllow + liliAllow),
     service('codex-bridge', 'Codex Bridge', 17480, fullTrustAllow + guionWorkersAllow + baiheAllow + codexBridgeAllow + liliAllow),
-    service('dagger', 'Dagger', 8080, fullTrustAllow + svenMacAllow),
+    service('dagger', 'Dagger', 8080, fullTrustAllow + svenMacAllow + [peers['sw-server'].public_key]),
     service('dev-her', 'Lamplit Dev', 3082, cflMikaAllow),
     service('staging-her', 'Lamplit Staging', 3083, cflMikaAllow + [peers.pixel7a.public_key]),
     service('prod-lamplit', 'Lamplit Prod', 3084, impriAllow),
     service('ente', 'Ente Photos', 17480, personalDevicesAllow + xiaomiAllow + baiheAllow + guaziAllow + svenMacAllow),
     service('ente-storage', 'Ente Storage', 17480, personalDevicesAllow + xiaomiAllow + baiheAllow + guaziAllow + svenMacAllow),
     service('erpnext', 'ERPNext', 17480, fullTrustAllow + svenMacAllow),
-    service('forgejo', 'Forgejo', 17480, forgeClientsAllow + baiheAllow + svenMacAllow + liliAllow) + {
-      max_publisher_to_subscriber_bps: 2000000,
-    },
     service('flickgrove', 'FlickGrove', 4318, [peers.mac.public_key, peers.pixel7a.public_key]),
     service('grafana', 'Grafana', 17480, fullTrustAllow),
     service('impri', 'Impri', 17480, impriAllow),
@@ -148,12 +140,11 @@ std.manifestTomlEx({
     },
     service('memos', 'Memos', 17480, personalDevicesAllow + xiaomiAllow + baiheAllow + guaziAllow),
     service('meilisearch', 'Meilisearch', 17480, [peers.mac.public_key]),
-    service('mihomo', 'Mihomo', 7890, personalDevicesAllow + xiaomiAllow + liliAllow),
+    service('mihomo', 'Mihomo', 7890, personalDevicesAllow + xiaomiAllow + liliAllow + [peers['sw-server'].public_key]),
     service('mihomo-dashboard', 'Mihomo Dashboard', 9090, fullTrustAllow),
     service('miniflux', 'Miniflux', 17480, personalDevicesAllow),
     service('penpot', 'Penpot', 17480, [peers.mac.public_key]),
     service('navidrome', 'Navidrome', 17480, personalDevicesAllow + xiaomiAllow + guaziAllow),
     service('ssh', 'SSH', 22, personalDevicesAllow),
-    service('woodpecker', 'Woodpecker', 17480, forgeClientsAllow + baiheAllow + svenMacAllow),
   ],
 }, '  ')

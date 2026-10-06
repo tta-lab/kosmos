@@ -83,8 +83,7 @@ Encrypted files live in `secrets/` and are safe to commit:
 - `secrets/soniox-key.age`
 - `secrets/volcengine-key.age`
 - `secrets/forgejo-r2-backup.age` (optional; encrypted and safe to commit;
-  enables the Forgejo source-recovery backup secret synchronizer when the
-  operator creates it)
+  retains the optional SW source-recovery backup credential)
 - `secrets/openai-tunnel.env.age` (optional; enables the OpenAI Secure MCP
   Tunnel user service when the operator creates it)
 
@@ -94,18 +93,15 @@ They decrypt to:
 - `/home/neil/.config/env` (Fish-only shell secrets)
 - `/home/neil/.kube/config`
 - `/home/neil/.config/sops/age/keys.txt`
-- `/run/agenix/woodpecker-server-env` (root-owned, synchronized to the local
-  K3s `devops/woodpecker-server-env` Secret by
-  `woodpecker-secret-sync.service`)
-- `/run/agenix/woodpecker-postgres-env` (root-owned, synchronized to the local
-  K3s `devops/woodpecker-postgres-env` Secret by the same service)
+- `/run/agenix/woodpecker-server-env` and `/run/agenix/woodpecker-postgres-env`
+  (root-owned retained recovery credentials; SW's `seafarer` Secrets are
+  provisioned by the operator, with no WSL secret-sync service)
 - `/home/neil/.config/soniox/key` (provider-owned Soniox credential retained
   for a future voice integration)
 - `/home/neil/.config/volcengine/key` (provider-owned Volcengine credential
   retained for a future voice integration)
-- `/run/agenix/forgejo-r2-backup` (root-owned R2/restic environment, synchronized
-  to the local `devops/forgejo-r2-backup` Kubernetes Secret by
-  `forgejo-r2-backup-secret-sync.service`)
+- `/run/agenix/forgejo-r2-backup` (root-owned optional R2/restic recovery
+  credential; SW consumes `seafarer/forgejo-r2-backup`, operator-provisioned)
 - `/run/agenix/openai-tunnel.env` (user-readable systemd environment file for
   the OpenAI Secure MCP Tunnel runtime key)
 
@@ -150,8 +146,8 @@ environment assignments (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
 `RESTIC_PASSWORD`, and `RESTIC_REPOSITORY` using restic `s3:` syntax). Keep the
 restic password in an independent password-manager entry before creating the
 file. Do not place values in Nix, Jsonnet, source control, logs, or this
-documentation. The synchronizer validates the encrypted file after the WSL
-switch and creates the Kubernetes Secret only on the local k3s API. The `.age`
+documentation. The operator provisions the SW Kubernetes Secret after a WSL switch; see
+[Forgejo backup](forgejo-backup.md). No local synchronizer remains. The `.age`
 file is the encrypted artifact: after editing it with `agenix`, commit the
 encrypted file and never commit a decrypted copy.
 
@@ -162,7 +158,7 @@ command prints only the validation result, never the values:
 
 ```bash
 bash -c '
-  bash scripts/sync-woodpecker-secret --validate-only \
+  bash scripts/validate-woodpecker-env \
     <(agenix -d secrets/woodpecker-server-env.age -i ~/.ssh/agenix_ed25519) \
     <(agenix -d secrets/woodpecker-postgres-env.age -i ~/.ssh/agenix_ed25519)
 '
@@ -205,16 +201,13 @@ cd /home/neil/code/projects/tta-lab/kosmos
 nh os switch . -H wsl
 ```
 
-The rebuild restarts `woodpecker-secret-sync.service` when either Woodpecker
-encrypted file changes. The unit uses only `/etc/rancher/k3s/k3s.yaml` and
-refuses a non-local API server. Verify both synchronized Kubernetes Secrets
-without reading them:
+A rebuild decrypts retained recovery credentials but does not update SW.
+The operator controls credential handoff and workload restarts there. Verify
+Secret presence without reading values:
 
 ```bash
-systemctl status woodpecker-secret-sync.service --no-pager
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
-  kubectl get secret woodpecker-server-env woodpecker-postgres-env \
-    -n devops -o name
+scripts/sw-kubectl get secret woodpecker-server-env woodpecker-postgres-env \
+  -n seafarer -o name
 ```
 
 ## Verify activation

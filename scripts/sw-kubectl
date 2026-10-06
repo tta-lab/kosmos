@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Encode arguments for the remote shell; never rely on a local kube context.
+printf -v remote_args '%q ' "$@"
+exec ssh -o BatchMode=yes sw \
+  "KUBECONFIG=/etc/rancher/k3s/k3s.yaml kubectl --context=default $remote_args"

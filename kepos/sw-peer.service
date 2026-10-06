@@ -1,0 +1,23 @@
+[Unit]
+Description=Kepos SW peer for Kosmos Dagger and Mihomo
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=kepos
+Group=kepos
+WorkingDirectory=/opt/kepos/sw-canonical
+ExecStart=/opt/node/releases/24.11.1/bin/node --import=/opt/kepos/sw-canonical/node_modules/tsx/dist/loader.mjs /opt/kepos/sw-canonical/src/cli/main.ts peer run --state /var/lib/kepos/peer --config /var/lib/kepos/peer.toml
+Restart=always
+RestartSec=5s
+TimeoutStopSec=30s
+KillMode=mixed
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/kepos
+
+[Install]
+WantedBy=multi-user.target

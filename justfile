@@ -37,6 +37,7 @@ tanka-test:
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ meilisearch_environment }}" >/dev/null
   @bash tests/observability-render-test
   @bash tests/ingress-render-test
+  @bash tests/sw-devops-render-test
   @bash tests/meilisearch-render-test
   @bash tests/penpot-render-test
   @bash tests/init-penpot-secrets-test
@@ -54,20 +55,42 @@ gateway-apply approve="never": _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" tk apply "{{ environment }}" --target='^(ConfigMap/coredns-custom|Deployment/cluster-http|Service/cluster-http|ServiceAccount/cluster-http|ClusterRole/kosmos-cluster-http|ClusterRoleBinding/kosmos-cluster-http|IngressClass/kosmos|Ingress/erpnext)$' --auto-approve="{{ approve }}"
   @KUBECONFIG="{{ kubeconfig }}" kubectl rollout status deployment/cluster-http -n devops --timeout=120s
 
-forgejo-backup-show: _forgejo-r2-backup-secret
-  @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show --tla-str forgejoR2BackupEnabled=true "{{ environment }}"
-
-forgejo-backup-diff: _forgejo-r2-backup-secret
-  @KUBECONFIG="{{ kubeconfig }}" tk diff --tla-str forgejoR2BackupEnabled=true "{{ environment }}"
-
-forgejo-backup-apply: _forgejo-r2-backup-secret
-  @KUBECONFIG="{{ kubeconfig }}" tk apply --tla-str forgejoR2BackupEnabled=true "{{ environment }}"
-
-forgejo-backup-status: _local-k3s
-  @KUBECONFIG="{{ kubeconfig }}" kubectl get cronjob,job -n devops -l app.kubernetes.io/name=forgejo-source-backup
-
 status namespace="devops": _local-k3s
   @KUBECONFIG="{{ kubeconfig }}" kubectl get pods,svc,pvc -n "{{ namespace }}" -o wide
+
+# SW service hosting: see docs/sw-devops-migration.md.
+sw-devops-show enabled="false" forgejo_storage_class="zfs-local":
+  @tk show --dangerous-allow-redirect --tla-str enabled="{{ enabled }}" --tla-str forgejoStorageClass="{{ forgejo_storage_class }}" tanka/environments/sw-devops
+
+sw-devops-diff enabled="false" forgejo_storage_class="zfs-local":
+  @tk show --dangerous-allow-redirect --tla-str enabled="{{ enabled }}" --tla-str forgejoStorageClass="{{ forgejo_storage_class }}" tanka/environments/sw-devops | scripts/sw-kubectl diff -f -
+
+sw-devops-apply enabled="false" forgejo_storage_class="zfs-local":
+  @tk show --dangerous-allow-redirect --tla-str enabled="{{ enabled }}" --tla-str forgejoStorageClass="{{ forgejo_storage_class }}" tanka/environments/sw-devops | scripts/sw-kubectl apply -f -
+
+# Fresh systems only: never replace an already-bound Forgejo PVC.
+sw-forgejo-provision-show:
+  @tk show --dangerous-allow-redirect --tla-str forgejoStorageClass=zfs-local-forgejo-shared --target='^(StorageClass/zfs-local-forgejo-shared|PersistentVolumeClaim/forgejo-data)$' tanka/environments/sw-devops
+
+sw-forgejo-provision:
+  @test -z "$(scripts/sw-kubectl -n seafarer get pvc forgejo-data -o name --ignore-not-found)" || { echo 'refusing to replace existing Forgejo PVC' >&2; exit 1; }
+  @just sw-forgejo-provision-show | scripts/sw-kubectl apply -f -
+
+sw-devops-status:
+  @scripts/sw-kubectl -n seafarer get deployment,statefulset,pvc -o wide
+
+# Optional R2 source-recovery backup; provision the SW Secret before apply.
+forgejo-backup-show enabled="true" forgejo_storage_class="zfs-local":
+  @tk show --dangerous-allow-redirect --tla-str enabled="{{ enabled }}" --tla-str forgejoR2BackupEnabled=true --tla-str forgejoStorageClass="{{ forgejo_storage_class }}" tanka/environments/sw-devops
+
+forgejo-backup-diff enabled="true" forgejo_storage_class="zfs-local":
+  @just forgejo-backup-show "{{ enabled }}" "{{ forgejo_storage_class }}" | scripts/sw-kubectl diff -f -
+
+forgejo-backup-apply enabled="true" forgejo_storage_class="zfs-local":
+  @just forgejo-backup-show "{{ enabled }}" "{{ forgejo_storage_class }}" | scripts/sw-kubectl apply -f -
+
+forgejo-backup-status:
+  @scripts/sw-kubectl get cronjob,job -n seafarer -l app.kubernetes.io/name=forgejo-source-backup
 
 photos-show:
   @TANKA_DANGEROUS_ALLOW_REDIRECT=true tk show "{{ photos_environment }}"
@@ -308,6 +331,3 @@ sync-codex-auth direction:
 _local-k3s:
   @actual="$(KUBECONFIG="{{ kubeconfig }}" kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')"; \
     test "$actual" = "{{ api_server }}" || { echo "refusing non-local cluster: $actual" >&2; exit 1; }
-
-_forgejo-r2-backup-secret:
-  @KUBECONFIG="{{ kubeconfig }}" scripts/check-forgejo-r2-backup-secret

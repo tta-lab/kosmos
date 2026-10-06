@@ -18,6 +18,12 @@ shell-specific rustup or `PATH` override.
 variable into independently installed systemd user services. Give those services
 an explicit environment or a documented generated interface.
 
+`WOODPECKER_URL=https://192.168.6.186:8087` belongs to the managed interactive
+session. Organon loads `~/.config/ttal/.env` as a fallback only when a process
+variable is empty. Existing processes need an explicit endpoint override or a
+restart after activation. See [SW endpoint handoff](sw-devops-migration.md#clone-tls-and-cli-endpoint-ownership)
+for the operator-only encrypted endpoint correction.
+
 ## WSL HTTP Proxy
 
 `modules/wsl/proxy-topology.json` is the shared source for the local Mihomo

@@ -4,6 +4,14 @@ Kosmos hosts private applications and makes selected capabilities available to t
 
 ## Language
 
+**SW Service Host**:
+The always-on machine that owns Forgejo code hosting and Woodpecker CI coordination for this installation.
+_Avoid_: Kosmos build host, remote build engine
+
+**Kosmos Build Host**:
+The local work machine that supplies Dagger build execution and the Mihomo outbound proxy to the SW Service Host.
+_Avoid_: SW Service Host, repository host
+
 **Host HTTP Entry**:
 The shared entry through which trusted clients access Kosmos's named HTTP applications, whether hosted on the machine or in its cluster.
 _Avoid_: Kepos gateway, cluster ingress

@@ -1,4 +1,4 @@
-local resources = (import '../../tanka/environments/devops/main.jsonnet')('false');
+local resources = import '../../tanka/environments/devops/main.jsonnet';
 local container = resources.ingressDeployment.spec.template.spec.containers[0];
 local routes = import '../../http/cluster-routes.json';
 local hosts = std.flattenArrays([routes[id].hosts for id in std.objectFields(routes)]);
@@ -11,5 +11,4 @@ std.assertEqual(container.ports[0], { name: 'http', containerPort: 17480, hostPo
 std.assertEqual(container.securityContext.runAsNonRoot, true) &&
 std.assertEqual(resources.ingressClass.spec.controller, 'traefik.io/ingress-controller') &&
 std.assertEqual(std.length(std.split(dns, '\n')) - 1, std.length(hosts)) &&
-std.assertEqual(resources.forgejoIngress.spec.rules[0].http.paths[0].backend.service, { name: 'forgejo', port: { number: 3000 } }) &&
 std.assertEqual(resources.erpnextIngress.metadata.namespace, 'erpnext')

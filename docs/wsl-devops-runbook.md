@@ -1,6 +1,7 @@
 # WSL DevOps Runbook
 
-The WSL DevOps stack runs in the single-node NixOS k3s cluster. Nix manages
+Forgejo and Woodpecker run on SW; see [SW migration and hosting](sw-devops-migration.md).
+The WSL build host runs Dagger in the single-node NixOS k3s cluster. Nix manages
 k3s and the Kepos publisher and subscriber lifecycle; the publisher's live
 service and ACL policy is modeled in Jsonnet and rendered into an unmanaged
 TOML file. Tanka manages the Kubernetes objects. A NixOS switch never applies
@@ -13,14 +14,14 @@ WSL from replacing it at startup. Keep service aliases in
 `modules/wsl/k3s.nix` under `networking.hosts`. The WSL module preserves the
 base hostname and IPv6 aliases from the former WSL-generated file.
 After deploying this setting, check `/etc/hosts` and
-`getent hosts forgejo.localhost`. Repeat the checks after the next WSL restart to confirm
+`getent hosts grafana.localhost`. Repeat the checks after the next WSL restart to confirm
 that WSL leaves the managed file intact. DNS resolver generation remains
 owned by WSL.
 
 ## Endpoints
 
-- Forgejo: `http://forgejo.localhost:17480`
-- Woodpecker: `http://woodpecker.localhost:17480`
+- Forgejo: `https://192.168.6.186:8086`
+- Woodpecker: `https://192.168.6.186:8087`
 - Dagger: `tcp://dagger.devops.svc.cluster.local:8080` in-cluster and
   `tcp://127.0.0.1:8080` for the local CLI
 - Codex for Love Mika dev: `http://dev-her.localhost:17480` through Kepos (Mac + Sven), or `http://192.168.1.179:3082` from the WSL LAN
@@ -47,8 +48,6 @@ for route ownership, deployment and SSH access.
 
 Kepos publishes application service IDs including:
 
-- `forgejo` and `woodpecker` both target port `17480`; the preserved HTTP Host
-  header selects the Caddy route.
 - `navidrome` targets the canonical gateway port `17480`; Caddy routes it to
   the Navidrome Service in the `navidrome` namespace.
 - `codex-bridge` targets the canonical gateway on port `17480` and is
@@ -57,7 +56,7 @@ Kepos publishes application service IDs including:
   Pod runs as Neil's UID/GID and mounts `/home/neil/.codex` read-write so the
   Bridge and Codex CLI share the same atomically refreshed `auth.json`.
 - `dagger` targets the Dagger engine on port `8080` and is restricted to the
-  named Mac subscriber. Other allowed subscribers neither see nor can open it.
+  configured build clients and SW.
 - `ssh` targets port `22`.
 - `anki` targets the canonical gateway on port `17480`; see
   [anki-sync.md](anki-sync.md) for credentials, deployment, and first sync.
@@ -222,8 +221,7 @@ switch.
 
 ## Deploy
 
-Deploy the NixOS generation first so k3s, its directories, the Woodpecker
-Secret sync unit, the packaged Kepos CLI, and the user service exist:
+Deploy the NixOS generation first so k3s, its directories, the packaged Kepos CLI, and the user service exist:
 
 ```bash
 nh os switch . -H wsl
@@ -232,21 +230,9 @@ nh os switch . -H wsl
 Open a new WSL shell after the switch so the session picks up membership in
 the `k3s` group.
 
-The root-owned `woodpecker-secret-sync.service` reads
-`/run/agenix/woodpecker-server-env` and
-`/run/agenix/woodpecker-postgres-env`, then creates or updates the matching
-`devops/woodpecker-server-env` and `devops/woodpecker-postgres-env` Secrets. It
-always uses `/etc/rancher/k3s/k3s.yaml` and refuses an API server other than
-`https://127.0.0.1:26443`. The unit runs at boot, retries if k3s is not ready,
-restarts when either encrypted agenix file changes, and rolls the Woodpecker
-server, agents, and PostgreSQL StatefulSet when either Kubernetes Secret is
-updated.
-
-Verify the sync before applying the workloads:
-
-```bash
-systemctl status woodpecker-secret-sync.service --no-pager
-```
+Woodpecker Secrets are operator-managed in SW's `seafarer` namespace.
+A WSL switch does not synchronize or roll SW workloads. Encrypted source
+credentials remain retained for recovery; see [secrets](secrets.md).
 
 Kepos is a Nix-pinned executable supervised by the `kepos-peer` user unit,
 not a Kubernetes container. Its canonical state is
@@ -286,8 +272,9 @@ image does not restart an existing Pod, so use the existing
 `codex-bridge` Deployment when you want a Pod to pull the current image. No
 automatic updater or rollout is configured.
 
-Forgejo and Woodpecker use static local PVs with a `Retain` reclaim policy.
-Dagger starts with a fresh cache at `/var/lib/kosmos-k3s/dagger`.
+Forgejo and Woodpecker use SW ZFS-local PVCs on `tank/k8s`; their former local
+data and `Retain` PVs remain preserved for recovery. Dagger retains its local
+cache at `/var/lib/kosmos-k3s/dagger`.
 
 ## Seafarer CA trust
 
@@ -306,21 +293,14 @@ rebuild; do not retain a mutable `/usr/local` copy or disable TLS verification.
 
 ## Recover
 
-Reapplying NixOS or Tanka does not delete the retained Forgejo and Woodpecker
-PostgreSQL data under `/var/lib/kosmos-k3s`. There is no legacy-systemd rollback
-command. Forgejo source recovery, including its SQLite-consistent metadata
-snapshot, is documented in the [Forgejo Source Recovery Backup runbook](forgejo-backup.md).
-That backup intentionally excludes Packages/OCI artifacts and is not a full
-Forgejo-instance restore.
+The retired local Forgejo and PostgreSQL data and migration backups are retained.
+Removing their manifests or tmpfiles declarations does not delete source data.
+Never prune or delete the old PVs/PVCs as part of configuration activation.
+After SW accepts writes, restarting old writers would expose stale data.
 
-If the Woodpecker Secret is missing or stale, repair the encrypted secret,
-rebuild NixOS, and verify the sync unit. To retry without changing the secret:
-
-```bash
-sudo systemctl restart woodpecker-secret-sync.service
-sudo journalctl -u woodpecker-secret-sync.service -n 100 --no-pager
-just apply
-```
+Forgejo source recovery is documented in the [backup runbook](forgejo-backup.md).
+It excludes Packages/OCI and is not a full instance restore. Use the full
+migration archive for migration recovery, with operator-controlled secrets.
 
 ### Back up Woodpecker PostgreSQL
 
@@ -334,14 +314,12 @@ install -d -m 0700 "$woodpecker_backup_dir"
 woodpecker_dump_name="woodpecker-$(date -u +%Y%m%dT%H%M%SZ).dump"
 woodpecker_dump="$woodpecker_backup_dir/$woodpecker_dump_name"
 
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
-  kubectl -n devops exec statefulset/woodpecker-postgres -- \
+scripts/sw-kubectl -n seafarer exec statefulset/woodpecker-postgres -- \
     pg_dump --username=woodpecker --dbname=woodpecker --format=custom \
     > "$woodpecker_dump"
 
 test -s "$woodpecker_dump"
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
-  kubectl -n devops exec -i statefulset/woodpecker-postgres -- \
+scripts/sw-kubectl -n seafarer exec -i statefulset/woodpecker-postgres -- \
     pg_restore --list < "$woodpecker_dump" >/dev/null
 (
   cd "$woodpecker_backup_dir"
@@ -368,39 +346,29 @@ test -s "$woodpecker_dump"
   cd "$woodpecker_backup_dir"
   sha256sum --check "$woodpecker_dump_name.sha256"
 )
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
-  kubectl -n devops exec -i statefulset/woodpecker-postgres -- \
+scripts/sw-kubectl -n seafarer exec -i statefulset/woodpecker-postgres -- \
     pg_restore --list < "$woodpecker_dump" >/dev/null
 
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
-  kubectl -n devops scale statefulset/woodpecker-agent --replicas=0
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
-  kubectl -n devops scale deployment/woodpecker --replicas=0
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
-  kubectl -n devops rollout status deployment/woodpecker --timeout=120s
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
-  kubectl -n devops rollout status statefulset/woodpecker-agent --timeout=120s
+scripts/sw-kubectl -n seafarer scale statefulset/woodpecker-agent --replicas=0
+scripts/sw-kubectl -n seafarer scale deployment/woodpecker --replicas=0
+scripts/sw-kubectl -n seafarer rollout status deployment/woodpecker --timeout=120s
+scripts/sw-kubectl -n seafarer rollout status statefulset/woodpecker-agent --timeout=120s
 
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
-  kubectl -n devops exec -i statefulset/woodpecker-postgres -- \
+scripts/sw-kubectl -n seafarer exec -i statefulset/woodpecker-postgres -- \
     pg_restore --username=woodpecker --dbname=woodpecker \
       --clean --if-exists --no-owner --exit-on-error --single-transaction \
       < "$woodpecker_dump"
 
-just apply
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
-  kubectl -n devops rollout status deployment/woodpecker --timeout=120s
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
-  kubectl -n devops rollout status statefulset/woodpecker-agent --timeout=120s
-curl --fail http://woodpecker.localhost:17480/healthz
+just sw-devops-apply true
+scripts/sw-kubectl -n seafarer rollout status deployment/woodpecker --timeout=120s
+scripts/sw-kubectl -n seafarer rollout status statefulset/woodpecker-agent --timeout=120s
+curl --noproxy '*' --cacert certs/seafarer-root-ca.pem --fail https://192.168.6.186:8087/healthz
 ```
 
 After restore, verify Forgejo login, repository activation, historical builds,
-and one representative pipeline before accepting new CI work. For a physical
-directory restore instead, stop the PostgreSQL StatefulSet before touching
-`/var/lib/kosmos-k3s/woodpecker-postgres`, preserve the ownership declared by
-the NixOS tmpfiles rule, then run `just apply`. Never copy live PostgreSQL data
-or restore data into a removed legacy service.
+and one representative pipeline before accepting new CI work. Never copy a
+running PostgreSQL data directory. Restore into SW's PVC
+with writers stopped and verify historical builds before accepting work.
 
 ## Runtime checks
 
@@ -408,8 +376,8 @@ or restore data into a removed legacy service.
 just status
 kosmos-devops-gate-status --strict
 just kepos-status
-curl --fail http://forgejo.localhost:17480/api/healthz
-curl --fail http://woodpecker.localhost:17480/healthz
+curl --noproxy '*' --cacert certs/seafarer-root-ca.pem --fail https://192.168.6.186:8086/api/healthz
+curl --noproxy '*' --cacert certs/seafarer-root-ca.pem --fail https://192.168.6.186:8087/healthz
 ```
 
 To check that Dagger can pull and run a public image rather than only accepting

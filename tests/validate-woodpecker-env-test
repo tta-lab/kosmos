@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
+test_root="$(mktemp -d)"
+trap 'rm -rf -- "$test_root"' EXIT
+printf '%s\n' 'WOODPECKER_AGENT_SECRET=test-agent' 'WOODPECKER_FORGEJO_CLIENT=test-client' 'WOODPECKER_FORGEJO_SECRET=test-secret' >"$test_root/server"
+printf '%s\n' 'POSTGRES_PASSWORD=test-password' 'WOODPECKER_DATABASE_DATASOURCE=postgres://test.invalid/woodpecker' >"$test_root/postgres"
+bash "$repo_root/scripts/validate-woodpecker-env" "$test_root/server" "$test_root/postgres" >"$test_root/output"
+[[ "$(cat "$test_root/output")" == 'Woodpecker environment validation passed' ]]
+bash "$repo_root/scripts/validate-woodpecker-env" - "$test_root/postgres" <"$test_root/server" >"$test_root/output"
+for invalid in missing empty duplicate; do
+  case "$invalid" in
+    missing) printf '%s\n' 'WOODPECKER_FORGEJO_CLIENT=test-client' >"$test_root/invalid" ;;
+    empty) sed 's/WOODPECKER_AGENT_SECRET=.*/WOODPECKER_AGENT_SECRET=/' "$test_root/server" >"$test_root/invalid" ;;
+    duplicate) cat "$test_root/server" "$test_root/server" >"$test_root/invalid" ;;
+  esac
+  if bash "$repo_root/scripts/validate-woodpecker-env" "$test_root/invalid" "$test_root/postgres" >"$test_root/output" 2>&1; then
+    printf 'validator accepted %s required keys\n' "$invalid" >&2
+    exit 1
+  fi
+  if grep -Eq 'test-agent|test-client|test-secret|test-password' "$test_root/output"; then
+    echo 'validator disclosed a credential value' >&2
+    exit 1
+  fi
+done
+printf 'Woodpecker environment validation rejects missing, empty and duplicate keys without disclosing values\n'

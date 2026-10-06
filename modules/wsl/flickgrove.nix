@@ -32,6 +32,7 @@
       Environment =
         [
           "PATH=/run/current-system/sw/bin:/home/neil/.local/bin:/home/neil/go/bin:/home/neil/.local/share/npm-global/bin:/home/neil/.cargo/bin"
+          "LD_LIBRARY_PATH=/run/current-system/sw/share/nix-ld/lib"
         ]
         ++ lib.mapAttrsToList (name: value: "${name}=${value}") config.kosmos.wsl.proxy.environment;
       UMask = "0077";

@@ -5,10 +5,10 @@ repo_root="${KOSMOS_REPO_ROOT:-$(pwd)}"
 test_root="$(mktemp -d)"
 trap 'rm -rf -- "$test_root"' EXIT
 
-tk show --dangerous-allow-redirect "$repo_root/tanka/environments/devops" \
+tk show --dangerous-allow-redirect "$repo_root/tanka/environments/sw-devops" \
   | yq -s '.' >"$test_root/default.json"
 tk show --dangerous-allow-redirect --tla-str forgejoR2BackupEnabled=true \
-  "$repo_root/tanka/environments/devops" | yq -s '.' >"$test_root/enabled.json"
+  "$repo_root/tanka/environments/sw-devops" | yq -s '.' >"$test_root/enabled.json"
 
 jq -e '
   (map(select(.metadata.name == "forgejo-source-backup")) | length == 0) and
@@ -39,6 +39,14 @@ jq -e '
   (resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.template.spec.initContainers[0].image | test("^docker.io/keinos/sqlite3:[^@]+@sha256:[0-9a-f]{64}$")) and
   (resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.template.spec.containers[0].image | test("^docker.io/mazzolino/restic:[^@]+@sha256:[0-9a-f]{64}$")) and
   (resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.template.spec.initContainers[0].args[0] | contains("/staging/bin/sqlite3")) and
+  (env("HTTP_PROXY").value == "http://10.42.0.1:17891") and
+  (env("HTTPS_PROXY").value == env("HTTP_PROXY").value) and
+  (env("http_proxy").value == env("HTTP_PROXY").value) and
+  (env("https_proxy").value == env("HTTP_PROXY").value) and
+  (env("NO_PROXY").value == env("no_proxy").value) and
+  (env("NO_PROXY").value | split(",") | index("192.168.6.186") != null) and
+  (resource("CronJob"; "forgejo-source-backup").spec.jobTemplate.spec.template.spec.volumes
+    | any(.name == "forgejo-data" and .persistentVolumeClaim.readOnly == false)) and
   (env("SQLITE3_BIN").value == "/staging/bin/sqlite3") and
   (env("PATH").value | startswith("/staging/bin:")) and
   (has_mount("/var/lib/gitea")) and

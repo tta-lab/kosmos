@@ -1,4 +1,3 @@
-local ingress = import 'ingress.libsonnet';
 local labels(name) = {
   'app.kubernetes.io/name': name,
   'app.kubernetes.io/part-of': 'kosmos-devops',
@@ -8,7 +7,6 @@ local serverLabels = labels('woodpecker');
 local agentLabels = labels('woodpecker-agent');
 local postgresLabels = labels('woodpecker-postgres');
 local postgresImage = 'postgres:18-alpine@sha256:b6a16ed0eb96e2c362811f7eeb951eac8b459e7b40be4149ea5444aa7c65569b';
-local proxy = import 'proxy.libsonnet';
 
 {
   woodpeckerServer: {
@@ -42,21 +40,15 @@ local proxy = import 'proxy.libsonnet';
                 name: 'WOODPECKER_DATABASE_DATASOURCE',
                 valueFrom: { secretKeyRef: { name: 'woodpecker-postgres-env', key: 'WOODPECKER_DATABASE_DATASOURCE' } },
               },
-              { name: 'WOODPECKER_HOST', value: 'http://woodpecker.localhost:17480' },
+              { name: 'WOODPECKER_HOST', value: 'https://192.168.6.186:8087' },
               { name: 'WOODPECKER_SERVER_ADDR', value: ':8000' },
               { name: 'WOODPECKER_GRPC_ADDR', value: ':9000' },
               { name: 'WOODPECKER_FORGEJO', value: 'true' },
               { name: 'WOODPECKER_FORGEJO_URL', value: 'http://forgejo:3000' },
-              { name: 'WOODPECKER_EXPERT_FORGE_OAUTH_HOST', value: 'http://forgejo.localhost:17480' },
+              { name: 'WOODPECKER_EXPERT_FORGE_OAUTH_HOST', value: 'https://192.168.6.186:8086' },
               { name: 'WOODPECKER_EXPERT_WEBHOOK_HOST', value: 'http://woodpecker:8000' },
               { name: 'WOODPECKER_OPEN', value: 'false' },
               { name: 'WOODPECKER_ADMIN', value: 'neil' },
-              {
-                name: 'WOODPECKER_ENVIRONMENT',
-                value:
-                  '_EXPERIMENTAL_DAGGER_RUNNER_HOST:tcp://dagger:8080,GIT_CONFIG_COUNT:1,GIT_CONFIG_KEY_0:http.http://forgejo.localhost:17480.proxy,GIT_CONFIG_VALUE_0:http://cluster-http.devops.svc.cluster.local:17480,HTTPS_PROXY:'
-                  + proxy.podUrl,
-              },
             ],
             ports: [
               { name: 'http', containerPort: 8000 },
@@ -255,4 +247,4 @@ local proxy = import 'proxy.libsonnet';
       },
     },
   },
-} + { woodpeckerIngress: ingress('woodpecker') }
+}

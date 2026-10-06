@@ -10,7 +10,7 @@ usage() {
   cat <<'EOF'
 usage: devops-gate-status [--strict]
 
-Report the local WSL K3s DevOps stack gates without reading secret plaintext.
+Report SW application health and local WSL build-host gates without reading secret plaintext.
 
 Options:
   --strict  Exit non-zero when any gate is pending or failed
@@ -59,17 +59,11 @@ unit_active() {
   systemctl is-active --quiet "$1"
 }
 
-file_nonempty_maybe_root() {
-  local path="$1"
-
-  [[ -s "$path" ]] || sudo -n test -s "$path" 2>/dev/null
-}
-
 http_status_ok() {
   local url="$1"
   local status
 
-  status="$(curl --silent --output /dev/null --write-out '%{http_code}' "$url" || true)"
+  status="$(curl --noproxy '*' --silent --output /dev/null --write-out '%{http_code}' "$url" || true)"
   case "$status" in
     200|204)
       return 0
@@ -97,7 +91,7 @@ replica_workload_ready() {
     && [[ "$ready" -eq "$desired" ]]
 }
 
-printf 'WSL DevOps Box gate status\n'
+printf 'SW services and WSL build-host gate status\n'
 
 if unit_active k3s.service; then
   ok "K3s service active"
@@ -105,10 +99,10 @@ else
   fail "K3s service active"
 fi
 
-if http_status_ok http://forgejo.localhost:17480/api/healthz; then
-  ok "Forgejo endpoint responds (K3s)"
+if http_status_ok https://192.168.6.186:8086/api/healthz; then
+  ok "Forgejo endpoint responds (SW)"
 else
-  fail "Forgejo endpoint responds (K3s)"
+  fail "Forgejo endpoint responds (SW)"
 fi
 
 if have_command kubectl; then
@@ -119,56 +113,20 @@ if have_command kubectl; then
   fi
 fi
 
-if unit_active woodpecker-secret-sync.service; then
-  ok "Woodpecker Secret sync service active"
-else
-  fail "Woodpecker Secret sync service active"
-fi
-
-if file_nonempty_maybe_root /run/agenix/woodpecker-server-env; then
-  ok "Woodpecker agenix runtime secret exists"
-else
-  fail "Woodpecker agenix runtime secret exists"
-fi
-
 if have_command kubectl; then
-  if "${kubectl_local[@]}" get secret woodpecker-server-env -n devops -o name 2>/dev/null | grep -q "secret/woodpecker-server-env"; then
-    ok "Woodpecker K3s secret exists"
-  else
-    fail "Woodpecker K3s secret missing"
-  fi
-else
-  wait "kubectl unavailable; skipped Woodpecker secret check"
-fi
-
-if have_command kubectl; then
-  if replica_workload_ready deployment/woodpecker '{.status.readyReplicas} {.spec.replicas}'; then
-    ok "Woodpecker server workload ready"
-  else
-    fail "Woodpecker server workload ready"
-  fi
-
-  if replica_workload_ready statefulset/woodpecker-agent '{.status.readyReplicas} {.spec.replicas}'; then
-    ok "Woodpecker agent workload ready"
-  else
-    fail "Woodpecker agent workload ready"
-  fi
-
   if replica_workload_ready daemonset/dagger '{.status.numberReady} {.status.desiredNumberScheduled}'; then
     ok "Dagger workload ready"
   else
     fail "Dagger workload ready"
   fi
 else
-  wait "kubectl unavailable; skipped Woodpecker server readiness check"
-  wait "kubectl unavailable; skipped Woodpecker agent readiness check"
   wait "kubectl unavailable; skipped Dagger readiness check"
 fi
 
-if http_status_ok http://woodpecker.localhost:17480/healthz; then
-  ok "Woodpecker endpoint responds (K3s)"
+if http_status_ok https://192.168.6.186:8087/healthz; then
+  ok "Woodpecker endpoint responds (SW)"
 else
-  fail "Woodpecker endpoint responds (K3s)"
+  fail "Woodpecker endpoint responds (SW)"
 fi
 
 printf 'summary: %s failed, %s pending\n' "$failures" "$pending"

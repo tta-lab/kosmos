@@ -19,11 +19,6 @@
     mode = "0400";
     inherit path;
   };
-  woodpeckerSecretSync = pkgs.writeShellApplication {
-    name = "kosmos-sync-woodpecker-secret";
-    runtimeInputs = [pkgs.kubectl];
-    text = builtins.readFile ../../scripts/sync-woodpecker-secret;
-  };
   enteSecretSync = pkgs.writeShellApplication {
     name = "kosmos-sync-ente-secret";
     runtimeInputs = [pkgs.kubectl];
@@ -52,14 +47,6 @@
       kosmos-sync-cloudreve-secret "$@"
       exec sleep infinity
     '';
-  };
-  forgejoR2BackupSecretSync = pkgs.writeShellApplication {
-    name = "kosmos-sync-forgejo-r2-backup-secret";
-    runtimeInputs = [
-      pkgs.coreutils
-      pkgs.kubectl
-    ];
-    text = builtins.readFile ../../scripts/sync-forgejo-r2-backup-secret;
   };
 in {
   age = {
@@ -174,23 +161,6 @@ in {
   ];
 
   systemd.services = {
-    woodpecker-secret-sync = {
-      description = "Synchronize the Woodpecker environment Secret to local K3s";
-      wantedBy = ["multi-user.target"];
-      wants = ["k3s.service"];
-      after = ["k3s.service"];
-      restartTriggers = [
-        config.age.secrets.woodpecker-server-env.file
-        config.age.secrets.woodpecker-postgres-env.file
-      ];
-      serviceConfig = {
-        Type = "oneshot";
-        RemainAfterExit = true;
-        Restart = "on-failure";
-        RestartSec = "5s";
-        ExecStart = "${woodpeckerSecretSync}/bin/kosmos-sync-woodpecker-secret ${config.age.secrets.woodpecker-server-env.path} ${config.age.secrets.woodpecker-postgres-env.path}";
-      };
-    };
     ente-secret-sync = {
       description = "Synchronize the Ente environment Secret to local K3s";
       wantedBy = ["multi-user.target"];
@@ -231,21 +201,6 @@ in {
         RestartSec = "5s";
         ExecStart = "${cloudreveSecretReconciler}/bin/kosmos-reconcile-cloudreve-secret ${config.age.secrets.cloudreve-env.path}";
       };
-    };
-  };
-
-  systemd.services.forgejo-r2-backup-secret-sync = lib.mkIf haveForgejoR2Backup {
-    description = "Synchronize the Forgejo R2 backup Secret to local K3s";
-    wantedBy = ["multi-user.target"];
-    wants = ["k3s.service"];
-    after = ["k3s.service"];
-    restartTriggers = [config.age.secrets.forgejo-r2-backup.file];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      Restart = "on-failure";
-      RestartSec = "5s";
-      ExecStart = "${forgejoR2BackupSecretSync}/bin/kosmos-sync-forgejo-r2-backup-secret ${config.age.secrets.forgejo-r2-backup.path}";
     };
   };
 }

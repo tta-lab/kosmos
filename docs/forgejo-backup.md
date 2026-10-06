@@ -76,27 +76,26 @@ git add secrets/forgejo-r2-backup.age
 git commit -m "chore(secrets): update encrypted secrets"
 ```
 
-After editing the file, activate the WSL configuration so agenix can decrypt
-it and the optional synchronizer can create `devops/forgejo-r2-backup`:
+The optional encrypted source credential is retained by Kosmos. SW consumes
+`seafarer/forgejo-r2-backup`, provisioned by the operator.
+For later credential rotation, the operator can populate SW from the runtime
+agenix file after a WSL switch:
 
 ```bash
-nh os switch . -H wsl
-systemctl status forgejo-r2-backup-secret-sync.service --no-pager
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
-  kubectl get secret forgejo-r2-backup -n devops -o name
+kubectl --kubeconfig /etc/rancher/k3s/k3s.yaml -n seafarer create secret generic forgejo-r2-backup \
+  --from-env-file=/run/agenix/forgejo-r2-backup --dry-run=client -o json \
+  | scripts/sw-kubectl apply -f - >/dev/null
 ```
 
-The synchronizer validates the four keys, requires `RESTIC_REPOSITORY` to use
-restic `s3:` syntax, refuses a non-local Kubernetes API server, and never emits
-secret values. Do not edit `/run/agenix/forgejo-r2-backup` or the Kubernetes
-Secret by hand. If the encrypted file does not exist, Nix does not declare the
-secret or synchronizer and the backup workload remains disabled.
+The local kubectl only renders client-side JSON; the pipe applies it on SW.
+The input file must be accessible to the operator. Do not run secret operations
+through an agent or log values.
+The Secret must contain all four nonempty keys above; retain the restic password
+independently. There is no local backup synchronizer or local CronJob.
 
-The devops Jsonnet has an explicit top-level enable flag. The normal
-`just show`, `just diff`, and `just apply` commands leave the backup resources
-out. After the Kubernetes Secret exists, use the gated recipes; each verifies
-the local API server and all four Secret keys before rendering or applying the
-enabled workload:
+SW Jsonnet's `forgejoR2BackupEnabled` flag defaults to false. Rendering is offline
+and does not read Secrets. After provisioning the Secret, review and explicitly
+approve the SW apply:
 
 ```bash
 just forgejo-backup-show
@@ -105,9 +104,10 @@ just forgejo-backup-apply
 just forgejo-backup-status
 ```
 
-This gate is the deployment boundary: no backup CronJob or ConfigMap is
-rendered by the normal environment, and the enabled render/apply path refuses
-to proceed until the synchronized Secret is present.
+These recipes target SW's `seafarer` namespace. Use the enabled flag on future
+backup updates; ordinary SW applies omit backup resources and do not prune them.
+The CronJob uses required Secret key references, so missing credentials prevent
+execution. This remains a source-recovery backup, excluding Packages/OCI.
 
 ## Restic lifecycle and checks
 
@@ -130,10 +130,8 @@ data:
 
 ```bash
 just forgejo-backup-status
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
-  kubectl -n devops get jobs -l app.kubernetes.io/name=forgejo-source-backup
-KUBECONFIG=/etc/rancher/k3s/k3s.yaml \
-  kubectl -n devops logs job/<job-name> -c backup
+scripts/sw-kubectl -n seafarer get jobs -l app.kubernetes.io/name=forgejo-source-backup
+scripts/sw-kubectl -n seafarer logs job/<job-name> -c backup
 ```
 
 The logs contain stage results only (snapshot validation, upload, retention,
@@ -180,22 +178,55 @@ The observable behavior is split across these paths:
   inputs, lazy initialization, retention, and bounded check.
 - `tanka/lib/forgejo-backup.libsonnet` — pinned runtime images, read-only PVC,
   staging and temporary volumes, Secret references, and CronJob policy.
-- `tanka/environments/devops/main.jsonnet` — disabled-by-default top-level
-  flag; the gated recipes pass the explicit enable value.
-- `scripts/sync-forgejo-r2-backup-secret` — agenix environment validation and
-  local-only Kubernetes Secret synchronization.
-- `scripts/check-forgejo-r2-backup-secret` and `justfile` — the render/apply
-  gate and status commands.
-- `modules/wsl/secrets.nix` and `secrets.nix` — optional agenix declaration,
-  systemd synchronizer, and recipient mapping; the operator creates the
-  encrypted file separately with agenix and commits that encrypted artifact
-  after editing.
+- `tanka/environments/sw-devops/main.jsonnet` — disabled-by-default top-level
+  flag; backup recipes pass the explicit enable value.
 - `tests/backup-forgejo-test` and `tests/forgejo-backup-render-test` — fake
   command behavior and rendered workload contract checks.
-- `flake.nix` and `kepos/peer-policy.jsonnet` — verification wiring and
-  the pinned Kepos publisher cap.
+- `flake.nix` — verification wiring.
 
-`README.md` was inspected: it has no Forgejo operator workflow, so it only
-records the requested Kepos pin and does not duplicate this runbook. `AGENTS.md`
-was inspected: its existing secret, Tanka, and verification conventions cover
-this feature, so no new agent-only command or convention was added there.
+## SW ZFS mount prerequisite
+
+OpenEBS ZFS CSI 2.10.1 reads `ZFSVolume.spec.shared` when publishing each mount.
+Without `shared: "yes"`, it rejects a second Pod mounting the same volume.
+Only Forgejo's new bound volume needs sharing; leave `zfs-local`, other datasets
+and business Pods unchanged. The coordinator enabled sharing on
+`openebs/pvc-87ecdf49-1966-4400-a711-63e975775cda` during this migration.
+No pool creation, data copy, PVC replacement or application restart is needed.
+
+For an existing bound Forgejo claim, the operator first verifies the bound PV
+uses `zfs.csi.openebs.io` and `tank/k8s`, then patches only its volume handle:
+
+```bash
+forgejo_pv="$(scripts/sw-kubectl -n seafarer get pvc forgejo-data -o jsonpath='{.spec.volumeName}')"
+test -n "$forgejo_pv"
+test "$(scripts/sw-kubectl get pv "$forgejo_pv" -o jsonpath='{.spec.csi.driver}')" = zfs.csi.openebs.io
+test "$(scripts/sw-kubectl get pv "$forgejo_pv" -o jsonpath='{.spec.csi.volumeAttributes.openebs\.io/poolname}')" = tank/k8s
+forgejo_volume="$(scripts/sw-kubectl get pv "$forgejo_pv" -o jsonpath='{.spec.csi.volumeHandle}')"
+test -n "$forgejo_volume"
+scripts/sw-kubectl -n openebs patch zfsvolume "$forgejo_volume" \
+  --type=merge -p '{"spec":{"shared":"yes"}}'
+```
+
+For a fresh system with no Forgejo PVC, `just sw-forgejo-provision-show` renders
+only a dedicated `zfs-local-forgejo-shared` StorageClass and Forgejo claim;
+`just sw-forgejo-provision` refuses an existing claim before applying them.
+The class uses the existing `tank/k8s`, `shared: "yes"` and `Retain`. Review and
+approve provisioning before running it. On those fresh systems, pass
+`zfs-local-forgejo-shared` as the second argument to `sw-devops-*` and
+`forgejo-backup-*` recipes. Existing migration commands retain `zfs-local`;
+do not change a bound PVC's immutable class.
+
+The backup Pod requests a RW CSI mount, matching Forgejo's mount, while its
+container bind remains `readOnly: true`. This avoids the reported ZFS mixed
+RW/RO dataset mount failure and preserves read-only backup access. The existing
+SQLite online-backup and selected-source recovery contract is unchanged.
+Both uppercase and lowercase proxy variables use SW's Kepos Mihomo bridge at
+`http://10.42.0.1:17891`, with internal cluster and SW addresses bypassed.
+
+Evidence:
+
+- [Official shared StorageClass semantics](https://github.com/openebs/zfs-localpv/blob/v2.10.1/docs/storageclasses.md#shared-optional-parameter)
+- [Per-volume mount check in CSI 2.10.1](https://github.com/openebs/zfs-localpv/blob/v2.10.1/pkg/zfs/mount.go)
+- [Mixed RW/RO ZFS mount report](https://github.com/openebs/zfs-localpv/issues/691)
+- [Kubernetes CSI uses the volume's read-only setting](https://github.com/kubernetes/kubernetes/blob/v1.34.0/pkg/volume/csi/csi_plugin.go#L500)
+- [Container read-only bind enforcement](https://github.com/kubernetes/kubernetes/blob/v1.34.0/pkg/kubelet/kubelet_pods.go#L402)

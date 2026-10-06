@@ -1,20 +1,4 @@
 {
-  "forgejo": {
-    "hosts": [
-      "forgejo.localhost"
-    ],
-    "namespace": "devops",
-    "service": "forgejo",
-    "port": 3000
-  },
-  "woodpecker": {
-    "hosts": [
-      "woodpecker.localhost"
-    ],
-    "namespace": "devops",
-    "service": "woodpecker",
-    "port": 8000
-  },
   "ente": {
     "hosts": [
       "ente.localhost"

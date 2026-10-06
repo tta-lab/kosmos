@@ -14,8 +14,6 @@
       ".svc"
       ".cluster.local"
       "10.255.255.1"
-      "forgejo.localhost"
-      "woodpecker.localhost"
       "grafana.localhost"
       "impri.localhost"
     ]
@@ -25,8 +23,6 @@ in {
   boot.kernel.sysctl."net.ipv4.conf.all.forwarding" = 1;
 
   networking.hosts."127.0.0.1" = [
-    "forgejo.localhost"
-    "woodpecker.localhost"
     "ente.localhost"
     "ente-storage.localhost"
     "bookorbit.localhost"
@@ -51,10 +47,10 @@ in {
   users.groups.k3s.members = ["neil"];
 
   environment.etc."rancher/k3s/registries.yaml".text = ''
-    mirrors:
-      "forgejo.localhost:17480":
-        endpoint:
-          - "http://forgejo.localhost:17480"
+    configs:
+      "192.168.6.186:8086":
+        tls:
+          ca_file: ${../../certs/seafarer-root-ca.pem}
   '';
 
   services.k3s = {
@@ -106,8 +102,6 @@ in {
 
   systemd.tmpfiles.rules = [
     "d /var/lib/kosmos-k3s 0750 root root - -"
-    "d /var/lib/kosmos-k3s/forgejo 0750 1000 1000 - -"
-    "d /var/lib/kosmos-k3s/woodpecker-postgres 0700 70 70 - -"
     "d /var/lib/kosmos-k3s/dagger 0750 root root - -"
     "d /var/lib/kosmos-k3s/ebooks 0750 root root - -"
     "d /var/lib/kosmos-k3s/ebooks/bookorbit 0750 1000 1000 - -"
