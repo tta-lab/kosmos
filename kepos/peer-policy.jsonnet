@@ -120,6 +120,15 @@ std.manifestTomlEx({
     service('ente-storage', 'Ente Storage', 17480, personalDevicesAllow + xiaomiAllow + baiheAllow + guaziAllow + svenMacAllow),
     service('erpnext', 'ERPNext', 17480, fullTrustAllow + svenMacAllow),
     service('flickgrove', 'FlickGrove', 4318, [peers.mac.public_key, peers.pixel7a.public_key]),
+    {
+      id: 'flickgrove-mac',
+      name: 'FlickGrove Mac',
+      source: {
+        peer: 'mac',
+        service: 'flickgrove-mac',
+      },
+      allow: [peers.pixel7a.public_key],
+    },
     service('grafana', 'Grafana', 17480, fullTrustAllow),
     service('impri', 'Impri', 17480, impriAllow),
     {

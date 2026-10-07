@@ -29,6 +29,7 @@ owned by WSL.
 - Codex for Love Shio prod (Yuki persona): `http://prod-lamplit.localhost:17480` through Kepos (Mac + Pixel 7a)
 - Codex Bridge: `http://codex-bridge.localhost:17480` through Kepos (Mac + Baihe)
 - Mac SSH: raw `mac-ssh` service through Kepos (Pixel 7a)
+- FlickGrove Mac: intended Pixel 7a browser URL `http://flickgrove-mac.localhost:17480`, pending the separate Mac origin change described below
 - k3s API: `https://127.0.0.1:26443`
 - Anki Sync: `http://anki.localhost:17480/` through Kepos
 - Cloudreve: `http://cloudreve.localhost:17480` through Kepos
@@ -78,8 +79,8 @@ Kepos publishes application service IDs including:
 
 ## Kepos service model: HTTP web services vs raw TCP
 
-The current live policy leaves publisher `kind` unset, so every service is a
-TCP tunnel to a WSL loopback port (`target_port`). How a peer reaches a service
+The Kosmos policy leaves publisher `kind` unset, so each service transparently
+tunnels to a local loopback port or an explicit remote peer service. How a peer reaches a service
 depends on the *kind* of service, decided on the subscriber side (Kepos
 Desktop / CLI), not by the publisher:
 
@@ -156,6 +157,16 @@ that upstream Mac service to Pixel 7a: Mac grants only Kosmos upstream access,
 and Kosmos grants only Pixel downstream access. Local sources use
 `source = {local_port: 17480}` for Caddy-routed services or their direct service
 port. WSL's peer gateway uses `127.0.0.1:17481`; Caddy owns `17480`.
+
+The `flickgrove-mac` service follows the same republish pattern: Pixel 7a's
+HTTP gateway at `http://flickgrove-mac.localhost:17480` connects through Kosmos
+to Mac's `flickgrove-mac` service, which targets `127.0.0.1:4318`. Mac grants
+only Kosmos upstream access; Kosmos grants only Pixel 7a downstream access.
+Browser access requires a separate Mac change to set FlickGrove's origin to
+`http://flickgrove-mac.localhost:17480`. Its current origin is
+`http://127.0.0.1:14318`, so requests using the intended browser Host fail until
+that change is applied. This Kosmos policy change covers browser access only;
+agent MCP access retains its own restrictions.
 
 Leave `kind` unset for the current TCP-tunnel behavior. `kind = "http"` is an
 optional publisher-side HTTP/1.1 adapter that removes caller-provided
