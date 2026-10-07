@@ -84,6 +84,8 @@ Encrypted files live in `secrets/` and are safe to commit:
 - `secrets/volcengine-key.age`
 - `secrets/forgejo-r2-backup.age` (optional; encrypted and safe to commit;
   retains the optional SW source-recovery backup credential)
+- `secrets/matrix-mcp-remote-key.age` (optional; raw gateway bearer key; enables the
+  independent Matrix MCP service and tunnel route; see [setup](matrix-mcp-remote.md))
 - `secrets/openai-tunnel.env.age` (optional; enables the OpenAI Secure MCP
   Tunnel user service when the operator creates it)
 
@@ -132,6 +134,7 @@ agenix -e secrets/woodpecker-postgres-env.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/soniox-key.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/volcengine-key.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/forgejo-r2-backup.age -i ~/.ssh/agenix_ed25519
+agenix -e secrets/matrix-mcp-remote-key.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/openai-tunnel.env.age -i ~/.ssh/agenix_ed25519
 ```
 

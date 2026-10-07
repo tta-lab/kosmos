@@ -32,7 +32,13 @@ in {
 
         tunnels.kepos = {
           credentialsFile = config.age.secrets.cloudflared-kepos-credentials.path;
-          ingress."serein-keet.guion.io" = "http://127.0.0.1:8767";
+          ingress =
+            {
+              "serein-keet.guion.io" = "http://127.0.0.1:8767";
+            }
+            // lib.optionalAttrs (config.kosmos.wsl.matrixMcpRemote.enable && config.age.secrets ? matrix-mcp-remote-key) {
+              ${config.kosmos.wsl.matrixMcpRemote.hostname} = "http://127.0.0.1:8768";
+            };
           default = "http_status:404";
         };
       };

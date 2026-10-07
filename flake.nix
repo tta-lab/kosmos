@@ -45,9 +45,46 @@
     moonbitToolchain = moonbit-overlay.packages.${system}.default;
   in {
     checks.${system} = {
-      wsl-k3s-forwarding =
-        assert self.nixosConfigurations.wsl.config.boot.kernel.sysctl."net.ipv4.conf.all.forwarding" == 1;
-          pkgs.runCommand "wsl-k3s-forwarding-check" {} "touch $out";
+      matrix-mcp-remote = let
+        gateway = pkgs.callPackage ./packages/supergateway {};
+        # Evaluation only: never decrypt or activate this test-owned fixture.
+        withKey = enabled:
+          (self.nixosConfigurations.wsl.extendModules {
+            modules = [
+              ({lib, ...}: {
+                kosmos.wsl.matrixMcpRemote.enable = lib.mkForce enabled;
+                age.secrets.matrix-mcp-remote-key = {
+                  file = lib.mkForce (pkgs.writeText "matrix-gateway-test-fixture.age" "not a real encrypted secret");
+                  owner = "neil";
+                  group = "users";
+                  mode = "0400";
+                };
+              })
+            ];
+          }).config;
+        enabled = withKey true;
+        disabled = withKey false;
+        unit = enabled.home-manager.users.neil.systemd.user.services.matrix-mcp-remote;
+        inherit (enabled.services.cloudflared.tunnels.kepos) ingress;
+      in
+        assert ingress.${enabled.kosmos.wsl.matrixMcpRemote.hostname} == "http://127.0.0.1:8768";
+        assert ingress."serein-keet.guion.io" == "http://127.0.0.1:8767";
+        assert enabled.services.cloudflared.tunnels.kepos.default == "http_status:404";
+        assert !(disabled.home-manager.users.neil.systemd.user.services ? matrix-mcp-remote);
+        assert !(disabled.services.cloudflared.tunnels.kepos.ingress ? ${disabled.kosmos.wsl.matrixMcpRemote.hostname});
+        assert unit.Service.KillMode == "control-group";
+        assert unit.Service.StandardInput == "null";
+        assert unit.Service.UMask == "0077";
+        assert nixpkgs.lib.hasInfix "--host 127.0.0.1" unit.Service.ExecStart;
+        assert nixpkgs.lib.hasInfix "--apiKeyFile ${enabled.age.secrets.matrix-mcp-remote-key.path}" unit.Service.ExecStart;
+          pkgs.runCommand "matrix-mcp-remote-check" {
+            nativeBuildInputs = [pkgs.python3 pkgs.bash pkgs.util-linux gateway];
+          } ''
+            python3 ${./tests/matrix-mcp-remote-test.py} ${gateway}/bin/supergateway ${./scripts/matrix-mcp-remote-run}
+            touch $out
+          '';
+      wsl-k3s-forwarding = assert self.nixosConfigurations.wsl.config.boot.kernel.sysctl."net.ipv4.conf.all.forwarding" == 1;
+        pkgs.runCommand "wsl-k3s-forwarding-check" {} "touch $out";
       shell-tests =
         pkgs.runCommand "kosmos-shell-tests" {
           nativeBuildInputs = with pkgs; [
@@ -180,9 +217,12 @@
       kepos-tunnel-module = let
         eval = nixpkgs.lib.nixosSystem {
           inherit system;
+          specialArgs = {inherit pkgsUnstable;};
           modules = [
+            home-manager.nixosModules.home-manager
             agenix.nixosModules.default
             ./modules/wsl/kepos-tunnel.nix
+            ./modules/wsl/matrix-mcp-remote.nix
             (_: {
               system.stateVersion = "25.05";
               kosmos.wsl.keposTunnel.enable = true;
