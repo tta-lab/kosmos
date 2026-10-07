@@ -101,6 +101,11 @@ std.manifestTomlEx({
       service: 'ssh',
       listen: {local_port: 2222},
     },
+    {
+      peer: 'mac',
+      service: 'adb',
+      listen: {local_port: 15037},
+    },
   ],
   services: [
     service('anki', 'Anki', 17480, personalDevicesAllow + guaziAllow),

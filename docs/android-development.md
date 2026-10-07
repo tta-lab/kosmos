@@ -29,10 +29,29 @@ allow = ["e499c38286e33f481b64888c68e8a877872c17991d1465ae71b89272db80a304"]
 
 Restart Mac's Kepos Desktop after editing this TOML so it loads the service.
 
-NUC no longer binds Mac's `adb` service through Kepos; its former
-`127.0.0.1:15037` listener is disabled. The Mac ADB server and its published
-service configuration are managed separately. Local NUC ADB continues to use
-its default port 5037.
+NUC binds Mac's `adb` service through Kepos at `127.0.0.1:15037`. The binding
+in `kepos/peer-policy.jsonnet` routes TCP to Mac's ADB server on port 5037.
+The Mac ADB server and its published service configuration are managed
+separately. Local NUC ADB continues to use its default port 5037.
+
+After updating the Kosmos checkout on NUC, render the policy:
+
+```bash
+just kepos-policy-render
+```
+
+This atomically replaces `~/.config/kepos/peer.toml`. Kepos hot-reloads a valid
+policy within one second; no NixOS rebuild or Kepos restart is needed on NUC.
+
+Select the Mac server explicitly for each ADB command, including this read-only
+device check:
+
+```bash
+adb -H 127.0.0.1 -P 15037 devices -l
+```
+
+Use the same `-H 127.0.0.1 -P 15037` options for other Mac ADB commands.
+Plain `adb devices -l` still targets local NUC ADB on port 5037.
 
 Validate launchd with `plutil -lint` and `launchctl print gui/501/io.guion.adb`,
 then confirm the socket and actual `adb devices -l` result. `adb kill-server`
