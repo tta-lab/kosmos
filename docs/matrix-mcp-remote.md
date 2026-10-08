@@ -1,188 +1,140 @@
-# Independent Matrix MCP over Cloudflare Tunnel
+# Remote Matrix MCP (Matrix for Agent)
 
-The WSL user service `matrix-mcp-remote` exposes the original Matrix stdio
-MCP tools, including E2EE, through Supergateway's Streamable HTTP endpoint:
+The WSL user service `matrix-mcp-remote` runs the managed Matrix for Agent
+(MFA) Node artifact directly. The existing option
+`kosmos.wsl.matrixMcpRemote.enable`, hostname `matrix-mcp.guion.io`, public
+endpoint `https://matrix-mcp.guion.io/mcp`, and tunnel upstream
+`http://127.0.0.1:8768` stay the same. One shared Matrix SDK client serves all
+MCP requests; there is no stdio child, Supergateway, login command, or ID map.
 
-```text
-MCP client with Authorization: Bearer <gateway key>
-  → https://matrix-mcp.guion.io/mcp
-  → existing Kepos Cloudflare Tunnel
-  → 127.0.0.1:8768/mcp
-  → Supergateway → independent matrix-mcp stdio children
-```
+The **Matrix access token is also the MCP Bearer token**. The retired separate
+gateway key cannot be reused. Callers keep the URL and update their secret
+`Authorization: Bearer <Matrix access token>` header or `MCP_CONFIG` bearer
+field. Anyone holding that token has the Matrix account's authority; manage
+accounts, membership, token issuance and revocation manually.
 
-The Matrix homeserver is **`https://ddd444.xyz`**. The MCP hostname is
-**`matrix-mcp.guion.io`**, with endpoint **`https://matrix-mcp.guion.io/mcp`**.
-The intended Matrix account is `@xj-1:matrix.dsh.local`; the operator creates a
-new login/device for this existing account. This change does not create DNS
-or deploy anything. Shio's `codex-for-love-prod` service and Matrix identity remain independent.
+Available tools are `whoami`, `list_rooms`, `list_room_members`,
+`send_message`, and `read_messages`. MFA supports joined plaintext rooms;
+E2EE is unsupported. Display names are best-effort current room member names,
+not historical names, and may be empty. History is bounded and cursor based.
+There is no durable live-event replay after downtime. This service disables
+webhooks. Existing unrelated Shio configuration and runtime are independent.
 
-## Package and transport decision
+## Operator handoff: tomorrow
 
-[Supergateway 4.1.0](https://github.com/supercorp-ai/supergateway/tree/v4.1.0)
-has no incoming authentication or bind-host option. The Nix package instead
-builds [upstream commit 60e35ced](https://github.com/supercorp-ai/supergateway/tree/60e35ced67eeead0ba025ec8cf1bccdb34763465)
-(version 4.2.0-rc.1) with its committed npm lock and a fixed dependency hash.
-Its native `--host 127.0.0.1` and `--apiKeyFile` provide loopback listening and
-incoming authentication. `--oauth2Bearer` configures outbound headers and
-is not used for ingress authentication. No local gateway fork is needed.
+Secret provisioning, activation, service restarts and caller Bearer updates
+are deliberately deferred. The implementation work does not perform them.
+Complete the artifact and secret steps, prepare the caller credential change,
+then schedule activation and caller rollout together.
 
-Matrix uses the existing `uvx` capability with `matrix-mcp==0.9.0`. Its Python
-dependencies resolve through uv at runtime; only the Matrix package version
-is pinned, unlike the fully hash-pinned Supergateway npm dependency closure.
-The first request needs package download access. The service inherits the
-WSL proxy environment and provides `cloudflared` for homeserver Access auth.
+### Prepare the managed artifact
 
-The gateway runs in **stateless** mode: a child belongs to one HTTP request,
-not a long-lived HTTP session. Clients need no session ID; GET and DELETE on
-`/mcp` return 405 after authentication. Each launcher acquires the shared
-`~/.local/state/matrix-mcp-remote/stdio.lock` before starting Matrix and holds
-it for the entire stdio child lifetime. Matrix calls therefore run serially:
-a waiting request starts its Matrix process only after the previous child
-exits, so it reads the latest numeric room/event ID map. Matrix 0.9.0 loads
-that map as a snapshot and saves without a process lock; its device-specific
-E2EE lock alone does not protect the mapping. The launcher uses util-linux
-`flock --no-fork`, retaining the lock in the child without an extra wrapper.
-Completion or process termination releases the OS lock; the fixed lock file
-persists and must not be removed while the service is running. A slow call
-also delays later requests, which may reach client timeouts. Stateful gateway
-mode would retain separate children per client session with stale snapshots.
-
-All remote identity state lives under
-`~/.local/state/matrix-mcp-remote`: `config/matrix-mcp/config.json`, the
-adjacent device-specific `e2ee-*` store/lock and ID mapping files, plus
-separate `data` and `cache` directories. HOME is unchanged. Matrix can fall
-back to `~/.config/matrix-mcp/config.json` when its XDG config is absent, so
-both the unit and every child launcher require the independent config first.
-Do not remove/replace config or change identity while the service is running.
-The existence check prevents normal missing-config fallback; it cannot make
-concurrent operator deletion atomic with Matrix's later config read.
-
-## Operator provisioning
-
-Read [secrets.md](secrets.md). Agents must not read or create plaintext
-credentials. The gateway secret is optional: without its `.age` file, neither
-the service nor its tunnel ingress is configured. A present but empty key
-file makes Supergateway fail startup rather than run without authentication.
-The service also requires the independent Matrix config before starting.
-
-1. Choose a new device identity for `@xj-1:matrix.dsh.local` and a separate gateway bearer
-   key. Save the bearer key in a password manager. Register its encrypted
-   artifact from the repository root:
-
-   ```bash
-   agenix -e secrets/matrix-mcp-remote-key.age -i ~/.ssh/agenix_ed25519
-   ```
-
-   The plaintext format is one raw bearer key per line, **not** an environment
-   assignment. Prefer one independently generated, high-entropy key. Do not
-   put it in command arguments, Nix, logs or chat. Recipients are already
-   registered in `secrets.nix`; commit only the encrypted `.age` artifact.
-   Agenix provides the user-readable 0400 runtime file at its default path.
-
-2. With the service stopped, create the separate state root and authenticate
-   using the built-in **hidden password prompt if password login is supported**.
-   The homeserver versions endpoint responded, but login discovery currently
-   resets TLS connections; its supported login methods remain unverified:
-
-   ```bash
-   systemctl --user stop matrix-mcp-remote.service  # if already installed
-   umask 077
-   matrix_remote_root="$HOME/.local/state/matrix-mcp-remote"
-   install -d -m 0700 "$matrix_remote_root" "$matrix_remote_root/config" \
-     "$matrix_remote_root/config/matrix-mcp" "$matrix_remote_root/data" \
-     "$matrix_remote_root/cache"
-   export XDG_CONFIG_HOME="$matrix_remote_root/config"
-   export XDG_DATA_HOME="$matrix_remote_root/data"
-   export XDG_CACHE_HOME="$matrix_remote_root/cache"
-   uvx --from matrix-mcp==0.9.0 matrix-mcp auth password https://ddd444.xyz \
-     '@xj-1:matrix.dsh.local' \
-     --device-name 'xj-1 remote MCP' \
-     --config "$XDG_CONFIG_HOME/matrix-mcp/config.json"
-   chmod 600 "$XDG_CONFIG_HOME/matrix-mcp/config.json"
-   ```
-
-   **Omit `--password`**: Matrix MCP 0.9.0 prompts interactively with hidden
-   input. Do not enter a password if no hidden prompt appears. Run this in a
-   dedicated operator shell so the XDG exports do not affect unrelated
-   commands. No login or credential provisioning was performed in this PR.
-
-   If the homeserver supports SSO instead, use the same isolated directories:
-
-   ```bash
-   uvx --from matrix-mcp==0.9.0 matrix-mcp auth sso https://ddd444.xyz \
-     --device-name 'xj-1 remote MCP' \
-     --config "$XDG_CONFIG_HOME/matrix-mcp/config.json"
-   chmod 600 "$XDG_CONFIG_HOME/matrix-mcp/config.json"
-   ```
-
-   Sign into `@xj-1:matrix.dsh.local`; SSO uses a local browser callback.
-   If SSO requires Cloudflare Access, add `--cloudflare-access` and ensure
-   `cloudflared` is on PATH. Resolve homeserver login access before deployment
-   if neither flow works. Do not copy Shio's config, access token, device ID
-   or E2EE store. Verify the new Matrix device from another trusted Matrix
-   client before relying on encrypted room access. Preserve its crypto store
-   across restarts; do not recreate a store under an existing device ID.
-
-3. After the PR is merged and encrypted key provisioned, run the documented
-   checks, then activate as the regular user:
-
-   ```bash
-   nh os switch . -H wsl
-   systemctl --user start matrix-mcp-remote.service
-   systemctl --user is-active matrix-mcp-remote.service
-   ss -ltn 'sport = :8768'
-   ```
-
-   Confirm only `127.0.0.1:8768` listens. After confirming the hostname,
-   create its DNS route to the existing tunnel with the existing operator
-   Cloudflare workflow. Nix supplies the ingress rule; no additional tunnel
-   or Kepos peer-policy service is needed. Default unmatched ingress stays
-   404 and Serein's Keet ingress remains present.
-
-4. Check unauthenticated access returns 401 locally and through the tunnel:
-
-   ```bash
-   curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8768/mcp
-   curl -s -o /dev/null -w '%{http_code}\n' https://matrix-mcp.guion.io/mcp
-   ```
-
-   Configure the MCP client for Streamable HTTP at
-   `https://matrix-mcp.guion.io/mcp`, with a secret-managed Authorization
-   bearer header. Call `matrix_whoami` and verify the chosen new account/device,
-   then verify an encrypted-room read with that account. Do not paste the key
-   into a curl argument or capture authenticated debug logs. These are live
-   operator checks, not automated tests.
-
-Rotate the key by editing the encrypted artifact, switching WSL, and restarting
-`matrix-mcp-remote` (keys are read at gateway startup). Stop this service before
-Matrix reauthentication or restoring its state. Provision a new device if
-intentionally starting a fresh E2EE store.
-
-## Resource ownership and verification
-
-| Resource | Creator / owner | Retained state and lifetime | Replacement / terminal cleanup | Observable evidence |
-|---|---|---|---|---|
-| Gateway process and listener | systemd user unit | API keys and listener for service lifetime | Restart closes old process; SIGTERM runs upstream cleanup; systemd kills remaining cgroup after 15s | Fake probe starts with `/dev/null`, checks actual socket address, stops and rebinds same port |
-| Stdio child and descendants | Supergateway request / OwnedChildProcesses | One Matrix process tree per POST | Response completion stops group; gateway shutdown terminates then escalates after 5s; cgroup is final owner | Concurrent fixture calls use distinct PIDs; all PIDs disappear after completion and stop, including a descendant of a hanging request |
-| HTTP transport/request | Supergateway stateless request | Request IDs, pending responses, stream callbacks | Each request closes its transport; reconnect creates a fresh child; no session map | Repeated ID across concurrent requests routes correct replies; reconnect works without a session ID |
-| Timers / pending work | Supergateway child/request cleanup | Bounded shutdown polling and one-way message grace; modern continuation handling remains upstream-owned | Gateway closes active/retained children; process exit releases remaining timers | Hanging-request shutdown settles within probe deadline; restart works |
-| Shared stdio lifetime lock | Launcher / Matrix child | One exclusive lock shared by all requests, acquired before ID-map load | Child completion/termination releases descriptor; gateway kills waiting and active process groups; systemd cgroup is final owner | Concurrent snapshot fixture preserves distinct room/event refs; gateway stop releases lock, then restart serves a new call |
-| E2EE store lock | Matrix per-tool driver | Fixed remote device store while crypto call is active | Driver `aclose` releases lock in finally; process termination releases OS lock; store persists | Hanging fixture holds a fake crypto lock; stop releases it for reacquisition/restart (not a real E2EE/network test) |
-| Independent config/state | Operator; launcher selects directory | Credentials, device keys and mappings persist across service restarts | Operator stops unit before identity replacement; persistent files are never removed by unit | Fixture Shio config cannot satisfy missing independent config; launcher refuses before and after independent-file removal |
-
-Run the isolated behavioral check with:
+Required tested MFA revision: `4379ddfb13cccdd34436ca0ac3acd37ec47800e1`.
+The checkout is `/home/neil/code/projects/lamplitisles/matrix-for-agent`.
+Kosmos follows its existing managed-checkout service pattern and installs no
+MFA dependencies or builds/downloads at service startup. The bundled artifact
+is not a Nix package. For a missing checkout, obtain it with:
 
 ```bash
-nix build .#checks.x86_64-linux.matrix-mcp-remote --no-link
+og clone https://192.168.6.186:8086/LamplitIsles/matrix-for-agent.git
 ```
 
-It uses only test-owned temporary files, fake MCP processes, a compatible
-snapshot ID-store fixture and a fake crypto lock. The ID-store probe fails
-with the old launcher because concurrent children both allocate ref 1;
-serialization preserves each room/event reference. It verifies auth rejection
-before child creation, empty-key failure, loopback binding, serialized
-concurrent requests, reconnect, shutdown of active and waiting children,
-descendants, lock release and restart. It does not validate actual Matrix credentials, E2EE
-interoperability, DNS or the live Cloudflare Tunnel. Required repository Nix
-checks and the full WSL closure build remain necessary before committing.
+In a clean checkout at the required revision, build explicitly:
+
+```bash
+cd /home/neil/code/projects/lamplitisles/matrix-for-agent
+git checkout 4379ddfb13cccdd34436ca0ac3acd37ec47800e1
+bun install --frozen-lockfile
+bun run typecheck
+bun test
+bun run build
+node dist/cli.js --help
+```
+
+The service uses an explicit Nix Node 24 executable and
+`dist/cli.js`. A missing artifact prevents startup via `ConditionPathExists`;
+the launcher also fails safely if it disappears between checking and launch.
+Do not change this checkout while the service is running. An updated artifact
+requires an explicit operator rebuild and restart; no auto-update runs.
+MFA closes HTTP on SIGTERM, but SDK timers can keep the Node process alive;
+the unit retains `TimeoutStopSec=15` and control-group cleanup to bound stop.
+
+### Provision the new optional secret
+
+From Kosmos's root, Neil runs exactly:
+
+```bash
+cd /home/neil/code/projects/tta-lab/kosmos
+agenix -e secrets/matrix-for-agent.env.age -i ~/.ssh/agenix_ed25519
+```
+
+Use this systemd environment-file template, replacing placeholders in the
+editor only:
+
+```text
+MATRIX_HOMESERVER_URL=https://<homeserver-host>
+MATRIX_ACCESS_TOKEN=<Matrix-account-access-token>
+```
+
+Keep the token on one line without whitespace. Do not add quotes unless
+needed by systemd environment-file syntax. Do not put values in Nix, shell
+argv, tracked plaintext, logs, or generated unit files. Do not copy any old
+Mindroom config. The new file is registered for the existing recipients,
+owned by `neil:users` with mode `0400`, and defaults to
+`/run/agenix/matrix-for-agent.env`. Only encrypted bytes are committed.
+
+`EnvironmentFile` values take precedence over systemd `Environment` values.
+The launcher therefore fixes `MATRIX_MCP_LISTEN=127.0.0.1:8768` after loading
+that environment, and removes `MATRIX_WEBHOOK_URL` and
+`MATRIX_WEBHOOK_BEARER_TOKEN`. Adding those variables to the credential file
+cannot change the bind or enable a webhook.
+
+The declared `age.secrets."matrix-for-agent.env"` attribute gates both the
+service and Matrix tunnel route. With no encrypted file, evaluation warns and
+disables both, even if the old gateway secret still exists. Disabling the
+option also removes both. The encrypted
+`secrets/matrix-mcp-remote-key.age` and its recipient entry remain retired
+operator-cleanup artifacts, with no runtime consumer. There is no migration
+or dual-running path.
+
+### Activate and verify
+
+After the encrypted file is committed and the caller credential change is
+ready, run the repository's required Nix checks/build, then activate as the
+regular user:
+
+```bash
+cd /home/neil/code/projects/tta-lab/kosmos
+nh os switch . -H wsl
+test -r /run/agenix/matrix-for-agent.env
+systemctl --user restart matrix-mcp-remote.service
+systemctl --user is-active matrix-mcp-remote.service
+ss -ltn 'sport = :8768'
+curl -s -o /dev/null -w '%{http_code}\n' https://matrix-mcp.guion.io/mcp
+```
+
+Expect a loopback listener and an unauthenticated `401`. Check the tunnel is
+active after the switch. Complete the prepared caller Bearer update, then use
+the caller's secret-managed MCP connection to list exactly the five tools and
+call `whoami` and `list_rooms`. Verify the intended account and joined
+plaintext rooms without logging credentials or message content. Do not put
+the token in a curl command or dump the environment. A successful Nix build
+alone does not prove Matrix connectivity or deployed authentication.
+
+## Local checks
+
+```bash
+python3 tests/matrix-for-agent-test.py scripts/matrix-for-agent-run
+nix build .#checks.x86_64-linux.matrix-mcp-remote --no-link
+# Optional, after building the required MFA revision:
+python3 tests/matrix-for-agent-test.py scripts/matrix-for-agent-run \
+  "$(command -v node)" \
+  /home/neil/code/projects/lamplitisles/matrix-for-agent/dist/cli.js
+```
+
+The flake check evaluates enabled, disabled, and absent-secret configurations
+and runs the launcher with a test-owned fake executable and artifact. It
+checks environment precedence, disabled webhooks, credential forwarding and
+missing-artifact failure without binding the production port. The separate
+optional artifact integration check uses an ephemeral loopback fake Matrix
+host and MCP listener; it never connects to real accounts or services.

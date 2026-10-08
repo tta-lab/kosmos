@@ -6,22 +6,16 @@
   ...
 }: let
   cfg = config.kosmos.wsl.matrixMcpRemote;
-  root = "/home/neil/.local/state/matrix-mcp-remote";
-  configHome = "${root}/config";
-  matrixConfig = "${configHome}/matrix-mcp/config.json";
-  supergateway = pkgs.callPackage ../../packages/supergateway {};
-  secretFile = ../../secrets/matrix-mcp-remote-key.age;
-  haveKey = config.age.secrets ? matrix-mcp-remote-key;
-  matrix = pkgs.writeShellApplication {
-    name = "matrix-mcp-remote";
-    runtimeInputs = [pkgsUnstable.uv pkgs.util-linux];
-    text = ''
-      exec ${pkgs.bash}/bin/bash ${../../scripts/matrix-mcp-remote-run} ${lib.escapeShellArg root} uvx --from matrix-mcp==0.9.0 matrix-mcp serve --transport stdio
-    '';
-  };
+  checkout = "/home/neil/code/projects/lamplitisles/matrix-for-agent";
+  artifact = "${checkout}/dist/cli.js";
+  secretFile = ../../secrets/matrix-for-agent.env.age;
+  haveEnv = config.age.secrets ? "matrix-for-agent.env";
+  start = pkgs.writeShellScript "matrix-for-agent-start" ''
+    exec ${pkgs.bash}/bin/bash ${../../scripts/matrix-for-agent-run} ${lib.getExe pkgsUnstable.nodejs_24} ${lib.escapeShellArg artifact}
+  '';
 in {
   options.kosmos.wsl.matrixMcpRemote = {
-    enable = lib.mkEnableOption "independent authenticated Matrix MCP gateway";
+    enable = lib.mkEnableOption "direct authenticated Matrix for Agent HTTP service";
     hostname = lib.mkOption {
       type = lib.types.str;
       default = "matrix-mcp.guion.io";
@@ -32,27 +26,27 @@ in {
   config = lib.mkIf cfg.enable (lib.mkMerge [
     {
       age.secrets = lib.optionalAttrs (builtins.pathExists secretFile) {
-        matrix-mcp-remote-key = {
+        "matrix-for-agent.env" = {
           file = secretFile;
           owner = "neil";
           group = "users";
           mode = "0400";
         };
       };
-      home-manager.users.neil.home.packages = [supergateway matrix];
-      warnings = lib.optional (!haveKey) "Matrix MCP remote is waiting for secrets/matrix-mcp-remote-key.age; no service or ingress is enabled.";
+      warnings = lib.optional (!haveEnv) "Matrix MCP remote is waiting for secrets/matrix-for-agent.env.age; no service or ingress is enabled.";
     }
-    (lib.mkIf haveKey {
+    (lib.mkIf haveEnv {
       home-manager.users.neil.systemd.user.services.matrix-mcp-remote = {
         Unit = {
-          Description = "Independent Matrix MCP Streamable HTTP gateway";
+          Description = "Matrix for Agent Streamable HTTP service";
           After = ["network-online.target"];
-          ConditionPathExists = [matrixConfig];
+          ConditionPathExists = [artifact];
         };
         Install.WantedBy = ["default.target"];
         Service = {
-          ExecStartPre = "${pkgs.coreutils}/bin/install -d -m 0700 ${root} ${configHome} ${configHome}/matrix-mcp ${root}/data ${root}/cache";
-          ExecStart = "${lib.getExe supergateway} --stdio ${lib.getExe matrix} --outputTransport streamableHttp --host 127.0.0.1 --port 8768 --streamableHttpPath /mcp --apiKeyFile ${config.age.secrets.matrix-mcp-remote-key.path} --logLevel none";
+          WorkingDirectory = checkout;
+          ExecStart = start;
+          EnvironmentFile = [config.age.secrets."matrix-for-agent.env".path];
           Environment = ["PATH=${lib.makeBinPath [pkgs.cloudflared]}:/run/current-system/sw/bin"] ++ lib.mapAttrsToList (name: value: "${name}=${value}") config.kosmos.wsl.proxy.environment;
           Restart = "on-failure";
           RestartSec = 5;

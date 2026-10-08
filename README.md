@@ -87,6 +87,15 @@ Secret with `just observability-secrets`, then use
 change the local cluster. The full operator workflow is in the
 [WSL DevOps runbook](docs/wsl-devops-runbook.md#publisher-observability).
 
+## Remote Matrix MCP
+
+WSL runs the managed Matrix for Agent Node artifact directly behind
+`https://matrix-mcp.guion.io/mcp`. Its optional agenix environment file holds
+the homeserver URL and Matrix access token, which also authenticates MCP
+callers. Secret provisioning, activation, and caller updates are deferred to
+the operator; see the [tomorrow handoff](docs/matrix-mcp-remote.md#operator-handoff-tomorrow)
+for the artifact build, exact secret command, five tools, and plaintext limits.
+
 ## Codex CLI
 
 WSL installs OpenAI Codex CLI with npm instead of Nixpkgs because Codex releases often and Nixpkgs can lag. Apply the host, then run:

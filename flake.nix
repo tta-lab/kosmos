@@ -46,41 +46,51 @@
   in {
     checks.${system} = {
       matrix-mcp-remote = let
-        gateway = pkgs.callPackage ./packages/supergateway {};
-        # Evaluation only: never decrypt or activate this test-owned fixture.
-        withKey = enabled:
+        # Evaluation-only fixtures: never decrypted or activated.
+        fixture = mode:
           (self.nixosConfigurations.wsl.extendModules {
             modules = [
               ({lib, ...}: {
-                kosmos.wsl.matrixMcpRemote.enable = lib.mkForce enabled;
-                age.secrets.matrix-mcp-remote-key = {
-                  file = lib.mkForce (pkgs.writeText "matrix-gateway-test-fixture.age" "not a real encrypted secret");
-                  owner = "neil";
-                  group = "users";
-                  mode = "0400";
+                kosmos.wsl.matrixMcpRemote.enable = lib.mkForce (mode != "disabled");
+                age.secrets = if mode == "absent" then lib.mkForce (builtins.removeAttrs enabled.age.secrets ["matrix-for-agent.env"]) else {
+                  "matrix-for-agent.env" = {
+                    file = lib.mkForce (pkgs.writeText "matrix-env-test-fixture.age" "not an encrypted credential");
+                    owner = "neil";
+                    group = "users";
+                    mode = "0400";
+                  };
                 };
               })
             ];
           }).config;
-        enabled = withKey true;
-        disabled = withKey false;
+        enabled = fixture "enabled";
+        disabled = fixture "disabled";
+        absent = fixture "absent";
         unit = enabled.home-manager.users.neil.systemd.user.services.matrix-mcp-remote;
+        secret = enabled.age.secrets."matrix-for-agent.env";
         inherit (enabled.services.cloudflared.tunnels.kepos) ingress;
+        inactive = cfg:
+          !(cfg.home-manager.users.neil.systemd.user.services ? matrix-mcp-remote)
+          && !(cfg.services.cloudflared.tunnels.kepos.ingress ? ${cfg.kosmos.wsl.matrixMcpRemote.hostname});
       in
         assert ingress.${enabled.kosmos.wsl.matrixMcpRemote.hostname} == "http://127.0.0.1:8768";
         assert ingress."serein-keet.guion.io" == "http://127.0.0.1:8767";
         assert enabled.services.cloudflared.tunnels.kepos.default == "http_status:404";
-        assert !(disabled.home-manager.users.neil.systemd.user.services ? matrix-mcp-remote);
-        assert !(disabled.services.cloudflared.tunnels.kepos.ingress ? ${disabled.kosmos.wsl.matrixMcpRemote.hostname});
+        assert inactive disabled && inactive absent;
+        assert absent.warnings != [];
+        assert secret.owner == "neil" && secret.group == "users" && secret.mode == "0400";
+        assert secret.path == "/run/agenix/matrix-for-agent.env";
+        assert unit.Service.EnvironmentFile == [secret.path];
+        assert unit.Unit.ConditionPathExists == ["/home/neil/code/projects/lamplitisles/matrix-for-agent/dist/cli.js"];
+        assert unit.Service.WorkingDirectory == "/home/neil/code/projects/lamplitisles/matrix-for-agent";
         assert unit.Service.KillMode == "control-group";
         assert unit.Service.StandardInput == "null";
         assert unit.Service.UMask == "0077";
-        assert nixpkgs.lib.hasInfix "--host 127.0.0.1" unit.Service.ExecStart;
-        assert nixpkgs.lib.hasInfix "--apiKeyFile ${enabled.age.secrets.matrix-mcp-remote-key.path}" unit.Service.ExecStart;
+        assert unit.Service.Restart == "on-failure" && unit.Service.TimeoutStopSec == 15;
           pkgs.runCommand "matrix-mcp-remote-check" {
-            nativeBuildInputs = [pkgs.python3 pkgs.bash pkgs.util-linux gateway];
+            nativeBuildInputs = [pkgs.python3 pkgs.bash];
           } ''
-            python3 ${./tests/matrix-mcp-remote-test.py} ${gateway}/bin/supergateway ${./scripts/matrix-mcp-remote-run}
+            python3 ${./tests/matrix-for-agent-test.py} ${./scripts/matrix-for-agent-run}
             touch $out
           '';
       wsl-k3s-forwarding = assert self.nixosConfigurations.wsl.config.boot.kernel.sysctl."net.ipv4.conf.all.forwarding" == 1;
