@@ -1,49 +1,93 @@
-# Remote Matrix MCP (Matrix for Agent)
+# Matrix for Agent services
 
-The WSL user service `matrix-mcp-remote` runs the managed Matrix for Agent
-(MFA) Node artifact directly. The existing option
-`kosmos.wsl.matrixMcpRemote.enable`, hostname `matrix-mcp.guion.io`, public
-endpoint `https://matrix-mcp.guion.io/mcp`, and tunnel upstream
-`http://127.0.0.1:8768` stay the same. One shared Matrix SDK client serves all
-MCP requests; there is no stdio child, Supergateway, login command, or ID map.
+Kosmos runs the managed Matrix for Agent (MFA) Node 24 artifact in two
+independent processes, each with its own Matrix client and account token.
 
-The **Matrix access token is also the MCP Bearer token**. The retired separate
-gateway key cannot be reused. Callers keep the URL and update their secret
-`Authorization: Bearer <Matrix access token>` header or `MCP_CONFIG` bearer
-field. Anyone holding that token has the Matrix account's authority; manage
-accounts, membership, token issuance and revocation manually.
+| Identity | User service | MCP listener | Credential file | Webhook |
+| --- | --- | --- | --- | --- |
+| Lamplit Serein | `matrix-mcp-remote` | `127.0.0.1:8768` | `/run/agenix/matrix-serein.env` | Disabled |
+| CFL Shio | `matrix-mcp-cfl` | `127.0.0.1:8769` | `/run/agenix/matrix-shio.env` | `http://127.0.0.1:3084/api/matrix/events` |
+
+Serein retains the public URL `https://matrix-mcp.guion.io/mcp` and tunnel
+upstream `http://127.0.0.1:8768`. Its URL, account and bearer stay unchanged.
+Shio uses only `http://127.0.0.1:8769/mcp`; there is no new public route.
+CFL prod receives only Shio's environment file. Never supply Serein's token
+as a substitute for a missing Shio credential.
+
+The **Matrix account access token is also that instance's MCP Bearer token**.
+The retired separate gateway key cannot be reused. Anyone holding a token has
+that account's authority; manage accounts, membership and token issuance or
+revocation manually. Keep the two identities and tokens separate.
 
 Available tools are `whoami`, `list_rooms`, `list_room_members`,
 `send_message`, and `read_messages`. MFA supports joined plaintext rooms;
 E2EE is unsupported. Display names are best-effort current room member names,
 not historical names, and may be empty. History is bounded and cursor based.
-There is no durable live-event replay after downtime. This service disables
-webhooks. Existing unrelated Shio configuration and runtime are independent.
+There is no durable live-event replay after downtime. Each process shares one
+Matrix SDK client across its own MCP requests; no client is shared between
+Serein and Shio, and there is no stdio child, Supergateway or ID map.
 
-## Operator handoff: tomorrow
+## Optional secret and service gates
 
-Secret provisioning, activation, service restarts and caller Bearer updates
-are deliberately deferred. The implementation work does not perform them.
-Complete the artifact and secret steps, prepare the caller credential change,
-then schedule activation and caller rollout together.
+`kosmos.wsl.matrixMcpRemote.enable` and the declared
+`age.secrets."matrix-serein.env"` gate Serein's service and public tunnel route.
+`kosmos.wsl.matrixMcpCfl.enable` and the declared
+`age.secrets."matrix-shio.env"` independently gate Shio's service. WSL enables
+both options; the new service remains absent, with a warning, until the Shio
+encrypted file is provisioned. Missing Shio credentials also omit CFL prod's
+Matrix environment file, without affecting Serein, dev or staging. No fallback
+credential or placeholder ciphertext is installed.
 
-### Prepare the managed artifact
+The existing Serein encrypted artifact was renamed from
+`matrix-for-agent.env.age` to `matrix-serein.env.age` with identical bytes.
+Its declared default runtime path changes accordingly; a later authorized
+switch may reconcile or restart Serein to load the renamed path. This changes
+neither its account nor webhook policy. The obsolete runtime/rules name has
+no compatibility path. The retired `matrix-mcp-remote-key.age` remains an
+operator-cleanup artifact, with no runtime consumer.
 
-Required tested MFA revision: `4379ddfb13cccdd34436ca0ac3acd37ec47800e1`.
+Neil provisions **Shio's own Matrix account**, from Kosmos's root:
+
+```bash
+cd /home/neil/code/projects/tta-lab/kosmos
+agenix -e secrets/matrix-shio.env.age -i ~/.ssh/agenix_ed25519
+```
+
+Enter this systemd environment-file format in the editor, replacing the
+placeholders with Shio values only:
+
+```text
+MATRIX_HOMESERVER_URL=https://<Shio-homeserver-host>
+MATRIX_ACCESS_TOKEN=<Shio-Matrix-account-access-token>
+```
+
+Keep the token on one line without whitespace. Use quotes only when required
+by systemd environment-file syntax. The recipient rule is registered; agenix
+owns the default `/run/agenix/matrix-shio.env` as `neil:users` mode `0400`.
+Commit only the encrypted artifact. Agents must not create, decrypt, inspect
+or migrate plaintext. No token may enter Nix-store text, unit arguments,
+tracked plaintext, logs or environment dumps.
+
+Systemd `EnvironmentFile` overrides `Environment`. Each launcher therefore
+fixes its listener after loading the file and removes
+`MATRIX_WEBHOOK_BEARER_TOKEN`. Serein removes `MATRIX_WEBHOOK_URL`; Shio forces
+the exact production callback above. Credential overrides cannot redirect the
+callback or change the listener. Shio's callback has no additional bearer:
+CFL's local-only trust boundary relies on a loopback receiver and trusted local
+processes. CFL owns the runtime adapter from Shio's `MATRIX_ACCESS_TOKEN` to
+its account MCP's `CFL_MATRIX_TOKEN`; Kosmos supplies only the secret path.
+
+## Managed artifact
+
 The checkout is `/home/neil/code/projects/lamplitisles/matrix-for-agent`.
-Kosmos follows its existing managed-checkout service pattern and installs no
-MFA dependencies or builds/downloads at service startup. The bundled artifact
-is not a Nix package. For a missing checkout, obtain it with:
+The existing tested artifact revision is
+`4379ddfb13cccdd34436ca0ac3acd37ec47800e1`. Neither service builds or downloads
+at startup. A missing checkout can be obtained with `og clone`; build an
+approved revision explicitly:
 
 ```bash
 og clone https://192.168.6.186:8086/LamplitIsles/matrix-for-agent.git
-```
-
-In a clean checkout at the required revision, build explicitly:
-
-```bash
 cd /home/neil/code/projects/lamplitisles/matrix-for-agent
-git checkout 4379ddfb13cccdd34436ca0ac3acd37ec47800e1
 bun install --frozen-lockfile
 bun run typecheck
 bun test
@@ -51,90 +95,62 @@ bun run build
 node dist/cli.js --help
 ```
 
-The service uses an explicit Nix Node 24 executable and
-`dist/cli.js`. A missing artifact prevents startup via `ConditionPathExists`;
-the launcher also fails safely if it disappears between checking and launch.
-Do not change this checkout while the service is running. An updated artifact
-requires an explicit operator rebuild and restart; no auto-update runs.
-MFA closes HTTP on SIGTERM, but SDK timers can keep the Node process alive;
-the unit retains `TimeoutStopSec=15` and control-group cleanup to bound stop.
+Both services use the Nix Node 24 executable and `dist/cli.js`.
+`ConditionPathExists` and a launcher readability check fail safely if the
+artifact is missing. Do not change the shared artifact while either service
+runs. Updating it requires explicit operator rebuild/restarts. MFA closes HTTP
+on SIGTERM, but SDK timers may keep Node alive; each unit retains the existing
+15-second bounded stop and control-group cleanup, `UMask=0077` and restart policy.
 
-### Provision the new optional secret
+## Ordered production handoff
 
-From Kosmos's root, Neil runs exactly:
+Initial `IMPL_COMPLETE` means code, documentation, tests and PR are ready;
+**nothing is activated**. Shio's operator-provisioned secret must be available
+before live activation. The Orc owns independent reviews, merges and later authorization.
 
-```bash
-cd /home/neil/code/projects/tta-lab/kosmos
-agenix -e secrets/matrix-for-agent.env.age -i ~/.ssh/agenix_ed25519
-```
+1. Neil provisions Shio's encrypted file. The CFL worker prepares the reviewed
+   production artifact and operator TOML using the Shio endpoint on `8769`,
+   mention/alias rules and the runtime credential adapter.
+2. If CFL startup needs Shio's authenticated `whoami` before its receiver is
+   ready, bootstrap only the new Shio process with a temporary operator-owned
+   unit override: reset `ExecStart` to a wrapper using the same Nix Node and
+   artifact, export `MATRIX_MCP_LISTEN=127.0.0.1:8769`, unset both webhook
+   variables, then exec Node. Keep the Shio environment file and unit safety
+   settings. Prepare the override before the authorized switch/start so the
+   callback cannot run early. Never override Serein's launcher or credential.
+3. Once Shio MCP is ready, the CFL worker starts the reviewed prod receiver
+   using Shio's secret only. If required, temporarily append
+   `/run/agenix/matrix-shio.env` to the existing operator `release.conf` while
+   preserving all existing environment files and override settings.
+4. After receiver readiness, remove only the temporary Shio bootstrap override
+   to restore its managed fixed callback. The final Kosmos generation supplies
+   the managed prod environment file; the CFL worker removes only any temporary
+   duplicate append. Ko does not restart CFL prod. Record any unavoidable
+   Serein or unrelated unit reconciliation during the authorized Nix switch.
 
-Use this systemd environment-file template, replacing placeholders in the
-editor only:
+There are no cyclic hard `Requires` dependencies. Preserve the previous unit
+generation and operator overrides for rollback; do not reset account or
+conversation state. Runtime files remain operator-owned; edit repository
+sources for managed configuration.
 
-```text
-MATRIX_HOMESERVER_URL=https://<homeserver-host>
-MATRIX_ACCESS_TOKEN=<Matrix-account-access-token>
-```
-
-Keep the token on one line without whitespace. Do not add quotes unless
-needed by systemd environment-file syntax. Do not put values in Nix, shell
-argv, tracked plaintext, logs, or generated unit files. Do not copy any old
-Mindroom config. The new file is registered for the existing recipients,
-owned by `neil:users` with mode `0400`, and defaults to
-`/run/agenix/matrix-for-agent.env`. Only encrypted bytes are committed.
-
-`EnvironmentFile` values take precedence over systemd `Environment` values.
-The launcher therefore fixes `MATRIX_MCP_LISTEN=127.0.0.1:8768` after loading
-that environment, and removes `MATRIX_WEBHOOK_URL` and
-`MATRIX_WEBHOOK_BEARER_TOKEN`. Adding those variables to the credential file
-cannot change the bind or enable a webhook.
-
-The declared `age.secrets."matrix-for-agent.env"` attribute gates both the
-service and Matrix tunnel route. With no encrypted file, evaluation warns and
-disables both, even if the old gateway secret still exists. Disabling the
-option also removes both. The encrypted
-`secrets/matrix-mcp-remote-key.age` and its recipient entry remain retired
-operator-cleanup artifacts, with no runtime consumer. There is no migration
-or dual-running path.
-
-### Activate and verify
-
-After the encrypted file is committed and the caller credential change is
-ready, run the repository's required Nix checks/build, then activate as the
-regular user:
-
-```bash
-cd /home/neil/code/projects/tta-lab/kosmos
-nh os switch . -H wsl
-test -r /run/agenix/matrix-for-agent.env
-systemctl --user restart matrix-mcp-remote.service
-systemctl --user is-active matrix-mcp-remote.service
-ss -ltn 'sport = :8768'
-curl -s -o /dev/null -w '%{http_code}\n' https://matrix-mcp.guion.io/mcp
-```
-
-Expect a loopback listener and an unauthenticated `401`. Check the tunnel is
-active after the switch. Complete the prepared caller Bearer update, then use
-the caller's secret-managed MCP connection to list exactly the five tools and
-call `whoami` and `list_rooms`. Verify the intended account and joined
-plaintext rooms without logging credentials or message content. Do not put
-the token in a curl command or dump the environment. A successful Nix build
-alone does not prove Matrix connectivity or deployed authentication.
+Prefer service metadata, loopback listeners, unauthenticated MCP `401` and CFL
+static readiness for verification. A nontriggering invalid-schema callback
+request is permissible only if needed. Never send fake events to live prod,
+trigger a paid Partner, send Matrix messages or read private history. Do not
+inspect credentials, process environments or raw service logs. A successful
+build cannot establish live authenticated connectivity or receiver readiness.
 
 ## Local checks
 
 ```bash
 python3 tests/matrix-for-agent-test.py scripts/matrix-for-agent-run
+python3 tests/matrix-for-agent-cfl-test.py scripts/matrix-for-agent-cfl-run
 nix build .#checks.x86_64-linux.matrix-mcp-remote --no-link
-# Optional, after building the required MFA revision:
-python3 tests/matrix-for-agent-test.py scripts/matrix-for-agent-run \
-  "$(command -v node)" \
-  /home/neil/code/projects/lamplitisles/matrix-for-agent/dist/cli.js
+nix build .#checks.x86_64-linux.matrix-mcp-cfl --no-link
 ```
 
-The flake check evaluates enabled, disabled, and absent-secret configurations
-and runs the launcher with a test-owned fake executable and artifact. It
-checks environment precedence, disabled webhooks, credential forwarding and
-missing-artifact failure without binding the production port. The separate
-optional artifact integration check uses an ephemeral loopback fake Matrix
-host and MCP listener; it never connects to real accounts or services.
+Checks use fake credentials, test-owned temporary artifacts and fake runtimes;
+they bind no production ports. Evaluation covers both identities, neither,
+Serein only, Shio only and disabled services, independent secret gates, prod
+identity isolation and unchanged dev/staging/Keet services. The existing
+optional real-artifact test uses only ephemeral fake Matrix and MCP endpoints.

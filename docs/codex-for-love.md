@@ -31,6 +31,27 @@ Pixel 7a ACL. Dev additionally binds all IPv4 interfaces so Mac can reach
 - `flicknote`, `project`, and `web` must be available on the service `PATH`.
   The launcher fails closed when any is unavailable.
 
+## Shio Matrix ownership
+
+Prod alone appends the declared `age.secrets."matrix-shio.env".path` to its
+existing environment files. Missing Shio credentials omit this wiring; dev and
+staging receive no Matrix secret. Serein's separate `matrix-serein.env` is
+never supplied to CFL. The reviewed CFL runtime reads Shio's
+`MATRIX_ACCESS_TOKEN` and injects `CFL_MATRIX_TOKEN` for its account MCP
+connection at `http://127.0.0.1:8769/mcp`. Kosmos does not copy or rename token
+values. CFL owns the production artifact, operator TOML and `release.conf`;
+Kosmos owns the service environment file and separate `matrix-mcp-cfl` unit.
+
+Shio MFA forwards to `http://127.0.0.1:3084/api/matrix/events` without a webhook
+bearer, relying on the receiver's loopback trust boundary and trusted local
+processes. Keep account tokens out of units, Nix-store text, argv and logs.
+See [ordered Matrix handoff](matrix-mcp-remote.md#ordered-production-handoff):
+provision Shio's credential, bootstrap its MCP without forwarding if needed,
+start CFL's reviewed receiver, then restore the managed fixed callback and
+remove only temporary duplicate wiring. Initial PR delivery performs no switch
+or restart. The Orc authorizes activation after reviews and prerequisites.
+Never substitute Serein's identity or use fake live events or paid triggers.
+
 ## Deploy and verify
 
 For a configuration change, validate the branch before merge:

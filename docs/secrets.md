@@ -84,8 +84,11 @@ Encrypted files live in `secrets/` and are safe to commit:
 - `secrets/volcengine-key.age`
 - `secrets/forgejo-r2-backup.age` (optional; encrypted and safe to commit;
   retains the optional SW source-recovery backup credential)
-- `secrets/matrix-for-agent.env.age` (optional; homeserver URL and Matrix access
-  token; enables direct MFA and its tunnel route; see [setup](matrix-mcp-remote.md))
+- `secrets/matrix-serein.env.age` (optional; homeserver URL and Matrix access
+  token for Lamplit Serein; enables its direct MFA and tunnel route; see
+  [setup](matrix-mcp-remote.md))
+- `secrets/matrix-shio.env.age` (optional, operator-provisioned; independent
+  Shio account for loopback MFA and CFL prod, never a copy of Serein)
 - `secrets/matrix-mcp-remote-key.age` (retired gateway credential; retained
   encrypted for operator cleanup, with no runtime consumer)
 - `secrets/openai-tunnel.env.age` (optional; enables the OpenAI Secure MCP
@@ -106,8 +109,10 @@ They decrypt to:
   retained for a future voice integration)
 - `/run/agenix/forgejo-r2-backup` (root-owned optional R2/restic recovery
   credential; SW consumes `seafarer/forgejo-r2-backup`, operator-provisioned)
-- `/run/agenix/matrix-for-agent.env` (optional MFA systemd environment file;
-  Matrix access token also authenticates MCP callers)
+- `/run/agenix/matrix-serein.env` (optional MFA systemd environment file;
+  Serein Matrix access token also authenticates its MCP callers)
+- `/run/agenix/matrix-shio.env` (optional Shio MFA and CFL prod environment
+  file; owned by `neil:users`, mode `0400`, default agenix path)
 - `/run/agenix/openai-tunnel.env` (user-readable systemd environment file for
   the OpenAI Secure MCP Tunnel runtime key)
 
@@ -138,7 +143,8 @@ agenix -e secrets/woodpecker-postgres-env.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/soniox-key.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/volcengine-key.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/forgejo-r2-backup.age -i ~/.ssh/agenix_ed25519
-agenix -e secrets/matrix-for-agent.env.age -i ~/.ssh/agenix_ed25519
+agenix -e secrets/matrix-serein.env.age -i ~/.ssh/agenix_ed25519
+agenix -e secrets/matrix-shio.env.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/openai-tunnel.env.age -i ~/.ssh/agenix_ed25519
 ```
 

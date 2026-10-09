@@ -52,8 +52,8 @@
             modules = [
               ({lib, ...}: {
                 kosmos.wsl.matrixMcpRemote.enable = lib.mkForce (mode != "disabled");
-                age.secrets = if mode == "absent" then lib.mkForce (builtins.removeAttrs enabled.age.secrets ["matrix-for-agent.env"]) else {
-                  "matrix-for-agent.env" = {
+                age.secrets = if mode == "absent" then lib.mkForce (builtins.removeAttrs enabled.age.secrets ["matrix-serein.env"]) else {
+                  "matrix-serein.env" = {
                     file = lib.mkForce (pkgs.writeText "matrix-env-test-fixture.age" "not an encrypted credential");
                     owner = "neil";
                     group = "users";
@@ -67,7 +67,7 @@
         disabled = fixture "disabled";
         absent = fixture "absent";
         unit = enabled.home-manager.users.neil.systemd.user.services.matrix-mcp-remote;
-        secret = enabled.age.secrets."matrix-for-agent.env";
+        secret = enabled.age.secrets."matrix-serein.env";
         inherit (enabled.services.cloudflared.tunnels.kepos) ingress;
         inactive = cfg:
           !(cfg.home-manager.users.neil.systemd.user.services ? matrix-mcp-remote)
@@ -79,7 +79,7 @@
         assert inactive disabled && inactive absent;
         assert absent.warnings != [];
         assert secret.owner == "neil" && secret.group == "users" && secret.mode == "0400";
-        assert secret.path == "/run/agenix/matrix-for-agent.env";
+        assert secret.path == "/run/agenix/matrix-serein.env";
         assert unit.Service.EnvironmentFile == [secret.path];
         assert unit.Unit.ConditionPathExists == ["/home/neil/code/projects/lamplitisles/matrix-for-agent/dist/cli.js"];
         assert unit.Service.WorkingDirectory == "/home/neil/code/projects/lamplitisles/matrix-for-agent";
@@ -91,6 +91,76 @@
             nativeBuildInputs = [pkgs.python3 pkgs.bash];
           } ''
             python3 ${./tests/matrix-for-agent-test.py} ${./scripts/matrix-for-agent-run}
+            touch $out
+          '';
+      matrix-mcp-cfl = let
+        # Only fake encrypted artifacts; evaluation never decrypts or activates.
+        fixture = mode:
+          (self.nixosConfigurations.wsl.extendModules {
+            modules = [
+              ({lib, ...}: {
+                kosmos.wsl.matrixMcpRemote.enable = lib.mkForce (mode != "disabled");
+                kosmos.wsl.matrixMcpCfl.enable = lib.mkForce (mode != "disabled");
+                age.secrets = lib.mkForce (
+                  builtins.removeAttrs self.nixosConfigurations.wsl.config.age.secrets [
+                    "matrix-serein.env" "matrix-shio.env"
+                  ]
+                  // lib.optionalAttrs (builtins.elem mode ["both" "serein" "disabled"]) {
+                    "matrix-serein.env" = {
+                      file = pkgs.writeText "serein-matrix-fixture.age" "fake encrypted fixture";
+                      owner = "neil";
+                      group = "users";
+                      mode = "0400";
+                    };
+                  }
+                  // lib.optionalAttrs (builtins.elem mode ["both" "shio" "disabled"]) {
+                    "matrix-shio.env" = {
+                      file = pkgs.writeText "shio-matrix-fixture.age" "fake encrypted fixture";
+                      owner = "neil";
+                      group = "users";
+                      mode = "0400";
+                    };
+                  }
+                );
+              })
+            ];
+          }).config;
+        both = fixture "both";
+        serein = fixture "serein";
+        shio = fixture "shio";
+        neither = fixture "neither";
+        disabled = fixture "disabled";
+        services = cfg: cfg.home-manager.users.neil.systemd.user.services;
+        prodEnv = cfg: (services cfg).codex-for-love-prod.Service.EnvironmentFile or [];
+        secret = both.age.secrets."matrix-shio.env";
+        unit = (services both).matrix-mcp-cfl;
+        ingress = cfg: cfg.services.cloudflared.tunnels.kepos.ingress;
+      in
+        assert (services both) ? matrix-mcp-remote && (services both) ? matrix-mcp-cfl;
+        assert (services serein) ? matrix-mcp-remote && !((services serein) ? matrix-mcp-cfl);
+        assert !((services shio) ? matrix-mcp-remote) && (services shio) ? matrix-mcp-cfl;
+        assert !((services neither) ? matrix-mcp-remote) && !((services neither) ? matrix-mcp-cfl);
+        assert !((services disabled) ? matrix-mcp-remote) && !((services disabled) ? matrix-mcp-cfl);
+        assert (services both).matrix-mcp-remote == (services serein).matrix-mcp-remote;
+        assert (services both).matrix-mcp-cfl == (services shio).matrix-mcp-cfl;
+        assert ingress both == ingress serein;
+        assert !(ingress shio ? "matrix-mcp.guion.io");
+        assert serein.warnings != [] && neither.warnings != [];
+        assert secret.path == "/run/agenix/matrix-shio.env";
+        assert secret.owner == "neil" && secret.group == "users" && secret.mode == "0400";
+        assert unit.Service.EnvironmentFile == [secret.path];
+        assert unit.Service.UMask == "0077" && unit.Service.TimeoutStopSec == 15;
+        assert unit.Service.KillMode == "control-group" && unit.Service.Restart == "on-failure";
+        assert prodEnv both == prodEnv serein ++ [secret.path];
+        assert prodEnv shio == prodEnv both && prodEnv neither == prodEnv serein;
+        assert !(builtins.elem both.age.secrets."matrix-serein.env".path (prodEnv both));
+        assert (services both).codex-for-love-dev == (services neither).codex-for-love-dev;
+        assert (services both).codex-for-love-staging == (services neither).codex-for-love-staging;
+        assert (services both).keet-mcp == (services neither).keet-mcp;
+          pkgs.runCommand "matrix-mcp-cfl-check" {
+            nativeBuildInputs = [pkgs.python3 pkgs.bash];
+          } ''
+            python3 ${./tests/matrix-for-agent-cfl-test.py} ${./scripts/matrix-for-agent-cfl-run}
             touch $out
           '';
       wsl-k3s-forwarding = assert self.nixosConfigurations.wsl.config.boot.kernel.sysctl."net.ipv4.conf.all.forwarding" == 1;
@@ -528,7 +598,7 @@
         assert builtins.elem expectedProdPath services.codex-for-love-prod.Service.Environment;
         assert homeSessionVariables.FLICKLOG_MEILI_URL == "http://meilisearch.localhost:17480/";
         assert !haveProdMeiliSecret || builtins.elem "FLICKLOG_MEILI_URL=http://meilisearch.localhost:17480/" services.codex-for-love-prod.Service.Environment;
-        assert !haveProdMeiliSecret || services.codex-for-love-prod.Service.EnvironmentFile == [prodMeiliSecret.path];
+        assert !haveProdMeiliSecret || services.codex-for-love-prod.Service.EnvironmentFile == [prodMeiliSecret.path] ++ nixpkgs.lib.optional (cfg.age.secrets ? "matrix-shio.env") cfg.age.secrets."matrix-shio.env".path;
         assert !haveProdMeiliSecret || prodMeiliSecret.path == "${cfg.age.secretsDir}/${prodMeiliSecret.name}";
           pkgs.runCommand "wsl-codex-for-love-services-check" {} "touch $out";
 

@@ -8,6 +8,7 @@
   cfg = config.kosmos.wsl.codexForLove;
   checkout = "/home/neil/code/projects/lamplitisles/codex-for-love";
   node = lib.getExe pkgsUnstable.nodejs_24;
+  haveShioMatrixEnv = config.age.secrets ? "matrix-shio.env";
   haveProdMeiliSecret = config.age.secrets ? "codex-for-love-prod.env";
   prodMeiliEnvironmentFile = config.age.secrets."codex-for-love-prod.env".path;
   agentToolPathEntries = [
@@ -130,9 +131,11 @@ in {
         environment = lib.optionals haveProdMeiliSecret [
           "FLICKLOG_MEILI_URL=http://meilisearch.localhost:17480/"
         ];
-        environmentFiles = lib.optionals haveProdMeiliSecret [
-          prodMeiliEnvironmentFile
-        ];
+        environmentFiles =
+          lib.optionals haveProdMeiliSecret [
+            prodMeiliEnvironmentFile
+          ]
+          ++ lib.optional haveShioMatrixEnv config.age.secrets."matrix-shio.env".path;
       };
     };
   };

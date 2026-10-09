@@ -22,7 +22,8 @@ in {
   "secrets/cloudflare-ddns-token.age".publicKeys = users ++ systems;
   "secrets/forgejo-r2-backup.age".publicKeys = users ++ systems;
   "secrets/codex-for-love-prod.env.age".publicKeys = users ++ systems;
-  "secrets/matrix-for-agent.env.age".publicKeys = users ++ systems;
+  "secrets/matrix-serein.env.age".publicKeys = users ++ systems;
+  "secrets/matrix-shio.env.age".publicKeys = users ++ systems;
   # Retired gateway credential: retained encrypted for operator cleanup only.
   "secrets/matrix-mcp-remote-key.age".publicKeys = users ++ systems;
   "secrets/openai-tunnel.env.age".publicKeys = users ++ systems;
