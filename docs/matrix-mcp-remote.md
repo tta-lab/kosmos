@@ -5,7 +5,7 @@ independent processes, each with its own Matrix client and account token.
 
 | Identity | User service | MCP listener | Credential file | Webhook |
 | --- | --- | --- | --- | --- |
-| Lamplit Serein | `matrix-mcp-remote` | `127.0.0.1:8768` | `/run/agenix/matrix-serein.env` | Disabled |
+| Lamplit Serein | `matrix-mcp-remote` | `127.0.0.1:8768` | `/run/agenix/matrix-serein.env` | Optional URL and independent bearer from the same file |
 | CFL Shio | `matrix-mcp-cfl` | `127.0.0.1:8769` | `/run/agenix/matrix-shio.env` | `http://127.0.0.1:3084/api/matrix/events` |
 
 Serein retains the public URL `https://matrix-mcp.guion.io/mcp` and tunnel
@@ -68,11 +68,35 @@ Commit only the encrypted artifact. Agents must not create, decrypt, inspect
 or migrate plaintext. No token may enter Nix-store text, unit arguments,
 tracked plaintext, logs or environment dumps.
 
+Serein's optional Hosted inbound integration uses the same encrypted file:
+
+```bash
+agenix -e secrets/matrix-serein.env.age -i ~/.ssh/agenix_ed25519
+```
+
+Preserve `MATRIX_HOMESERVER_URL` and `MATRIX_ACCESS_TOKEN`, then add:
+
+```text
+MATRIX_WEBHOOK_URL=https://<Hosted-host>/api/integrations/<integration-id>/matrix/events
+MATRIX_WEBHOOK_BEARER_TOKEN=<receiver-issued-independent-webhook-token>
+```
+
+Use the endpoint and independent token supplied by the Hosted integration owner.
+Enter the token without a `Bearer` prefix. MFA POSTs JSON with
+`Content-Type: application/json` and that webhook bearer; it never attaches the
+Matrix access token to webhook requests. The integration ID and receiver-issued
+token must match the receiver's configuration. This inbound integration is
+independent of Serein's public MCP URL and Matrix/MCP bearer. With
+`MATRIX_WEBHOOK_URL` absent, forwarding stays disabled; MFA owns URL validation
+and transport behavior. No owner-specific endpoint or token belongs in Nix or
+the launcher. Commit only the owner-edited ciphertext in the same configuration
+PR after the owner confirms it is ready; agents must never inspect plaintext.
+
 Systemd `EnvironmentFile` overrides `Environment`. Each launcher therefore
-fixes its listener after loading the file and removes
-`MATRIX_WEBHOOK_BEARER_TOKEN`. Serein removes `MATRIX_WEBHOOK_URL`; Shio forces
-the exact production callback above. Credential overrides cannot redirect the
-callback or change the listener. Shio's callback has no additional bearer:
+fixes its listener after loading the file. Serein passes through the optional
+webhook URL and bearer. Shio removes `MATRIX_WEBHOOK_BEARER_TOKEN` and forces
+the exact production callback above. Shio credential overrides cannot redirect
+the callback or change the listener. Shio's callback has no additional bearer:
 CFL's local-only trust boundary relies on a loopback receiver and trusted local
 processes. CFL owns the runtime adapter from Shio's `MATRIX_ACCESS_TOKEN` to
 its account MCP's `CFL_MATRIX_TOKEN`; Kosmos supplies only the secret path.
@@ -106,7 +130,9 @@ on SIGTERM, but SDK timers may keep Node alive; each unit retains the existing
 
 Initial `IMPL_COMPLETE` means code, documentation, tests and PR are ready;
 **nothing is activated**. Shio's operator-provisioned secret must be available
-before live activation. The Orc owns independent reviews, merges and later authorization.
+before live activation. Serein webhook activation additionally requires its
+owner-confirmed ciphertext and a reviewed candidate. The Orc owns independent
+reviews, merges and later authorization.
 
 1. Neil provisions Shio's encrypted file. The CFL worker prepares the reviewed
    production artifact and operator TOML using the Shio endpoint on `8769`,
@@ -153,4 +179,7 @@ Checks use fake credentials, test-owned temporary artifacts and fake runtimes;
 they bind no production ports. Evaluation covers both identities, neither,
 Serein only, Shio only and disabled services, independent secret gates, prod
 identity isolation and unchanged dev/staging/Keet services. The existing
-optional real-artifact test uses only ephemeral fake Matrix and MCP endpoints.
+optional real-artifact test uses only ephemeral fake Matrix, MCP and webhook
+endpoints to verify independent header authentication with synthetic events.
+No source check or build establishes Hosted delivery; live activation and
+verification require a separate authorized Orc followup.

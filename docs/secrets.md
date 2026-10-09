@@ -85,7 +85,8 @@ Encrypted files live in `secrets/` and are safe to commit:
 - `secrets/forgejo-r2-backup.age` (optional; encrypted and safe to commit;
   retains the optional SW source-recovery backup credential)
 - `secrets/matrix-serein.env.age` (optional; homeserver URL and Matrix access
-  token for Lamplit Serein; enables its direct MFA and tunnel route; see
+  token for Lamplit Serein, plus optional Hosted webhook URL and independent
+  receiver-issued bearer; enables its direct MFA and tunnel route; see
   [setup](matrix-mcp-remote.md))
 - `secrets/matrix-shio.env.age` (optional, operator-provisioned; independent
   Shio account for loopback MFA and CFL prod, never a copy of Serein)
@@ -110,7 +111,8 @@ They decrypt to:
 - `/run/agenix/forgejo-r2-backup` (root-owned optional R2/restic recovery
   credential; SW consumes `seafarer/forgejo-r2-backup`, operator-provisioned)
 - `/run/agenix/matrix-serein.env` (optional MFA systemd environment file;
-  Serein Matrix access token also authenticates its MCP callers)
+  Serein Matrix access token also authenticates its MCP callers; optional
+  webhook bearer is independent)
 - `/run/agenix/matrix-shio.env` (optional Shio MFA and CFL prod environment
   file; owned by `neil:users`, mode `0400`, default agenix path)
 - `/run/agenix/openai-tunnel.env` (user-readable systemd environment file for

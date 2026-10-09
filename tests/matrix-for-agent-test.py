@@ -27,14 +27,22 @@ with tempfile.TemporaryDirectory(prefix="kosmos-mfa-test-") as tmp:
     assert observed["env"]["MATRIX_MCP_LISTEN"] == "127.0.0.1:8768"
     assert observed["env"]["MATRIX_ACCESS_TOKEN"] == env["MATRIX_ACCESS_TOKEN"]
     assert observed["env"]["MATRIX_HOMESERVER_URL"] == env["MATRIX_HOMESERVER_URL"]
-    assert "MATRIX_WEBHOOK_URL" not in observed["env"]
-    assert "MATRIX_WEBHOOK_BEARER_TOKEN" not in observed["env"]
+    assert observed["env"]["MATRIX_WEBHOOK_URL"] == env["MATRIX_WEBHOOK_URL"]
+    assert observed["env"]["MATRIX_WEBHOOK_BEARER_TOKEN"] == env["MATRIX_WEBHOOK_BEARER_TOKEN"]
+    disabled_env = {k: v for k, v in env.items() if not k.startswith("MATRIX_WEBHOOK_")}
+    disabled = subprocess.run(["bash", launcher, str(runtime), str(artifact)],
+                              env=disabled_env, capture_output=True, text=True, check=True)
+    disabled_observed = json.loads(disabled.stdout)
+    assert disabled_observed["env"]["MATRIX_MCP_LISTEN"] == "127.0.0.1:8768"
+    assert "MATRIX_WEBHOOK_URL" not in disabled_observed["env"]
+    assert "MATRIX_WEBHOOK_BEARER_TOKEN" not in disabled_observed["env"]
     missing = subprocess.run(["bash", launcher, str(runtime), str(root / "missing")],
                              env=env, capture_output=True, text=True)
     assert missing.returncode == 1 and not missing.stdout
     assert "artifact missing" in missing.stderr
-    assert "fixture-matrix-token" not in missing.stderr
-print("PASS launcher: fixed listener, disabled webhook, credential forwarding, absent artifact")
+    assert all(value not in missing.stderr for value in
+               [env["MATRIX_ACCESS_TOKEN"], env["MATRIX_WEBHOOK_BEARER_TOKEN"], env["MATRIX_WEBHOOK_URL"]])
+print("PASS launcher: fixed listener, optional webhook forwarding/default off, credential forwarding, absent artifact")
 
 # Outside the Nix check: run a supplied real bundle, with owned ephemeral ports.
 if len(sys.argv) == 4:
@@ -48,6 +56,21 @@ if len(sys.argv) == 4:
     token = "owned-fixture-matrix-token"
     auth = []
     syncs = []
+    webhook_token = "owned-fixture-webhook-token"
+    deliveries = []
+    delivered = threading.Event()
+
+    class Receiver(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *_):
+            pass
+
+        def do_POST(self):
+            body = self.rfile.read(int(self.headers["Content-Length"]))
+            deliveries.append((self.path, self.headers.get("Authorization"),
+                               self.headers.get("Content-Type"), json.loads(body)))
+            self.send_response(204)
+            self.end_headers()
+            delivered.set()
 
     class MatrixHost(http.server.BaseHTTPRequestHandler):
         def log_message(self, *_):
@@ -64,7 +87,19 @@ if len(sys.argv) == 4:
             elif path.endswith("/sync"):
                 syncs.append(True)
                 time.sleep(0.1)
-                data = {"next_batch": "fixture", "rooms": {}}
+                # The SDK requires a joined-room membership and advancing sync
+                # cursors so a later timeline is recognized as a live event.
+                events = []
+                if len(syncs) == 4:
+                    events = [{"type": "m.room.message", "event_id": "$owned-event",
+                               "sender": "@sender:test", "origin_server_ts": 1700000000000,
+                               "content": {"msgtype": "m.text", "body": "owned fixture message"}}]
+                data = {"next_batch": f"fixture-{len(syncs)}", "rooms": {"join": {
+                    "!owned:test": {"state": {"events": [{"type": "m.room.member",
+                        "state_key": "@fixture:test", "sender": "@fixture:test",
+                        "content": {"membership": "join"}}]},
+                        "timeline": {"events": events, "limited": False, "prev_batch": "owned"},
+                        "ephemeral": {"events": []}, "account_data": {"events": []}}}}}
             elif path.endswith("/filter"):
                 data = {"filter_id": "fixture"}
             elif path.endswith("/pushrules/"):
@@ -87,12 +122,17 @@ if len(sys.argv) == 4:
     home = http.server.ThreadingHTTPServer(("127.0.0.1", 0), MatrixHost)
     thread = threading.Thread(target=home.serve_forever, daemon=True)
     thread.start()
+    receiver = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Receiver)
+    receiver_thread = threading.Thread(target=receiver.serve_forever, daemon=True)
+    receiver_thread.start()
     with socket.socket() as reservation:
         reservation.bind(("127.0.0.1", 0))
         port = reservation.getsockname()[1]
     env = {"PATH": os.environ["PATH"], "MATRIX_ACCESS_TOKEN": token,
            "MATRIX_HOMESERVER_URL": f"http://127.0.0.1:{home.server_port}",
-           "MATRIX_MCP_LISTEN": f"127.0.0.1:{port}"}
+           "MATRIX_MCP_LISTEN": f"127.0.0.1:{port}",
+           "MATRIX_WEBHOOK_URL": f"http://127.0.0.1:{receiver.server_port}/matrix/events",
+           "MATRIX_WEBHOOK_BEARER_TOKEN": webhook_token}
     with tempfile.TemporaryDirectory(prefix="kosmos-mfa-http-") as tmp:
         env["HOME"] = tmp
         with (Path(tmp) / "runtime.log").open("w+") as log:
@@ -129,6 +169,15 @@ if len(sys.argv) == 4:
                 status, result = request(token, "tools/call", {"name": "whoami", "arguments": {}})
                 assert status == 200
                 assert json.loads(result["result"]["content"][0]["text"])["user_id"] == "@fixture:test"
+                assert delivered.wait(timeout=5), "owned webhook did not receive a live fixture event"
+                assert len(deliveries) == 1
+                path, bearer, content_type, event = deliveries[0]
+                assert path == "/matrix/events"
+                assert bearer == "Bearer " + webhook_token and token not in bearer
+                assert content_type == "application/json"
+                assert event["type"] == "message" and event["room_id"] == "!owned:test"
+                assert event["event_id"] == "$owned-event"
+                assert event["body"] == "owned fixture message"
                 assert auth and all(a == "Bearer " + token for a in auth)
                 proc.terminate()
                 # SDK timers may outlive graceful HTTP shutdown. The unit bounds
@@ -150,7 +199,8 @@ if len(sys.argv) == 4:
                     proc.wait()
                     print("MFA HTTP closed; remaining SDK timers required bounded process kill")
                 log.seek(0)
-                assert token not in log.read()
+                output = log.read()
+                assert token not in output and webhook_token not in output
             finally:
                 if proc.poll() is None:
                     proc.kill()
@@ -158,4 +208,7 @@ if len(sys.argv) == 4:
                 home.shutdown()
                 home.server_close()
                 thread.join(timeout=2)
-    print("PASS real MFA bundle: fake Matrix auth, MCP 401/retired-key rejection, five tools, whoami, SIGTERM, no token logs")
+                receiver.shutdown()
+                receiver.server_close()
+                receiver_thread.join(timeout=2)
+    print("PASS real MFA bundle: fake Matrix auth, MCP 401/retired-key rejection, five tools, whoami, independent JSON webhook bearer, SIGTERM, no token logs")

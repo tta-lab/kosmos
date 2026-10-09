@@ -2,7 +2,6 @@
 set -eu
 # EnvironmentFile overrides systemd Environment; fix the listener here instead.
 export MATRIX_MCP_LISTEN=127.0.0.1:8768
-unset MATRIX_WEBHOOK_URL MATRIX_WEBHOOK_BEARER_TOKEN
 if [ ! -r "$2" ]; then
   echo 'Matrix MCP artifact missing; build the managed MFA checkout first' >&2
   exit 1
