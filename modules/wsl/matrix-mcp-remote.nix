@@ -55,7 +55,7 @@ in {
     };
     artifact = lib.mkOption {
       type = lib.types.str;
-      default = "/home/neil/.local/share/matrix-for-agent/releases/9e5751b7ffdc7fffdc014770da36b5a565405d1e/cli.js";
+      default = "/home/neil/.local/share/matrix-for-agent/releases/17fe5c59c0b4b47cac515883127c9d933e8f0566/cli.js";
       description = "Immutable approved multi-identity Node bundle; provisioned separately by the operator.";
     };
   };

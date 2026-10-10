@@ -26,7 +26,11 @@ URL is not enrolled for background delivery; its credential still works as a
 dynamic MCP caller. CFL prod receives only Shio's environment file, never
 Serein's. The five tools remain `whoami`, `list_rooms`, `list_room_members`,
 `read_messages`, `send_message`. Joined plaintext rooms only; no E2EE or durable
-downtime replay. Receiver owners retain mention/reply/alias wake policy.
+downtime replay. Each live plaintext webhook includes `conversation_type: "dm" | "room"`,
+captured from that identity's synchronized `m.direct` before queued enrichment;
+retries retain the original bytes. Operators manually join and mark direct rooms.
+Receivers own exact sender allowlists for marked DMs and retain
+mention/reply/alias wake policy for rooms.
 
 ## Gates and existing inputs
 
@@ -88,12 +92,13 @@ forced stop after graceful HTTP closure.
 `kosmos.wsl.matrixMcpRemote.artifact` defaults to:
 
 ```text
-/home/neil/.local/share/matrix-for-agent/releases/9e5751b7ffdc7fffdc014770da36b5a565405d1e/cli.js
+/home/neil/.local/share/matrix-for-agent/releases/17fe5c59c0b4b47cac515883127c9d933e8f0566/cli.js
 ```
 
 This release must be built from approved MFA main
-`9e5751b7ffdc7fffdc014770da36b5a565405d1e` (tree
-`92618f48bee91d7f629705a5b8fde90061765b7b`, equal to reviewed PR4 tree).
+`17fe5c59c0b4b47cac515883127c9d933e8f0566` (tree
+`cad228458cff245c08dba95457ef36c674ce7018`, equal to reviewed PR5 head
+`7989a3da4ff24caf39ac4a8ea2e8c2bd2bdf9570` tree).
 Neither service builds/downloads on startup. `ConditionPathExists` skips a
 missing release, and the startup helper refuses an unreadable/missing artifact.
 A release is provisioned in a separately authorized follow-up, retaining MFA's
@@ -101,6 +106,34 @@ license and Node runtime. Never run `bun run build` against the shared checkout'
 `dist/cli.js`: it is the historical protected `ac36…` artifact. Redirect the
 Node-target build into an owned staging directory and retain its SHA256, source
 head/tree and LICENSE before placing a new immutable release.
+
+## DM producer upgrade
+
+Preparation and the source PR precede live activation. The unified release
+changes both Shio and Serein: old Hosted Chat's closed parser rejects the new
+field with HTTP 400, including group messages. Before activation, obtain
+Owner/CF agent confirmation that Hosted Chat has deployed
+`d7b032c3250c9242729d1022bcbc646c0478478a` or a newer compatible build;
+Platform `e3b0d4b279368444ae3f7382c96e59873ed8b516` supplies Hosted
+`matrix.dmAllowList` configuration. Sequence Platform config support, Hosted
+receiver, then unified MFA. Pending coordination does not authorize activation.
+
+After independent review, merge and explicit Orc activation authorization,
+recheck source/tree, protected hashes and destination ownership. Provision only
+the verified bundle, LICENSE and upstream notices into the absent release directory by atomic
+no-replace installation; retain the old `9e5751b` release and saved system
+closure. Apply `nh os switch . -H wsl` as Neil and observe managed gateway
+reconciliation. Do not repeat the historical override/caller cutover below.
+Verify loaded new artifact, independent input success and private metadata,
+PID-owned 8768/local unauthenticated 401, zero restarts and at least 20 seconds
+of stability within a 120-second readiness budget. Preserve CFL prod's
+`[@xq-2:matrix.dsh.local, @sooya:matrix.dsh.local]` list and existing policies.
+
+On activation failure, use the recorded prior closure's
+`bin/switch-to-configuration switch` with guarded profile restoration from the
+concrete release report; preserve both bundles and configuration history.
+Do not restore credential or conversation state. Readiness establishes configured
+producer availability; live DM delivery and Partner replies remain unverified.
 
 ## Public hostname activation
 
