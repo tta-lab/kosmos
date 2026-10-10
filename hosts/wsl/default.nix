@@ -24,7 +24,6 @@ _: {
     ../../modules/wsl/kepos-tunnel.nix
     ../../modules/wsl/codex-for-love.nix
     ../../modules/wsl/matrix-mcp-remote.nix
-    ../../modules/wsl/matrix-mcp-cfl.nix
     ../../modules/wsl/keet-mcp.nix
     ../../modules/wsl/flickgrove.nix
     ../../modules/wsl/apt-cacher-ng.nix
@@ -50,7 +49,6 @@ _: {
     codexForLove.enable = true;
     keetMcp.enable = true;
     matrixMcpRemote.enable = true;
-    matrixMcpCfl.enable = true;
   };
   system.stateVersion = "25.05";
 }

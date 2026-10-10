@@ -86,10 +86,10 @@ Encrypted files live in `secrets/` and are safe to commit:
   retains the optional SW source-recovery backup credential)
 - `secrets/matrix-serein.env.age` (optional; homeserver URL and Matrix access
   token for Lamplit Serein, plus optional Hosted webhook URL and independent
-  receiver-issued bearer; enables its direct MFA and tunnel route; see
+  receiver-issued bearer; enables the unified MFA input and tunnel route; see
   [setup](matrix-mcp-remote.md))
 - `secrets/matrix-shio.env.age` (optional, operator-provisioned; independent
-  Shio account for loopback MFA and CFL prod, never a copy of Serein)
+  Shio account for unified MFA background delivery and CFL prod, never a copy of Serein)
 - `secrets/matrix-mcp-remote-key.age` (retired gateway credential; retained
   encrypted for operator cleanup, with no runtime consumer)
 - `secrets/openai-tunnel.env.age` (optional; enables the OpenAI Secure MCP
@@ -111,12 +111,22 @@ They decrypt to:
 - `/run/agenix/forgejo-r2-backup` (root-owned optional R2/restic recovery
   credential; SW consumes `seafarer/forgejo-r2-backup`, operator-provisioned)
 - `/run/agenix/matrix-serein.env` (optional MFA systemd environment file;
-  Serein Matrix access token also authenticates its MCP callers; optional
+  Serein credentials feed a separate preparation unit; dynamic MCP callers
+  supply their own valid Matrix token for the fixed homeserver; optional
   webhook bearer is independent)
 - `/run/agenix/matrix-shio.env` (optional Shio MFA and CFL prod environment
   file; owned by `neil:users`, mode `0400`, default agenix path)
 - `/run/agenix/openai-tunnel.env` (user-readable systemd environment file for
   the OpenAI Secure MCP Tunnel runtime key)
+
+The unified Matrix service reuses both existing encrypted inputs unchanged,
+with no new ID field or owner-secret prerequisite. Separate systemd input units
+parse each `EnvironmentFile`; their private ephemeral JSON is assembled before
+MFA launch. The colliding credential variables are never combined or forwarded
+to the gateway. CFL prod still receives Shio only. See the [Matrix cutover plan](matrix-mcp-remote.md#ordered-production-handoff)
+before activation: this consolidation defers the generic switch/restart steps
+below until the new immutable artifact, exact overrides and caller endpoint are
+coordinated. Agents do not inspect real environment values.
 
 `lenos/config.json` in this repo is non-secret and still maps to
 `/home/neil/.config/lenos/config.json`.

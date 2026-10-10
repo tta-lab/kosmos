@@ -1,185 +1,162 @@
-# Matrix for Agent services
+# Unified Matrix gateway
 
-Kosmos runs the managed Matrix for Agent (MFA) Node 24 artifact in two
-independent processes, each with its own Matrix client and account token.
+Kosmos declares one `matrix-mcp-remote` user service, using Node 24 at
+`127.0.0.1:8768/mcp`. It accepts each caller's own Matrix access token against
+one fixed homeserver. Token validation happens on every request; credentials
+have separate Matrix clients, even for devices belonging to the same user.
+Tool access never enrolls a caller into background delivery. This is custom
+Matrix bearer authentication, not MCP OAuth or a separately issued gateway key.
 
-| Identity | User service | MCP listener | Credential file | Webhook |
-| --- | --- | --- | --- | --- |
-| Lamplit Serein | `matrix-mcp-remote` | `127.0.0.1:8768` | `/run/agenix/matrix-serein.env` | Optional URL and independent bearer from the same file |
-| CFL Shio | `matrix-mcp-cfl` | `127.0.0.1:8769` | `/run/agenix/matrix-shio.env` | `http://127.0.0.1:3084/api/matrix/events` |
+`https://matrix-mcp.guion.io/mcp` retains its hostname and tunnel upstream.
+When published, it accepts **any valid token for the fixed homeserver**, rather
+than only Serein's configured token. The route remains gated by Serein's declared
+secret; Shio-only installation stays local. The pre-existing external HTTP 403
+has not been diagnosed or fixed by this consolidation.
 
-Serein retains the public URL `https://matrix-mcp.guion.io/mcp` and tunnel
-upstream `http://127.0.0.1:8768`. Its URL, account and bearer stay unchanged.
-Shio uses only `http://127.0.0.1:8769/mcp`; there is no new public route.
-CFL prod receives only Shio's environment file. Never supply Serein's token
-as a substitute for a missing Shio credential.
+Background owners remain independently configured:
 
-The **Matrix account access token is also that instance's MCP Bearer token**.
-The retired separate gateway key cannot be reused. Anyone holding a token has
-that account's authority; manage accounts, membership and token issuance or
-revocation manually. Keep the two identities and tokens separate.
+| Identity | systemd input | Receiver | Receiver authentication |
+| --- | --- | --- | --- |
+| Shio | `/run/agenix/matrix-shio.env` | `http://127.0.0.1:3084/api/matrix/events` | No bearer; trusted local loopback boundary |
+| Serein | `/run/agenix/matrix-serein.env` | Optional configured Hosted URL | Independent configured bearer, if present |
 
-Available tools are `whoami`, `list_rooms`, `list_room_members`,
-`send_message`, and `read_messages`. MFA supports joined plaintext rooms;
-E2EE is unsupported. Display names are best-effort current room member names,
-not historical names, and may be empty. History is bounded and cursor based.
-There is no durable live-event replay after downtime. Each process shares one
-Matrix SDK client across its own MCP requests; no client is shared between
-Serein and Shio, and there is no stdio child, Supergateway or ID map.
+Shio ignores inherited receiver URL/bearer overrides. Serein without a webhook
+URL is not enrolled for background delivery; its credential still works as a
+dynamic MCP caller. CFL prod receives only Shio's environment file, never
+Serein's. The five tools remain `whoami`, `list_rooms`, `list_room_members`,
+`read_messages`, `send_message`. Joined plaintext rooms only; no E2EE or durable
+downtime replay. Receiver owners retain mention/reply/alias wake policy.
 
-## Optional secret and service gates
+## Gates and existing inputs
 
-`kosmos.wsl.matrixMcpRemote.enable` and the declared
-`age.secrets."matrix-serein.env"` gate Serein's service and public tunnel route.
-`kosmos.wsl.matrixMcpCfl.enable` and the declared
-`age.secrets."matrix-shio.env"` independently gate Shio's service. WSL enables
-both options; the new service remains absent, with a warning, until the Shio
-encrypted file is provisioned. Missing Shio credentials also omit CFL prod's
-Matrix environment file, without affecting Serein, dev or staging. No fallback
-credential or placeholder ciphertext is installed.
+`kosmos.wsl.matrixMcpRemote.enable` controls the unified service. The obsolete
+`matrixMcpCfl` option, enduring `matrix-mcp-cfl` service and listener on 8769 are
+removed; no forwarding listener or compatibility alias remains.
 
-The existing Serein encrypted artifact was renamed from
-`matrix-for-agent.env.age` to `matrix-serein.env.age` with identical bytes.
-Its declared default runtime path changes accordingly; a later authorized
-switch may reconcile or restart Serein to load the renamed path. This changes
-neither its account nor webhook policy. The obsolete runtime/rules name has
-no compatibility path. The retired `matrix-mcp-remote-key.age` remains an
-operator-cleanup artifact, with no runtime consumer.
+| Configuration | Gateway | Public Matrix route | CFL prod Matrix input |
+| --- | --- | --- | --- |
+| Both secrets declared | One on 8768 | Existing hostname on 8768 | Shio only |
+| Serein only | One on 8768 | Existing hostname on 8768 | None |
+| Shio only | One on 8768 | None | Shio only |
+| Neither | None, warning | None | None |
+| Unified option disabled | None | None | Shio if independently declared |
 
-Neil provisions **Shio's own Matrix account**, from Kosmos's root:
+The existing ciphertext bytes and recipient rules remain unchanged. Both
+optional agenix declarations use their default paths, `neil:users`, mode `0400`.
+No new secret, user ID field, token copy or format migration is required. Each
+input retains systemd `EnvironmentFile` format with `MATRIX_HOMESERVER_URL` and
+`MATRIX_ACCESS_TOKEN`. Serein may also contain `MATRIX_WEBHOOK_URL` and
+`MATRIX_WEBHOOK_BEARER_TOKEN` (without a `Bearer` prefix). Agents never read,
+decrypt, source or migrate these plaintext files. See [secret rules](secrets.md).
 
-```bash
-cd /home/neil/code/projects/tta-lab/kosmos
-agenix -e secrets/matrix-shio.env.age -i ~/.ssh/agenix_ed25519
-```
+## Private startup preparation
 
-Enter this systemd environment-file format in the editor, replacing the
-placeholders with Shio values only:
+The main unit creates `%t/matrix-mcp-remote` (`0700`). Every start/retry first
+clears only verified owned runtime files, then synchronously starts the declared
+identities' `matrix-mcp-input-shio`/`matrix-mcp-input-serein` oneshot units. These
+units each load exactly one original `EnvironmentFile`; systemd handles quoting,
+continuations and assignment precedence. Manager-inherited input values are
+cleared; empty optional webhook assignments mean absent. They are short preparation helpers,
+not extra long-running Matrix clients. No combined environment file or shell
+source is used.
+
+Each helper validates its token/URLs and derives the full user ID with a bounded
+10-second `whoami` against its own homeserver, including the response body.
+Redirects are refused. The main preparation step requires all declared inputs,
+checks normalized homeservers agree and rejects duplicate user IDs or tokens.
+It atomically writes a private `0600` UTF-8 `webhooks.json` array with exactly
+`user_id`, `access_token`, `url`, optional `bearer_token`; size is bounded to
+1 MiB (at most two entries, within MFA's 16-entry limit). It deletes the input
+fragments and replaces itself with MFA, using only fixed homeserver, loopback
+listener and `MATRIX_WEBHOOK_CONFIG` for Matrix environment settings.
+
+Paths must be regular, owned and private; symlinks, hard links, permissive or
+unowned runtime paths fail safely. A declared missing/unreadable/invalid input,
+homeserver mismatch or preparation failure blocks launch, clears owned outputs
+and emits only a sanitized diagnostic. No credentials appear in unit arguments,
+Nix-store text or logs. MFA revalidates its configured IDs at startup and opens
+the listener only after all configured identities synchronize successfully.
+The main stop hook also stops any in-flight input helper. Runtime files disappear
+when the main service stops. Restart, proxy/network,
+`NoNewPrivileges`, private temp, `UMask=0077`, 15-second bounded stop and
+control-group cleanup policies are retained. SDK timers may require the bounded
+forced stop after graceful HTTP closure.
+
+## Immutable artifact
+
+`kosmos.wsl.matrixMcpRemote.artifact` defaults to:
 
 ```text
-MATRIX_HOMESERVER_URL=https://<Shio-homeserver-host>
-MATRIX_ACCESS_TOKEN=<Shio-Matrix-account-access-token>
+/home/neil/.local/share/matrix-for-agent/releases/9e5751b7ffdc7fffdc014770da36b5a565405d1e/cli.js
 ```
 
-Keep the token on one line without whitespace. Use quotes only when required
-by systemd environment-file syntax. The recipient rule is registered; agenix
-owns the default `/run/agenix/matrix-shio.env` as `neil:users` mode `0400`.
-Commit only the encrypted artifact. Agents must not create, decrypt, inspect
-or migrate plaintext. No token may enter Nix-store text, unit arguments,
-tracked plaintext, logs or environment dumps.
-
-Serein's optional Hosted inbound integration uses the same encrypted file:
-
-```bash
-agenix -e secrets/matrix-serein.env.age -i ~/.ssh/agenix_ed25519
-```
-
-Preserve `MATRIX_HOMESERVER_URL` and `MATRIX_ACCESS_TOKEN`, then add:
-
-```text
-MATRIX_WEBHOOK_URL=https://<Hosted-host>/api/integrations/<integration-id>/matrix/events
-MATRIX_WEBHOOK_BEARER_TOKEN=<receiver-issued-independent-webhook-token>
-```
-
-Use the endpoint and independent token supplied by the Hosted integration owner.
-Enter the token without a `Bearer` prefix. MFA POSTs JSON with
-`Content-Type: application/json` and that webhook bearer; it never attaches the
-Matrix access token to webhook requests. The integration ID and receiver-issued
-token must match the receiver's configuration. This inbound integration is
-independent of Serein's public MCP URL and Matrix/MCP bearer. With
-`MATRIX_WEBHOOK_URL` absent, forwarding stays disabled; MFA owns URL validation
-and transport behavior. No owner-specific endpoint or token belongs in Nix or
-the launcher. Commit only the owner-edited ciphertext in the same configuration
-PR after the owner confirms it is ready; agents must never inspect plaintext.
-
-Systemd `EnvironmentFile` overrides `Environment`. Each launcher therefore
-fixes its listener after loading the file. Serein passes through the optional
-webhook URL and bearer. Shio removes `MATRIX_WEBHOOK_BEARER_TOKEN` and forces
-the exact production callback above. Shio credential overrides cannot redirect
-the callback or change the listener. Shio's callback has no additional bearer:
-CFL's local-only trust boundary relies on a loopback receiver and trusted local
-processes. CFL owns the runtime adapter from Shio's `MATRIX_ACCESS_TOKEN` to
-its account MCP's `CFL_MATRIX_TOKEN`; Kosmos supplies only the secret path.
-
-## Managed artifact
-
-The checkout is `/home/neil/code/projects/lamplitisles/matrix-for-agent`.
-The existing tested artifact revision is
-`4379ddfb13cccdd34436ca0ac3acd37ec47800e1`. Neither service builds or downloads
-at startup. A missing checkout can be obtained with `og clone`; build an
-approved revision explicitly:
-
-```bash
-og clone https://192.168.6.186:8086/LamplitIsles/matrix-for-agent.git
-cd /home/neil/code/projects/lamplitisles/matrix-for-agent
-bun install --frozen-lockfile
-bun run typecheck
-bun test
-bun run build
-node dist/cli.js --help
-```
-
-Both services use the Nix Node 24 executable and `dist/cli.js`.
-`ConditionPathExists` and a launcher readability check fail safely if the
-artifact is missing. Do not change the shared artifact while either service
-runs. Updating it requires explicit operator rebuild/restarts. MFA closes HTTP
-on SIGTERM, but SDK timers may keep Node alive; each unit retains the existing
-15-second bounded stop and control-group cleanup, `UMask=0077` and restart policy.
+This release must be built from approved MFA main
+`9e5751b7ffdc7fffdc014770da36b5a565405d1e` (tree
+`92618f48bee91d7f629705a5b8fde90061765b7b`, equal to reviewed PR4 tree).
+Neither service builds/downloads on startup. `ConditionPathExists` skips a
+missing release, and the startup helper refuses an unreadable/missing artifact.
+A release is provisioned in a separately authorized follow-up, retaining MFA's
+license and Node runtime. Never run `bun run build` against the shared checkout's
+`dist/cli.js`: it is the historical protected `ac36…` artifact. Redirect the
+Node-target build into an owned staging directory and retain its SHA256, source
+head/tree and LICENSE before placing a new immutable release.
 
 ## Ordered production handoff
 
-Initial `IMPL_COMPLETE` means code, documentation, tests and PR are ready;
-**nothing is activated**. Shio's operator-provisioned secret must be available
-before live activation. Serein webhook activation additionally requires its
-owner-confirmed ciphertext and a reviewed candidate. The Orc owns independent
-reviews, merges and later authorization.
+This PR prepares source and owned tests only. Merge does **not** activate it.
+Live activation and CFL caller edits are a subsequent coordinated Orc-owned
+follow-up; no switch, restart, override deletion or secret change occurs here.
 
-1. Neil provisions Shio's encrypted file. The CFL worker prepares the reviewed
-   production artifact and operator TOML using the Shio endpoint on `8769`,
-   mention/alias rules and the runtime credential adapter.
-2. If CFL startup needs Shio's authenticated `whoami` before its receiver is
-   ready, bootstrap only the new Shio process with a temporary operator-owned
-   unit override: reset `ExecStart` to a wrapper using the same Nix Node and
-   artifact, export `MATRIX_MCP_LISTEN=127.0.0.1:8769`, unset both webhook
-   variables, then exec Node. Keep the Shio environment file and unit safety
-   settings. Prepare the override before the authorized switch/start so the
-   callback cannot run early. Never override Serein's launcher or credential.
-3. Once Shio MCP is ready, the CFL worker starts the reviewed prod receiver
-   using Shio's secret only. If required, temporarily append
-   `/run/agenix/matrix-shio.env` to the existing operator `release.conf` while
-   preserving all existing environment files and override settings.
-4. After receiver readiness, remove only the temporary Shio bootstrap override
-   to restore its managed fixed callback. The final Kosmos generation supplies
-   the managed prod environment file; the CFL worker removes only any temporary
-   duplicate append. Ko does not restart CFL prod. Record any unavoidable
-   Serein or unrelated unit reconciliation during the authorized Nix switch.
+Historical rollout metadata observed on 2026-10-10: both operator `release.conf`
+overrides reference wrappers and `cli.js` under
+`~/.local/share/matrix-for-agent/candidates/2ff91d631a29f37807607b614e36fe7f088c578e/`.
+That reply-aware historical CLI has SHA256
+`33ec389d64c766090dab6fb611a243216e10af41dca8d7f86945b5c4f132632c`.
+It and the registered `ac36…` dist must remain untouched. The operator CFL
+`partner.toml`/native MCP caller still targets 8769 until the follow-up.
 
-There are no cyclic hard `Requires` dependencies. Preserve the previous unit
-generation and operator overrides for rollback; do not reset account or
-conversation state. Runtime files remain operator-owned; edit repository
-sources for managed configuration.
+1. Review the concrete release, evaluated unit and this plan. Stage the approved
+   new immutable bundle and LICENSE at the managed release path, verify their
+   hashes against the owned build, and verify secret-path metadata only. Do not
+   replace the old candidate or inspect credential values.
+2. Coordinate CFL prod receiver readiness on 3084 before gateway startup; preserve
+   its artifact, tokens, aliases, native/state and receiver configuration. Back
+   up only the specific operator caller configuration and two Matrix override
+   files, with UID/mode/SHA256 records in a private operator backup directory.
+3. Pause the old Matrix units for cutover. Remove only these two exact regular,
+   UID-1000 override files **if their current hashes still match**:
+   `~/.config/systemd/user/matrix-mcp-remote.service.d/release.conf`
+   (`dd64a6526cff705b40fdab615111b7124d379337248786a6de0769a2f461c179`) and
+   `~/.config/systemd/user/matrix-mcp-cfl.service.d/release.conf`
+   (`6dcd85be15c040e1dda94a2a19696010c424971a0c722f2029169149ee573999`).
+   Re-inspect and reconcile any mismatch; never delete a drop-in directory,
+   unrelated overrides or managed unit files wholesale.
+4. Apply the reviewed Kosmos checkout with `nh os switch . -H wsl` as Neil.
+   Check one managed gateway and declared preparation units, no 8769 listener,
+   runtime directory/file permissions, and the existing Serein-only tunnel gate.
+   Change only CFL's operator-owned Matrix MCP endpoint from
+   `http://127.0.0.1:8769/mcp` to `http://127.0.0.1:8768/mcp`, then restart only
+   the affected CFL prod caller when the unified gateway is ready.
+5. Verify authenticated identity/tool behavior with an operator-approved method
+   that does not expose tokens, and delivery only from approved real traffic.
+   No synthetic live events, paid-provider triggers or private-history probes.
+   Verify local and public behavior separately; do not assume the external 403
+   is resolved. Record sanitized results and release/unit hashes.
 
-Prefer service metadata, loopback listeners, unauthenticated MCP `401` and CFL
-static readiness for verification. A nontriggering invalid-schema callback
-request is permissible only if needed. Never send fake events to live prod,
-trigger a paid Partner, send Matrix messages or read private history. Do not
-inspect credentials, process environments or raw service logs. A successful
-build cannot establish live authenticated connectivity or receiver readiness.
+Rollback is also an operator action: stop the unified gateway, restore the
+previous reviewed Nix generation and only the backed-up caller endpoint and
+exact verified UID/hash Matrix overrides, then start the previous immutable
+units in a coordinated order. Restore a backup only if the destination is absent
+or matches the expected cutover hash; stop on unrecognized changes. Keep both
+historical artifacts intact. Do not copy/reset/restore CFL conversation state,
+rekey secrets, overwrite managed files directly or run both generations together.
 
-## Local checks
+## Owned verification
 
-```bash
-python3 tests/matrix-for-agent-test.py scripts/matrix-for-agent-run
-python3 tests/matrix-for-agent-cfl-test.py scripts/matrix-for-agent-cfl-run
-nix build .#checks.x86_64-linux.matrix-mcp-remote --no-link
-nix build .#checks.x86_64-linux.matrix-mcp-cfl --no-link
-```
-
-Checks use fake credentials, test-owned temporary artifacts and fake runtimes;
-they bind no production ports. Evaluation covers both identities, neither,
-Serein only, Shio only and disabled services, independent secret gates, prod
-identity isolation and unchanged dev/staging/Keet services. The existing
-optional real-artifact test uses only ephemeral fake Matrix, MCP and webhook
-endpoints to verify independent header authentication with synthetic events.
-No source check or build establishes Hosted delivery; live activation and
-verification require a separate authorized Orc followup.
+The flake check evaluates both/Serein/Shio/neither/disabled gates and runs private
+runtime fixtures. Optional host checks use synthetic `EnvironmentFile`s in owned
+transient test units; actual MFA checks use a separate user/network namespace so
+fixed callback 3084 and gateway 8768 cannot touch production. See the local
+implementation report for commands, artifact hashes and results. Existing MFA
+PR4's 27 tests/236 assertions are head-bound evidence reused via equal trees;
+this PR adds Kosmos startup/generated-config seams, not live interoperability.

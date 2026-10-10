@@ -38,19 +38,29 @@ existing environment files. Missing Shio credentials omit this wiring; dev and
 staging receive no Matrix secret. Serein's separate `matrix-serein.env` is
 never supplied to CFL. The reviewed CFL runtime reads Shio's
 `MATRIX_ACCESS_TOKEN` and injects `CFL_MATRIX_TOKEN` for its account MCP
-connection at `http://127.0.0.1:8769/mcp`. Kosmos does not copy or rename token
-values. CFL owns the production artifact, operator TOML and `release.conf`;
-Kosmos owns the service environment file and separate `matrix-mcp-cfl` unit.
+connection at the unified `http://127.0.0.1:8768/mcp`. Kosmos does not copy or
+rename token values. CFL owns its production artifact, operator TOML/native MCP
+configuration and `release.conf`; Kosmos owns the secret path and one
+`matrix-mcp-remote` gateway. The previously deployed operator caller still uses
+8769; its endpoint change is a coordinated follow-up, not part of this PR's live
+work. The enduring second `matrix-mcp-cfl` service and listener are removed.
 
-Shio MFA forwards to `http://127.0.0.1:3084/api/matrix/events` without a webhook
-bearer, relying on the receiver's loopback trust boundary and trusted local
-processes. Keep account tokens out of units, Nix-store text, argv and logs.
-See [ordered Matrix handoff](matrix-mcp-remote.md#ordered-production-handoff):
-provision Shio's credential, bootstrap its MCP without forwarding if needed,
-start CFL's reviewed receiver, then restore the managed fixed callback and
-remove only temporary duplicate wiring. Initial PR delivery performs no switch
-or restart. The Orc authorizes activation after reviews and prerequisites.
-Never substitute Serein's identity or use fake live events or paid triggers.
+The gateway's separately configured Shio background owner forwards to
+`http://127.0.0.1:3084/api/matrix/events` without a webhook bearer, relying on the
+receiver's loopback trust boundary. Serein's optional Hosted receiver and bearer
+remain independent. Public MCP accepts any valid token for the fixed homeserver
+when Serein's secret enables the existing route; background owners are never
+selected by MCP callers. Keep tokens out of units, Nix-store text, argv and logs.
+
+Follow the [ordered Matrix handoff](matrix-mcp-remote.md#ordered-production-handoff):
+provision the new approved immutable gateway artifact, coordinate receiver
+readiness, back up exact UID/hash overrides and caller config, cut over the
+managed launch and CFL endpoint together, then verify approved traffic. Preserve
+CFL tokens, aliases, native/state and receiver configuration. No new secret edit
+is required. Initial PR delivery performs no switch, restart or caller write;
+the Orc owns activation after independent review. Rollback restores only the
+verified generation/overrides/endpoint, never conversation state. Never substitute
+Serein's identity or use fake live events or paid triggers.
 
 ## Deploy and verify
 

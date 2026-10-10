@@ -89,12 +89,16 @@ change the local cluster. The full operator workflow is in the
 
 ## Remote Matrix MCP
 
-WSL runs the managed Matrix for Agent Node artifact directly behind
-`https://matrix-mcp.guion.io/mcp`. Its optional agenix environment file holds
-the homeserver URL and Matrix access token, which also authenticates MCP
-callers. Secret provisioning, activation, and caller updates are deferred to
-the operator; see the [tomorrow handoff](docs/matrix-mcp-remote.md#operator-handoff-tomorrow)
-for the artifact build, exact secret command, five tools, and plaintext limits.
+WSL declares one Node 24 Matrix for Agent gateway on loopback 8768, retaining
+`https://matrix-mcp.guion.io/mcp` when Serein's secret enables the tunnel route.
+Callers use any valid Matrix token for the fixed homeserver; only configured
+Shio/Serein identities own background webhooks. Existing separate agenix inputs
+feed private runtime preparation, with no new secret or combined environment file.
+The managed artifact is a new immutable approved multi-identity release, never
+the historical shared dist. See the [Matrix guide](docs/matrix-mcp-remote.md) for
+gates, security and the coordinated future cutover/rollback from operator release
+overrides and CFL's old 8769 endpoint. This source change does not activate live
+services or resolve the pre-existing public 403.
 
 ## Codex CLI
 

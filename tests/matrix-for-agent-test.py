@@ -1,214 +1,140 @@
-"""Test-owned launcher seam; optional real MFA artifact against a fake Matrix host."""
+"""Owned runtime fixtures. No live files, endpoints, secrets or units."""
+import http.server
 import json
 import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 
-launcher = sys.argv[1]
-with tempfile.TemporaryDirectory(prefix="kosmos-mfa-test-") as tmp:
-    root = Path(tmp)
-    artifact = root / "cli.js"
-    artifact.write_text("test-owned artifact")
-    runtime = root / "node"
-    runtime.write_text(f"#!{sys.executable}\nimport json,os,sys\nprint(json.dumps({{'argv':sys.argv[1:],'env':dict(os.environ)}}))\n")
-    runtime.chmod(0o700)
-    env = {"PATH": os.environ["PATH"], "HOME": tmp,
-           "MATRIX_HOMESERVER_URL": "http://127.0.0.1:1",
-           "MATRIX_ACCESS_TOKEN": "fixture-matrix-token",
-           "MATRIX_MCP_LISTEN": "0.0.0.0:9999",
-           "MATRIX_WEBHOOK_URL": "http://127.0.0.1:1/webhook",
-           "MATRIX_WEBHOOK_BEARER_TOKEN": "fixture-webhook-token"}
-    result = subprocess.run(["bash", launcher, str(runtime), str(artifact)],
-                            env=env, capture_output=True, text=True, check=True)
-    observed = json.loads(result.stdout)
-    assert observed["argv"] == [str(artifact)]
-    assert observed["env"]["MATRIX_MCP_LISTEN"] == "127.0.0.1:8768"
-    assert observed["env"]["MATRIX_ACCESS_TOKEN"] == env["MATRIX_ACCESS_TOKEN"]
-    assert observed["env"]["MATRIX_HOMESERVER_URL"] == env["MATRIX_HOMESERVER_URL"]
-    assert observed["env"]["MATRIX_WEBHOOK_URL"] == env["MATRIX_WEBHOOK_URL"]
-    assert observed["env"]["MATRIX_WEBHOOK_BEARER_TOKEN"] == env["MATRIX_WEBHOOK_BEARER_TOKEN"]
-    disabled_env = {k: v for k, v in env.items() if not k.startswith("MATRIX_WEBHOOK_")}
-    disabled = subprocess.run(["bash", launcher, str(runtime), str(artifact)],
-                              env=disabled_env, capture_output=True, text=True, check=True)
-    disabled_observed = json.loads(disabled.stdout)
-    assert disabled_observed["env"]["MATRIX_MCP_LISTEN"] == "127.0.0.1:8768"
-    assert "MATRIX_WEBHOOK_URL" not in disabled_observed["env"]
-    assert "MATRIX_WEBHOOK_BEARER_TOKEN" not in disabled_observed["env"]
-    missing = subprocess.run(["bash", launcher, str(runtime), str(root / "missing")],
-                             env=env, capture_output=True, text=True)
-    assert missing.returncode == 1 and not missing.stdout
-    assert "artifact missing" in missing.stderr
-    assert all(value not in missing.stderr for value in
-               [env["MATRIX_ACCESS_TOKEN"], env["MATRIX_WEBHOOK_BEARER_TOKEN"], env["MATRIX_WEBHOOK_URL"]])
-print("PASS launcher: fixed listener, optional webhook forwarding/default off, credential forwarding, absent artifact")
-
-# Outside the Nix check: run a supplied real bundle, with owned ephemeral ports.
-if len(sys.argv) == 4:
-    import http.server
-    import socket
-    import threading
-    import time
-    import urllib.error
-    import urllib.request
-
-    token = "owned-fixture-matrix-token"
-    auth = []
-    syncs = []
-    webhook_token = "owned-fixture-webhook-token"
-    deliveries = []
-    delivered = threading.Event()
-
-    class Receiver(http.server.BaseHTTPRequestHandler):
-        def log_message(self, *_):
-            pass
-
-        def do_POST(self):
-            body = self.rfile.read(int(self.headers["Content-Length"]))
-            deliveries.append((self.path, self.headers.get("Authorization"),
-                               self.headers.get("Content-Type"), json.loads(body)))
-            self.send_response(204)
-            self.end_headers()
-            delivered.set()
-
-    class MatrixHost(http.server.BaseHTTPRequestHandler):
-        def log_message(self, *_):
-            pass
-
-        def respond(self):
-            path = self.path.split("?")[0]
-            if not path.endswith("/versions"):
-                auth.append(self.headers.get("Authorization"))
-            if path.endswith("/whoami"):
-                data = {"user_id": "@fixture:test", "device_id": "TEST"}
-            elif path.endswith("/versions"):
-                data = {"versions": ["v1.11"], "unstable_features": {}}
-            elif path.endswith("/sync"):
-                syncs.append(True)
-                time.sleep(0.1)
-                # The SDK requires a joined-room membership and advancing sync
-                # cursors so a later timeline is recognized as a live event.
-                events = []
-                if len(syncs) == 4:
-                    events = [{"type": "m.room.message", "event_id": "$owned-event",
-                               "sender": "@sender:test", "origin_server_ts": 1700000000000,
-                               "content": {"msgtype": "m.text", "body": "owned fixture message"}}]
-                data = {"next_batch": f"fixture-{len(syncs)}", "rooms": {"join": {
-                    "!owned:test": {"state": {"events": [{"type": "m.room.member",
-                        "state_key": "@fixture:test", "sender": "@fixture:test",
-                        "content": {"membership": "join"}}]},
-                        "timeline": {"events": events, "limited": False, "prev_batch": "owned"},
-                        "ephemeral": {"events": []}, "account_data": {"events": []}}}}}
-            elif path.endswith("/filter"):
-                data = {"filter_id": "fixture"}
-            elif path.endswith("/pushrules/"):
-                data = {"global": {k: [] for k in ["override", "content", "room", "sender", "underride"]}}
-            else:
-                data = {}
-            body = json.dumps(data).encode()
-            try:
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.send_header("Content-Length", str(len(body)))
-                self.end_headers()
-                self.wfile.write(body)
-            except (BrokenPipeError, ConnectionResetError):
-                pass
-
-        do_GET = respond
-        do_POST = respond
-
-    home = http.server.ThreadingHTTPServer(("127.0.0.1", 0), MatrixHost)
-    thread = threading.Thread(target=home.serve_forever, daemon=True)
-    thread.start()
-    receiver = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Receiver)
-    receiver_thread = threading.Thread(target=receiver.serve_forever, daemon=True)
-    receiver_thread.start()
-    with socket.socket() as reservation:
-        reservation.bind(("127.0.0.1", 0))
-        port = reservation.getsockname()[1]
-    env = {"PATH": os.environ["PATH"], "MATRIX_ACCESS_TOKEN": token,
-           "MATRIX_HOMESERVER_URL": f"http://127.0.0.1:{home.server_port}",
-           "MATRIX_MCP_LISTEN": f"127.0.0.1:{port}",
-           "MATRIX_WEBHOOK_URL": f"http://127.0.0.1:{receiver.server_port}/matrix/events",
-           "MATRIX_WEBHOOK_BEARER_TOKEN": webhook_token}
-    with tempfile.TemporaryDirectory(prefix="kosmos-mfa-http-") as tmp:
-        env["HOME"] = tmp
-        with (Path(tmp) / "runtime.log").open("w+") as log:
-            proc = subprocess.Popen([sys.argv[2], sys.argv[3]], env=env,
-                                    cwd=tmp, stdout=log, stderr=log)
-            def request(bearer=None, method="tools/list", params=None):
-                body = json.dumps({"jsonrpc": "2.0", "id": 1,
-                                   "method": method, "params": params or {}}).encode()
-                headers = {"Content-Type": "application/json", "Accept": "application/json, text/event-stream"}
-                if bearer is not None:
-                    headers["Authorization"] = "Bearer " + bearer
-                req = urllib.request.Request(f"http://127.0.0.1:{port}/mcp", body, headers)
-                try:
-                    with urllib.request.urlopen(req, timeout=2) as res:
-                        return res.status, json.load(res)
-                except urllib.error.HTTPError as error:
-                    return error.code, json.load(error)
-            try:
-                for attempt in range(100):
-                    if proc.poll() is not None:
-                        raise AssertionError("MFA exited before owned HTTP listener was ready")
-                    try:
-                        assert request()[0] == 401
-                        break
-                    except urllib.error.URLError:
-                        time.sleep(0.05)
-                else:
-                    raise AssertionError("owned MFA listener did not become ready")
-                assert request("retired-gateway-fixture")[0] == 401
-                status, result = request(token)
-                assert status == 200
-                assert {t["name"] for t in result["result"]["tools"]} == {
-                    "whoami", "list_rooms", "list_room_members", "send_message", "read_messages"}
-                status, result = request(token, "tools/call", {"name": "whoami", "arguments": {}})
-                assert status == 200
-                assert json.loads(result["result"]["content"][0]["text"])["user_id"] == "@fixture:test"
-                assert delivered.wait(timeout=5), "owned webhook did not receive a live fixture event"
-                assert len(deliveries) == 1
-                path, bearer, content_type, event = deliveries[0]
-                assert path == "/matrix/events"
-                assert bearer == "Bearer " + webhook_token and token not in bearer
-                assert content_type == "application/json"
-                assert event["type"] == "message" and event["room_id"] == "!owned:test"
-                assert event["event_id"] == "$owned-event"
-                assert event["body"] == "owned fixture message"
-                assert auth and all(a == "Bearer " + token for a in auth)
-                proc.terminate()
-                # SDK timers may outlive graceful HTTP shutdown. The unit bounds
-                # this with TimeoutStopSec; verify listener shutdown separately.
-                for attempt in range(100):
-                    try:
-                        request(token)
-                    except (urllib.error.URLError, ConnectionError):
-                        break
-                    time.sleep(0.01)
-                else:
-                    raise AssertionError("MFA listener remained open after SIGTERM")
-                try:
-                    proc.wait(timeout=1)
-                    assert proc.returncode == 0
-                    print("MFA graceful process exit")
-                except subprocess.TimeoutExpired:
-                    proc.kill()
-                    proc.wait()
-                    print("MFA HTTP closed; remaining SDK timers required bounded process kill")
-                log.seek(0)
-                output = log.read()
-                assert token not in output and webhook_token not in output
-            finally:
-                if proc.poll() is None:
-                    proc.kill()
-                    proc.wait()
-                home.shutdown()
-                home.server_close()
-                thread.join(timeout=2)
-                receiver.shutdown()
-                receiver.server_close()
-                receiver_thread.join(timeout=2)
-    print("PASS real MFA bundle: fake Matrix auth, MCP 401/retired-key rejection, five tools, whoami, independent JSON webhook bearer, SIGTERM, no token logs")
+helper, node = sys.argv[1:3]
+tokens = {'shio-"\\$token': '@shio:test', 'serein-token': '@serein:test'}
+requests = []
+class Homeserver(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *_): pass
+    def do_GET(self):
+        token = self.headers.get('Authorization', '').removeprefix('Bearer ')
+        requests.append((self.path, token))
+        if token == 'stall':
+            self.send_response(200); self.end_headers(); time.sleep(11); return
+        data = {'user_id': tokens.get(token)}
+        body = json.dumps(data, ensure_ascii=False).encode()
+        self.send_response(200 if token in tokens else 401)
+        self.send_header('Content-Length', str(len(body)))
+        self.end_headers()
+        if token == 'unicode-owned':
+            split = body.index('雪'.encode()) + 1
+            self.wfile.write(body[:split]); self.wfile.flush(); time.sleep(.02)
+            self.wfile.write(body[split:])
+        else: self.wfile.write(body)
+home = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Homeserver)
+thread = threading.Thread(target=home.serve_forever, daemon=True); thread.start()
+url = f'http://127.0.0.1:{home.server_port}'
+base = {'PATH': os.environ['PATH']}
+with tempfile.TemporaryDirectory(prefix='kosmos-unified-matrix-') as tmp:
+    root = Path(tmp); root.chmod(0o700)
+    artifact = root / 'cli.js'; artifact.write_text('owned fake artifact')
+    exe = root / 'fake-node'
+    exe.write_text(f'#!{sys.executable}\nimport json,os,sys\nprint(json.dumps(dict(argv=sys.argv[1:],env=dict(os.environ))))\n')
+    exe.chmod(0o700)
+    def run(action, *args, env=None, ok=True):
+        p = subprocess.run([node, helper, action, tmp, *map(str, args)], env=env or base,
+                           capture_output=True, text=True, timeout=13)
+        if ok: assert p.returncode == 0, p.stderr
+        else:
+            assert p.returncode != 0 and not p.stdout
+            assert p.stderr == 'Matrix runtime preparation failed (inputs, private paths or artifact unavailable)\n'
+            assert not (root / 'webhooks.json').exists()
+        return p
+    def prepare(kind, **overrides):
+        env = {**base, 'MATRIX_HOMESERVER_URL': url + '/',
+               'MATRIX_ACCESS_TOKEN': list(tokens)[kind == 'serein'],
+               'MATRIX_WEBHOOK_URL': 'http://localhost:1111/receiver',
+               'MATRIX_WEBHOOK_BEARER_TOKEN': 'receiver-"\\$token', **overrides}
+        return run('prepare', kind, env=env)
+    run('init', artifact)
+    prepare('shio'); prepare('serein')
+    leaked = {**base, 'MATRIX_ACCESS_TOKEN': 'must-remove', 'MATRIX_WEBHOOK_URL': 'must-remove',
+              'MATRIX_WEBHOOK_BEARER_TOKEN': 'must-remove', 'MATRIX_OTHER': 'must-remove'}
+    observed = json.loads(run('run', exe, artifact, 'shio', 'serein', env=leaked).stdout)
+    config = json.loads((root / 'webhooks.json').read_text())
+    assert observed['argv'] == [str(artifact)]
+    assert {k:v for k,v in observed['env'].items() if k.startswith('MATRIX_')} == {
+        'MATRIX_HOMESERVER_URL': url, 'MATRIX_MCP_LISTEN': '127.0.0.1:8768',
+        'MATRIX_WEBHOOK_CONFIG': str(root / 'webhooks.json')}
+    assert config == [
+        {'user_id': '@shio:test', 'access_token': list(tokens)[0], 'url': 'http://127.0.0.1:3084/api/matrix/events'},
+        {'user_id': '@serein:test', 'access_token': list(tokens)[1], 'url': 'http://localhost:1111/receiver', 'bearer_token': 'receiver-"\\$token'}]
+    assert (root / 'webhooks.json').stat().st_mode & 0o777 == 0o600
+    assert not (root / 'shio.json').exists() and not (root / 'serein.json').exists()
+    for kind in ['shio', 'serein']:
+        run('init', artifact)
+        env = {**base, 'MATRIX_HOMESERVER_URL': url, 'MATRIX_ACCESS_TOKEN': list(tokens)[kind == 'serein']}
+        run('prepare', kind, env=env)
+        run('run', exe, artifact, kind)
+        assert len(json.loads((root / 'webhooks.json').read_text())) == (kind == 'shio')
+    # Every init clears stale configuration even when the artifact is missing.
+    run('init', root / 'missing', ok=False)
+    for overrides in [{'MATRIX_ACCESS_TOKEN': ''}, {'MATRIX_ACCESS_TOKEN': 'bad token'},
+                      {'MATRIX_ACCESS_TOKEN': 'invalid'}, {'MATRIX_HOMESERVER_URL': 'file:///tmp'},
+                      {'MATRIX_WEBHOOK_URL': 'http://remote.invalid/x'},
+                      {'MATRIX_WEBHOOK_BEARER_TOKEN': 'bad bearer'}]:
+        run('init', artifact)
+        env = {**base, 'MATRIX_HOMESERVER_URL': url, 'MATRIX_ACCESS_TOKEN': list(tokens)[1], **overrides}
+        run('prepare', 'serein', env=env, ok=False)
+    tokens['malformed-id-owned'] = 'not-a-matrix-id'
+    run('prepare', 'serein', env={**base, 'MATRIX_HOMESERVER_URL': url, 'MATRIX_ACCESS_TOKEN': 'malformed-id-owned'}, ok=False)
+    del tokens['malformed-id-owned']
+    tokens['unicode-owned'] = '@雪:test'
+    run('prepare', 'serein', env={**base, 'MATRIX_HOMESERVER_URL': url, 'MATRIX_ACCESS_TOKEN': 'unicode-owned'})
+    assert json.loads((root / 'serein.json').read_text())['entry']['user_id'] == '@雪:test'
+    del tokens['unicode-owned']
+    run('prepare', 'shio', env=base, ok=False)
+    run('prepare', '../../outside', env=base, ok=False)
+    for change in ['home', 'user', 'token']:
+        run('init', artifact); prepare('shio'); prepare('serein')
+        file = root / 'serein.json'; data = json.loads(file.read_text())
+        if change == 'home': data['home'] += '/other'
+        else: data['entry']['user_id' if change == 'user' else 'access_token'] = config[0]['user_id' if change == 'user' else 'access_token']
+        file.write_text(json.dumps(data))
+        run('run', exe, artifact, 'shio', 'serein', ok=False)
+    alternate = http.server.ThreadingHTTPServer(('127.0.0.1', 0), Homeserver)
+    alternate_thread = threading.Thread(target=alternate.serve_forever, daemon=True)
+    alternate_thread.start()
+    try:
+        run('init', artifact); prepare('shio')
+        prepare('serein', MATRIX_HOMESERVER_URL=f'http://127.0.0.1:{alternate.server_port}')
+        run('run', exe, artifact, 'shio', 'serein', ok=False)
+    finally:
+        alternate.shutdown(); alternate.server_close(); alternate_thread.join(timeout=2)
+    run('init', artifact); prepare('shio')
+    run('run', exe, artifact, 'shio', 'serein', ok=False)
+    # Unsafe paths are refused and never overwritten or deleted.
+    outside = root / 'outside'; outside.write_text('keep')
+    (root / 'shio.json').symlink_to(outside)
+    tokens['malformed-id-owned'] = 'not-a-matrix-id'
+    run('prepare', 'serein', env={**base, 'MATRIX_HOMESERVER_URL': url, 'MATRIX_ACCESS_TOKEN': 'malformed-id-owned'}, ok=False)
+    del tokens['malformed-id-owned']
+    tokens['unicode-owned'] = '@雪:test'
+    run('prepare', 'serein', env={**base, 'MATRIX_HOMESERVER_URL': url, 'MATRIX_ACCESS_TOKEN': 'unicode-owned'})
+    assert json.loads((root / 'serein.json').read_text())['entry']['user_id'] == '@雪:test'
+    del tokens['unicode-owned']
+    run('prepare', 'shio', env=base, ok=False)
+    assert outside.read_text() == 'keep' and (root / 'shio.json').is_symlink()
+    (root / 'shio.json').unlink()
+    outside.chmod(0o600); os.link(outside, root / 'shio.json')
+    run('init', artifact, ok=False); assert outside.read_text() == 'keep'
+    (root / 'shio.json').unlink()
+    root.chmod(0o755); run('init', artifact, ok=False); root.chmod(0o700)
+    (root / 'shio.json').write_text('{}'); (root / 'shio.json').chmod(0o644)
+    run('init', artifact, ok=False); (root / 'shio.json').unlink()
+    run('init', artifact)
+    started = time.monotonic()
+    run('prepare', 'shio', env={**base, 'MATRIX_HOMESERVER_URL': url, 'MATRIX_ACCESS_TOKEN': 'stall'}, ok=False)
+    assert time.monotonic() - started < 12
+    assert not list(root.glob('*.tmp'))
+home.shutdown(); home.server_close(); thread.join(timeout=2)
+assert requests and all(p == '/_matrix/client/v3/account/whoami' for p, _ in requests)
+print('PASS private atomic preparation, independent inputs/headers, fixed callback, sanitized exec environment, optional enrollment, failures and bounded whoami')
