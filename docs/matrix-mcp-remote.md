@@ -7,11 +7,12 @@ have separate Matrix clients, even for devices belonging to the same user.
 Tool access never enrolls a caller into background delivery. This is custom
 Matrix bearer authentication, not MCP OAuth or a separately issued gateway key.
 
-`https://matrix-mcp.guion.io/mcp` retains its hostname and tunnel upstream.
+`https://matrix-mcp.lamplit.run/mcp` uses the existing loopback tunnel upstream.
 When published, it accepts **any valid token for the fixed homeserver**, rather
 than only Serein's configured token. The route remains gated by Serein's declared
-secret; Shio-only installation stays local. The pre-existing external HTTP 403
-has not been diagnosed or fixed by this consolidation.
+secret; Shio-only installation stays local. The old `matrix-mcp.guion.io`
+endpoint previously returned HTTP 403; that historical observation does not
+establish the new hostname's reachability.
 
 Background owners remain independently configured:
 
@@ -35,8 +36,8 @@ removed; no forwarding listener or compatibility alias remains.
 
 | Configuration | Gateway | Public Matrix route | CFL prod Matrix input |
 | --- | --- | --- | --- |
-| Both secrets declared | One on 8768 | Existing hostname on 8768 | Shio only |
-| Serein only | One on 8768 | Existing hostname on 8768 | None |
+| Both secrets declared | One on 8768 | `matrix-mcp.lamplit.run` on 8768 | Shio only |
+| Serein only | One on 8768 | `matrix-mcp.lamplit.run` on 8768 | None |
 | Shio only | One on 8768 | None | Shio only |
 | Neither | None, warning | None | None |
 | Unified option disabled | None | None | Shio if independently declared |
@@ -101,11 +102,34 @@ license and Node runtime. Never run `bun run build` against the shared checkout'
 Node-target build into an owned staging directory and retain its SHA256, source
 head/tree and LICENSE before placing a new immutable release.
 
+## Public hostname activation
+
+After review and merge, verify the merged tree equals the reviewed tree and
+record the current NixOS generation and loaded Tunnel ingress for rollback.
+Apply the merged checkout as Neil with `nh os switch . -H wsl`, then observe
+`cloudflared-tunnel-kepos.service` reconciliation and its loaded configuration.
+The routes must map `matrix-mcp.lamplit.run` to `http://127.0.0.1:8768` and
+`keet-serein.lamplit.run` to `http://127.0.0.1:8767`. Existing local listeners,
+Matrix background inputs, webhook URLs, artifacts and tokens stay unchanged.
+
+Check local Matrix/Keet readiness and CFL prod health, then request both public
+`/mcp` URLs without credentials. HTTP 401 establishes reachability to the
+authentication boundary; record 403, 404 or other outcomes accurately rather
+than claiming authenticated success. The operator updates Cloudflare client
+MCP URLs and performs authenticated verification using existing credentials;
+this hostname change makes no Cloudflare client secret or control-plane edits.
+If rollback is necessary, activate the captured prior system closure with
+`sudo <saved-system>/bin/switch-to-configuration switch` and verify its prior
+ingress and local health. Do not restore identity or conversation state.
+
 ## Ordered production handoff
 
-This PR prepares source and owned tests only. Merge does **not** activate it.
-Live activation and CFL caller edits are a subsequent coordinated Orc-owned
-follow-up; no switch, restart, override deletion or secret change occurs here.
+Historical unified-gateway cutover procedure, completed on 2026-10-10. Do not
+repeat these artifact, override or caller migration steps for a hostname change.
+
+The original consolidation PR prepared source and owned tests only. Merge did
+**not** activate it. Live activation and CFL caller edits were a subsequent
+coordinated Orc-owned follow-up.
 
 Historical rollout metadata observed on 2026-10-10: both operator `release.conf`
 overrides reference wrappers and `cli.js` under

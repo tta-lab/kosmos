@@ -89,16 +89,18 @@ change the local cluster. The full operator workflow is in the
 
 ## Remote Matrix MCP
 
-WSL declares one Node 24 Matrix for Agent gateway on loopback 8768, retaining
-`https://matrix-mcp.guion.io/mcp` when Serein's secret enables the tunnel route.
+WSL declares one Node 24 Matrix for Agent gateway on loopback 8768, publishing
+`https://matrix-mcp.lamplit.run/mcp` when Serein's secret enables the tunnel route.
 Callers use any valid Matrix token for the fixed homeserver; only configured
 Shio/Serein identities own background webhooks. Existing separate agenix inputs
 feed private runtime preparation, with no new secret or combined environment file.
 The managed artifact is a new immutable approved multi-identity release, never
 the historical shared dist. See the [Matrix guide](docs/matrix-mcp-remote.md) for
-gates, security and the coordinated future cutover/rollback from operator release
-overrides and CFL's old 8769 endpoint. This source change does not activate live
-services or resolve the pre-existing public 403.
+gates, security, hostname activation and the historical unified-gateway cutover.
+Serein's Keet MCP endpoint is `https://keet-serein.lamplit.run/mcp`; see the
+[Keet guide](docs/keet-mcp.md). Cloudflare client configuration and secrets are
+operator-managed. A source merge does not activate these Tunnel routes, and
+unauthenticated public verification does not establish authenticated MCP use.
 
 ## Codex CLI
 

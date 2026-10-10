@@ -90,14 +90,14 @@
           && (services both)."matrix-mcp-input-${kind}".Service.EnvironmentFile == [secret.path];
       in
         assert builtins.all (cfg: (services cfg) ? matrix-mcp-remote && !((services cfg) ? matrix-mcp-cfl)) [both serein shio];
-        assert builtins.all (cfg: !((services cfg) ? matrix-mcp-remote) && !((services cfg) ? matrix-mcp-input-shio) && !((services cfg) ? matrix-mcp-input-serein) && !(ingress cfg ? "matrix-mcp.guion.io")) [neither disabled];
+        assert builtins.all (cfg: !((services cfg) ? matrix-mcp-remote) && !((services cfg) ? matrix-mcp-input-shio) && !((services cfg) ? matrix-mcp-input-serein) && !(ingress cfg ? "matrix-mcp.lamplit.run")) [neither disabled];
         assert (services serein) ? matrix-mcp-input-serein && !((services serein) ? matrix-mcp-input-shio);
         assert (services shio) ? matrix-mcp-input-shio && !((services shio) ? matrix-mcp-input-serein);
         assert ingress both == ingress serein;
-        assert (ingress both)."matrix-mcp.guion.io" == "http://127.0.0.1:8768";
-        assert (ingress both)."serein-keet.guion.io" == "http://127.0.0.1:8767";
+        assert (ingress both)."matrix-mcp.lamplit.run" == "http://127.0.0.1:8768";
+        assert (ingress both)."keet-serein.lamplit.run" == "http://127.0.0.1:8767";
         assert both.services.cloudflared.tunnels.kepos.default == "http_status:404";
-        assert !(ingress shio ? "matrix-mcp.guion.io") && neither.warnings != [];
+        assert !(ingress shio ? "matrix-mcp.lamplit.run") && neither.warnings != [];
         assert validSecret "shio" && validSecret "serein";
         assert (unit.Service.EnvironmentFile or []) == [];
         assert unit.Unit.ConditionPathExists == [both.kosmos.wsl.matrixMcpRemote.artifact];
@@ -270,7 +270,7 @@
         assert cfg.services.cloudflared.enable;
         assert tunnel.default == "http_status:404";
         assert tunnel.credentialsFile == cfg.age.secrets.cloudflared-kepos-credentials.path;
-        assert tunnel.ingress."serein-keet.guion.io" == "http://127.0.0.1:8767";
+        assert tunnel.ingress."keet-serein.lamplit.run" == "http://127.0.0.1:8767";
         assert tunnel.ingress."test.guion.io" == "http://127.0.0.1:8080";
         assert cfg.systemd.services.cloudflared-tunnel-kepos.environment.TUNNEL_TRANSPORT_PROTOCOL == "http2";
           pkgs.runCommand "kepos-tunnel-module-check" {} "touch $out";

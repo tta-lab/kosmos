@@ -32,14 +32,19 @@ as the Worker's `KEET_INGEST_TOKEN`; it is separate from `KEET_MCP_TOKEN` and
 must not be committed. Keep the webhook URL in this module and the secret in
 the environment file. Do not add a service drop-in for the webhook.
 
-The existing `nuc-wsl` Cloudflare Tunnel routes `serein-keet.guion.io` to
+The existing `nuc-wsl` Cloudflare Tunnel routes `keet-serein.lamplit.run` to
 Serein's loopback listener. The remote MCP endpoint is
-`https://serein-keet.guion.io/mcp`; retained images use the same host under
+`https://keet-serein.lamplit.run/mcp`; retained images use the same host under
 `/images/{ref}`. Both routes require Serein's existing `KEET_MCP_TOKEN` as an
 `Authorization: Bearer` header on every request. Store that token only in the
 Cloudflare Agent's secret store when configuring its MCP client. This route
 does not use a Cloudflare Access service token. Do not copy the webhook bearer
 token here: it authenticates the opposite, KFA-to-Agent direction.
+
+The former MCP hostname was `serein-keet.guion.io`. Activate the current route
+using the [public hostname procedure](matrix-mcp-remote.md#public-hostname-activation);
+the `lamplit-keet.guion.io` webhook target remains unchanged. Cloudflare client
+URL changes and authenticated verification belong to the operator.
 
 Serein uses the verified runtime copy at
 `/home/neil/.local/share/keet-runtime/4.22.0-linux-x64` and private identity,
@@ -56,9 +61,12 @@ event; the main `lamplit-cf.guion.io` site remains behind Cloudflare Access.
 
 ## One-time unit handoff
 
-The existing `/home/neil/.config/systemd/user/keet-mcp.service` is currently a
-regular, unmanaged file. Home Manager will not replace it automatically. After
-this PR merges, build the WSL closure first, then move that file to a backup
+Historical initial setup procedure. Do not repeat this unit/identity handoff
+when changing the public MCP hostname.
+
+At initial setup, `/home/neil/.config/systemd/user/keet-mcp.service` was a
+regular, unmanaged file. Home Manager could not replace it automatically. The
+original handoff required building the WSL closure, then moving that file to a backup
 outside `~/.config`, switch, and verify both units:
 
 ```sh

@@ -50,7 +50,7 @@ in {
     enable = lib.mkEnableOption "unified dynamic-token Matrix gateway";
     hostname = lib.mkOption {
       type = lib.types.str;
-      default = "matrix-mcp.guion.io";
+      default = "matrix-mcp.lamplit.run";
       description = "Public Cloudflare Tunnel hostname; DNS is operator-provisioned.";
     };
     artifact = lib.mkOption {

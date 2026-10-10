@@ -34,7 +34,7 @@ in {
           credentialsFile = config.age.secrets.cloudflared-kepos-credentials.path;
           ingress =
             {
-              "serein-keet.guion.io" = "http://127.0.0.1:8767";
+              "keet-serein.lamplit.run" = "http://127.0.0.1:8767";
             }
             // lib.optionalAttrs (config.kosmos.wsl.matrixMcpRemote.enable && config.age.secrets ? "matrix-serein.env") {
               ${config.kosmos.wsl.matrixMcpRemote.hostname} = "http://127.0.0.1:8768";
