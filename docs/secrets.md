@@ -128,12 +128,6 @@ before activation: this consolidation defers the generic switch/restart steps
 below until the new immutable artifact, exact overrides and caller endpoint are
 coordinated. Agents do not inspect real environment values.
 
-`lenos/config.json` in this repo is non-secret and still maps to
-`/home/neil/.config/lenos/config.json`.
-
-The secret Lenos config at `/home/neil/.local/share/lenos/config.json` is not
-managed by agenix yet.
-
 `secrets/env.age` is a Fish source file, currently holding the Exa API key. It
 must use Fish `set -gx` syntax and is sourced only by Fish; Zsh and systemd
 services do not read it. Keep only shell-only secrets there. Non-secret

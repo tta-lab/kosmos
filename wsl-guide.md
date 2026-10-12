@@ -39,10 +39,10 @@ wsl.wslConf.interop.appendWindowsPath = false;
 
 ## TTA Lab Tools
 
-Home Manager deploys non-secret config to `~/.config/lenos` and `~/.config/temenos`.
+Home Manager deploys non-secret config to `~/.config/temenos`.
 The project registry under `~/.config/ttal` is unmanaged; normal additions go
 through `og clone`. Kosmos deploys the agenix-backed forge-token environment and
-injects it only into the og user service.
+Organon loads it when invoked directly; see [environment ownership](docs/environment.md).
 
 Proxy is provided by the local Mihomo systemd service at `127.0.0.1:7890`.
 The listener accepts HTTP and SOCKS5. MetaCubeXD is served by the loopback-only
@@ -96,22 +96,27 @@ Codex CLI is installed outside Nixpkgs so it can track OpenAI's fast npm release
 openai-codex-install
 ```
 
-Install or update the fast-moving Go CLIs with:
+From the Kosmos checkout, install or update the fast-moving Go CLIs with:
 
 ```bash
-tta-lab-go-install
+bash scripts/install-tta-lab-go
 ```
 
-The installer only installs managed binaries from existing local checkouts in `~/code/projects/tta-lab`. It reports the exact missing Go module and exits if a required checkout is absent. Kosmos does not clone or fetch project repositories.
+The script directly installs Temenos, Diary, and Organon’s `og`, `skill`, and
+`src` from existing local checkouts in `~/code/projects/tta-lab`. It reports the
+exact missing Go module and exits if a required checkout is absent, including
+Diary. Kosmos does not clone or fetch project repositories.
 
-Then start the daemons:
+After installation, the operator can start the Temenos daemon:
 
 ```bash
-systemctl --user start temenos og
-systemctl --user status temenos og
+systemctl --user start temenos
+systemctl --user status temenos
 ```
 
-The Go binaries live in `~/go/bin`, which is added to Fish and to the user services' `PATH`. The services are enabled for the user manager, but skip cleanly until the matching binary exists.
+The Go binaries live in `~/go/bin`, which is added to Fish and to the Temenos
+service's `PATH`. The service is enabled for the user manager and starts only
+when the Temenos binary exists.
 
 The user services are managed by Home Manager. NixOS only enables `linger` for `neil` so the user manager can keep running without an active login shell.
 
@@ -177,20 +182,19 @@ References:
 - https://github.com/microsoft/WSL/releases/tag/2.5.4
 
 For a fresh environment, bootstrap the public Organon checkout anonymously, install
-`og` and `project`, then let og own all later clone and credential behavior:
+`og`, then invoke it directly for all later clone and credential behavior:
 
 ```bash
 mkdir -p ~/code/projects/tta-lab
 git clone https://github.com/tta-lab/organon.git ~/code/projects/tta-lab/organon
 cd ~/code/projects/tta-lab/organon
-CGO_ENABLED=0 go install ./cmd/og ./cmd/project
-systemctl --user start og
+CGO_ENABLED=0 go install ./cmd/og
 
 og clone https://github.com/tta-lab/organon.git
 og clone https://github.com/tta-lab/temenos.git
 og clone https://github.com/tta-lab/diary.git
-og clone https://github.com/tta-lab/lenos.git
-tta-lab-go-install
+cd ~/code/projects/tta-lab/kosmos
+bash scripts/install-tta-lab-go
 ```
 
 The existing Organon checkout is reused and registered. Project clones go to

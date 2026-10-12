@@ -27,7 +27,7 @@ exit 97
 EOF
 chmod +x "$fake_bin/git"
 
-for repo in temenos diary organon lenos; do
+for repo in temenos diary organon; do
   mkdir -p "$projects_root/$repo"
   : >"$projects_root/$repo/go.mod"
 done
@@ -41,8 +41,7 @@ expected="$test_root/expected"
 printf '%s\t%s\n' \
   "$projects_root/temenos" 'install ./cmd/temenos' \
   "$projects_root/diary" 'install ./cmd/diary' \
-  "$projects_root/organon" 'install ./cmd/og ./cmd/project ./cmd/skill ./cmd/src ./cmd/web' \
-  "$projects_root/lenos" 'install .' >"$expected"
+  "$projects_root/organon" 'install ./cmd/og ./cmd/skill ./cmd/src' >"$expected"
 
 diff -u "$expected" "$calls"
 

@@ -11,8 +11,7 @@ NixOS configuration for a headless dev/ops environment. It supports both the Int
 - `modules/nixos/` — bare-metal boot, network, SSH, proxy, firewall, and containers
 - `modules/wsl/` — WSL-specific settings
 - `modules/users/` — shared user definitions
-- `lenos/`, `temenos/` — non-secret tool config deployed by Home Manager
-- `scripts/install-tta-lab-go` — installs Go CLIs from existing local checkouts
+- `temenos/` — non-secret tool config deployed by Home Manager
 - `scripts/install-tta-lab-releases` — installs current FlickNote and Taskwarrior releases from GitHub (run directly, no service)
 - `scripts/install-tta-lab-go` — builds and installs tta-lab Go CLIs into ~/go/bin from local checkouts (run directly, no service)
 - `scripts/sync-codex-auth.ts` — Bun script that converts OAuth credentials between `~/.codex/auth.json` and `~/.pi/agent/auth.json` (deployed to `~/.pi/sync-codex-auth.ts`); run `just sync-codex-auth codex-to-pi` first to seed the id_token, then `just sync-codex-auth pi-to-codex` works indefinitely
@@ -153,10 +152,14 @@ Frequently updated Go CLIs stay outside Nix for now and install from local
 checkouts into `~/go/bin`:
 
 ```bash
-tta-lab-go-install
+bash scripts/install-tta-lab-go
 ```
 
-This starts the `tta-lab-go-install.service` oneshot user unit. It installs `temenos`, `diary`, `organon` (`og`, `project`, `skill`, `src`, and `web`), and `lenos` from existing checkouts in `~/code/projects/tta-lab`. A missing checkout is an error; Kosmos does not clone or fetch project repositories.
+Run this script directly from the Kosmos checkout. It installs `temenos`, `diary`,
+and Organon’s `og`, `skill`, and `src` from existing checkouts in
+`~/code/projects/tta-lab`. A missing checkout is an error; Kosmos does not clone
+or fetch project repositories. Diary remains required; its checkout must be
+available before running the installer.
 
 The Home Manager user service `temenos.service` is defined in `modules/common/tta-lab-go.nix`. It starts only after its binary exists in `~/go/bin`.
 
@@ -164,19 +167,19 @@ Fish, Zsh, and the Home Manager user services derive their proxy environment
 from `kosmos.wsl.proxy`; see [environment ownership](docs/environment.md).
 
 For a fresh machine, bootstrap the public Organon repository anonymously, install
-the repository tools, and start the Home Manager-managed daemon:
+`og`, then use it directly for subsequent clones:
 
 ```bash
 mkdir -p ~/code/projects/tta-lab
 git clone https://github.com/tta-lab/organon.git ~/code/projects/tta-lab/organon
 cd ~/code/projects/tta-lab/organon
-CGO_ENABLED=0 go install ./cmd/og ./cmd/project
+CGO_ENABLED=0 go install ./cmd/og
 
 og clone https://github.com/tta-lab/organon.git
 og clone https://github.com/tta-lab/temenos.git
 og clone https://github.com/tta-lab/diary.git
-og clone https://github.com/tta-lab/lenos.git
-tta-lab-go-install
+cd ~/code/projects/tta-lab/kosmos
+bash scripts/install-tta-lab-go
 ```
 
 The first `og clone` recognizes the existing Organon checkout and registers it.

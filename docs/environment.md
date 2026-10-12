@@ -30,8 +30,8 @@ for the operator-only encrypted endpoint correction.
 listener, Pod proxy endpoint, Pod and Service CIDRs, and base `NO_PROXY`
 entries. `kosmos.wsl.proxy` derives the host environment and both uppercase and
 lowercase proxy variables from it. It feeds NixOS, `home.sessionVariables`,
-Temenos, and og; Tanka derives Pod workload proxy settings from the same
-data. K3s extends only the base bypass list with cluster-local hostnames.
+and Temenos; direct og calls inherit the shell environment. Tanka derives
+Pod workload proxy settings from the same data. K3s extends only the base bypass list with cluster-local hostnames.
 
 `kosmos-wsl-proxy-env` is intentionally separate: it discovers a reachable WSL
 host proxy at runtime for manual bootstrap work. Do not use it as a second place

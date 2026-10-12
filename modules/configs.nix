@@ -81,7 +81,6 @@ in {
       xdg = {
         enable = true;
         configFile = {
-          "lenos/config.json".source = ../lenos/config.json;
           "temenos/config.toml".source = ../temenos/config.toml;
           "helix/config.toml".source = ../helix/config.toml;
           "helix/languages.toml".source = ../helix/languages.toml;
