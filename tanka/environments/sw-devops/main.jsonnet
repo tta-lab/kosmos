@@ -208,6 +208,7 @@ function(enabled='false', forgejoR2BackupEnabled='false', forgejoStorageClass='z
         },
       },
     },
+    // Retain the deployed name/selector; this bridge now consumes SSH listeners.
     keposPodBridge: {
       apiVersion: 'apps/v1',
       kind: 'Deployment',

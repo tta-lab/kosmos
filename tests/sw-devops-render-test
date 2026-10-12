@@ -35,6 +35,13 @@ cert_url = urlparse(assignments['PLUGIN_CUSTOM_SSL_URL'])
 assert cert_url.scheme == 'https' and cert_url.hostname == 'raw.githubusercontent.com'
 assert cert_url.path.endswith('/certs/seafarer-root-ca.pem')
 assert assignments['_EXPERIMENTAL_DAGGER_RUNNER_HOST'] == 'tcp://10.42.0.1:18081'
+bridge = active['keposPodBridge']['spec']['template']['spec']
+assert bridge['hostNetwork'] is True
+assert {tuple(c['args']) for c in bridge['containers']} == {
+    ('TCP-LISTEN:17891,bind=10.42.0.1,fork,reuseaddr', 'TCP:127.0.0.1:17890'),
+    ('TCP-LISTEN:18081,bind=10.42.0.1,fork,reuseaddr', 'TCP:127.0.0.1:18080'),
+}
+assert env['HTTP_PROXY'] == env['HTTPS_PROXY'] == 'http://10.42.0.1:17891'
 ports = active['edge']['spec']['template']['spec']['containers'][0]['ports']
 assert {(p['hostIP'], p['hostPort']) for p in ports} == {('192.168.6.186', 8086), ('192.168.6.186', 8087)}
 local = json.loads(subprocess.check_output(['jsonnet', str(root / 'tanka/environments/devops/main.jsonnet')]))

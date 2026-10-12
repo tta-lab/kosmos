@@ -232,6 +232,9 @@ switch.
 
 ## Deploy
 
+For the SW build tunnel cutover, follow [the ordered handoff](sw-build-tunnel.md)
+before this switch: Home Manager can automatically start the new listener owner.
+
 Deploy the NixOS generation first so k3s, its directories, the packaged Kepos CLI, and the user service exist:
 
 ```bash

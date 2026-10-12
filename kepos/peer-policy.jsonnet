@@ -28,10 +28,6 @@ local peers = {
     label: 'aipaper',
     public_key: '0d88922a7b6de68ca5011398c846f60de49129bc0d9592e0437b580c41a7e625',
   },
-  'sw-server': {
-    label: 'sw-server',
-    public_key: 'de087b86a5ced0d4f85e63463b8508e42ede89d2d4c9c9a64efd52697b1ce78b',
-  },
   baihe: {
     label: 'baihe',
     public_key: '90165d47b541faad464be6c0718b15e16be5b170ec5616210c6b17ffdbf607c4',
@@ -112,7 +108,7 @@ std.manifestTomlEx({
     service('bookorbit', 'BookOrbit', 17480, personalDevicesAllow + baiheAllow),
     service('cloudreve', 'Cloudreve', 17480, personalDevicesAllow + baiheAllow + svenMacAllow + liliAllow),
     service('codex-bridge', 'Codex Bridge', 17480, fullTrustAllow + baiheAllow + codexBridgeAllow + liliAllow),
-    service('dagger', 'Dagger', 8080, fullTrustAllow + svenMacAllow + [peers['sw-server'].public_key]),
+    service('dagger', 'Dagger', 8080, fullTrustAllow + svenMacAllow),
     service('dev-her', 'Lamplit Dev', 3082, cflMikaAllow),
     service('staging-her', 'Lamplit Staging', 3083, cflMikaAllow + [peers.pixel7a.public_key]),
     service('prod-lamplit', 'Lamplit Prod', 3084, impriAllow),
@@ -142,7 +138,7 @@ std.manifestTomlEx({
     },
     service('memos', 'Memos', 17480, personalDevicesAllow + xiaomiAllow + baiheAllow + guaziAllow),
     service('meilisearch', 'Meilisearch', 17480, [peers.mac.public_key]),
-    service('mihomo', 'Mihomo', 7890, personalDevicesAllow + xiaomiAllow + liliAllow + [peers['sw-server'].public_key]),
+    service('mihomo', 'Mihomo', 7890, personalDevicesAllow + xiaomiAllow + liliAllow),
     service('mihomo-dashboard', 'Mihomo Dashboard', 9090, fullTrustAllow),
     service('miniflux', 'Miniflux', 17480, personalDevicesAllow),
     service('penpot', 'Penpot', 17480, [peers.mac.public_key]),

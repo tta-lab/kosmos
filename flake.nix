@@ -45,6 +45,15 @@
     moonbitToolchain = moonbit-overlay.packages.${system}.default;
   in {
     checks.${system} = {
+      sw-build-tunnel = pkgs.runCommand "sw-build-tunnel-check" {
+        nativeBuildInputs = [pkgs.openssh pkgs.python3 pkgs.which];
+        unit = pkgs.writeText "sw-build-tunnel.json" (builtins.toJSON
+          self.nixosConfigurations.wsl.config.home-manager.users.neil.systemd.user.services.sw-build-tunnel);
+      } ''
+        python3 ${./tests/sw-build-tunnel-test.py} "$unit" --config-only
+        touch $out
+      '';
+
       matrix-mcp-remote = let
         # Synthetic ciphertext declarations only; never decrypt or activate.
         fixture = mode:

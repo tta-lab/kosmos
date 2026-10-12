@@ -79,6 +79,11 @@ Do not import bare-metal modules from WSL. Keep `disko-config.nix` out of WSL im
 
 Focus is `kosmos-wsl`. Keep bare-metal modules buildable but don't design new work for them unless the task says so.
 
+Before activating changes to SW Dagger/Mihomo transport, read
+`docs/sw-build-tunnel.md` and follow its ordered port-owner handoff. The Kosmos
+Home Manager user unit owns SSH forwarding; Home Manager may start it during
+activation.
+
 ## Build & Verify
 
 ```bash

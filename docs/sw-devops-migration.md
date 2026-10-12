@@ -3,7 +3,8 @@
 SW owns Forgejo, Woodpecker server, agents and PostgreSQL. Their persistent
 volumes use the existing `zfs-local` StorageClass in `tank/k8s`; no new pool is
 created. Forgejo remains on SQLite. Dagger and Mihomo stay on kosmos-wsl and
-are consumed over Kepos raw TCP bindings.
+are consumed through one Kosmos-initiated SSH reverse tunnel over OpenVPN.
+See [tunnel ownership and activation](sw-build-tunnel.md) before switching WSL.
 
 ## Addresses and ownership
 
@@ -23,11 +24,12 @@ and the Seafile edge Deployment remain unchanged; this migration must not
 restart k3s. Activation applies only SW DevOps resources. Clients must
 trust `certs/seafarer-root-ca.pem` and have a VPN route to SW.
 
-`kepos/sw-policy.jsonnet` owns SW's peer policy. `kepos/sw-peer.service` owns
-the canonical host runtime, replacing the legacy subscriber. The local policy
-allows SW to consume Dagger and Mihomo. Both bindings stay on loopback; the
-Kubernetes bridge exposes them only through the CNI interface. SW's internal
-Forgejo, Woodpecker and PostgreSQL traffic bypasses the outbound proxy. Git
+`modules/wsl/sw-build-tunnel.nix` owns the `sw-build-tunnel` Home Manager user
+unit on Kosmos. SSH owns both SW loopback listeners; the existing
+`sw-kepos-pod-bridge` Kubernetes Deployment keeps its name and selectors to
+avoid replacing a working bridge. It exposes the listeners only through the
+CNI interface. Other devices retain Kepos access to local Dagger and Mihomo.
+SW's internal Forgejo, Woodpecker and PostgreSQL traffic bypasses the outbound proxy. Git
 operations in SW pipelines use the canonical HTTPS URL, preserving the netrc
 authentication host. The clone plugin downloads the public CA from an immutable
 public repository URL and configures Git certificate verification.

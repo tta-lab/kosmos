@@ -220,7 +220,7 @@ The backup Pod requests a RW CSI mount, matching Forgejo's mount, while its
 container bind remains `readOnly: true`. This avoids the reported ZFS mixed
 RW/RO dataset mount failure and preserves read-only backup access. The existing
 SQLite online-backup and selected-source recovery contract is unchanged.
-Both uppercase and lowercase proxy variables use SW's Kepos Mihomo bridge at
+Both uppercase and lowercase proxy variables use SW's SSH-backed Mihomo pod bridge at
 `http://10.42.0.1:17891`, with internal cluster and SW addresses bypassed.
 
 Evidence:
