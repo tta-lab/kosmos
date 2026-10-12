@@ -7,7 +7,7 @@
 Use `pkgsUnstable.<name>` for bleeding-edge, `pkgs.<name>` for stable.
 
 **Adding user config:**
-Edit source dir (`helix/`, `temenos/`) → rebuild WSL.
+Edit source dir (`helix/`) → rebuild WSL.
 Use `og clone <https-url>` to obtain and register project checkouts. Kosmos does not sync repositories.
 
 **Adding a user session variable:**
@@ -65,7 +65,7 @@ Jsonnet edit to be committed or a NixOS switch.
 |---|---|
 | System packages | `modules/common/packages.nix` |
 | User dotfiles (fish, git, starship) | `modules/configs.nix` |
-| User config dirs (helix, temenos) | Source dirs → wired in `modules/configs.nix` |
+| User config dirs (helix) | Source dirs → wired in `modules/configs.nix` |
 | Portable agent rules | `AGENTS.user.md`, `scripts/sync-agent-config` |
 | Project registry | `~/.config/ttal/` (legacy path, not managed by Kosmos) |
 | WSL-only services, options, secrets | `modules/wsl/` |

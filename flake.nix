@@ -164,10 +164,8 @@
             ${./scripts/render-kepos-policy} \
             ${./scripts/ttal-tmux-project-picker} \
             ${./scripts/wsl-devops-smoke} \
-            ${./tests/temenos-env-test} \
             ${./tests/fish-copy-test} \
             ${./tests/ttal-tmux-project-picker-test} \
-            ${./tests/temenos-ca-test} \
             ${./tests/tmux-copy-mode-test} \
             ${./tests/devops-gate-status-test} \
             ${./tests/backup-ente-test} \
@@ -200,8 +198,6 @@
             ${./tests/wsl-devops-smoke-test} \
             ${./tests/orga-cli-service-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/ttal-tmux-project-picker-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-ca-test}
-          KOSMOS_REPO_ROOT=${./.} bash ${./tests/temenos-env-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/fish-copy-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/tmux-copy-mode-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/devops-gate-status-test}
@@ -444,8 +440,6 @@
         proxyEnvironment = cfg.kosmos.wsl.proxy.environment;
         k3sEnvironment = cfg.systemd.services.k3s.environment;
         homeSessionVariables = cfg.home-manager.users.neil.home.sessionVariables;
-        temenosEnvironment = cfg.home-manager.users.neil.systemd.user.services.temenos.Service.Environment;
-        proxyEnvironmentEntries = nixpkgs.lib.mapAttrsToList (name: value: "${name}=${value}") expectedProxyEnvironment;
       in
         assert cfg.services.mihomo.enable;
         assert cfg.services.mihomo.configFile == expectedConfig;
@@ -483,7 +477,6 @@
         assert k3sEnvironment.all_proxy == expectedProxy;
         assert k3sEnvironment.NO_PROXY == expectedK3sNoProxy;
         assert k3sEnvironment.no_proxy == expectedK3sNoProxy;
-        assert builtins.all (entry: has entry temenosEnvironment) proxyEnvironmentEntries;
         assert has "mihomo.service" cfg.systemd.services.k3s.wants;
         assert has "mihomo.service" cfg.systemd.services.k3s.after;
         assert !cfg.systemd.services.firewall.enable;

@@ -11,7 +11,6 @@ NixOS configuration for a headless dev/ops environment. It supports both the Int
 - `modules/nixos/` — bare-metal boot, network, SSH, proxy, firewall, and containers
 - `modules/wsl/` — WSL-specific settings
 - `modules/users/` — shared user definitions
-- `temenos/` — non-secret tool config deployed by Home Manager
 - `scripts/install-tta-lab-releases` — installs current FlickNote and Taskwarrior releases from GitHub (run directly, no service)
 - `scripts/install-tta-lab-go` — builds and installs tta-lab Go CLIs into ~/go/bin from local checkouts (run directly, no service)
 - `scripts/sync-codex-auth.ts` — Bun script that converts OAuth credentials between `~/.codex/auth.json` and `~/.pi/agent/auth.json` (deployed to `~/.pi/sync-codex-auth.ts`); run `just sync-codex-auth codex-to-pi` first to seed the id_token, then `just sync-codex-auth pi-to-codex` works indefinitely
@@ -155,13 +154,11 @@ checkouts into `~/go/bin`:
 bash scripts/install-tta-lab-go
 ```
 
-Run this script directly from the Kosmos checkout. It installs `temenos`, `diary`,
-and Organon’s `og`, `skill`, and `src` from existing checkouts in
+Run this script directly from the Kosmos checkout. It installs `diary` and
+Organon’s `og`, `skill`, and `src` from existing checkouts in
 `~/code/projects/tta-lab`. A missing checkout is an error; Kosmos does not clone
 or fetch project repositories. Diary remains required; its checkout must be
 available before running the installer.
-
-The Home Manager user service `temenos.service` is defined in `modules/common/tta-lab-go.nix`. It starts only after its binary exists in `~/go/bin`.
 
 Fish, Zsh, and the Home Manager user services derive their proxy environment
 from `kosmos.wsl.proxy`; see [environment ownership](docs/environment.md).
@@ -176,7 +173,6 @@ cd ~/code/projects/tta-lab/organon
 CGO_ENABLED=0 go install ./cmd/og
 
 og clone https://github.com/tta-lab/organon.git
-og clone https://github.com/tta-lab/temenos.git
 og clone https://github.com/tta-lab/diary.git
 cd ~/code/projects/tta-lab/kosmos
 bash scripts/install-tta-lab-go
