@@ -23,6 +23,7 @@ _: {
     ../../modules/wsl/kepos-neo.nix
     ../../modules/wsl/kepos-tunnel.nix
     ../../modules/wsl/codex-for-love.nix
+    ../../modules/wsl/aru-cfl.nix
     ../../modules/wsl/matrix-mcp-remote.nix
     ../../modules/wsl/keet-mcp.nix
     ../../modules/wsl/flickgrove.nix
@@ -48,6 +49,7 @@ _: {
     keposTunnel.enable = true;
     mihomo.enable = true;
     codexForLove.enable = true;
+    aruCfl.enable = true;
     keetMcp.enable = true;
     matrixMcpRemote.enable = true;
   };

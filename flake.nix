@@ -45,6 +45,51 @@
     moonbitToolchain = moonbit-overlay.packages.${system}.default;
   in {
     checks.${system} = {
+      aru-cfl = let
+        inherit (nixpkgs) lib;
+        cfg = self.nixosConfigurations.wsl.config;
+        units = cfg.home-manager.users.neil.systemd.user.services;
+        disabled =
+          (self.nixosConfigurations.wsl.extendModules {
+            modules = [({lib, ...}: {kosmos.wsl.aruCfl.enable = lib.mkForce false;})];
+          }).config;
+        tunnel = cfg.services.cloudflared.tunnels.kepos;
+        check = name: upstreamPort: port: hostname: let
+          unit = units.${"aru-cfl-${name}"};
+          prefix = "/home/neil/.local/share/aru-cfl-${name}";
+          state = "/home/neil/.local/state/aru-cfl-${name}";
+        in
+          assert unit.Unit.ConditionPathExists == "${prefix}/current/src/cfl/cli.mjs";
+          assert unit.Service.WorkingDirectory == "${prefix}/current";
+          assert unit.Service.ExecStart
+          == lib.escapeShellArgs [
+            (lib.getExe pkgsUnstable.nodejs_24)
+            unit.Unit.ConditionPathExists
+            "--data-dir"
+            state
+            "--cfl-origin"
+            "http://127.0.0.1:${toString upstreamPort}"
+            "--base-url"
+            "https://${hostname}"
+            "--listen-host"
+            "127.0.0.1"
+            "--port"
+            (toString port)
+          ];
+          assert unit.Service.StateDirectory == "aru-cfl-${name}" && unit.Service.StateDirectoryMode == "0700" && unit.Service.UMask == "0077";
+          assert unit.Service.StandardOutput == "truncate:${state}/pairing.log";
+          assert unit.Install.WantedBy == ["default.target"] && unit.Service.Restart == "on-failure";
+          assert tunnel.ingress.${hostname} == "http://127.0.0.1:${toString port}";
+          assert !(disabled.home-manager.users.neil.systemd.user.services ? ${"aru-cfl-${name}"}); true;
+      in
+        assert check "dev" 3082 8787 "aru-dev.lamplit.run";
+        assert check "prod" 3084 8788 "aru.lamplit.run";
+        assert builtins.removeAttrs units ["aru-cfl-dev" "aru-cfl-prod"] == disabled.home-manager.users.neil.systemd.user.services;
+        assert builtins.removeAttrs tunnel.ingress ["aru-dev.lamplit.run" "aru.lamplit.run"] == disabled.services.cloudflared.tunnels.kepos.ingress;
+        assert tunnel.default == "http_status:404" && tunnel.credentialsFile == cfg.age.secrets.cloudflared-kepos-credentials.path;
+        assert cfg.systemd.services.cloudflared-tunnel-kepos.environment.TUNNEL_TRANSPORT_PROTOCOL == "http2";
+          pkgs.runCommand "aru-cfl-check" {} "touch $out";
+
       sw-build-tunnel = pkgs.runCommand "sw-build-tunnel-check" {
         nativeBuildInputs = [pkgs.openssh pkgs.python3 pkgs.which];
         unit = pkgs.writeText "sw-build-tunnel.json" (builtins.toJSON
@@ -261,6 +306,7 @@
             home-manager.nixosModules.home-manager
             agenix.nixosModules.default
             ./modules/wsl/kepos-tunnel.nix
+            ./modules/wsl/aru-cfl.nix
             ./modules/wsl/matrix-mcp-remote.nix
             (_: {
               system.stateVersion = "25.05";
