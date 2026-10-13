@@ -11,6 +11,8 @@
   haveShioMatrixEnv = config.age.secrets ? "matrix-shio.env";
   haveProdMeiliSecret = config.age.secrets ? "codex-for-love-prod.env";
   prodMeiliEnvironmentFile = config.age.secrets."codex-for-love-prod.env".path;
+  haveAmareEnv = config.age.secrets ? "cfl-amare.env";
+  amareEnvironmentFile = config.age.secrets."cfl-amare.env".path;
   agentToolPathEntries = [
     "/home/neil/.local/bin"
     "/home/neil/go/bin"
@@ -135,7 +137,8 @@ in {
           lib.optionals haveProdMeiliSecret [
             prodMeiliEnvironmentFile
           ]
-          ++ lib.optional haveShioMatrixEnv config.age.secrets."matrix-shio.env".path;
+          ++ lib.optional haveShioMatrixEnv config.age.secrets."matrix-shio.env".path
+          ++ lib.optional haveAmareEnv amareEnvironmentFile;
       };
     };
   };

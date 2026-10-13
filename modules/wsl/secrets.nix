@@ -11,6 +11,7 @@
   haveSonioxKey = builtins.pathExists (secretsDir + "/soniox-key.age");
   haveVolcengineKey = builtins.pathExists (secretsDir + "/volcengine-key.age");
   haveCodexForLoveProdEnv = builtins.pathExists (secretsDir + "/codex-for-love-prod.env.age");
+  haveCflAmareEnv = builtins.pathExists (secretsDir + "/cfl-amare.env.age");
   haveOpenaiTunnelEnv = builtins.pathExists (secretsDir + "/openai-tunnel.env.age");
   userSecret = fileName: path: {
     file = secretsDir + "/${fileName}";
@@ -121,6 +122,14 @@ in {
       // lib.optionalAttrs haveCodexForLoveProdEnv {
         "codex-for-love-prod.env" = {
           file = secretsDir + "/codex-for-love-prod.env.age";
+          owner = "neil";
+          group = "users";
+          mode = "0400";
+        };
+      }
+      // lib.optionalAttrs haveCflAmareEnv {
+        "cfl-amare.env" = {
+          file = secretsDir + "/cfl-amare.env.age";
           owner = "neil";
           group = "users";
           mode = "0400";

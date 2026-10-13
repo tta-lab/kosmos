@@ -92,6 +92,10 @@ Encrypted files live in `secrets/` and are safe to commit:
   Shio account for unified MFA background delivery and CFL prod, never a copy of Serein)
 - `secrets/matrix-mcp-remote-key.age` (retired gateway credential; retained
   encrypted for operator cleanup, with no runtime consumer)
+- `secrets/cfl-amare.env.age` (optional, operator-provisioned; one file with
+  independent `CFL_AMARE_GEM_TOKEN1`, `CFL_AMARE_GEM_TOKEN2`,
+  `CFL_AMARE_SOW_TOKEN1` and `CFL_AMARE_SOW_TOKEN2` assignments,
+  supplied only to CFL prod; see [provisioning and verification](codex-for-love.md#prod-amare-tokens))
 - `secrets/openai-tunnel.env.age` (optional; enables the OpenAI Secure MCP
   Tunnel user service when the operator creates it)
 
@@ -116,6 +120,8 @@ They decrypt to:
   webhook bearer is independent)
 - `/run/agenix/matrix-shio.env` (optional Shio MFA and CFL prod environment
   file; owned by `neil:users`, mode `0400`, default agenix path)
+- `/run/agenix/cfl-amare.env` (optional CFL prod systemd environment file;
+  owned by `neil:users`, mode `0400`, default agenix path)
 - `/run/agenix/openai-tunnel.env` (user-readable systemd environment file for
   the OpenAI Secure MCP Tunnel runtime key)
 
@@ -151,6 +157,7 @@ agenix -e secrets/volcengine-key.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/forgejo-r2-backup.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/matrix-serein.env.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/matrix-shio.env.age -i ~/.ssh/agenix_ed25519
+agenix -e secrets/cfl-amare.env.age -i ~/.ssh/agenix_ed25519
 agenix -e secrets/openai-tunnel.env.age -i ~/.ssh/agenix_ed25519
 ```
 

@@ -62,6 +62,81 @@ the Orc owns activation after independent review. Rollback restores only the
 verified generation/overrides/endpoint, never conversation state. Never substitute
 Serein's identity or use fake live events or paid triggers.
 
+## Prod Amare tokens
+
+Prod alone appends the optional `age.secrets."cfl-amare.env".path` after its
+existing FlickLog and Shio Matrix environment files. The one encrypted file
+holds four independent Amare tokens; dev, staging and interactive shells do
+not receive it. Without the encrypted file, the declaration and input are
+omitted. It uses agenix's default `/run/agenix/cfl-amare.env` path, owned by
+`neil:users` with mode `0400`. Keep `codex-for-love-prod.env.age` unchanged:
+its single-line `FLICKLOG_MEILI_KEY` contract is also consumed by Fish.
+Operator-owned CFL release overrides remain in place.
+
+Neil provisions the secret from the repository root:
+
+```sh
+cd /home/neil/code/projects/tta-lab/kosmos
+agenix -e secrets/cfl-amare.env.age -i ~/.ssh/agenix_ed25519
+```
+
+Enter exactly four separate systemd environment assignments in that file:
+
+```text
+CFL_AMARE_GEM_TOKEN1=<gem token 1>
+CFL_AMARE_GEM_TOKEN2=<gem token 2>
+CFL_AMARE_SOW_TOKEN1=<sow token 1>
+CFL_AMARE_SOW_TOKEN2=<sow token 2>
+```
+
+Use each independent token's value. Never put plaintext in Nix, unit
+`Environment`, shell exports, command arguments, logs or source control.
+Commit only `secrets/cfl-amare.env.age` through a feature branch and reviewed
+PR. Stage the encrypted file before Git-backed Nix evaluation, then run the
+checks below. After merge, the operator activates and restarts only prod:
+
+```sh
+nh os switch . -H wsl
+systemctl --user restart codex-for-love-prod.service
+systemctl --user is-active codex-for-love-prod.service
+test -r /run/agenix/cfl-amare.env && echo 'Amare file readable: PASS'
+systemctl --user show codex-for-love-prod.service -p EnvironmentFiles
+```
+
+The last command shows paths only. Confirm the Amare path appears exactly
+once and existing environment files, including the release override's
+`gateway.env`, remain. The operator can verify all four nonempty variables in
+the running prod process with this check, which prints only PASS/FAIL:
+
+```sh
+python3 - <<'PYTHON'
+import pathlib
+import subprocess
+
+pid = subprocess.check_output([
+    "systemctl", "--user", "show", "codex-for-love-prod.service",
+    "-p", "MainPID", "--value",
+], text=True).strip()
+if not pid.isdecimal() or int(pid) == 0:
+    raise SystemExit("Amare prod environment: FAIL (no running process)")
+try:
+    entries = pathlib.Path(f"/proc/{pid}/environ").read_bytes().split(b"\0")
+    names = (b"CFL_AMARE_GEM_TOKEN1", b"CFL_AMARE_GEM_TOKEN2",
+             b"CFL_AMARE_SOW_TOKEN1", b"CFL_AMARE_SOW_TOKEN2")
+    passed = all(any(entry.startswith(name + b"=") and
+                     len(entry) > len(name) + 1 for entry in entries)
+                 for name in names)
+except OSError:
+    raise SystemExit("Amare prod environment: FAIL (process environment unavailable)")
+print("Amare prod environment: " + ("PASS" if passed else "FAIL"))
+raise SystemExit(0 if passed else 1)
+PYTHON
+```
+
+Agents do not run provisioning or live environment checks. Build and evaluation
+checks establish optional wiring only; actual injection remains pending until
+all four tokens are provisioned and the operator activates and restarts prod.
+
 ## Deploy and verify
 
 For a configuration change, validate the branch before merge:

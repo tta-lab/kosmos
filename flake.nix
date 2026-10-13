@@ -114,7 +114,7 @@
         assert unit.Service.KillMode == "control-group" && unit.Service.StandardInput == "null";
         assert unit.Service.NoNewPrivileges && unit.Service.PrivateTmp;
         assert unit.Service.Restart == "on-failure" && unit.Service.TimeoutStopSec == 15;
-        assert prodEnv both == prodEnv serein ++ [both.age.secrets."matrix-shio.env".path];
+        assert prodEnv both == nixpkgs.lib.filter (path: path != "/run/agenix/cfl-amare.env") (prodEnv serein) ++ [both.age.secrets."matrix-shio.env".path] ++ nixpkgs.lib.optional (both.age.secrets ? "cfl-amare.env") both.age.secrets."cfl-amare.env".path;
         assert prodEnv shio == prodEnv both && prodEnv neither == prodEnv serein;
         assert !(builtins.elem both.age.secrets."matrix-serein.env".path (prodEnv both));
         assert (services both).codex-for-love-dev == (services neither).codex-for-love-dev;
@@ -546,7 +546,34 @@
         homeSessionVariables = cfg.home-manager.users.neil.home.sessionVariables;
         expectedBasePath = "PATH=/home/neil/.local/bin:/home/neil/go/bin:/home/neil/.local/share/npm-global/bin:/run/current-system/sw/bin";
         expectedProdPath = "PATH=/home/neil/.local/bin:/home/neil/go/bin:/home/neil/.local/share/npm-global/bin:/run/current-system/sw/bin:/home/neil/.cache/.bun/bin";
-        haveProdMeiliSecret = builtins.pathExists ./secrets/codex-for-love-prod.env.age;
+        haveProdMeiliSecret = cfg.age.secrets ? "codex-for-love-prod.env";
+        expectedEnvironmentFiles = config:
+          nixpkgs.lib.optional (config.age.secrets ? "codex-for-love-prod.env") config.age.secrets."codex-for-love-prod.env".path
+          ++ nixpkgs.lib.optional (config.age.secrets ? "matrix-shio.env") config.age.secrets."matrix-shio.env".path
+          ++ nixpkgs.lib.optional (config.age.secrets ? "cfl-amare.env") config.age.secrets."cfl-amare.env".path;
+        fixture = present:
+          (self.nixosConfigurations.wsl.extendModules {
+            modules = [
+              ({lib, ...}: {
+                age.secrets = lib.mkForce (
+                  builtins.removeAttrs cfg.age.secrets ["cfl-amare.env"]
+                  // lib.optionalAttrs present {
+                    "cfl-amare.env" = {
+                      file = pkgs.writeText "cfl-amare-fixture.age" "synthetic ciphertext";
+                      owner = "neil";
+                      group = "users";
+                      mode = "0400";
+                    };
+                  }
+                );
+              })
+            ];
+          }).config;
+        withAmare = fixture true;
+        withoutAmare = fixture false;
+        fixtureServices = config: config.home-manager.users.neil.systemd.user.services;
+        prodService = config: (fixtureServices config).codex-for-love-prod.Service;
+        amareSecret = withAmare.age.secrets."cfl-amare.env";
         prodMeiliSecret = cfg.age.secrets."codex-for-love-prod.env";
       in
         assert builtins.elem expectedBasePath services.codex-for-love-dev.Service.Environment;
@@ -554,7 +581,17 @@
         assert builtins.elem expectedProdPath services.codex-for-love-prod.Service.Environment;
         assert homeSessionVariables.FLICKLOG_MEILI_URL == "http://meilisearch.localhost:17480/";
         assert !haveProdMeiliSecret || builtins.elem "FLICKLOG_MEILI_URL=http://meilisearch.localhost:17480/" services.codex-for-love-prod.Service.Environment;
-        assert !haveProdMeiliSecret || services.codex-for-love-prod.Service.EnvironmentFile == [prodMeiliSecret.path] ++ nixpkgs.lib.optional (cfg.age.secrets ? "matrix-shio.env") cfg.age.secrets."matrix-shio.env".path;
+        assert (services.codex-for-love-prod.Service.EnvironmentFile or []) == expectedEnvironmentFiles cfg;
+        assert (prodService withoutAmare).EnvironmentFile == expectedEnvironmentFiles withoutAmare;
+        assert (prodService withAmare).EnvironmentFile == (prodService withoutAmare).EnvironmentFile ++ [amareSecret.path];
+        assert amareSecret.path == "/run/agenix/cfl-amare.env";
+        assert amareSecret.owner == "neil" && amareSecret.group == "users" && amareSecret.mode == "0400";
+        assert builtins.all (name:
+          (fixtureServices withAmare).${name} == (fixtureServices withoutAmare).${name}
+          && ((fixtureServices withAmare).${name}.Service.EnvironmentFile or []) == []
+        ) ["codex-for-love-dev" "codex-for-love-staging"];
+        assert builtins.removeAttrs (prodService withAmare) ["EnvironmentFile"] == builtins.removeAttrs (prodService withoutAmare) ["EnvironmentFile"];
+        assert withAmare.home-manager.users.neil.home.sessionVariables == withoutAmare.home-manager.users.neil.home.sessionVariables;
         assert !haveProdMeiliSecret || prodMeiliSecret.path == "${cfg.age.secretsDir}/${prodMeiliSecret.name}";
           pkgs.runCommand "wsl-codex-for-love-services-check" {} "touch $out";
 
