@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Runs as Caddy before start/reload; unavailable VPN inputs leave HTTP intact.
+set -euo pipefail
+cert=$1 key=$2 root=$3 template=$4 output=$5
+mkdir -p "$(dirname "$output")"
+rm -f "$output"
+skip() { printf 'VPN HTTPS disabled: %s; loopback HTTP remains available\n' "$1" >&2; exit 0; }
+[[ -r "$cert" && -r "$key" ]] || skip 'signed certificate/key not readable'
+ip -4 -o address show dev tun0 2>/dev/null | grep -q ' inet 10\.80\.12\.4/24 ' || skip 'tun0 must have 10.80.12.4/24'
+openssl x509 -in "$cert" -checkend 86400 -noout >/dev/null 2>&1 || skip 'certificate expires within a day or is invalid'
+openssl verify -purpose sslserver -CAfile "$root" -untrusted "$cert" "$cert" >/dev/null 2>&1 || skip 'certificate chain does not verify against company CA'
+openssl x509 -in "$cert" -ext subjectAltName -noout 2>/dev/null | tail -n +2 | tr -d '[:space:]' | tr ',' '\n' | grep -Fxq 'DNS:*.nuc.swdl' || skip 'certificate requires wildcard SAN *.nuc.swdl'
+cert_public=$(openssl x509 -in "$cert" -pubkey -noout | openssl pkey -pubin -outform DER | sha256sum) || skip 'certificate public key is invalid'
+key_public=$(openssl pkey -in "$key" -pubout -outform DER 2>/dev/null | sha256sum) || skip 'private key is invalid'
+[[ "$cert_public" == "$key_public" ]] || skip 'certificate/key mismatch'
+caddy validate --config "$template" --adapter caddyfile >/dev/null 2>&1 || skip 'HTTPS configuration/certificate/key validation failed'
+install -m 0600 "$template" "$output"

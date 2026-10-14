@@ -21,7 +21,7 @@ function(id)
             backend: { service: { name: route.service, port: { number: route.port } } },
           }] },
         }
-        for host in route.hosts
+        for host in route.hosts + [id + '.nuc.swdl']
       ],
     },
   }

@@ -14,7 +14,7 @@ jq -e '
   (map(select(.kind == "Secret")) | length == 0) and
   (map(select(.kind == "Service")) | all(.spec.type == "ClusterIP")) and
   (map(select(.kind == "Deployment")) | all(.spec.replicas == 1 and .spec.template.spec.automountServiceAccountToken == false)) and
-  (env("frontend"; "PENPOT_PUBLIC_URI").value == "http://penpot.localhost:17480") and
+  (env("frontend"; "PENPOT_PUBLIC_URI").value == "") and
   (env("frontend"; "PENPOT_FLAGS").value | contains("enable-mcp")) and
   (env("frontend"; "PENPOT_MCP_URI").value == "http://penpot-mcp.penpot.svc.cluster.local:4401") and
   (env("frontend"; "PENPOT_MCP_URI_WS").value == "http://penpot-mcp.penpot.svc.cluster.local:4402") and

@@ -184,6 +184,12 @@ their aliases. Use `og clone --reference <https-url>` for research-only checkout
 under `~/code/references/<host>/<owner>/<repo>`. Use `og pull` to update a
 registered checkout; Kosmos has no repository sync command.
 
+## NUC service access
+
+NUC service access retains the loopback/Kepos HTTP paths and adds all 19
+`https://<id>.nuc.swdl` VPN authorities. See [HTTP ownership](docs/http-ingress.md)
+and [certificate, DNS and application handoff](docs/nuc-vpn-https.md).
+
 ## License
 
 MIT

@@ -40,8 +40,11 @@ A loopback-only user service that Kepos exposes directly uses a Home Manager
 `kepos/peer-policy.jsonnet`. For access through SSH's shared HTTP entry,
 add its route to `modules/wsl/http-gateway.nix`; no Tanka workload is needed.
 See `docs/http-ingress.md` for host Caddy and cluster Traefik ownership.
-Configure any app-level trusted authority as `<id>.localhost:17480`. Peers
-reach HTTP services through their local Kepos gateway; use explicit `bindings`
+Keep existing `<id>.localhost:17480` app settings where both access paths work.
+For VPN HTTPS, read `docs/nuc-vpn-https.md` before changing an app authority,
+provisioning certificates or activating ingress; it owns the explicit
+FlickGrove/Ente exceptions and preflight. Peers reach HTTP services through
+their local Kepos gateway; use explicit `bindings`
 for raw TCP/SSH or Unix-socket listeners such as `dagger`. See `docs/wsl-devops-runbook.md` for the full service model.
 
 Kosmos-owned publisher observability uses the dedicated Tanka environment and

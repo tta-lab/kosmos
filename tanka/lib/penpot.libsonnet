@@ -68,7 +68,8 @@ workload('frontend', {
   image: 'penpotapp/frontend:2.18.1@sha256:e1eb4756ec175eb71390f9bf0ddee819468d72f67f12cf3b1532bee8d591217e',
   ports: [{ name: 'http', containerPort: 8080 }],
   env: [
-    publicUri,
+    // Empty frontend URI uses the browser Origin; backend links retain the old URL.
+    env('PENPOT_PUBLIC_URI', ''),
     flags,
     bodySize,
     adminUri,

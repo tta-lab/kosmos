@@ -135,6 +135,20 @@ in {
           mode = "0400";
         };
       }
+      // lib.optionalAttrs (builtins.pathExists (secretsDir + "/nuc-vpn-cert.age") && builtins.pathExists (secretsDir + "/nuc-vpn-key.age")) {
+        nuc-vpn-cert = {
+          file = secretsDir + "/nuc-vpn-cert.age";
+          owner = "caddy";
+          group = "caddy";
+          mode = "0400";
+        };
+        nuc-vpn-key = {
+          file = secretsDir + "/nuc-vpn-key.age";
+          owner = "caddy";
+          group = "caddy";
+          mode = "0400";
+        };
+      }
       // lib.optionalAttrs haveOpenaiTunnelEnv {
         "openai-tunnel.env" = {
           file = secretsDir + "/openai-tunnel.env.age";

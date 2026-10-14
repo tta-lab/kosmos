@@ -171,6 +171,35 @@
             python3 ${./tests/matrix-for-agent-test.py} ${./scripts/matrix-for-agent-runtime.mjs} ${nixpkgs.lib.getExe pkgsUnstable.nodejs_24}
             touch $out
           '';
+      vpn-https-module = let
+        eval = provisioned: (nixpkgs.lib.nixosSystem {
+          inherit system;
+          modules = [
+            agenix.nixosModules.default
+            ./modules/wsl/http-gateway.nix
+            ({lib, pkgs, ...}: {
+              age.secrets = lib.optionalAttrs provisioned {
+                nuc-vpn-cert.file = pkgs.writeText "fixture-cert.age" "test-owned ciphertext fixture";
+                nuc-vpn-key.file = pkgs.writeText "fixture-key.age" "test-owned ciphertext fixture";
+              };
+            })
+          ];
+        }).config;
+        absent = eval false;
+        present = eval true;
+        presentUnit = present.systemd.services.caddy.serviceConfig;
+        command = builtins.head presentUnit.ExecStartPre;
+        executable = builtins.head (nixpkgs.lib.splitString " " command);
+      in
+        assert builtins.elem present.age.secrets.nuc-vpn-cert.path (nixpkgs.lib.splitString " " command);
+        assert builtins.elem present.age.secrets.nuc-vpn-key.path (nixpkgs.lib.splitString " " command);
+          pkgs.runCommand "vpn-https-module-check" {} ''
+            test -x ${executable}
+            mkdir $out
+            cp ${pkgs.writeText "provisioned-caddy-unit.conf" present.systemd.units."caddy.service".text} $out/present.conf
+            cp ${pkgs.writeText "unprovisioned-caddy-unit.conf" absent.systemd.units."caddy.service".text} $out/absent.conf
+            cp ${present.services.caddy.package}/lib/systemd/system/caddy.service $out/package.service
+          '';
       wsl-k3s-forwarding = assert self.nixosConfigurations.wsl.config.boot.kernel.sysctl."net.ipv4.conf.all.forwarding" == 1;
         pkgs.runCommand "wsl-k3s-forwarding-check" {} "touch $out";
       shell-tests =
@@ -189,6 +218,7 @@
             jsonnet
             python3
             caddy
+            openssl
             pkgsUnstable.traefik
             shellcheck
             tanka
@@ -214,6 +244,7 @@
             ${./scripts/sync-agent-config} \
             ${./scripts/install-tta-lab-go} \
             ${./scripts/sync-anki-secret} \
+            ${./scripts/prepare-vpn-https} \
             ${./scripts/prepare-mihomo-config} \
             ${./scripts/render-kepos-policy} \
             ${./scripts/ttal-tmux-project-picker} \
@@ -294,7 +325,7 @@
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/sync-agent-config-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/wsl-devops-smoke-test}
           KOSMOS_REPO_ROOT=${./.} bash ${./tests/orga-cli-service-test}
-          KOSMOS_REPO_ROOT=${./.} KOSMOS_CADDYFILE=${self.nixosConfigurations.wsl.config.services.caddy.configFile} python3 ${./tests/http-gateway-test.py}
+          KOSMOS_REPO_ROOT=${./.} KOSMOS_CADDYFILE=${self.nixosConfigurations.wsl.config.services.caddy.configFile} KOSMOS_VPN_CADDYFILE=${self.nixosConfigurations.wsl.config.environment.etc."caddy/vpn-template".source} KOSMOS_CADDY_UNIT_DIR=${self.checks.${system}.vpn-https-module} python3 ${./tests/http-gateway-test.py}
           touch $out
         '';
 

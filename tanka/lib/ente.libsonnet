@@ -1,3 +1,4 @@
+local companyCa = importstr '../../certs/seafarer-root-ca.pem';
 local ingress = import 'ingress.libsonnet';
 local labels(name) = {
   'app.kubernetes.io/name': name,
@@ -18,6 +19,7 @@ local micronStorage = import './micron-storage.libsonnet';
       labels: museumLabels,
     },
     data: {
+      'seafarer-root-ca.pem': companyCa,
       'museum.yaml': |||
         db:
             host: postgres
@@ -27,10 +29,10 @@ local micronStorage = import './micron-storage.libsonnet';
             sslmode: disable
 
         s3:
-            are_local_buckets: true
+            are_local_buckets: false
             use_path_style_urls: true
             b2-eu-cen:
-                endpoint: ente-storage.localhost:17480
+                endpoint: https://ente-storage.nuc.swdl
                 region: garage
                 bucket: b2-eu-cen
 
@@ -124,6 +126,7 @@ local micronStorage = import './micron-storage.libsonnet';
             name: 'museum',
             image: 'ghcr.io/ente/server:0137a0c754ac0fe4f2c4c7421727c349327eb990@sha256:e9e06eb01834c38f41a3a09f9a64885b631346ce0005ccff2153faea403bd6e2',
             env: [
+              { name: 'SSL_CERT_FILE', value: '/etc/kosmos-ca/seafarer-root-ca.pem' },
               {
                 name: 'ENTE_DB_PASSWORD',
                 valueFrom: { secretKeyRef: { name: 'ente-stack-env', key: 'POSTGRES_PASSWORD' } },
@@ -163,7 +166,10 @@ local micronStorage = import './micron-storage.libsonnet';
               requests: { cpu: '50m', memory: '128Mi' },
               limits: { cpu: '1', memory: '1Gi' },
             },
-            volumeMounts: [{ name: 'config', mountPath: '/museum.yaml', subPath: 'museum.yaml', readOnly: true }],
+            volumeMounts: [
+              { name: 'config', mountPath: '/museum.yaml', subPath: 'museum.yaml', readOnly: true },
+              { name: 'config', mountPath: '/etc/kosmos-ca/seafarer-root-ca.pem', subPath: 'seafarer-root-ca.pem', readOnly: true },
+            ],
           }],
           volumes: [{ name: 'config', configMap: { name: 'museum' } }],
         },

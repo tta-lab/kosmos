@@ -290,6 +290,7 @@ local dashboardPath = '/run/current-system/sw/share/kepos/grafana/kepos-publishe
                 },
               },
               { name: 'GF_USERS_ALLOW_SIGN_UP', value: 'false' },
+              { name: 'GF_LIVE_ALLOWED_ORIGINS', value: 'http://grafana.localhost:17480,https://grafana.nuc.swdl' },
               { name: 'GF_SERVER_DOMAIN', value: 'grafana.localhost' },
               { name: 'GF_SERVER_ROOT_URL', value: 'http://grafana.localhost:17480' },
             ],

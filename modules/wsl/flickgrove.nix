@@ -23,7 +23,7 @@
         "--port"
         "4318"
         "--origin"
-        "http://flickgrove.localhost:17480"
+        "https://flickgrove.nuc.swdl"
         "--state"
         "/home/neil/.local/share/flickgrove"
         "--codex"

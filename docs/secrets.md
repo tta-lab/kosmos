@@ -258,3 +258,15 @@ automated tests use temporary fixtures and must not touch live secrets.
 The upstream [agenix module](https://github.com/ryantm/agenix/blob/main/modules/age.nix)
 defines the default path and generation-switch ordering; the pinned module
 and generated activation script are authoritative for the deployed system.
+
+## NUC VPN HTTPS material
+
+Optional `secrets/nuc-vpn-cert.age` and `secrets/nuc-vpn-key.age` are declared
+only as a complete pair. The signed leaf-first chain and NUC-specific key
+decrypt to their default `/run/agenix/nuc-vpn-cert` and `/run/agenix/nuc-vpn-key`
+paths, owned by `caddy:caddy`, mode `0400`. See the
+[operator provisioning and preflight](nuc-vpn-https.md#inputs-and-certificate-provisioning-operator-after-reviewmerge).
+Caddy checks the inputs at start/reload; missing or invalid material disables
+only VPN HTTPS, retaining loopback HTTP. Renew through the existing CA operator
+and reload Caddy after validation; no production signer or self-signed fallback
+is added. Agents never inspect the private key.
