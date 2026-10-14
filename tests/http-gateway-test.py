@@ -5,6 +5,7 @@ import hashlib
 import http.client
 import json
 import os
+import re
 from pathlib import Path
 import socket
 import shutil
@@ -142,7 +143,7 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
         dynamic = {'http': {'routers': {}, 'services': {}}}
         for name, route in routes.items():
             dynamic['http']['services'][name] = {'loadBalancer': {'servers': [{'url': f'http://127.0.0.1:{fixture_ports[name]}'}]}}
-            dynamic['http']['routers'][name] = {'entryPoints': ['http'], 'rule': ' || '.join('Host(`' + host + '`)' for host in route['hosts'] + [name + '.nuc.swdl']), 'service': name}
+            dynamic['http']['routers'][name] = {'entryPoints': ['http'], 'rule': ' || '.join('Host(`' + host + '`)' for host in route['hosts'] + [name + '.nuc.guion.io']), 'service': name}
         (work / 'routes.yaml').write_text(json.dumps(dynamic))
         controller = json.loads(subprocess.check_output(['jsonnet', str(ROOT / 'tanka/lib/traefik.libsonnet')]))
         args = controller['ingressDeployment']['spec']['template']['spec']['containers'][0]['args']
@@ -153,16 +154,49 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
         def openssl(*args):
             subprocess.run(['openssl', *args], cwd=work, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         openssl('req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', 'ca.key', '-out', 'ca.pem', '-days', '2', '-subj', '/CN=Fixture CA')
-        openssl('req', '-newkey', 'rsa:2048', '-nodes', '-keyout', 'leaf.key', '-out', 'leaf.csr', '-subj', '/CN=*.nuc.swdl')
-        (work / 'extensions').write_text('subjectAltName=DNS:*.nuc.swdl\nextendedKeyUsage=serverAuth\n')
+        openssl('req', '-newkey', 'rsa:2048', '-nodes', '-keyout', 'leaf.key', '-out', 'leaf.csr', '-subj', '/CN=*.nuc.guion.io')
+        (work / 'extensions').write_text('subjectAltName=DNS:*.nuc.guion.io\nextendedKeyUsage=serverAuth\n')
         openssl('x509', '-req', '-in', 'leaf.csr', '-CA', 'ca.pem', '-CAkey', 'ca.key', '-CAcreateserial', '-out', 'leaf.pem', '-days', '2', '-extfile', 'extensions')
-        (work / 'wrong-extensions').write_text('subjectAltName=DNS:*.nuc.swdl.example.org\nextendedKeyUsage=serverAuth\n')
-        openssl('x509', '-req', '-in', 'leaf.csr', '-CA', 'ca.pem', '-CAkey', 'ca.key', '-CAcreateserial', '-out', 'wrong-suffix.pem', '-days', '2', '-extfile', 'wrong-extensions')
         TLS_CONTEXT = ssl.create_default_context(cafile=str(work / 'ca.pem'))
         vpn = Path(os.environ['KOSMOS_VPN_CADDYFILE']).read_text()
-        vpn = vpn.replace('https://:443', f'https://:{tls_port}').replace('bind 10.80.12.4', 'bind 127.0.0.1')
+        token_file = work / 'cloudflare-token'
+        synthetic_token = 'cfut_' + 'X' * 32
+        token_file.write_text(synthetic_token + '\n')
+        automated = vpn.replace('/run/agenix/cloudflare-ddns-token', str(token_file))
+        (work / 'automated-template').write_text(automated)
+        automated_config = Path(os.environ['KOSMOS_CADDYFILE']).read_text().replace('/run/caddy/vpn/*.caddy', str(work / 'automated-template'))
+        (work / 'automated-Caddyfile').write_text(automated_config)
+        modules = subprocess.check_output(['caddy', 'list-modules'], text=True)
+        assert 'dns.providers.cloudflare' in modules.splitlines()
+        adapted = subprocess.check_output(['caddy', 'adapt', '--config', str(work / 'automated-Caddyfile'), '--adapter', 'caddyfile'], env=dict(os.environ, XDG_DATA_HOME=str(work / 'data'), XDG_CONFIG_HOME=str(work / 'config')))
+        assert synthetic_token.encode() not in adapted
+        adapted_config = json.loads(adapted)
+        servers_config = adapted_config['apps']['http']['servers']
+        assert {a for server in servers_config.values() for a in server['listen']} == {'127.0.0.1:17480', '10.80.12.4:443'}
+        assert all(server['automatic_https'].get('disable_redirects') for server in servers_config.values())
+        policies = adapted_config['apps']['tls']['automation']['policies']
+        assert len(policies) == 1
+        policy = policies[0]
+        assert policy['subjects'] == ['*.nuc.guion.io']
+        issuer = policy['issuers'][0]
+        assert issuer['module'] == 'acme' and issuer['ca'] == 'https://acme-v02.api.letsencrypt.org/directory'
+        assert issuer['challenges']['http']['disabled'] and issuer['challenges']['tls-alpn']['disabled']
+        assert issuer['challenges']['dns']['provider'] == {'name': 'cloudflare', 'api_token': '{file.' + str(token_file) + '}'}
+        assert issuer['challenges']['dns']['resolvers'] == ['1.1.1.1:53', '8.8.8.8:53']
+        assert issuer['acme_timeout'] == 120000000000
+        # Provision/validate the real issuer without Start or any issuance request.
+        validation_env = dict(os.environ, XDG_DATA_HOME=str(work / 'data'), XDG_CONFIG_HOME=str(work / 'config'))
+        validation = subprocess.run(['caddy', 'validate', '--config', str(work / 'automated-Caddyfile'), '--adapter', 'caddyfile'], env=validation_env, capture_output=True, text=True)
+        assert validation.returncode == 0, validation.stderr
+        token_file.write_text('SYNTHETIC-malformed-secret')
+        validation = subprocess.run(['caddy', 'validate', '--config', str(work / 'automated-Caddyfile'), '--adapter', 'caddyfile'], env=validation_env, capture_output=True, text=True)
+        assert validation.returncode != 0 and 'SYNTHETIC-malformed-secret' not in validation.stdout + validation.stderr
+        assert 'Cloudflare API token format is invalid' in validation.stderr
+        token_file.write_text(synthetic_token + '\n')
+        # Route/lifecycle fixture uses a test-owned leaf, never real ACME/Cloudflare.
+        vpn = re.sub(r'(?ms)^([ \t]*)tls \{\n.*?^\1\}\n', lambda m: m[1] + f'tls {work / "leaf.pem"} {work / "leaf.key"}\n', vpn, count=1)
+        vpn = vpn.replace('https://*.nuc.guion.io:443', f'https://*.nuc.guion.io:{tls_port}').replace('bind 10.80.12.4', 'bind 127.0.0.1')
         vpn = vpn.replace('10.80.12.0/24', '127.0.0.1/32').replace('10.42.0.0/16', '127.0.0.3/32')
-        vpn = vpn.replace('/run/agenix/nuc-vpn-cert', str(work / 'leaf.pem')).replace('/run/agenix/nuc-vpn-key', str(work / 'leaf.key'))
         vpn = vpn.replace('127.0.0.1:27480', f'127.0.0.1:{ingress_port}')
         for name, port in local_routes.items():
             vpn = vpn.replace(f'127.0.0.1:{port}', f'127.0.0.1:{fixture_ports[name]}')
@@ -171,16 +205,23 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
         (work / 'ip').write_text('#!' + shutil.which('bash') + '\nprintf "2: tun0 inet %s scope global tun0\\n" "${TEST_VPN_ADDRESS:-10.80.12.4/24}"\n')
         (work / 'ip').chmod(0o700)
         prep_env = dict(os.environ, PATH=str(work) + os.pathsep + os.environ['PATH'], XDG_DATA_HOME=str(work / 'data'), XDG_CONFIG_HOME=str(work / 'config'))
-        def prepare(cert='leaf.pem', key='leaf.key', address='10.80.12.4/24'):
-            result = subprocess.run(['bash', str(ROOT / 'scripts/prepare-vpn-https'), str(work / cert), str(work / key), str(work / 'ca.pem'), str(work / 'vpn-template'), str(work / 'vpn/https.caddy')], env=dict(prep_env, TEST_VPN_ADDRESS=address), capture_output=True, text=True)
+        def prepare(credential='cloudflare-token', address='10.80.12.4/24'):
+            result = subprocess.run(['bash', str(ROOT / 'scripts/prepare-vpn-https'), str(work / credential), str(work / 'vpn-template'), str(work / 'vpn/https.caddy')], env=dict(prep_env, TEST_VPN_ADDRESS=address), capture_output=True, text=True)
             assert result.returncode == 0, result.stderr
+            assert synthetic_token not in result.stdout + result.stderr
             return (work / 'vpn/https.caddy').exists(), result.stderr
-        assert not prepare(cert='missing.pem')[0]
-        assert not prepare(key='missing.key')[0]
-        assert not prepare(key='ca.key')[0]
-        assert not prepare(cert='ca.pem')[0]
-        assert not prepare(cert='wrong-suffix.pem')[0]
+        assert not prepare(credential='missing-token')[0]
+        token_file.chmod(0o000)
+        assert not prepare()[0]
+        token_file.chmod(0o600)
         assert not prepare(address='10.80.12.99/24')[0]
+        for invalid in ['SYNTHETIC-malformed-secret', synthetic_token + '\n\n', synthetic_token + '\nextra']:
+            token_file.write_text(invalid)
+            enabled, diagnostics = prepare()
+            assert not enabled and invalid not in diagnostics
+        token_file.write_text(synthetic_token + '\r\n')
+        assert prepare()[0]
+        token_file.write_text(synthetic_token + '\n')
         config = Path(os.environ['KOSMOS_CADDYFILE']).read_text()
         config = config.replace('/run/caddy/vpn/*.caddy', str(work / 'vpn/*.caddy'))
         config = config.replace('unix//run/caddy/admin.sock', 'unix/' + str(work / 'admin.sock'))
@@ -205,13 +246,13 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
             if command == native['ExecStartPre'][0]:
                 # Same script body, with test-owned material/interface injection.
                 # The Nix wrapper's iproute2 PATH would otherwise read real tun0.
-                assert command[1:3] == ['/run/agenix/nuc-vpn-cert', '/run/agenix/nuc-vpn-key']
-                return ['bash', str(ROOT / 'scripts/prepare-vpn-https'), str(work / 'leaf.pem'), str(work / 'leaf.key'), str(work / 'ca.pem'), str(work / 'vpn-template'), str(work / 'vpn/https.caddy')]
+                assert command[1] == '/run/agenix/cloudflare-ddns-token'
+                return ['bash', str(ROOT / 'scripts/prepare-vpn-https'), str(token_file), str(work / 'vpn-template'), str(work / 'vpn/https.caddy')]
             return [a.replace('/etc/caddy/caddy_config', str(work / 'Caddyfile')).replace('/run/caddy/vpn/https.caddy', str(work / 'vpn/https.caddy')) for a in command]
-        def native_reload(commands=native):
+        def native_reload(commands=native, address='10.80.12.4/24'):
             for command in commands['ExecReload']:
-                subprocess.run(fixture_command(command), env=prep_env, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        (work / 'leaf.key').rename(work / 'unprovisioned.key')
+                subprocess.run(fixture_command(command), env=dict(prep_env, TEST_VPN_ADDRESS=address), check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        token_file.rename(work / 'unprovisioned-token')
         for command in native['ExecStartPre']:
             subprocess.run(fixture_command(command), env=prep_env, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         assert not (work / 'vpn/https.caddy').exists()
@@ -235,30 +276,33 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
             time.sleep(0.05)
         else:
             raise AssertionError('Traefik did not load fixture routes')
-        # Caddy started with missing TLS inputs and still serves the old path.
+        # Caddy started with missing credential and still serves the old path.
         assert request(edge_port, 'dev-her.localhost')[0] == 200
-        (work / 'unprovisioned.key').rename(work / 'leaf.key')
+        (work / 'unprovisioned-token').rename(token_file)
         native_reload()
-        assert request(tls_port, 'dev-her.nuc.swdl', tls=True)[0] == 200
-        (work / 'leaf.pem').rename(work / 'correct.pem')
-        (work / 'leaf.pem').write_bytes((work / 'wrong-suffix.pem').read_bytes())
+        assert request(tls_port, 'dev-her.nuc.guion.io', tls=True)[0] == 200
+        token_file.write_text('SYNTHETIC-malformed-secret')
         native_reload()
         assert not (work / 'vpn/https.caddy').exists()
         assert request(edge_port, 'dev-her.localhost')[0] == 200
         try:
-            request(tls_port, 'dev-her.nuc.swdl', tls=True)
-            raise AssertionError('Wrong-suffix certificate kept HTTPS active')
+            request(tls_port, 'dev-her.nuc.guion.io', tls=True)
+            raise AssertionError('Invalid credential kept HTTPS active')
         except OSError:
             pass
-        (work / 'leaf.pem').write_bytes((work / 'correct.pem').read_bytes())
+        token_file.write_text(synthetic_token + '\n')
         native_reload()
-        (work / 'leaf.key').rename(work / 'unprovisioned.key')
+        token_file.rename(work / 'unprovisioned-token')
         native_reload()
         assert not (work / 'vpn/https.caddy').exists()
         assert request(edge_port, 'dev-her.localhost')[0] == 200
-        (work / 'unprovisioned.key').rename(work / 'leaf.key')
+        (work / 'unprovisioned-token').rename(token_file)
         native_reload()
-        # Removing declarations uses the evaluated native absent-pair remover.
+        native_reload(address='10.80.12.99/24')
+        assert not (work / 'vpn/https.caddy').exists()
+        assert request(edge_port, 'dev-her.localhost')[0] == 200
+        native_reload()
+        # Removing declarations uses the evaluated native absent-credential remover.
         native_reload(absent)
         assert not (work / 'vpn/https.caddy').exists()
         assert request(edge_port, 'dev-her.localhost')[0] == 200
@@ -276,7 +320,7 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
                 assert '198.51.100.123' not in data['forwarded_for']
                 assert request(edge_port, authority, '/redirect')[1]['Location'] == f'http://{authority}/target'
                 assert request(edge_port, authority, '/auth')[0] == 401
-        for host, target in [(h + '.nuc.swdl', h) for h in local_hosts] + [(h + '.nuc.swdl', h) for h in routes]:
+        for host, target in [(h + '.nuc.guion.io', h) for h in local_hosts] + [(h + '.nuc.guion.io', h) for h in routes]:
             status, _, body = request(tls_port, host, '/a%2Fb?x=one%3Btwo&y=three', tls=True)
             data = json.loads(body)
             assert status == 200 and data['target'] == target, (host, status, data)
@@ -285,10 +329,10 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
             assert data['forwarded_proto'] == 'https' and data['origin'] == 'https://' + host
             assert request(tls_port, host, '/redirect', tls=True)[1]['Location'] == f'https://{host}/target'
             assert request(tls_port, host, '/auth', tls=True)[0] == 401
-        assert request(tls_port, 'unknown.nuc.swdl', tls=True)[::2] == (421, b'unknown host')
-        assert request(tls_port, 'anki.nuc.swdl', tls=True, source='127.0.0.2')[0] == 403
-        assert request(tls_port, 'ente-storage.nuc.swdl', tls=True, source='127.0.0.3')[0] == 200
-        assert request(tls_port, 'ente.nuc.swdl', tls=True, source='127.0.0.3')[0] == 403
+        assert request(tls_port, 'unknown.nuc.guion.io', tls=True)[::2] == (421, b'unknown host')
+        assert request(tls_port, 'anki.nuc.guion.io', tls=True, source='127.0.0.2')[0] == 403
+        assert request(tls_port, 'ente-storage.nuc.guion.io', tls=True, source='127.0.0.3')[0] == 200
+        assert request(tls_port, 'ente.nuc.guion.io', tls=True, source='127.0.0.3')[0] == 403
         try:
             request(tls_port, 'outside.invalid', tls=True)
             raise AssertionError('TLS hostname mismatch was accepted')
@@ -297,7 +341,7 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
         trusted_context = TLS_CONTEXT
         TLS_CONTEXT = ssl.create_default_context()
         try:
-            request(tls_port, 'anki.nuc.swdl', tls=True)
+            request(tls_port, 'anki.nuc.guion.io', tls=True)
             raise AssertionError('Untrusted fixture CA was accepted')
         except ssl.SSLError:
             pass
@@ -310,7 +354,7 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
                 chunks.append(chunk)
             response = b''.join(chunks)
             assert response.startswith(b'HTTP/1.1 200') and b'x' * (512 * 1024) in response and response.endswith(b'ok')
-        for stream_host in ['prod-lamplit.nuc.swdl', 'anki.nuc.swdl']:
+        for stream_host in ['prod-lamplit.nuc.guion.io', 'anki.nuc.guion.io']:
             with raw_request(tls_port, '/stream', host=stream_host, tls=True) as client:
                 received = b''
                 start = time.monotonic()
@@ -330,7 +374,7 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
                     assert chunk, response
                     response += chunk
                 assert response.startswith(b'HTTP/1.1 101') and b'\x81\x05hello' in response
-        print('19 HTTPS and preserved HTTP routes, trusted TLS, source restrictions, native start/reload preparation, exact SAN rejection, missing-input preflight, authorities, encoded URLs, authentication, redirects, large headers, SSE and WebSocket pass')
+        print('19 HTTPS and preserved HTTP routes, trusted TLS, source restrictions, native start/reload preparation, wildcard DNS-01 issuer, runtime-only credential, redacted malformed-token failure, missing-input preflight, authorities, encoded URLs, authentication, redirects, large headers, SSE and WebSocket pass')
     except Exception:
         for log in logs:
             log.flush()

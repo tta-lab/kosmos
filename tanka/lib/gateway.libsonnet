@@ -10,11 +10,11 @@ local hosts = std.flattenArrays([routes[id].hosts for id in std.objectFields(rou
     data: {
       // Museum's TLS S3 consumer must reach host Caddy, not HTTP-only Traefik.
       'nuc-storage.server': |||
-        ente-storage.nuc.swdl:53 {
+        ente-storage.nuc.guion.io:53 {
           errors
           cache 30
           hosts {
-            10.80.12.4 ente-storage.nuc.swdl
+            10.80.12.4 ente-storage.nuc.guion.io
           }
         }
       |||,

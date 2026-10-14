@@ -135,15 +135,9 @@ in {
           mode = "0400";
         };
       }
-      // lib.optionalAttrs (builtins.pathExists (secretsDir + "/nuc-vpn-cert.age") && builtins.pathExists (secretsDir + "/nuc-vpn-key.age")) {
-        nuc-vpn-cert = {
-          file = secretsDir + "/nuc-vpn-cert.age";
-          owner = "caddy";
-          group = "caddy";
-          mode = "0400";
-        };
-        nuc-vpn-key = {
-          file = secretsDir + "/nuc-vpn-key.age";
+      // lib.optionalAttrs (builtins.pathExists (secretsDir + "/cloudflare-ddns-token.age")) {
+        cloudflare-ddns-token = {
+          file = secretsDir + "/cloudflare-ddns-token.age";
           owner = "caddy";
           group = "caddy";
           mode = "0400";

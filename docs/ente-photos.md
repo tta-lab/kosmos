@@ -71,14 +71,15 @@ public: Garage still requires Museum's signed URLs for object access.
 
 ## VPN HTTPS access
 
-After [reviewed activation](nuc-vpn-https.md), use `https://ente.nuc.swdl`
-with the existing company CA. Museum signs upload/download URLs against
-`https://ente-storage.nuc.swdl`; even clients retaining the old Kepos API
-endpoint now need VPN connectivity and CA trust for file operations. Bucket,
-region, path-style addressing, accounts and credentials remain unchanged.
-Museum receives its own public CA mount and internal DNS answer; host trust
-alone does not establish container TLS trust. Verify upload/download on a
-test-owned object after deployment, without logging signed URL queries.
+After [reviewed activation](nuc-vpn-https.md), use `https://ente.nuc.guion.io`
+with the automatically managed public certificate. Museum signs file URLs
+against
+`https://ente-storage.nuc.guion.io`; even clients retaining the old Kepos API
+endpoint now need VPN connectivity and public TLS trust for file operations.
+Bucket, region, path-style addressing, accounts and credentials remain unchanged.
+Museum uses its image's default public CA bundle and the dedicated internal DNS
+answer; it no longer overrides SSL_CERT_FILE with the company-only root. Verify
+upload/download on a test-owned object after deployment, without logging signed URL queries.
 
 ## Initial mobile setup
 

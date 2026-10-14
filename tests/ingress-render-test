@@ -15,7 +15,7 @@ for name, route in routes.items():
     ingress = ingresses[(route['namespace'], name)]
     assert ingress['spec']['ingressClassName'] == 'kosmos'
     assert 'tls' not in ingress['spec'] and 'defaultBackend' not in ingress['spec']
-    assert [r['host'] for r in ingress['spec']['rules']] == route['hosts'] + [name + '.nuc.swdl']
+    assert [r['host'] for r in ingress['spec']['rules']] == route['hosts'] + [name + '.nuc.guion.io']
     for rule in ingress['spec']['rules']:
         assert rule['http']['paths'] == [{'path': '/', 'pathType': 'Prefix', 'backend': {'service': {'name': route['service'], 'port': {'number': route['port']}}}}]
     # ERPNext is operator-managed; all other Ingresses must target their app's Service.
@@ -27,17 +27,14 @@ museum = next(r for r in resources if r['kind'] == 'ConfigMap' and r['metadata']
 config = json.loads(subprocess.check_output(['yq', '-j', '.'], input=museum['data']['museum.yaml'].encode()))
 assert config['s3']['are_local_buckets'] is False
 assert config['s3']['use_path_style_urls'] is True
-assert config['s3']['b2-eu-cen'] == {'endpoint': 'https://ente-storage.nuc.swdl', 'region': 'garage', 'bucket': 'b2-eu-cen'}
-assert museum['data']['seafarer-root-ca.pem'] == (root / 'certs/seafarer-root-ca.pem').read_text()
+assert config['s3']['b2-eu-cen'] == {'endpoint': 'https://ente-storage.nuc.guion.io', 'region': 'garage', 'bucket': 'b2-eu-cen'}
 pod = next(r for r in resources if r['kind'] == 'Deployment' and r['metadata']['name'] == 'museum')['spec']['template']['spec']
 container = pod['containers'][0]
-ca_path = next(e['value'] for e in container['env'] if e['name'] == 'SSL_CERT_FILE')
-mount = next(m for m in container['volumeMounts'] if m['mountPath'] == ca_path)
-assert mount['readOnly'] and mount['subPath'] == 'seafarer-root-ca.pem'
-assert next(v for v in pod['volumes'] if v['name'] == mount['name'])['configMap']['name'] == 'museum'
+assert not any(e['name'] in ['SSL_CERT_FILE', 'SSL_CERT_DIR'] for e in container['env'])
+assert container['volumeMounts'] == [{'name': 'config', 'mountPath': '/museum.yaml', 'subPath': 'museum.yaml', 'readOnly': True}]
 dns = next(r for r in resources if r['kind'] == 'ConfigMap' and r['metadata']['name'] == 'coredns-custom')
-assert '10.80.12.4 ente-storage.nuc.swdl' in dns['data']['nuc-storage.server']
-assert 'ente-storage.nuc.swdl' not in dns['data']['kosmos.override']
+assert '10.80.12.4 ente-storage.nuc.guion.io' in dns['data']['nuc-storage.server']
+assert 'ente-storage.nuc.guion.io' not in dns['data']['kosmos.override']
 assert len(ingresses) == len(routes)
 print('all HTTP Ingresses target the declared application Services without TLS or catch-all routes')
 PY

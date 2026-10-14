@@ -23,7 +23,7 @@
         "--port"
         "4318"
         "--origin"
-        "https://flickgrove.nuc.swdl"
+        "https://flickgrove.nuc.guion.io"
         "--state"
         "/home/neil/.local/share/flickgrove"
         "--codex"

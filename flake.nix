@@ -179,8 +179,7 @@
             ./modules/wsl/http-gateway.nix
             ({lib, pkgs, ...}: {
               age.secrets = lib.optionalAttrs provisioned {
-                nuc-vpn-cert.file = pkgs.writeText "fixture-cert.age" "test-owned ciphertext fixture";
-                nuc-vpn-key.file = pkgs.writeText "fixture-key.age" "test-owned ciphertext fixture";
+                cloudflare-ddns-token.file = pkgs.writeText "fixture-token.age" "test-owned ciphertext fixture";
               };
             })
           ];
@@ -191,8 +190,7 @@
         command = builtins.head presentUnit.ExecStartPre;
         executable = builtins.head (nixpkgs.lib.splitString " " command);
       in
-        assert builtins.elem present.age.secrets.nuc-vpn-cert.path (nixpkgs.lib.splitString " " command);
-        assert builtins.elem present.age.secrets.nuc-vpn-key.path (nixpkgs.lib.splitString " " command);
+        assert builtins.elem present.age.secrets.cloudflare-ddns-token.path (nixpkgs.lib.splitString " " command);
           pkgs.runCommand "vpn-https-module-check" {} ''
             test -x ${executable}
             mkdir $out
@@ -217,7 +215,7 @@
             just
             jsonnet
             python3
-            caddy
+            self.nixosConfigurations.wsl.config.services.caddy.package
             openssl
             pkgsUnstable.traefik
             shellcheck

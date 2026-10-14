@@ -2,10 +2,10 @@
 
 FlickGrove is Neil's Home Manager user service `flickgrove.service`. ko runs an
 independent Peer. After the reviewed [VPN HTTPS activation](nuc-vpn-https.md),
-Mac and Pixel 7a use `https://flickgrove.nuc.swdl` over VPN with the existing
-company CA trust. Edit the ko Peer URL manually in Settings → Hosts and reuse
-its access credential. The retained old localhost route is rejected by the
-application for browser/API/WebSocket access after this Origin change. The
+Mac uses `https://flickgrove.nuc.guion.io` over VPN with public certificate
+trust. iOS setup is deferred. Edit the ko Peer URL manually in Settings → Hosts
+and reuse its access credential. The retained old localhost route is rejected
+by the application for browser/API/WebSocket access after this Origin change. The
 service listens on `127.0.0.1:4318`; Kepos allows these two devices. Every Peer serves the frontend and owns its local session trees.
 Browsers connect directly to each configured Peer; ko does not relay remote
 business calls. Configure additional Peers and their access credentials in
@@ -50,6 +50,6 @@ compatibility before opening newer data with older code.
 ```bash
 systemctl --user status flickgrove.service
 journalctl --user -u flickgrove.service -f
-curl --fail -H 'Host: flickgrove.nuc.swdl' \
+curl --fail -H 'Host: flickgrove.nuc.guion.io' \
   http://127.0.0.1:4318/
 ```

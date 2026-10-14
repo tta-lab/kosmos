@@ -1,9 +1,10 @@
 # HTTP access on kosmos-wsl
 
 The host Caddy system service keeps `127.0.0.1:17480`, using the standard
-NixOS Caddy package and its dedicated non-root account. With signed inputs and
-the expected VPN address, it also serves HTTPS at `10.80.12.4:443` for all 19
-`<id>.nuc.swdl` authorities. There is no HTTP 80 or LAN listener. Unknown Host
+NixOS Caddy package with a pinned Cloudflare provider and its dedicated non-root
+account. With the runtime DNS credential and expected VPN address, it obtains
+a wildcard certificate and serves HTTPS at `10.80.12.4:443` for all 19
+`<id>.nuc.guion.io` authorities. There is no HTTP 80 or LAN listener. Unknown Host
 names do not dispatch. See [VPN HTTPS](nuc-vpn-https.md) for the exact mappings,
 source restrictions, certificate/DNS prerequisites and ordered activation.
 
@@ -56,9 +57,9 @@ Continue using the existing UU SSH destination and authentication. Mac's old
 17481 forward can be removed. Existing `<service>.localhost:17480` routes
 remain. Most applications keep
 their old public URL settings and support both entries. FlickGrove is an
-explicit single-Origin exception: after activation, update its Mac/Pixel Peer
-URL to `https://flickgrove.nuc.swdl` and reuse the existing credential. Ente file
-operations from old API clients also require VPN/CA trust; see the
+explicit single-Origin exception: after activation, update its Mac Peer
+URL to `https://flickgrove.nuc.guion.io` and reuse the existing credential. Ente file
+operations from old API clients also require VPN/public TLS trust; see the
 [application-specific behavior](nuc-vpn-https.md#authorities-and-application-behavior).
 NUC Kepos continues on `127.0.0.1:17481` and is independent of the Caddy listener. Dagger, SSH and the Mihomo proxy remain
 raw TCP services with their own forwarding arrangements.
@@ -66,9 +67,9 @@ raw TCP services with their own forwarding arrangements.
 The Serein Keet Cloudflare Tunnel goes directly to 8767; the Organon MCP
 Tunnel is independent. Neither depends on this ingress. The IPv6 HTTPS smoke,
 its DDNS updater, custom Caddy image and credential synchronizer are retired.
-Encrypted smoke credentials and the old certificate volume are retained for
-separate operator cleanup; this migration does not delete cloud DNS or revoke
-tokens.
+The existing encrypted Cloudflare token is reused by host Caddy DNS-01; the
+old certificate volume is retained for separate operator cleanup. This migration
+does not delete cloud DNS or revoke tokens.
 
 ## First migration
 

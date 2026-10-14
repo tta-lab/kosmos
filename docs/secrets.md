@@ -73,8 +73,8 @@ agenix -r -i ~/.ssh/agenix_ed25519
 Encrypted files live in `secrets/` and are safe to commit:
 
 - `secrets/ttal.env.age`
-- `secrets/cloudflare-ddns-token.age` (retired smoke credential, retained encrypted
-  for operator cleanup; no runtime consumer)
+- `secrets/cloudflare-ddns-token.age` (existing raw Cloudflare token; reused by
+  host Caddy DNS-01, with no DDNS updater)
 - `secrets/env.age`
 - `secrets/kube-config.age`
 - `secrets/sops-age-keys.age`
@@ -259,14 +259,25 @@ The upstream [agenix module](https://github.com/ryantm/agenix/blob/main/modules/
 defines the default path and generation-switch ordering; the pinned module
 and generated activation script are authoritative for the deployed system.
 
-## NUC VPN HTTPS material
+## NUC VPN DNS-01 credential
 
-Optional `secrets/nuc-vpn-cert.age` and `secrets/nuc-vpn-key.age` are declared
-only as a complete pair. The signed leaf-first chain and NUC-specific key
-decrypt to their default `/run/agenix/nuc-vpn-cert` and `/run/agenix/nuc-vpn-key`
-paths, owned by `caddy:caddy`, mode `0400`. See the
-[operator provisioning and preflight](nuc-vpn-https.md#inputs-and-certificate-provisioning-operator-after-reviewmerge).
-Caddy checks the inputs at start/reload; missing or invalid material disables
-only VPN HTTPS, retaining loopback HTTP. Renew through the existing CA operator
-and reload Caddy after validation; no production signer or self-signed fallback
-is added. Agents never inspect the private key.
+The existing `secrets/cloudflare-ddns-token.age` is declared when present and
+uses the default `/run/agenix/cloudflare-ddns-token` path, owned by
+`caddy:caddy`, mode `0400`. Its historical public contract is a **raw token**,
+not `NAME=value`, JSON or a Fish script. Do not inspect/decrypt it to determine
+format. Caddy's runtime `{file./run/agenix/cloudflare-ddns-token}` placeholder
+consumes it opaquely; no value enters Nix, argv, unit Environment or adapted
+configuration. The prep script accepts the pinned provider's legacy and
+`cfut_`/`cfat_` formats, allowing one terminal LF/CRLF. Invalid/missing inputs
+omit VPN ingress while loopback HTTP remains. The pinned plugin's invalid-format
+error is patched to omit its supplied value; operational diagnostics must still
+report sanitized outcomes, never dump credentials or full environments.
+
+Historical scope was Zone Read + DNS Edit on `guion.io`, used for both DDNS
+and DNS-01 in September 2026. Current expiry, revocation, IP restrictions and
+permissions are unverified until an authorized managed-service operation.
+Reuse the existing encrypted input; do not create/rekey/migrate it speculatively.
+Caddy automatically stores and renews its wildcard certificate in its private,
+persistent `/var/lib/caddy` data directory. See the
+[ordered DNS/deployment handoff](nuc-vpn-https.md). Company public roots remain
+for unrelated services; this ingress needs no private-CA leaf or client root install.

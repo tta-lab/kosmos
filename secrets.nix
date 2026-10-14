@@ -4,8 +4,6 @@ let
   users = [neil];
   systems = [kosmosWsl];
 in {
-  "secrets/nuc-vpn-cert.age".publicKeys = users ++ systems;
-  "secrets/nuc-vpn-key.age".publicKeys = users ++ systems;
   "secrets/ttal.env.age".publicKeys = users ++ systems;
   "secrets/kube-config.age".publicKeys = users ++ systems;
   "secrets/sops-age-keys.age".publicKeys = users ++ systems;
