@@ -127,11 +127,11 @@ Record old route/native API baselines, including ERPNext's prior 503.
    just _local-k3s
    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
    for env in devops photos ebooks cloudreve anki notes feeds codex-bridge observability impri navidrome meilisearch penpot; do
-     tk diff "tanka/environments/$env" --target='^Ingress/'
-     tk apply "tanka/environments/$env" --target='^Ingress/' --auto-approve=always
+     tk diff "tanka/environments/$env" --target='ingress/.*'
+     tk apply "tanka/environments/$env" --target='ingress/.*' --auto-approve=always
    done
-   tk diff tanka/environments/devops --target='^ConfigMap/coredns-custom$'
-   tk apply tanka/environments/devops --target='^ConfigMap/coredns-custom$' --auto-approve=always
+   tk diff tanka/environments/devops --target='configmap/coredns-custom'
+   tk apply tanka/environments/devops --target='configmap/coredns-custom' --auto-approve=always
    ```
 
 3. Run `nh os switch . -H wsl` as Neil in the coordinated window. Prep runs
@@ -151,10 +151,10 @@ Record old route/native API baselines, including ERPNext's prior 503.
 
    ```sh
    just _local-k3s
-   tk apply tanka/environments/photos --target='^(ConfigMap/museum|Deployment/museum)$' --auto-approve=always
+   tk apply tanka/environments/photos --target='(configmap/museum|deployment/museum)' --auto-approve=always
    kubectl -n photos rollout restart deployment/museum
-   tk apply tanka/environments/observability --target='^Deployment/grafana$' --auto-approve=always
-   tk apply tanka/environments/penpot --target='^Deployment/penpot-frontend$' --auto-approve=always
+   tk apply tanka/environments/observability --target='deployment/grafana' --auto-approve=always
+   tk apply tanka/environments/penpot --target='deployment/penpot-frontend' --auto-approve=always
    kubectl -n photos rollout status deployment/museum --timeout=120s
    kubectl -n observability rollout status deployment/grafana --timeout=120s
    kubectl -n penpot rollout status deployment/penpot-frontend --timeout=120s
