@@ -3,14 +3,15 @@
 The host Caddy system service keeps `127.0.0.1:17480`, using the standard
 NixOS Caddy package with a pinned Cloudflare provider and its dedicated non-root
 account. With the runtime DNS credential and expected VPN address, it obtains
-a wildcard certificate and serves HTTPS at `10.80.12.4:443` for all 19
+a wildcard certificate and serves HTTPS at `10.80.12.4:443` for all 20
 `<id>.nuc.guion.io` authorities. There is no HTTP 80 or LAN listener. Unknown Host
 names do not dispatch. See [VPN HTTPS](nuc-vpn-https.md) for the exact mappings,
 source restrictions, certificate/DNS prerequisites and ordered activation.
 
 - Host application routes live in `modules/wsl/http-gateway.nix`: `dev-her`
   (3082), `staging-her` (3083), `prod-lamplit` (3084), `flickgrove` (4318),
-  and `mihomo-dashboard` (9090). Caddy preserves Host, path and query.
+  `lamplit-post` (5140), and `mihomo-dashboard` (9090). Caddy preserves Host,
+  path and query.
 - `http/cluster-routes.json` owns cluster authorities and Service destinations.
   Each application's Tanka library owns its old and new Ingress authorities via
   `tanka/lib/ingress.libsonnet`. ERPNext's workload is managed separately;
@@ -92,3 +93,7 @@ NixOS must retain `net.ipv4.conf.all.forwarding=1` for k3s. The k3s module
 owns this sysctl: relying on k3s's runtime write alone lets a subsequent
 systemd-sysctl reload disable cluster routing. Verify cluster access after a
 NixOS switch as well as before it.
+
+The Post Console route is a VPN-only, zero-account read-only framework preview.
+Its MCP port 18787 is not proxied. See [Post activation](post-console-preview.md)
+for the immutable artifact gate and service-specific handoff.

@@ -14,8 +14,9 @@ Unknown HTTPS names never dispatch to an application.
 
 ## Authorities and application behavior
 
-Every row retains its existing `<id>.localhost:17480` route and Kepos
-publication. The extra `codex-bridge.kepos.internal` alias also remains.
+Every row has a `<id>.localhost:17480` route. Existing Kepos publications
+remain; the Post preview has no Kepos publication. The extra
+`codex-bridge.kepos.internal` alias also remains.
 Authentication, data, service identities and credentials are retained.
 There is no new ingress token, basic-auth or SSO gate.
 
@@ -24,6 +25,7 @@ There is no new ingress token, basic-auth or SSO gate.
 | dev-her | 127.0.0.1:3082 | CFL uses browser-relative API/stream/socket URLs; both authorities |
 | staging-her | 127.0.0.1:3083 | Same CFL behavior |
 | prod-lamplit | 127.0.0.1:3084 | Same CFL behavior; no paid inference needed for ingress checks |
+| lamplit-post | 127.0.0.1:5140 | Zero-account read-only native Console; VPN preview only; [activation](post-console-preview.md) |
 | flickgrove | 127.0.0.1:4318 | **Exception:** supported public Origin changes to HTTPS; old browser/API/WS authority is rejected |
 | mihomo-dashboard | 127.0.0.1:9090 | Native API authentication remains; no secret or dashboard reset |
 | ente | photos/museum:8080 | **Exception:** both API routes; file operations from either require VPN/public TLS trust |
@@ -90,11 +92,16 @@ not inspect private keys, erase this directory or force repeated issuance.
 
 Before activation, the operator must confirm stable NUC `tun0=10.80.12.4/24`
 allocation and Mac's VPN route. The Ruijie OpenVPN/DNS server is `192.168.6.1`.
-Its previous `nuc.swdl` records do not supply the new names. Add **19 exact**
-`<id>.nuc.guion.io` A records from the table to `10.80.12.4`, or a wildcard
+Its previous `nuc.swdl` records do not supply the new names. The original
+rollout required **19 exact**
+`<id>.nuc.guion.io` A records to `10.80.12.4`, or a wildcard
 only if the router explicitly supports it. Preserve other records. Check each
 with `dig @192.168.6.1 NAME A +time=2 +tries=1`; UDP currently works but TCP53
 was refused during the earlier audit. Do not assume recursive DNS works.
+
+The additional `lamplit-post.nuc.guion.io` A record already returns
+`10.80.12.4` from `192.168.6.1`; a different host default resolver result does
+not establish missing VPN DNS. No new record is needed for this preview.
 
 On Mac, inspect `/etc/resolver/nuc.guion.io` and any symlink before creation;
 preserve meaningful existing contents. If absent, the operator creates a
@@ -102,7 +109,8 @@ root-owned mode `0644` file with exactly `nameserver 192.168.6.1` plus newline.
 Do not overwrite/delete the operator-owned `/etc/resolver/nuc.swdl` or alter
 global DNS, `/etc/resolv.conf`, VPN profiles or Mihomo. `scutil --dns` must show
 the new matching-domain resolver; `dscacheutil -q host -a name NAME` must return
-`10.80.12.4` for all19. Default `dig` does not exercise macOS's matching-domain
+`10.80.12.4` for all 20 current names. Default `dig` does not exercise macOS's
+matching-domain
 resolver. iOS is deferred. Museum's explicit internal storage DNS is separate.
 
 ## Ordered activation after current-head review and merge
