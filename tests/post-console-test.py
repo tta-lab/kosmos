@@ -1,66 +1,86 @@
 #!/usr/bin/env python3
-"""Bootstrap behavior uses only disposable artifact and application state."""
+"""Execute evaluated service commands with real Nix tools and a disposable HOME."""
+import json
 import os
 from pathlib import Path
+import shlex
 import subprocess
 import tempfile
 
-ROOT = Path(os.environ.get('KOSMOS_REPO_ROOT', Path(__file__).resolve().parent.parent))
+unit = json.loads(Path(os.environ['KOSMOS_POST_UNIT']).read_text())
+service = unit['Service']
 with tempfile.TemporaryDirectory(prefix='post-console-test-') as directory:
-    work = Path(directory)
-    artifact, state = work / 'release with spaces', work / 'state'
-    selected = work / 'console-current'
-    selected.symlink_to(artifact)
-    command = ['bash', str(ROOT / 'scripts/prepare-post-console'), str(selected), str(state)]
-    missing = subprocess.run(command, capture_output=True, text=True)
-    assert missing.returncode == 1 and 'artifact missing' in missing.stderr
-    assert not state.exists()
-    (artifact / 'dist').mkdir(parents=True)
-    (artifact / 'examples').mkdir()
-    (artifact / 'dist/cli.cjs').write_text('// fixture CLI\n')
-    template = artifact / 'examples/koishi.preview.yml'
-    preview = "accounts: []\nbindings: []\n" + ''.join(
-        "  '__POST_ARTIFACT_ROOT__/" + entry + "': {}\n" for entry in [
-            'node_modules/@koishijs/plugin-server/index.cjs',
-            'node_modules/@koishijs/plugin-console/lib/node/index.js',
-            'node_modules/@koishijs/plugin-status/lib/index.js', 'dist/post-plugin.cjs'])
-    template.write_text(preview)
-    subprocess.run(command, check=True)
-    config = state / 'koishi.yml'
-    assert config.read_text() == preview.replace('__POST_ARTIFACT_ROOT__', str(artifact.resolve()))
-    assert config.stat().st_mode & 0o777 == 0o600
-    for path in [state, state / 'keys', state / 'data']:
-        assert path.stat().st_mode & 0o777 == 0o700
-    assert not list((state / 'keys').iterdir()), 'bootstrap must not issue keys'
-    config.write_text('# operator-owned\naccounts: []\nbindings: []\n')
-    before = config.stat()
-    template.write_text('new upstream template\n')
-    subprocess.run(command, check=True)
-    assert config.read_text().startswith('# operator-owned')
-    assert config.stat().st_ino == before.st_ino
-    assert config.stat().st_mtime_ns == before.st_mtime_ns
-    assert not list(state.glob('.preview-seed.*'))
-    # An invalid template fails before any partial config can be published.
-    other_state = work / 'invalid-state'
-    invalid = subprocess.run(command[:-1] + [str(other_state)], capture_output=True)
-    assert invalid.returncode != 0 and not (other_state / 'koishi.yml').exists()
-    assert not list(other_state.glob('.preview-seed.*'))
-    template.write_text(preview)
-    for suffix in ['$&', '$$', '$`']:
-        literal_root = work / ('release-' + suffix)
-        artifact.rename(literal_root)
-        selected.unlink()
-        selected.symlink_to(literal_root)
-        literal_state = work / ('state-' + suffix)
-        subprocess.run(command[:-1] + [str(literal_state)], check=True)
-        expected = preview.replace('__POST_ARTIFACT_ROOT__', str(literal_root.resolve())).encode()
-        assert (literal_state / 'koishi.yml').read_bytes() == expected, suffix
-        literal_root.rename(artifact)
-    bad_root = work / "release'bad"
-    artifact.rename(bad_root)
-    invalid = subprocess.run(command[:2] + [str(bad_root), str(other_state)], capture_output=True)
-    assert invalid.returncode != 0 and not (other_state / 'koishi.yml').exists()
-    for unsafe in [str(artifact) + '\n', str(artifact) + '\t', str(artifact) + ':suffix', str(artifact) + '${{root}}', 'relative-release']:
-        invalid = subprocess.run(command[:2] + [unsafe, str(other_state)], capture_output=True)
-        assert invalid.returncode == 1 and not (other_state / 'koishi.yml').exists()
-print('missing-artifact skip, private atomic seed and operator config preservation pass')
+    home = Path(directory)
+    app = home / '.local/share/lamplit-post/app'
+    env = {'HOME': str(home), 'PATH': service['Environment'][0].removeprefix('PATH=')}
+    condition = shlex.split(service['ExecCondition'])
+    condition[-1] = str(app)
+
+    def run(command, cwd=None):
+        return subprocess.run(command, cwd=cwd, env=env, capture_output=True, text=True, timeout=20)
+
+    missing = run(condition)
+    assert missing.returncode == 1 and 'uninitialized' in missing.stderr
+    assert not app.exists(), 'condition must not create state'
+    app.mkdir(parents=True, mode=0o700)
+    for entry in ['node_modules', 'patches', 'dist', 'post/dist']:
+        (app / entry).mkdir(parents=True, exist_ok=True)
+    manifest = {
+        'scripts': {'start': 'node dist/cli.cjs', 'config-check': 'node check.cjs'},
+        'engines': {'pnpm': '12.x'},
+    }
+    (app / 'package.json').write_text(json.dumps(manifest))
+    (app / 'pnpm-lock.yaml').write_text('lockfileVersion: "9.0"\n')
+    (app / 'pnpm-workspace.yaml').write_text(
+        'verifyDepsBeforeRun: false\nfrozenLockfile: false\n')
+    (app / 'koishi.yml').write_text('# operator-owned config\nplugins: {}\n')
+    (app / 'post/package.json').write_text('{"name":"koishi-plugin-post"}\n')
+    (app / 'post/dist/post-plugin.cjs').write_text('// app-owned plugin\n')
+    (app / 'node_modules/operator-plugin').write_text('retained\n')
+    (app / 'check.cjs').write_text("""
+const fs = require('node:fs');
+if (!fs.readFileSync('koishi.yml', 'utf8').includes('plugins:')) process.exit(1);
+""")
+    (app / 'dist/cli.cjs').write_text("""
+const fs = require('node:fs');
+const cp = require('node:child_process');
+fs.writeFileSync('observed.json', JSON.stringify({
+  cwd: process.cwd(), home: process.env.HOME,
+  node: process.version, exec: process.execPath,
+  ua: process.env.npm_config_user_agent,
+  pnpm: cp.execFileSync('pnpm', ['--version'], {encoding:'utf8'}).trim(),
+}));
+""")
+    assert run(condition).returncode == 0
+    # An incomplete seed is skipped without modifying operator input.
+    plugin = app / 'post/dist/post-plugin.cjs'
+    plugin.rename(plugin.with_suffix('.saved'))
+    assert run(condition).returncode == 1
+    plugin.with_suffix('.saved').rename(plugin)
+    watched = [
+        app / name for name in ['package.json', 'koishi.yml', 'pnpm-lock.yaml',
+                               'pnpm-workspace.yaml', 'node_modules/operator-plugin']
+    ]
+
+    def snapshot():
+        return [(p.read_bytes(), p.stat().st_ino, p.stat().st_mtime_ns) for p in watched]
+
+    before = snapshot()
+    assert service['WorkingDirectory'].removeprefix('-').endswith('/lamplit-post/app')
+    for _ in range(2):
+        assert run(condition).returncode == 0
+        check = run(shlex.split(service['ExecStartPre']), app)
+        assert check.returncode == 0, check.stderr
+        started = run(shlex.split(service['ExecStart']), app)
+        assert started.returncode == 0, started.stderr
+        observed = json.loads((app / 'observed.json').read_text())
+        assert observed['cwd'] == str(app) and observed['home'] == str(home)
+        assert observed['node'].startswith('v24.')
+        assert observed['exec'].startswith('/nix/store/')
+        assert observed['ua'].startswith('pnpm/12.')
+        assert observed['pnpm'] == '12.3.4'
+        assert snapshot() == before, 'startup must preserve mutable app inputs'
+    (app / 'koishi.yml').write_text('invalid fixture\n')
+    check = run(shlex.split(service['ExecStartPre']), app)
+    assert check.returncode != 0, 'invalid config must fail preflight'
+print('managed commands: missing/incomplete skip, real Node24/pnpm12 UA, preflight and persistent inputs PASS')

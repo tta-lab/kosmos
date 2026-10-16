@@ -6,25 +6,24 @@
   ...
 }: let
   cfg = config.kosmos.wsl.postConsole;
-  state = "/home/neil/.local/state/lamplit-post/console";
+  pnpm = pkgsUnstable.callPackage ../../packages/pnpm {};
   prepare = pkgs.writeShellApplication {
     name = "prepare-post-console";
-    runtimeInputs = [pkgs.coreutils pkgsUnstable.nodejs_24];
     text = builtins.readFile ../../scripts/prepare-post-console;
   };
 in {
   options.kosmos.wsl.postConsole = {
-    enable = lib.mkEnableOption "empty-account native Post Console preview";
-    artifact = lib.mkOption {
+    enable = lib.mkEnableOption "native managed Post application";
+    appRoot = lib.mkOption {
       type = lib.types.str;
-      default = "/home/neil/.local/share/lamplit-post/console-current";
-      description = "Stable prefix pointing to the complete immutable Post Console release.";
+      default = "/home/neil/.local/share/lamplit-post/app";
+      description = "Persistent writable application root, initialized once by the operator.";
     };
   };
   config = lib.mkIf cfg.enable {
     home-manager.users.neil.systemd.user.services.lamplit-post-console = {
       Unit = {
-        Description = "Lamplit Post native Console (VPN empty-account preview)";
+        Description = "Lamplit Post native managed Console";
         StartLimitIntervalSec = 60;
         StartLimitBurst = 3;
       };
@@ -32,12 +31,12 @@ in {
       Service = {
         Type = "exec";
         # ExecCondition provides a diagnostic and skips startup without a restart loop.
-        ExecCondition = lib.escapeShellArgs ["${prepare}/bin/prepare-post-console" cfg.artifact state];
-        StateDirectory = "lamplit-post/console";
-        StateDirectoryMode = "0700";
-        WorkingDirectory = state;
-        ExecStart = lib.escapeShellArgs [(lib.getExe pkgsUnstable.nodejs_24) "${cfg.artifact}/dist/cli.cjs" "serve" "--config" "${state}/koishi.yml"];
-        Environment = ["PATH=${lib.makeBinPath [pkgsUnstable.nodejs_24 pkgs.coreutils]}"];
+        ExecCondition = lib.escapeShellArgs ["${prepare}/bin/prepare-post-console" cfg.appRoot];
+        # Ignore absent cwd so ExecCondition can diagnose and skip an uninitialized app.
+        WorkingDirectory = "-${cfg.appRoot}";
+        ExecStartPre = lib.escapeShellArgs [(lib.getExe pnpm) "run" "config-check"];
+        ExecStart = lib.escapeShellArgs [(lib.getExe pnpm) "run" "start"];
+        Environment = ["PATH=${lib.makeBinPath [pnpm pkgsUnstable.nodejs_24 pkgs.coreutils pkgs.bash]}"];
         UMask = "0077";
         Restart = "on-failure";
         RestartSec = 5;

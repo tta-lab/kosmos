@@ -1,36 +1,18 @@
 #!/usr/bin/env bash
-# Called as ExecCondition; status 1 skips startup, without retrying or fetching.
+# Read-only ExecCondition: status 1 skips startup without a restart loop.
 set -euo pipefail
-if [[ "$1" != /* || "$1" == *":"* || "$1" == *"\${{"* || "$1" == *"'"* || "$1" =~ [[:cntrl:]] ]]; then
-  echo 'Post artifact root must be absolute without loader separators, interpolation, apostrophes or control characters.' >&2
+app=$1
+if [[ "$app" != /* ]]; then
+  echo 'Post application root must be absolute.' >&2
   exit 1
 fi
-artifact=$(realpath -m -- "$1")
-state=$2
-if [[ ! -r "$artifact/dist/cli.cjs" || ! -r "$artifact/examples/koishi.preview.yml" ]]; then
-  echo 'Post Console artifact missing: install the reviewed complete immutable release before starting lamplit-post-console.' >&2
+for entry in package.json pnpm-lock.yaml pnpm-workspace.yaml koishi.yml dist/cli.cjs post/package.json post/dist/post-plugin.cjs; do
+  if [[ ! -r "$app/$entry" ]]; then
+    echo 'Post application uninitialized: install the reviewed complete seed once into the private writable app root before starting lamplit-post-console.' >&2
+    exit 1
+  fi
+done
+if [[ ! -d "$app/node_modules" || ! -d "$app/patches" || ! -w "$app" ]]; then
+  echo 'Post application uninitialized or not writable: operator installation required.' >&2
   exit 1
-fi
-umask 077
-install -d -m 0700 "$state" "$state/data" "$state/keys"
-# Publish a complete seed atomically; never replace an existing operator file.
-if [[ ! -e "$state/koishi.yml" && ! -L "$state/koishi.yml" ]]; then
-  seed=$(mktemp "$state/.preview-seed.XXXXXX")
-  trap 'rm -f "$seed"' EXIT
-  node - "$artifact" "$artifact/examples/koishi.preview.yml" "$seed" <<'JS'
-const fs = require('node:fs');
-const path = require('node:path');
-const [root, template, output] = process.argv.slice(2);
-if (!path.isAbsolute(root) || /[':\x00-\x1f\x7f]/.test(root) || root.includes('${{')) {
-  throw new Error('Post artifact root must be absolute without loader separators, interpolation, apostrophes or control characters');
-}
-const yaml = fs.readFileSync(template, 'utf8');
-const marker = '__POST_ARTIFACT_ROOT__';
-if (yaml.split(marker).length !== 5) {
-  throw new Error('Post preview template must contain exactly four artifact-root markers');
-}
-fs.writeFileSync(output, yaml.replaceAll(marker, () => root));
-JS
-  chmod 0600 "$seed"
-  ln "$seed" "$state/koishi.yml"
 fi

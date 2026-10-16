@@ -15,7 +15,7 @@ Unknown HTTPS names never dispatch to an application.
 ## Authorities and application behavior
 
 Every row has a `<id>.localhost:17480` route. Existing Kepos publications
-remain; the Post preview has no Kepos publication. The extra
+remain; the Post application has no Kepos publication. The extra
 `codex-bridge.kepos.internal` alias also remains.
 Authentication, data, service identities and credentials are retained.
 There is no new ingress token, basic-auth or SSO gate.
@@ -25,7 +25,7 @@ There is no new ingress token, basic-auth or SSO gate.
 | dev-her | 127.0.0.1:3082 | CFL uses browser-relative API/stream/socket URLs; both authorities |
 | staging-her | 127.0.0.1:3083 | Same CFL behavior |
 | prod-lamplit | 127.0.0.1:3084 | Same CFL behavior; no paid inference needed for ingress checks |
-| lamplit-post | 127.0.0.1:5140 | Zero-account read-only native Console; VPN preview only; [activation](post-console-preview.md) |
+| lamplit-post | 127.0.0.1:5140 | Native authenticated managed Console; VPN only; [activation](post-console.md) |
 | flickgrove | 127.0.0.1:4318 | **Exception:** supported public Origin changes to HTTPS; old browser/API/WS authority is rejected |
 | mihomo-dashboard | 127.0.0.1:9090 | Native API authentication remains; no secret or dashboard reset |
 | ente | photos/museum:8080 | **Exception:** both API routes; file operations from either require VPN/public TLS trust |
@@ -101,7 +101,7 @@ was refused during the earlier audit. Do not assume recursive DNS works.
 
 The additional `lamplit-post.nuc.guion.io` A record already returns
 `10.80.12.4` from `192.168.6.1`; a different host default resolver result does
-not establish missing VPN DNS. No new record is needed for this preview.
+not establish missing VPN DNS. No new record is needed for Post.
 
 On Mac, inspect `/etc/resolver/nuc.guion.io` and any symlink before creation;
 preserve meaningful existing contents. If absent, the operator creates a

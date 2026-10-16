@@ -49,11 +49,10 @@
         unit = self.nixosConfigurations.wsl.config.home-manager.users.neil.systemd.user.services.lamplit-post-console;
       in
         assert unit.Service.KillMode == "control-group" && unit.Service.KillSignal == "SIGTERM";
-        assert unit.Service.StateDirectory == "lamplit-post/console" && unit.Service.StateDirectoryMode == "0700";
         assert unit.Service.UMask == "0077" && unit.Service.Restart == "on-failure";
         assert unit.Service.TimeoutStopSec == 30;
           pkgs.runCommand "post-console-check" {nativeBuildInputs = [pkgs.python3 pkgs.bash pkgs.coreutils pkgsUnstable.nodejs_24];} ''
-            KOSMOS_REPO_ROOT=${./.} python3 ${./tests/post-console-test.py}
+            KOSMOS_POST_UNIT=${pkgs.writeText "post-unit.json" (builtins.toJSON unit)} python3 ${./tests/post-console-test.py}
             touch $out
           '';
       aru-cfl = let

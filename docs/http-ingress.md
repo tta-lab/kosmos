@@ -94,6 +94,6 @@ owns this sysctl: relying on k3s's runtime write alone lets a subsequent
 systemd-sysctl reload disable cluster routing. Verify cluster access after a
 NixOS switch as well as before it.
 
-The Post Console route is a VPN-only, zero-account read-only framework preview.
-Its MCP port 18787 is not proxied. See [Post activation](post-console-preview.md)
-for the immutable artifact gate and service-specific handoff.
+The Post Console route serves the native authenticated managed application inside the VPN.
+Its MCP port 18787 is not proxied. See [Post activation](post-console.md)
+for the reviewed seed gate and operator-only service handoff.
