@@ -53,7 +53,7 @@ local dbLabels = labels('bookorbit-postgres');
         spec: {
           containers: [{
             name: 'bookorbit',
-            image: 'ghcr.io/bookorbit/bookorbit:2.3.0@sha256:62048532c82ad4cfe9b728707136f140516f0f35766c2dc97969f22ed67794ae',
+            image: 'ghcr.io/bookorbit/bookorbit:3.2.0@sha256:1020eef9f004be972ac60e79dd5f416129f0d3d91491b803aa8fa656acb2b6a6',
             ports: [{ name: 'http', containerPort: 3000 }],
             env: [
               { name: 'NODE_ENV', value: 'production' },
