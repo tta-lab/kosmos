@@ -64,6 +64,10 @@
         handle @outside {
           respond "VPN source required" 403
         }
+        @acrylic host acrylic.nuc.guion.io
+        handle @acrylic {
+          reverse_proxy 192.168.1.88:8787
+        }
         ${lib.concatStringsSep "\n" (lib.mapAttrsToList (id: port: ''
         @${id} host ${id}.nuc.guion.io
         handle @${id} {

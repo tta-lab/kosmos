@@ -3,8 +3,8 @@
 The host Caddy system service keeps `127.0.0.1:17480`, using the standard
 NixOS Caddy package with a pinned Cloudflare provider and its dedicated non-root
 account. With the runtime DNS credential and expected VPN address, it obtains
-a wildcard certificate and serves HTTPS at `10.80.12.4:443` for all 20
-`<id>.nuc.guion.io` authorities. There is no HTTP 80 or LAN listener. Unknown Host
+a wildcard certificate and serves HTTPS at `10.80.12.4:443` for the existing 20
+`<id>.nuc.guion.io` authorities plus `acrylic.nuc.guion.io`. There is no HTTP 80 or LAN listener. Unknown Host
 names do not dispatch. See [VPN HTTPS](nuc-vpn-https.md) for the exact mappings,
 source restrictions, certificate/DNS prerequisites and ordered activation.
 
@@ -12,6 +12,10 @@ source restrictions, certificate/DNS prerequisites and ordered activation.
   (3082), `staging-her` (3083), `prod-lamplit` (3084), `flickgrove` (4318),
   `lamplit-post` (5140), and `mihomo-dashboard` (9090). Caddy preserves Host,
   path and query.
+- The same module has one VPN-only remote route: `acrylic.nuc.guion.io` to
+  HTTP `192.168.1.88:8787` on N5 Pro. ERP/API share this origin; no localhost,
+  cluster or Kepos route is added. Read the [Acrylic operator handoff](nuc-vpn-https.md#acrylic-on-n5-pro-additional-vpn-only-authority)
+  before changing its LAN endpoint, source ACL, DNS or activating it.
 - `http/cluster-routes.json` owns cluster authorities and Service destinations.
   Each application's Tanka library owns its old and new Ingress authorities via
   `tanka/lib/ingress.libsonnet`. ERPNext's workload is managed separately;
