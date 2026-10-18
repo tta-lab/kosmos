@@ -32,7 +32,19 @@ class Upstream(BaseHTTPRequestHandler):
     def log_message(self, *_):
         pass
 
+    def do_POST(self):
+        self.do_GET()
+
     def do_GET(self):
+        payload = self.rfile.read(int(self.headers.get('Content-Length', 0)))
+        if self.path == '/erp/assets/fixture.js':
+            body = b'export const fixture = true;'
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/javascript')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+            return
         if self.path == '/ws':
             accept = base64.b64encode(hashlib.sha1((self.headers['Sec-WebSocket-Key'] + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').encode()).digest()).decode()
             self.send_response(101)
@@ -69,8 +81,8 @@ class Upstream(BaseHTTPRequestHandler):
             self.send_header('Content-Length', '0')
             self.end_headers()
             return
-        body = json.dumps({'target': self.server.target, 'path': self.path, 'host': self.headers['Host'], 'forwarded_host': self.headers.get('X-Forwarded-Host'), 'forwarded_proto': self.headers.get('X-Forwarded-Proto'), 'forwarded_for': self.headers.get('X-Forwarded-For'), 'origin': self.headers.get('Origin')}).encode()
-        self.send_response(401 if self.path == '/auth' else 200)
+        body = json.dumps({'target': self.server.target, 'path': self.path, 'method': self.command, 'body': base64.b64encode(payload).decode(), 'host': self.headers['Host'], 'forwarded_host': self.headers.get('X-Forwarded-Host'), 'forwarded_proto': self.headers.get('X-Forwarded-Proto'), 'forwarded_for': self.headers.get('X-Forwarded-For'), 'origin': self.headers.get('Origin')}).encode()
+        self.send_response(401 if self.path in ['/auth', '/api/private'] else 200)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Content-Length', str(len(body)))
         self.end_headers()
@@ -88,10 +100,10 @@ class TLSConnection(http.client.HTTPSConnection):
             server_hostname=self.host)
 
 
-def request(port, host, path='/', tls=False, source='127.0.0.1'):
+def request(port, host, path='/', tls=False, source='127.0.0.1', method='GET', body=None, headers=None):
     client = (TLSConnection(host, port, timeout=5, context=TLS_CONTEXT, source_address=(source, 0))
               if tls else http.client.HTTPConnection('127.0.0.1', port, timeout=5))
-    client.request('GET', path, headers={'Host': host, 'X-Forwarded-For': '198.51.100.123', 'X-Forwarded-Proto': 'http', 'Origin': ('https://' if tls else 'http://') + host})
+    client.request(method, path, body=body, headers={'Host': host, 'X-Forwarded-For': '198.51.100.123', 'X-Forwarded-Proto': 'http', 'Origin': ('https://' if tls else 'http://') + host, **(headers or {})})
     response = client.getresponse()
     result = response.status, dict(response.getheaders()), response.read()
     client.close()
@@ -132,7 +144,7 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
         routes = json.loads((ROOT / 'http/cluster-routes.json').read_text())
         local_routes = {'dev-her': 3082, 'staging-her': 3083, 'prod-lamplit': 3084, 'flickgrove': 4318, 'mihomo-dashboard': 9090}
         fixture_ports = {}
-        for target in [*local_routes, *routes]:
+        for target in [*local_routes, *routes, 'acrylic']:
             server = ThreadingHTTPServer(('127.0.0.1', 0), Upstream)
             server.daemon_threads = True
             server.target = target
@@ -172,6 +184,16 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
         assert synthetic_token.encode() not in adapted
         adapted_config = json.loads(adapted)
         servers_config = adapted_config['apps']['http']['servers']
+        def upstream_dials(value):
+            if isinstance(value, dict):
+                for key, child in value.items():
+                    if key == 'dial':
+                        yield child
+                    yield from upstream_dials(child)
+            elif isinstance(value, list):
+                for child in value:
+                    yield from upstream_dials(child)
+        assert '192.168.1.88:8787' in set(upstream_dials(servers_config))
         assert {a for server in servers_config.values() for a in server['listen']} == {'127.0.0.1:17480', '10.80.12.4:443'}
         assert all(server['automatic_https'].get('disable_redirects') for server in servers_config.values())
         policies = adapted_config['apps']['tls']['automation']['policies']
@@ -198,6 +220,7 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
         vpn = vpn.replace('https://*.nuc.guion.io:443', f'https://*.nuc.guion.io:{tls_port}').replace('bind 10.80.12.4', 'bind 127.0.0.1')
         vpn = vpn.replace('10.80.12.0/24', '127.0.0.1/32').replace('10.42.0.0/16', '127.0.0.3/32')
         vpn = vpn.replace('127.0.0.1:27480', f'127.0.0.1:{ingress_port}')
+        vpn = vpn.replace('192.168.1.88:8787', f'127.0.0.1:{fixture_ports["acrylic"]}')
         for name, port in local_routes.items():
             vpn = vpn.replace(f'127.0.0.1:{port}', f'127.0.0.1:{fixture_ports[name]}')
         (work / 'vpn-template').write_text(vpn)
@@ -333,6 +356,27 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
         assert request(tls_port, 'anki.nuc.guion.io', tls=True, source='127.0.0.2')[0] == 403
         assert request(tls_port, 'ente-storage.nuc.guion.io', tls=True, source='127.0.0.3')[0] == 200
         assert request(tls_port, 'ente.nuc.guion.io', tls=True, source='127.0.0.3')[0] == 403
+        acrylic = 'acrylic.nuc.guion.io'
+        for path in ['/erp/', '/erp/orders/deep?tab=one%2Ftwo', '/api/items?x=a%3Bb']:
+            status, _, response = request(tls_port, acrylic, path, tls=True)
+            data = json.loads(response)
+            assert status == 200 and data['target'] == 'acrylic'
+            assert data['path'] == path and data['host'] == data['forwarded_host'] == acrylic
+            assert data['forwarded_proto'] == 'https'
+        payload = bytes(range(256)) * 4096
+        status, _, response = request(tls_port, acrylic, '/api/upload?name=a%2Fb', tls=True, method='POST', body=payload)
+        data = json.loads(response)
+        assert status == 200 and data['method'] == 'POST' and data['path'] == '/api/upload?name=a%2Fb'
+        assert base64.b64decode(data['body']) == payload
+        status, headers, response = request(tls_port, acrylic, '/erp/assets/fixture.js', tls=True)
+        assert status == 200 and headers['Content-Type'] == 'text/javascript'
+        assert response == b'export const fixture = true;'
+        assert request(tls_port, acrylic, '/api/private', tls=True)[0] == 401
+        assert request(tls_port, acrylic, '/redirect', tls=True)[1]['Location'] == f'https://{acrylic}/target'
+        for source in ['127.0.0.2', '127.0.0.3']:
+            assert request(tls_port, acrylic, tls=True, source=source, headers={'X-Forwarded-For': '10.80.12.99', 'X-Real-IP': '10.80.12.99'})[::2] == (403, b'VPN source required')
+        for host in [acrylic, 'acrylic.localhost']:
+            assert request(edge_port, host)[::2] == (421, b'unknown host')
         try:
             request(tls_port, 'outside.invalid', tls=True)
             raise AssertionError('TLS hostname mismatch was accepted')
@@ -354,7 +398,7 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
                 chunks.append(chunk)
             response = b''.join(chunks)
             assert response.startswith(b'HTTP/1.1 200') and b'x' * (512 * 1024) in response and response.endswith(b'ok')
-        for stream_host in ['prod-lamplit.nuc.guion.io', 'anki.nuc.guion.io']:
+        for stream_host in ['prod-lamplit.nuc.guion.io', 'anki.nuc.guion.io', acrylic]:
             with raw_request(tls_port, '/stream', host=stream_host, tls=True) as client:
                 received = b''
                 start = time.monotonic()
@@ -374,7 +418,7 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
                     assert chunk, response
                     response += chunk
                 assert response.startswith(b'HTTP/1.1 101') and b'\x81\x05hello' in response
-        print('19 HTTPS and preserved HTTP routes, trusted TLS, source restrictions, native start/reload preparation, wildcard DNS-01 issuer, runtime-only credential, redacted malformed-token failure, missing-input preflight, authorities, encoded URLs, authentication, redirects, large headers, SSE and WebSocket pass')
+        print('19 existing HTTPS and preserved HTTP routes plus VPN-only Acrylic LAN upstream, ERP deep links/static, binary POST, trusted TLS, source restrictions/spoof rejection, native start/reload preparation, wildcard DNS-01 issuer, runtime-only credential, redacted malformed-token failure, missing-input preflight, authorities, encoded URLs, authentication, redirects, large headers, SSE and WebSocket pass')
     except Exception:
         for log in logs:
             log.flush()

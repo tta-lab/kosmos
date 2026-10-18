@@ -8,13 +8,14 @@ comes from the address bind and Caddy's socket-source matcher, not
 `allowedTCPPorts`. VPN clients must have sources in `10.80.12.0/24`.
 The only internal exception is `10.42.0.0/16` (local k3s Pods), restricted to
 `ente-storage.nuc.guion.io` for Museum's S3 consumer. Other hosts from that subnet
-are rejected. Upstreams remain loopback HTTP; Caddy terminates TLS and
+are rejected. Existing upstreams remain loopback HTTP; Acrylic uses the
+explicit LAN HTTP upstream described below. Caddy terminates TLS and
 Traefik trusts forwarded HTTPS only from its existing host gateway source.
 Unknown HTTPS names never dispatch to an application.
 
 ## Authorities and application behavior
 
-Every row retains its existing `<id>.localhost:17480` route and Kepos
+Every row in this table retains its existing `<id>.localhost:17480` route and Kepos
 publication. The extra `codex-bridge.kepos.internal` alias also remains.
 Authentication, data, service identities and credentials are retained.
 There is no new ingress token, basic-auth or SSO gate.
@@ -102,8 +103,100 @@ root-owned mode `0644` file with exactly `nameserver 192.168.6.1` plus newline.
 Do not overwrite/delete the operator-owned `/etc/resolver/nuc.swdl` or alter
 global DNS, `/etc/resolv.conf`, VPN profiles or Mihomo. `scutil --dns` must show
 the new matching-domain resolver; `dscacheutil -q host -a name NAME` must return
-`10.80.12.4` for all19. Default `dig` does not exercise macOS's matching-domain
+`10.80.12.4` for all 19 existing names. Acrylic adds one exact record as described
+below. Default `dig` does not exercise macOS's matching-domain
 resolver. iOS is deferred. Museum's explicit internal storage DNS is separate.
+
+## Acrylic on N5 Pro: additional VPN-only authority
+
+Spec #4287 adds only `https://acrylic.nuc.guion.io` → **HTTP
+192.168.1.88:8787** on the same Caddy VPN listener. `/erp/`, deep links,
+assets, `/api` and uploads pass through without path stripping or rewriting.
+Caddy preserves the external Host and supplies `X-Forwarded-Host` and
+`X-Forwarded-Proto: https`. Native application authentication remains the
+application's responsibility; there is no ingress login or timeout/body-limit
+override. Background Sparrow jobs do not require an indefinitely open request.
+
+This authority has no localhost HTTP route, Kepos publication or k3s workload.
+The 19 existing HTTPS authorities, HTTP aliases and exact storage Pod exception
+remain. Acrylic is available only to actual socket sources in `10.80.12.0/24`;
+forwarded client headers cannot grant access. A storage Pod source is also
+denied for Acrylic. Unknown names from VPN sources return 421; non-VPN sources
+return 403 before dispatch. No second VPN, Caddy, certificate or public listener
+is needed on N5 Pro. The LAN hop carries plaintext HTTP: N5 Pro's application
+port must be reachable only from the required KO source(s).
+
+This PR supplies configuration, documentation and isolated validation only.
+After review and merge, Orc coordinates these operator steps with Acrylic
+spec #4286, which owns the self-hosted API/ERP artifact, application service,
+native auth, data and Sparrow/jobs version readiness. Existing cloud domains
+`acrylic-api.guion.io` and `acryerp.guion.io` stay unchanged. Do not claim
+cross-host business acceptance until those dependencies are deployed.
+
+1. Resolve the current aliases before connecting:
+
+   ```sh
+   ssh -G nuc | awk '$1 == "hostname" || $1 == "user" || $1 == "port"'
+   ssh -G n5pro | awk '$1 == "hostname" || $1 == "user" || $1 == "port"'
+   ssh nuc 'ip route get 192.168.1.88'
+   ```
+
+   The current LAN endpoints are NUC `192.168.1.125/neil` and N5 Pro
+   `192.168.1.88/root`; SSH configuration at execution time is authoritative.
+   WSL's route `src` may be translated by Windows NAT. Confirm the actual
+   incoming source on N5 Pro with a coordinated metadata-only connection probe
+   (for example `nc -vz -w 3 192.168.1.88 8787` from NUC and `ss -tn sport =
+   :8787` on N5 Pro, or a filtered SYN-only packet metadata capture).
+   A short probe may require a held connection to observe it with `ss`.
+   The operator restricts N5 Pro TCP 8787 to the observed necessary KO source(s)
+   before exposing the service. **10.80.12.4 is the VPN listener address, not
+   evidence of the LAN connection's source.** No firewall changes run in this PR.
+2. Confirm #4286's artifact/service is ready on the fixed LAN endpoint with
+   external origin `https://acrylic.nuc.guion.io`. Check reachability and native
+   health without dumping credentials, environment files or private responses.
+   Keep existing wildcard certificate storage and DNS-01 settings. Apply the
+   reviewed KO system generation only in the coordinated activation window;
+   the earlier full migration steps are not a prerequisite to redeploying
+   unrelated applications for this single route.
+3. Add only the internal DNS A record `acrylic.nuc.guion.io → 10.80.12.4`
+   at the existing VPN DNS server. Preserve the original 19 records and existing
+   macOS resolver file; no public A/AAAA or Cloudflare domain change is needed.
+
+   ```sh
+   dig @192.168.6.1 acrylic.nuc.guion.io A +time=2 +tries=1
+   dscacheutil -q host -a name acrylic.nuc.guion.io
+   ```
+
+   DNS-01 proves domain ownership, not VPN reachability. iOS/mobile VPN DNS
+   and acceptance remain unverified.
+4. Verify the listener and trusted TLS from a VPN client without `-k`:
+
+   ```sh
+   curl --noproxy '*' --connect-timeout 3 --max-time 10 \
+     --resolve acrylic.nuc.guion.io:443:10.80.12.4 -I https://acrylic.nuc.guion.io/erp/
+   curl --noproxy '*' --connect-timeout 3 --max-time 10 -I https://acrylic.nuc.guion.io/erp/
+   ```
+
+   Verify ERP deep-link refresh, emitted asset URLs, same-origin API calls,
+   unauthenticated private-API rejection and an authorized test-owned upload.
+   Verify path/query/body, Host and forwarded HTTPS using application-owned
+   diagnostics that do not log credentials. An isolated proxy fixture does not
+   prove real app login, uploads or job completion. From VPN, an unknown
+   wildcard host must return 421; from an existing authorized non-VPN test
+   source, Acrylic must never dispatch (403 if the listener is reachable).
+   Recheck existing HTTP/HTTPS routes and the storage-only Pod exception.
+5. For failure isolation, distinguish DNS failure, VPN routing/TLS failure,
+   Caddy's source 403, unknown-host 421, native auth rejection and upstream
+   connection failure (normally 502). Inspect only sanitized status metadata;
+   do not stop the real application just to induce a failure. Check the LAN
+   route and N5 Pro service/ACL when Caddy cannot connect.
+
+Before activation, save the current system generation and this record's prior
+DNS state. Rollback restores the saved KO generation and only this DNS record's
+prior state if it was changed by this rollout. Keep other DNS/resolver entries,
+wildcard certificate storage, app data and credentials. Application rollback
+and migration remain owned by #4286. No activation, DNS/firewall write,
+certificate request or application install is part of implementation checks.
 
 ## Ordered activation after current-head review and merge
 
