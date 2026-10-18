@@ -15,8 +15,9 @@ Unknown HTTPS names never dispatch to an application.
 
 ## Authorities and application behavior
 
-Every row in this table retains its existing `<id>.localhost:17480` route and Kepos
-publication. The extra `codex-bridge.kepos.internal` alias also remains.
+Every row in this table has a `<id>.localhost:17480` route. Existing Kepos publications
+remain; the Post application has no Kepos publication. The extra
+`codex-bridge.kepos.internal` alias also remains.
 Authentication, data, service identities and credentials are retained.
 There is no new ingress token, basic-auth or SSO gate.
 
@@ -25,6 +26,7 @@ There is no new ingress token, basic-auth or SSO gate.
 | dev-her | 127.0.0.1:3082 | CFL uses browser-relative API/stream/socket URLs; both authorities |
 | staging-her | 127.0.0.1:3083 | Same CFL behavior |
 | prod-lamplit | 127.0.0.1:3084 | Same CFL behavior; no paid inference needed for ingress checks |
+| lamplit-post | 127.0.0.1:5140 | Native authenticated managed Console; VPN only; [activation](post-console.md) |
 | flickgrove | 127.0.0.1:4318 | **Exception:** supported public Origin changes to HTTPS; old browser/API/WS authority is rejected |
 | mihomo-dashboard | 127.0.0.1:9090 | Native API authentication remains; no secret or dashboard reset |
 | ente | photos/museum:8080 | **Exception:** both API routes; file operations from either require VPN/public TLS trust |
@@ -91,11 +93,16 @@ not inspect private keys, erase this directory or force repeated issuance.
 
 Before activation, the operator must confirm stable NUC `tun0=10.80.12.4/24`
 allocation and Mac's VPN route. The Ruijie OpenVPN/DNS server is `192.168.6.1`.
-Its previous `nuc.swdl` records do not supply the new names. Add **19 exact**
-`<id>.nuc.guion.io` A records from the table to `10.80.12.4`, or a wildcard
+Its previous `nuc.swdl` records do not supply the new names. The original
+rollout required **19 exact**
+`<id>.nuc.guion.io` A records to `10.80.12.4`, or a wildcard
 only if the router explicitly supports it. Preserve other records. Check each
 with `dig @192.168.6.1 NAME A +time=2 +tries=1`; UDP currently works but TCP53
 was refused during the earlier audit. Do not assume recursive DNS works.
+
+The additional `lamplit-post.nuc.guion.io` A record already returns
+`10.80.12.4` from `192.168.6.1`; a different host default resolver result does
+not establish missing VPN DNS. No new record is needed for Post.
 
 On Mac, inspect `/etc/resolver/nuc.guion.io` and any symlink before creation;
 preserve meaningful existing contents. If absent, the operator creates a
@@ -103,7 +110,7 @@ root-owned mode `0644` file with exactly `nameserver 192.168.6.1` plus newline.
 Do not overwrite/delete the operator-owned `/etc/resolver/nuc.swdl` or alter
 global DNS, `/etc/resolv.conf`, VPN profiles or Mihomo. `scutil --dns` must show
 the new matching-domain resolver; `dscacheutil -q host -a name NAME` must return
-`10.80.12.4` for all 19 existing names. Acrylic adds one exact record as described
+`10.80.12.4` for all 20 existing names. Acrylic adds one exact record as described
 below. Default `dig` does not exercise macOS's matching-domain
 resolver. iOS is deferred. Museum's explicit internal storage DNS is separate.
 
@@ -118,7 +125,7 @@ application's responsibility; there is no ingress login or timeout/body-limit
 override. Background Sparrow jobs do not require an indefinitely open request.
 
 This authority has no localhost HTTP route, Kepos publication or k3s workload.
-The 19 existing HTTPS authorities, HTTP aliases and exact storage Pod exception
+The 20 existing HTTPS authorities, HTTP aliases and exact storage Pod exception
 remain. Acrylic is available only to actual socket sources in `10.80.12.0/24`;
 forwarded client headers cannot grant access. A storage Pod source is also
 denied for Acrylic. Unknown names from VPN sources return 421; non-VPN sources
@@ -155,11 +162,36 @@ cross-host business acceptance until those dependencies are deployed.
    external origin `https://acrylic.nuc.guion.io`. Check reachability and native
    health without dumping credentials, environment files or private responses.
    Keep existing wildcard certificate storage and DNS-01 settings. Apply the
-   reviewed KO system generation only in the coordinated activation window;
-   the earlier full migration steps are not a prerequisite to redeploying
+   reviewed KO system generation only in the coordinated activation window.
+   The real deployment checkout is on `ssh nuc` at
+   `/home/neil/code/projects/tta-lab/kosmos`, not the Mac checkout or an isolated
+   `/tmp` validation snapshot. As **neil**, verify the repository and clean main,
+   update through `og`, then require the exact reviewed merged main HEAD before
+   following the existing switch procedure. Substitute that merged commit below
+   (a squash merge may differ from the PR head); stop if any check fails:
+
+   ```sh
+   ssh -t nuc bash
+   set -eu
+   cd /home/neil/code/projects/tta-lab/kosmos
+   test "$(id -un)" = neil
+   test "$(git rev-parse --show-toplevel)" = /home/neil/code/projects/tta-lab/kosmos
+   test "$(git branch --show-current)" = main
+   test -z "$(git status --porcelain)"
+   git rev-parse HEAD
+   og pull
+   test -z "$(git status --porcelain)"
+   kosmos_merged_head=REPLACE_WITH_REVIEWED_MERGED_MAIN_SHA
+   test "$(git rev-parse HEAD)" = "$kosmos_merged_head"
+   nh os switch . -H wsl
+   ```
+
+   These are later operator actions; implementation does not update or activate
+   that checkout. Run `nh` as neil, allowing it to elevate only activation.
+   The earlier full migration steps are not a prerequisite to redeploying
    unrelated applications for this single route.
 3. Add only the internal DNS A record `acrylic.nuc.guion.io → 10.80.12.4`
-   at the existing VPN DNS server. Preserve the original 19 records and existing
+   at the existing VPN DNS server. Preserve the existing 20 records (including Post) and the existing
    macOS resolver file; no public A/AAAA or Cloudflare domain change is needed.
 
    ```sh

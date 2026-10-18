@@ -45,6 +45,16 @@
     moonbitToolchain = moonbit-overlay.packages.${system}.default;
   in {
     checks.${system} = {
+      post-console = let
+        unit = self.nixosConfigurations.wsl.config.home-manager.users.neil.systemd.user.services.lamplit-post-console;
+      in
+        assert unit.Service.KillMode == "control-group" && unit.Service.KillSignal == "SIGTERM";
+        assert unit.Service.UMask == "0077" && unit.Service.Restart == "on-failure";
+        assert unit.Service.TimeoutStopSec == 30;
+          pkgs.runCommand "post-console-check" {nativeBuildInputs = [pkgs.python3 pkgs.bash pkgs.coreutils pkgsUnstable.nodejs_24];} ''
+            KOSMOS_POST_UNIT=${pkgs.writeText "post-unit.json" (builtins.toJSON unit)} python3 ${./tests/post-console-test.py}
+            touch $out
+          '';
       aru-cfl = let
         inherit (nixpkgs) lib;
         cfg = self.nixosConfigurations.wsl.config;

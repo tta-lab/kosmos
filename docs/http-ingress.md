@@ -3,14 +3,15 @@
 The host Caddy system service keeps `127.0.0.1:17480`, using the standard
 NixOS Caddy package with a pinned Cloudflare provider and its dedicated non-root
 account. With the runtime DNS credential and expected VPN address, it obtains
-a wildcard certificate and serves HTTPS at `10.80.12.4:443` for the existing 19
+a wildcard certificate and serves HTTPS at `10.80.12.4:443` for the existing 20
 `<id>.nuc.guion.io` authorities plus `acrylic.nuc.guion.io`. There is no HTTP 80 or LAN listener. Unknown Host
 names do not dispatch. See [VPN HTTPS](nuc-vpn-https.md) for the exact mappings,
 source restrictions, certificate/DNS prerequisites and ordered activation.
 
 - Host application routes live in `modules/wsl/http-gateway.nix`: `dev-her`
   (3082), `staging-her` (3083), `prod-lamplit` (3084), `flickgrove` (4318),
-  and `mihomo-dashboard` (9090). Caddy preserves Host, path and query.
+  `lamplit-post` (5140), and `mihomo-dashboard` (9090). Caddy preserves Host,
+  path and query.
 - The same module has one VPN-only remote route: `acrylic.nuc.guion.io` to
   HTTP `192.168.1.88:8787` on N5 Pro. ERP/API share this origin; no localhost,
   cluster or Kepos route is added. Read the [Acrylic operator handoff](nuc-vpn-https.md#acrylic-on-n5-pro-additional-vpn-only-authority)
@@ -96,3 +97,7 @@ NixOS must retain `net.ipv4.conf.all.forwarding=1` for k3s. The k3s module
 owns this sysctl: relying on k3s's runtime write alone lets a subsequent
 systemd-sysctl reload disable cluster routing. Verify cluster access after a
 NixOS switch as well as before it.
+
+The Post Console route serves the native authenticated managed application inside the VPN.
+Its MCP port 18787 is not proxied. See [Post activation](post-console.md)
+for the reviewed seed gate and operator-only service handoff.

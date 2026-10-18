@@ -26,6 +26,7 @@ _: {
     ../../modules/wsl/aru-cfl.nix
     ../../modules/wsl/matrix-mcp-remote.nix
     ../../modules/wsl/keet-mcp.nix
+    ../../modules/wsl/lamplit-post-console.nix
     ../../modules/wsl/flickgrove.nix
     ../../modules/wsl/apt-cacher-ng.nix
     ../../modules/wsl/sw-build-tunnel.nix
@@ -50,6 +51,7 @@ _: {
     mihomo.enable = true;
     codexForLove.enable = true;
     aruCfl.enable = true;
+    postConsole.enable = true;
     keetMcp.enable = true;
     matrixMcpRemote.enable = true;
   };

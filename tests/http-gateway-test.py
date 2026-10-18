@@ -45,7 +45,7 @@ class Upstream(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
-        if self.path == '/ws':
+        if self.path in ['/ws', '/status'] and self.headers.get('Upgrade', '').lower() == 'websocket':
             accept = base64.b64encode(hashlib.sha1((self.headers['Sec-WebSocket-Key'] + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').encode()).digest()).decode()
             self.send_response(101)
             self.send_header('Upgrade', 'websocket')
@@ -142,7 +142,7 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
     logs = []
     try:
         routes = json.loads((ROOT / 'http/cluster-routes.json').read_text())
-        local_routes = {'dev-her': 3082, 'staging-her': 3083, 'prod-lamplit': 3084, 'flickgrove': 4318, 'mihomo-dashboard': 9090}
+        local_routes = {'dev-her': 3082, 'staging-her': 3083, 'prod-lamplit': 3084, 'flickgrove': 4318, 'lamplit-post': 5140, 'mihomo-dashboard': 9090}
         fixture_ports = {}
         for target in [*local_routes, *routes, 'acrylic']:
             server = ThreadingHTTPServer(('127.0.0.1', 0), Upstream)
@@ -356,6 +356,7 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
         assert request(tls_port, 'anki.nuc.guion.io', tls=True, source='127.0.0.2')[0] == 403
         assert request(tls_port, 'ente-storage.nuc.guion.io', tls=True, source='127.0.0.3')[0] == 200
         assert request(tls_port, 'ente.nuc.guion.io', tls=True, source='127.0.0.3')[0] == 403
+        assert request(tls_port, 'lamplit-post.nuc.guion.io', tls=True, source='127.0.0.3')[0] == 403
         acrylic = 'acrylic.nuc.guion.io'
         for path in ['/erp/', '/erp/orders/deep?tab=one%2Ftwo', '/api/items?x=a%3Bb']:
             status, _, response = request(tls_port, acrylic, path, tls=True)
@@ -398,7 +399,7 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
                 chunks.append(chunk)
             response = b''.join(chunks)
             assert response.startswith(b'HTTP/1.1 200') and b'x' * (512 * 1024) in response and response.endswith(b'ok')
-        for stream_host in ['prod-lamplit.nuc.guion.io', 'anki.nuc.guion.io', acrylic]:
+        for stream_host in ['prod-lamplit.nuc.guion.io', 'anki.nuc.guion.io', 'lamplit-post.nuc.guion.io', acrylic]:
             with raw_request(tls_port, '/stream', host=stream_host, tls=True) as client:
                 received = b''
                 start = time.monotonic()
@@ -411,14 +412,21 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
                     chunk = client.recv(4096)
                     assert chunk, received
                     received += chunk
-            with raw_request(tls_port, '/ws', 'Upgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n', host=stream_host, tls=True) as client:
+            with raw_request(tls_port, '/status' if stream_host == 'lamplit-post.nuc.guion.io' else '/ws', 'Upgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n', host=stream_host, tls=True) as client:
                 response = b''
                 while b'hello' not in response:
                     chunk = client.recv(4096)
                     assert chunk, response
                     response += chunk
                 assert response.startswith(b'HTTP/1.1 101') and b'\x81\x05hello' in response
-        print('19 existing HTTPS and preserved HTTP routes plus VPN-only Acrylic LAN upstream, ERP deep links/static, binary POST, trusted TLS, source restrictions/spoof rejection, native start/reload preparation, wildcard DNS-01 issuer, runtime-only credential, redacted malformed-token failure, missing-input preflight, authorities, encoded URLs, authentication, redirects, large headers, SSE and WebSocket pass')
+        with raw_request(edge_port, '/status', 'Upgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n', host='lamplit-post.localhost:17480') as client:
+            response = b''
+            while b'hello' not in response:
+                chunk = client.recv(4096)
+                assert chunk, response
+                response += chunk
+            assert response.startswith(b'HTTP/1.1 101') and b'\x81\x05hello' in response
+        print('20 existing HTTPS and preserved HTTP routes plus VPN-only Acrylic LAN upstream, ERP deep links/static, binary POST, trusted TLS, source restrictions/spoof rejection, native start/reload preparation, wildcard DNS-01 issuer, runtime-only credential, redacted malformed-token failure, missing-input preflight, authorities, encoded URLs, authentication, redirects, large headers, SSE and WebSocket pass')
     except Exception:
         for log in logs:
             log.flush()

@@ -1,4 +1,9 @@
-{config, lib, pkgs, ...}: let
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}: let
   routes = builtins.fromJSON (builtins.readFile ../../http/cluster-routes.json);
   clusterVpnHosts = lib.mapAttrsToList (id: _: "${id}.nuc.guion.io") routes;
   clusterHosts = lib.concatMap (route: route.hosts) (builtins.attrValues routes);
@@ -7,21 +12,28 @@
     staging-her = 3083;
     prod-lamplit = 3084;
     flickgrove = 4318;
+    lamplit-post = 5140;
     mihomo-dashboard = 9090;
   };
   haveToken = config.age.secrets ? cloudflare-ddns-token;
-  token = if haveToken then config.age.secrets.cloudflare-ddns-token.path else "/run/agenix/cloudflare-ddns-token";
-  caddy = (pkgs.caddy.withPlugins {
-    plugins = ["github.com/caddy-dns/cloudflare@v0.2.4"];
-    hash = "sha256-pRrLBlYRaAyMYwPXeTy4WqWNRu/L9K6Mn2src11dGh8=";
-  }).overrideAttrs (old: {
-    # The upstream invalid-format error includes the token; never log that value.
-    postPatch = (old.postPatch or "") + ''
-      substituteInPlace vendor/github.com/caddy-dns/cloudflare/cloudflare.go \
-        --replace-fail "return fmt.Errorf(\"API token '%s' appears invalid; ensure it's correctly entered and not wrapped in braces nor quotes\", p.Provider.APIToken)" \
-        'return fmt.Errorf("Cloudflare API token format is invalid")'
-    '';
-  });
+  token =
+    if haveToken
+    then config.age.secrets.cloudflare-ddns-token.path
+    else "/run/agenix/cloudflare-ddns-token";
+  caddy =
+    (pkgs.caddy.withPlugins {
+      plugins = ["github.com/caddy-dns/cloudflare@v0.2.4"];
+      hash = "sha256-pRrLBlYRaAyMYwPXeTy4WqWNRu/L9K6Mn2src11dGh8=";
+    }).overrideAttrs (old: {
+      # The upstream invalid-format error includes the token; never log that value.
+      postPatch =
+        (old.postPatch or "")
+        + ''
+          substituteInPlace vendor/github.com/caddy-dns/cloudflare/cloudflare.go \
+            --replace-fail "return fmt.Errorf(\"API token '%s' appears invalid; ensure it's correctly entered and not wrapped in braces nor quotes\", p.Provider.APIToken)" \
+            'return fmt.Errorf("Cloudflare API token format is invalid")'
+        '';
+    });
   vpnConfig = pkgs.writeText "nuc-vpn-caddyfile" ''
     https://*.nuc.guion.io:443 {
       bind 10.80.12.4
@@ -57,11 +69,12 @@
           reverse_proxy 192.168.1.88:8787
         }
         ${lib.concatStringsSep "\n" (lib.mapAttrsToList (id: port: ''
-          @${id} host ${id}.nuc.guion.io
-          handle @${id} {
-            reverse_proxy 127.0.0.1:${toString port}
-          }
-        '') localRoutes)}
+        @${id} host ${id}.nuc.guion.io
+        handle @${id} {
+          reverse_proxy 127.0.0.1:${toString port}
+        }
+      '')
+      localRoutes)}
         @cluster host ${lib.concatStringsSep " " clusterVpnHosts}
         handle @cluster {
           reverse_proxy 127.0.0.1:27480 {
