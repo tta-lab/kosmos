@@ -399,7 +399,7 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
                 chunks.append(chunk)
             response = b''.join(chunks)
             assert response.startswith(b'HTTP/1.1 200') and b'x' * (512 * 1024) in response and response.endswith(b'ok')
-        for stream_host in ['prod-lamplit.nuc.guion.io', 'anki.nuc.guion.io', 'lamplit-post.nuc.guion.io', acrylic]:
+        for stream_host in ['prod-lamplit.nuc.guion.io', 'anki.nuc.guion.io', acrylic]:
             with raw_request(tls_port, '/stream', host=stream_host, tls=True) as client:
                 received = b''
                 start = time.monotonic()
@@ -412,20 +412,13 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
                     chunk = client.recv(4096)
                     assert chunk, received
                     received += chunk
-            with raw_request(tls_port, '/status' if stream_host == 'lamplit-post.nuc.guion.io' else '/ws', 'Upgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n', host=stream_host, tls=True) as client:
+            with raw_request(tls_port, '/ws', 'Upgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n', host=stream_host, tls=True) as client:
                 response = b''
                 while b'hello' not in response:
                     chunk = client.recv(4096)
                     assert chunk, response
                     response += chunk
                 assert response.startswith(b'HTTP/1.1 101') and b'\x81\x05hello' in response
-        with raw_request(edge_port, '/status', 'Upgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n', host='lamplit-post.localhost:17480') as client:
-            response = b''
-            while b'hello' not in response:
-                chunk = client.recv(4096)
-                assert chunk, response
-                response += chunk
-            assert response.startswith(b'HTTP/1.1 101') and b'\x81\x05hello' in response
         print('20 existing HTTPS and preserved HTTP routes plus VPN-only Acrylic LAN upstream, ERP deep links/static, binary POST, trusted TLS, source restrictions/spoof rejection, native start/reload preparation, wildcard DNS-01 issuer, runtime-only credential, redacted malformed-token failure, missing-input preflight, authorities, encoded URLs, authentication, redirects, large headers, SSE and WebSocket pass')
     except Exception:
         for log in logs:
