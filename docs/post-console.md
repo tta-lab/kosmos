@@ -1,181 +1,274 @@
-# Native managed Post service
+# Standalone Post and Shio prod
 
-FlickNote #4111 replaces the former empty preview with the authenticated native
-Koishi application from Post #4110. The existing user unit
-`lamplit-post-console` runs Nix Node 24 and real pnpm 12.3.4. Its sole writable
-application root is `~/.local/share/lamplit-post/app`
-(`kosmos.wsl.postConsole.appRoot`); cwd is the same directory.
+Spec #4334 replaces the old Koishi/pnpm launcher in the existing
+`lamplit-post-console` user unit. Nix Node 24 directly runs
+`dist/cli.cjs config-check --config …`, then `serve --config …`.
+`kosmos.wsl.postConsole.releaseRoot` selects the immutable complete release
+(default `~/.local/share/lamplit-post/current`);
+`configFile` selects `~/.local/state/lamplit-post/standalone/post.toml`.
+Relative state paths resolve from that TOML, independently of cwd.
 
-The app owns `package.json`, lockfile, workspace settings, patches, modules,
-`post/` (the local `koishi-plugin-post=file:./post` package), CLI and sole
-`koishi.yml`. Native Market changes those dependencies; native Config changes
-that YAML. Startup checks initialization, runs `pnpm run config-check`, then
-`pnpm run start`. It never installs, downloads, seeds or synchronizes files.
-An absent/incomplete root skips with a diagnostic and no restart loop.
-The working directory's systemd `-` prefix permits that missing-root diagnostic.
+The read-only condition skips absent/incomplete releases, missing TOML and
+unprovisioned administrator files with a diagnostic. Invalid TOML belongs to
+CLI preflight. Neither command installs, downloads, seeds or migrates anything.
+The cwd's systemd `-` prefix permits the missing-release diagnostic. Startup is
+rate limited, UMask is 0077, and SIGTERM stops the control group within 30s.
+There is no package-manager UA or runtime npm/pnpm requirement.
 
-The app supplies `verifyDepsBeforeRun:false` and `frozenLockfile:false`,
-without an exact `packageManager` redirect. Normal pnpm 12 owns module replacement.
-The explicit service PATH also supplies Nix Bash: pnpm 12 resolves `sh` through
-PATH to run application scripts. No app `scriptShell` override is needed.
-pnpm supplies the actual `npm_config_user_agent` inherited by native Installer;
-the service does not synthesize it. The native CLI supervisor handles code 51;
-ordinary failures use systemd on-failure with rate limiting. SIGTERM stops the
-complete control group within 30 seconds. UMask is 0077; operator installation
-creates the app root with mode 0700. Native plugin scripts run as the user.
+Settings UI is loopback 5140; private MCP/assets/health API is loopback 18787.
+Caddy already preserves Host to 5140. Configure exactly
+`https://lamplit-post.nuc.guion.io` as settings origin, with Secure cookies.
+The old `http://lamplit-post.localhost:17480` alias still routes but its Host
+is rejected (401); it is not a second authenticated origin. No native `/status`
+WebSocket exists. Caddy does not expose MCP. VPN DNS/TLS/source policy remains
+as described in [VPN HTTPS](nuc-vpn-https.md).
 
-UI remains loopback 5140 (root assets, WebSocket `/status`), private API remains
-loopback 18787. Caddy still exposes only the UI at
-`https://lamplit-post.nuc.guion.io/` and `http://lamplit-post.localhost:17480/`.
-Existing VPN source restrictions, TLS, DNS and ingress policies are unchanged.
-CFL retains 8787. There is no auth proxy, second database or admin HTTP API.
-Native Auth shares Post's existing provider; its upstream SHA256 password and
-token-generation limitations remain documented in Post, within the VPN boundary.
-Accounts/model execution/IM enrollment are separate work.
+Shio is **codex-for-love-prod on 3084**. It is separate from aru-cfl-prod (8788)
+and aru-cfl-dev (8787). This change does not edit their units or CFL sources.
+CFL already implements Post v1 and `credential … post|post_receiver --stdin`.
+Use the same `shio` consumer identity with independent QQ and Matrix scopes.
 
-## Operator-only first replacement
+## Prepare fresh state and release (operator only)
 
-Orc owns target deployment after both independent reviews and both merges.
-Workers use disposable HOME/app/data/key/ports and synthetic credentials only.
-No agent may read/decrypt/print/grep/diff/migrate real plaintext secrets, including
-the master key and administrator delivery file.
+Worker checks use test-owned HOME, artifacts, state and ports only. Orc owns
+activation after whole-spec Standards and high-risk Spec review and merge.
+Agents must never read/decrypt/print/grep/diff/migrate real private TOML,
+credentials, admin hashes/passwords, keys or conversations. The commands below
+that create/edit/provision private state are **Neil-only**, not agent probes.
+No old YAML/database/key/admin files are imported or reset.
 
-1. Obtain the **final reviewed merged** Post seed, merged source revision,
-   SHA256, manifest verification command and owned native acceptance evidence
-   from #4110. Record these together with the reviewed Kosmos HEAD and closure.
-   The integration candidate with SHA256
-   `143040fb12c32355f55d9299da39638b46c83319fc2c89b7199c2d2d27d987d2`
-   is dirty, fixture-only and forbidden as the deployment seed.
-   Final seed binding remains pending until Post supplies it.
-2. From the reviewed Kosmos checkout, confirm clean HEAD and coordinate the
-   maintenance window. Save public unit/PID baselines and system path, privately:
+1. Bind the reviewed Kosmos HEAD/closure and native gate receipt to this exact
+   preserved, mode-0444 archive (do not rebuild, repackage or relabel it):
 
    ```sh
    set -eu
+   post_archive=/home/neil/code/projects/lamplitisles/lamplit-post/.scratch/deployment-candidates/ca8a87dff8cb05f7d45139a3fe763f8b6b0507bf/lamplit-post-node24.tar.gz
+   post_sha=929a66b1f70d6e327582f3a18bf19cfaa0a8d61950245df54cb778e13a4f9028
+   printf '%s  %s\n' "$post_sha" "$post_archive" | sha256sum --check
+   ```
+
+   Reviewed revision `ca8a87dff8cb05f7d45139a3fe763f8b6b0507bf` has the same
+   tree `8178094847996bec27f820367c97b9cc46952e74` as merged Post
+   `bb371f5327b868a06e2176be88e0df5d12b2a202`. Keep `revision.json` unchanged.
+   Full bundle includes CLI, `dist/web`, local assets, patched SDK dependencies,
+   `revision.json` and `artifact-manifest.json`.
+2. Record public baselines immediately before execution, not old task PIDs:
+
+   ```sh
    umask 077
    post_backup="$HOME/backups/post-$(date -u +%Y%m%dT%H%M%SZ)"
    mkdir -m 0700 -p "$post_backup"
    readlink -f /run/current-system > "$post_backup/system-path"
-   systemctl --user show flickgrove aru-cfl-dev aru-cfl-prod matrix-mcp-remote keet-mcp keet-mcp-serein -p Id -p MainPID -p ActiveState -p FragmentPath > "$post_backup/protected-units"
-   systemctl --user cat lamplit-post-console > "$post_backup/old-public-unit"
-   readlink -f "$HOME/.local/share/lamplit-post/console-current" > "$post_backup/old-release-path"
+   readlink -f "$HOME/.local/state/nix/profiles/home-manager" > "$post_backup/home-generation"
+   systemctl --user show lamplit-post-console flickgrove aru-cfl-dev aru-cfl-prod matrix-mcp-remote keet-mcp keet-mcp-serein codex-for-love-dev codex-for-love-staging codex-for-love-prod -p Id -p MainPID -p ActiveState -p FragmentPath -p DropInPaths -p ExecStart -p EnvironmentFiles > "$post_backup/public-units"
+   systemctl --user cat lamplit-post-console > "$post_backup/old-post-unit"
+   ```
+
+   Save any existing `current` selection's link target. Retain the old writable
+   `~/.local/share/lamplit-post/app` and all old state in place, opaque, for
+   rollback. Neil may make private stopped snapshots; agents do not inspect them.
+   Coordinate active FlickGrove turns and other owners before any system switch.
+3. Extract once into an **absent versioned directory**, without touching the old app:
+
+   ```sh
+   post_release="$HOME/.local/share/lamplit-post/releases/ca8a87dff8cb05f7d45139a3fe763f8b6b0507bf"
+   test ! -e "$post_release"
+   install -d -m 0700 "$(dirname "$post_release")"
+   mkdir -m 0700 "$post_release"
+   tar -xzf "$post_archive" -C "$post_release" --no-same-owner
+   python3 - "$post_release" <<'PY'
+   import hashlib, json, pathlib, sys
+   root = pathlib.Path(sys.argv[1]).resolve()
+   manifest = json.loads((root / 'artifact-manifest.json').read_text())
+   for f in manifest['files']:
+       p = root / f['path']
+       assert p.resolve().is_relative_to(root)
+       assert p.stat().st_size == f['bytes']
+       assert hashlib.sha256(p.read_bytes()).hexdigest() == f['sha256']
+   for link in manifest['links']:
+       p = root / link['path']
+       assert p.readlink().as_posix() == link['target']
+       assert p.resolve().is_relative_to(root)
+   print('complete artifact inventory verified')
+   PY
+   chmod -R a-w "$post_release"
+   ```
+
+4. Neil creates a new private config (0700 parent, 0600 file), using an editor,
+   never a copy from the managed application:
+
+   ```sh
+   install -d -m 0700 "$HOME/.local/state/lamplit-post/standalone"
+   (umask 077; set -C; : > "$HOME/.local/state/lamplit-post/standalone/post.toml")
+   hx "$HOME/.local/state/lamplit-post/standalone/post.toml"
+   ```
+
+   Initial TOML contains no credentials:
+
+   ```toml
+   data_dir = "./data"
+   master_key_file = "./master.key"
+   hostname = "127.0.0.1"
+   port = 18787
+   accounts = []
+   bindings = []
+
+   [settings]
+   port = 5140
+   origin = "https://lamplit-post.nuc.guion.io"
+   admin_file = "./administrator.json"
+   ```
+
+   Use the **absolute Node path from the reviewed evaluated ExecStart** below
+   as `post_node`. Help/config-check are read-only; provision offline with the
+   service stopped. Admin record, vault key and machine token are independent.
+   Provisioning again replaces the admin password; it is not an idempotent setup.
+
+   ```sh
+   post_node=/nix/store/REPLACE_WITH_REVIEWED_NODE24/bin/node
+   post_config="$HOME/.local/state/lamplit-post/standalone/post.toml"
+   "$post_node" "$post_release/dist/cli.cjs" --help
+   "$post_node" "$post_release/dist/cli.cjs" config-check --config "$post_config"
    systemctl --user stop lamplit-post-console
-   cp -a "$HOME/.local/state/lamplit-post/console/koishi.yml" "$post_backup/preview-koishi.yml"
+   ! systemctl --user is-active --quiet lamplit-post-console
+   ss -ltn '( sport = :5140 or sport = :18787 )'
+   # Require both listeners absent before continuing.
+   # Neil types a new 12–1024 character password; nothing enters argv/history.
+   read -r -s -p 'New Post administrator password: ' post_password; printf '\n'
+   printf '%s' "$post_password" | "$post_node" "$post_release/dist/cli.cjs" admin-provision --config "$post_config"
+   unset post_password
+   "$post_node" "$post_release/dist/cli.cjs" config-check --config "$post_config"
+   ln -s "$post_release" "$HOME/.local/share/lamplit-post/current.next"
+   mv -T "$HOME/.local/share/lamplit-post/current.next" "$HOME/.local/share/lamplit-post/current"
    ```
 
-   These backup commands copy opaque private config without displaying it.
-   Retain the old immutable release and Home Manager generation for rollback.
-   Confirm Post has stopped, both 5140/18787 are released, and protected PIDs
-   remain unchanged. Do not stop any other service or inspect its environment.
-3. Set `post_seed` to the absolute final archive and `post_seed_sha256` to its
-   reviewed hash, then initialize only an absent root. Do not overlay an
-   initialized app. The archive contains root-relative contents:
+## Inspect impact and activate Post (Orc)
+
+Require reviewed clean merged Kosmos HEAD and the matching built WSL closure.
+Compare six generated public units (FlickGrove, aru-cfl-dev/prod,
+matrix-mcp-remote, keet-mcp, keet-mcp-serein) with installed files; separately
+compare CFL dev/staging/prod base units and existing public override contracts.
+Do not read environment values. Review **all** closure drift, including packages,
+system services and Home Manager, not just the intended Post unit:
+
+```sh
+post_closure=/nix/store/REPLACE_WITH_REVIEWED_WSL_CLOSURE
+nix store diff-closures /run/current-system "$post_closure"
+sudo "$post_closure/bin/switch-to-configuration" dry-activate
+```
+
+Coordinate every unrelated start/stop/restart in the fresh plan with its owner.
+Home Manager may activate user units during the switch. Abort if active work
+cannot tolerate the plan. Keep old system/HM generations and release selection.
+As regular Neil, from the merged checkout, Orc then runs:
+
+```sh
+nh os switch . -H wsl
+systemctl --user start lamplit-post-console
+systemctl --user is-active lamplit-post-console
+ss -ltn '( sport = :5140 or sport = :18787 or sport = :3084 or sport = :8787 or sport = :8788 )'
+curl --noproxy '*' --fail --resolve lamplit-post.nuc.guion.io:443:10.80.12.4 https://lamplit-post.nuc.guion.io/
+```
+
+Verify real static resource hashes, canonical Host/Origin, unauthenticated API
+rejection, loopback listeners and protected PIDs. Neil logs in at the VPN URL;
+agents never capture his password/cookie/config responses. `settings_ready`
+means management is available; only `ready`/healthy proves native SDK/API ready.
+A failed upstream credential may leave authenticated management for repair.
+Mac OS DNS, trusted TLS and real browser login need separate device acceptance;
+`--resolve` alone does not prove them. No Caddy/Tanka/DNS rollout is needed.
+
+## Provision QQ + Matrix, then enable Shio (Neil and Orc)
+
+1. In Post settings register `shio`, fixed receiver
+   `http://127.0.0.1:3084/api/post/events`, with a new receiver secret. Registering
+   alone has no grants. Issue its separate machine token once and securely retain
+   it for CFL. Never reuse platform credentials or the receiver secret as token.
+2. Enter QQ official App ID/AppSecret and Matrix user ID/homeserver/access token
+   in password fields. Do not copy `/run/agenix/matrix-shio.env` or old Post vault
+   credentials. Save/connect both accounts. Grant only intended chats and explicit
+   private senders; Matrix rooms must be joined and plaintext. QQ adding the bot,
+   profile-share QR and granting access are independent actions.
+3. Keep **all wake switches false and aliases empty** until CFL is ready. Leave
+   the intended binding enabled with active QQ/Matrix scopes so CFL's startup
+   `list_accounts` probe sees both accounts. Pausing/revoking all scopes would
+   prevent that probe; an empty registration is insufficient. Quiesce intended
+   chats during cutover, disable only Shio's old Matrix webhook if present, and
+   inspect shared MFA/Keet ownership before changing anything. Never stop a
+   shared gateway blindly. Already admitted/unknown deliveries need inspection;
+   holding wakes is not an automatic replay queue.
+4. Neil sets `[post]` and removes obsolete `[matrix]` if present in the existing
+   prod config, preserving model, workspace, native thread and every other key:
 
    ```sh
-   test "${post_seed#/}" != "$post_seed"
-   printf '%s  %s\n' "$post_seed_sha256" "$post_seed" | sha256sum --check
-   post_app="$HOME/.local/share/lamplit-post/app"
-   test ! -e "$post_app"
-   install -d -m 0700 "$HOME/.local/share/lamplit-post"
-   mkdir -m 0700 "$post_app"
-   tar --extract --gzip --file "$post_seed" --directory "$post_app" --no-same-owner
-   chmod 0700 "$post_app"
+   hx "$HOME/.local/state/codex-for-love/prod/partner.toml"
    ```
 
-   Verify the extracted artifact using the final Post handoff's manifest
-   command. Stop on failure; keep Post stopped until the seed is corrected.
-   The app is an operator-owned writable installation, not a release symlink.
-4. Edit **only the new app YAML**, without reading the old config/key, to keep
-   these explicit existing absolute paths:
-
-   ```yaml
-   plugins:
-     post:
-       data_dir: /home/neil/.local/state/lamplit-post/console/data
-       master_key_file: /home/neil/.local/state/lamplit-post/console/keys/post.key
-       port: 18787
+   ```toml
+   [post]
+   endpoint = "http://127.0.0.1:18787"
+   agent_id = "shio"
    ```
 
-   Preserve the seed's other native plugin entries, UI host 127.0.0.1/port 5140,
-   `auth.admin.enabled:false`, `daemon.autoRestart:false`, empty account/binding
-   settings and `logger.root: logs`. Native logs stay in app/logs **outside**
-   exclusive Post data. Do not copy/reset/migrate the database, key or queue.
-5. Select the exact Nix tools from the reviewed built unit's public PATH and
-   ExecStart; use those same absolute pnpm/Node paths below. Do not use corepack,
-   another checkout's toolchain or expand user Nix config into argv.
-   Replace the placeholders with the public built paths:
+   Use the actual installed candidate CLI; no CFL source rebuild or launcher
+   replacement is expected. The verified candidate at preparation time is
+   `c8db35198e5f91b239070cf4d952d486fe2820a1`. Recheck public ExecStart first;
+   preserve its `--native-package-root` and all Keet/Amare environment references.
+   Neil supplies each secret via the existing atomic credential writer:
 
    ```sh
-   export PATH="<reviewed-pnpm-store-path>/bin:<reviewed-node24-store-path>/bin:<reviewed-coreutils-store-path>/bin:<reviewed-bash-store-path>/bin:$PATH"
-   cd "$post_app"
-   pnpm --version
-   node --version
-   pnpm run config-check
-   install -d -m 0700 "$HOME/.local/state/lamplit-post/admin-delivery"
-   pnpm run admin-provision --file "$HOME/.local/state/lamplit-post/admin-delivery/first-owner.txt"
-   pnpm run config-check
+   cfl_cli="$HOME/.local/share/codex-for-love/candidates/c8db35198e5f91b239070cf4d952d486fe2820a1/package/vendor/runtime/cli.mjs"
+   cfl_config="$HOME/.local/state/codex-for-love/prod/partner.toml"
+   read -r -s -p 'Post machine token for shio: ' post_token; printf '\n'
+   printf '%s' "$post_token" | /run/current-system/sw/bin/node "$cfl_cli" credential "$cfl_config" post --stdin
+   unset post_token
+   read -r -s -p 'Distinct Post receiver secret: ' post_receiver; printf '\n'
+   printf '%s' "$post_receiver" | /run/current-system/sw/bin/node "$cfl_cli" credential "$cfl_config" post_receiver --stdin
+   unset post_receiver
    ```
 
-   Provisioning is offline with Post stopped. It creates a new 0600 delivery
-   file and prints only result/path; repeated provision never resets user0.
-   Agents must never open that real file. Require reviewed fail-closed Auth
-   evidence before activating management, even if no first-owner login yet.
-6. Inspect impact before switching. Compare protected generated user unit
-   files byte-for-byte with installed public unit files (not secret expanded
-   configs). Inspect closure changes and the actual activation start/stop list:
+   These preserve unrelated credential keys. If obsolete `matrix` remains,
+   Neil removes only that key using his private editor; unknown keys fail closed.
+   Resolve `state` relative to the TOML directory (`./state` if omitted), then run
+   `hx <resolved-state-directory>/credentials.json` privately. Preserve every
+   other key; do not replace the file with a partial template. No agent opens it.
+   No Matrix-only environment references are changed speculatively; coordinate verified conflicts separately.
+5. After human prerequisites and authorized fresh impact checks, Orc restarts
+   **only codex-for-love-prod**, preserving the installed candidate/native root:
 
    ```sh
-   nix store diff-closures /run/current-system <reviewed-built-closure>
-   sudo <reviewed-built-closure>/bin/switch-to-configuration dry-activate
+   systemctl --user restart codex-for-love-prod
+   systemctl --user is-active codex-for-love-prod
+   curl --noproxy '*' --fail http://127.0.0.1:3084/
    ```
 
-   Only Post's unit is intentionally changed. Coordinate any unrelated impact
-   with its owner before activation; never restart protected units to test Post.
-   No Caddy/Tanka/DNS/certificate rollout is needed. Then, as regular Neil,
-   Orc runs from the merged Kosmos checkout:
+   Check startup account discovery and original static hashes, with bounded
+   readiness polls (up to 120s); abort restart loops. A no-auth `{}` probe to
+   `/api/post/events` was 404 before cutover; this is not receiver readiness.
+   Authenticated receiver/schema probes are a later explicitly authorized check.
+6. Only then enable intended wake rules, one controlled scope at a time. Later
+   explicit acceptance uses human-originated QQ and Matrix markers, exact source/
+   account/reply facts, image/file availability and durable receipt/dedupe evidence
+   on the existing Shio thread. No model run or outgoing real IM send is part of
+   Worker checks. Do not replay historic intake or retry unknown sends. Record
+   actual pending gaps; local fixture success is not production IM acceptance.
 
-   ```sh
-   nh os switch . -H wsl
-   systemctl --user start lamplit-post-console
-   systemctl --user is-active lamplit-post-console
-   ss -ltn '( sport = :5140 or sport = :18787 or sport = :8787 )'
-   curl --noproxy '*' --fail http://lamplit-post.localhost:17480/
-   curl --noproxy '*' --fail --resolve lamplit-post.nuc.guion.io:443:10.80.12.4 https://lamplit-post.nuc.guion.io/
-   ```
+## Updates and narrow rollback
 
-   Check protected PIDs against the fresh baseline. Require loopback listeners,
-   native login/assets/WS and rejected unauthenticated management mutations.
-   Human Neil alone reads the delivery file locally, logs in at the VPN URL as
-   admin, changes password in native account settings, then deletes the file.
-   Agents must not capture the password, login token or private config response.
-   Use owned-fixture evidence for authenticated mutation acceptance.
-7. Restart only Post; confirm readiness and unchanged manifest/lock/YAML/modules,
-   persistent native identity and single provider ownership. Stop only Post and
-   require both listeners/WS to close within 30 seconds, then start it.
-   Unknown sends remain unresolved; never replay them automatically.
-   Host `--resolve` evidence does not prove Mac scoped DNS/browser access;
-   Neil's Mac VPN/OS DNS/login must separately pass before claiming it ready.
+For updates select a new reviewed complete immutable version, stop only Post,
+privately snapshot fresh standalone TOML/data/key/admin together, validate,
+then atomically change `current`. Never overlay an initialized release or run
+runtime installation. SIGTERM must close both listeners and release ownership
+before reopen; preserve the same external key. Never delete locks speculatively.
 
-## Explicit updates and rollback
-
-Before an update, stop only Post and privately snapshot the entire current app
-(including manifest, lock, workspace/patches, modules, YAML, CLI and local Post
-package). Do not print its content. Preserve existing data/key/queue in place.
-From the final reviewed update handoff, replace only release-owned CLI/Post
-resources and any reviewed patch changes. Preserve administrator dependency
-choices and YAML. Explicitly run `pnpm install` with the reviewed tools to
-refresh the local file dependency, then `pnpm run config-check` before start.
-Never unpack a seed over the live initialized app or synchronize release trees.
-
-For app rollback, stop only Post, retain the failed app privately, restore the
-chosen complete matching app snapshot, config-check and start. Never restore an
-older database over the current database, regenerate keys or replay unknown
-sends. For first-replacement rollback, keep the new app privately, restore the
-old preview config from the private backup to its original path, retain/restore
-the saved launcher symlink, and restore the saved system/Home Manager generation.
-The old public unit must point to its old release/config before starting Post.
-Coordinate system rollback impact with other owners; do not blindly restart
-their units. Keep the new Auth-bearing database/key untouched; do not reopen an
-unauthenticated preview against enrolled accounts. If that safety condition
-cannot be established, leave Post stopped. Ingress, ACME storage and unrelated
-service state are not part of app rollback.
+For rollback hold the affected binding's wakes first. Stop only Post, restore the
+saved release selection and matching public unit generation after inspecting the
+system/HM rollback's whole impact. Keep fresh standalone data/key/admin intact;
+do not point the old managed app at them. Old app/state remains opaque in its
+original location. If safe old authenticated ownership cannot be established,
+leave Post stopped. Restore only Shio's changed config/credential references
+privately if necessary, then restart only prod after checking duplicate Matrix
+intake is impossible. Retain candidate/native arguments and all CFL histories,
+receipts, workspace and threads. Never restore a database over current history,
+resend an unknown send or automatically replay a held delivery. Caddy certificate
+storage, DNS and unrelated services are outside this rollback.

@@ -6,24 +6,30 @@
   ...
 }: let
   cfg = config.kosmos.wsl.postConsole;
-  pnpm = pkgsUnstable.callPackage ../../packages/pnpm {};
+  node = lib.getExe pkgsUnstable.nodejs_24;
   prepare = pkgs.writeShellApplication {
     name = "prepare-post-console";
+    runtimeInputs = [pkgsUnstable.nodejs_24];
     text = builtins.readFile ../../scripts/prepare-post-console;
   };
 in {
   options.kosmos.wsl.postConsole = {
-    enable = lib.mkEnableOption "native managed Post application";
-    appRoot = lib.mkOption {
+    enable = lib.mkEnableOption "standalone Post settings service";
+    releaseRoot = lib.mkOption {
       type = lib.types.str;
-      default = "/home/neil/.local/share/lamplit-post/app";
-      description = "Persistent writable application root, initialized once by the operator.";
+      default = "/home/neil/.local/share/lamplit-post/current";
+      description = "Operator-selected immutable complete standalone release.";
+    };
+    configFile = lib.mkOption {
+      type = lib.types.str;
+      default = "/home/neil/.local/state/lamplit-post/standalone/post.toml";
+      description = "Private standalone TOML; mutable state resolves relative to this file.";
     };
   };
   config = lib.mkIf cfg.enable {
     home-manager.users.neil.systemd.user.services.lamplit-post-console = {
       Unit = {
-        Description = "Lamplit Post native managed Console";
+        Description = "Lamplit Post standalone settings";
         StartLimitIntervalSec = 60;
         StartLimitBurst = 3;
       };
@@ -31,12 +37,12 @@ in {
       Service = {
         Type = "exec";
         # ExecCondition provides a diagnostic and skips startup without a restart loop.
-        ExecCondition = lib.escapeShellArgs ["${prepare}/bin/prepare-post-console" cfg.appRoot];
+        ExecCondition = lib.escapeShellArgs ["${prepare}/bin/prepare-post-console" cfg.releaseRoot cfg.configFile];
         # Ignore absent cwd so ExecCondition can diagnose and skip an uninitialized app.
-        WorkingDirectory = "-${cfg.appRoot}";
-        ExecStartPre = lib.escapeShellArgs [(lib.getExe pnpm) "run" "config-check"];
-        ExecStart = lib.escapeShellArgs [(lib.getExe pnpm) "run" "start"];
-        Environment = ["PATH=${lib.makeBinPath [pnpm pkgsUnstable.nodejs_24 pkgs.coreutils pkgs.bash]}"];
+        WorkingDirectory = "-${cfg.releaseRoot}";
+        ExecStartPre = lib.escapeShellArgs [node "${cfg.releaseRoot}/dist/cli.cjs" "config-check" "--config" cfg.configFile];
+        ExecStart = lib.escapeShellArgs [node "${cfg.releaseRoot}/dist/cli.cjs" "serve" "--config" cfg.configFile];
+        Environment = ["PATH=${lib.makeBinPath [pkgsUnstable.nodejs_24]}"];
         UMask = "0077";
         Restart = "on-failure";
         RestartSec = 5;
