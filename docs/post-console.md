@@ -1,4 +1,4 @@
-# Standalone Post and Shio prod
+# Standalone Post, Shio prod and Aru retirement
 
 Spec #4334 replaces the old Koishi/pnpm launcher in the existing
 `lamplit-post-console` user unit. Nix Node 24 directly runs
@@ -23,8 +23,10 @@ is rejected (401); it is not a second authenticated origin. No native `/status`
 WebSocket exists. Caddy does not expose MCP. VPN DNS/TLS/source policy remains
 as described in [VPN HTTPS](nuc-vpn-https.md).
 
-Shio is **codex-for-love-prod on 3084**. It is separate from aru-cfl-prod (8788)
-and aru-cfl-dev (8787). This change does not edit their units or CFL sources.
+Shio is **codex-for-love-prod on 3084**. The same change retires both dedicated
+aru-cfl-prod (8788) and aru-cfl-dev (8787) adapters and their public tunnel routes.
+CFL dev/staging/prod and sources remain; [Aru retirement](aru-cfl.md) records the
+retained installations/state and the shared tunnel impact.
 CFL already implements Post v1 and `credential … post|post_receiver --stdin`.
 Use the same `shio` consumer identity with independent QQ and Matrix scopes.
 
@@ -62,6 +64,7 @@ No old YAML/database/key/admin files are imported or reset.
    readlink -f "$HOME/.local/state/nix/profiles/home-manager" > "$post_backup/home-generation"
    systemctl --user show lamplit-post-console flickgrove aru-cfl-dev aru-cfl-prod matrix-mcp-remote keet-mcp keet-mcp-serein codex-for-love-dev codex-for-love-staging codex-for-love-prod -p Id -p MainPID -p ActiveState -p FragmentPath -p DropInPaths -p ExecStart -p EnvironmentFiles > "$post_backup/public-units"
    systemctl --user cat lamplit-post-console > "$post_backup/old-post-unit"
+   systemctl show cloudflared-tunnel-kepos -p MainPID -p ActiveState -p FragmentPath -p ExecStart > "$post_backup/public-tunnel"
    ```
 
    Save any existing `current` selection's link target. Retain the old writable
@@ -145,8 +148,8 @@ No old YAML/database/key/admin files are imported or reset.
 ## Inspect impact and activate Post (Orc)
 
 Require reviewed clean merged Kosmos HEAD and the matching built WSL closure.
-Compare six generated public units (FlickGrove, aru-cfl-dev/prod,
-matrix-mcp-remote, keet-mcp, keet-mcp-serein) with installed files; separately
+Compare four protected generated public units (FlickGrove, matrix-mcp-remote,
+keet-mcp, keet-mcp-serein) with installed files; separately
 compare CFL dev/staging/prod base units and existing public override contracts.
 Do not read environment values. Review **all** closure drift, including packages,
 system services and Home Manager, not just the intended Post unit:
@@ -158,6 +161,13 @@ sudo "$post_closure/bin/switch-to-configuration" dry-activate
 ```
 
 Coordinate every unrelated start/stop/restart in the fresh plan with its owner.
+Expect both Aru units to stop/disappear and their two tunnel routes to be removed.
+The shared tunnel connector may restart, briefly affecting Matrix/Keet public
+traffic; coordinate its actual dry-activate plan and verify remaining routes.
+Use its public ExecStart to locate the generated config, validate ingress, and
+check the two retired names against the final 404 rule. Keep Matrix/Keet
+destinations, the credential-file reference and HTTP2 transport unchanged.
+Application units for CFL/FlickGrove/Matrix/Keet must remain unchanged.
 Home Manager may activate user units during the switch. Abort if active work
 cannot tolerate the plan. Keep old system/HM generations and release selection.
 As regular Neil, from the merged checkout, Orc then runs:
@@ -170,13 +180,17 @@ ss -ltn '( sport = :5140 or sport = :18787 or sport = :3084 or sport = :8787 or 
 curl --noproxy '*' --fail --resolve lamplit-post.nuc.guion.io:443:10.80.12.4 https://lamplit-post.nuc.guion.io/
 ```
 
+Verify the retired Aru units are inactive/absent, no Aru-owned listeners remain on
+8787/8788, and shared Matrix/Keet tunnel routes still work. Do not infer ownership
+from port numbers alone or stop a new unrelated port owner. Keep Aru files/state.
 Verify real static resource hashes, canonical Host/Origin, unauthenticated API
 rejection, loopback listeners and protected PIDs. Neil logs in at the VPN URL;
 agents never capture his password/cookie/config responses. `settings_ready`
 means management is available; only `ready`/healthy proves native SDK/API ready.
 A failed upstream credential may leave authenticated management for repair.
 Mac OS DNS, trusted TLS and real browser login need separate device acceptance;
-`--resolve` alone does not prove them. No Caddy/Tanka/DNS rollout is needed.
+`--resolve` alone does not prove them. No Caddy/Tanka/DNS rollout is needed; only
+the two Aru routes are removed from the shared Cloudflare connector config.
 
 ## Provision QQ + Matrix, then enable Shio (Neil and Orc)
 
@@ -272,4 +286,6 @@ privately if necessary, then restart only prod after checking duplicate Matrix
 intake is impossible. Retain candidate/native arguments and all CFL histories,
 receipts, workspace and threads. Never restore a database over current history,
 resend an unknown send or automatically replay a held delivery. Caddy certificate
-storage, DNS and unrelated services are outside this rollback.
+storage, DNS and unrelated services are outside this rollback. If restoring Aru
+availability, restore the saved system/HM and two tunnel routes after impact
+review; reuse retained Aru installations/state without copying or replaying it.
