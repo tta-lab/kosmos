@@ -182,8 +182,9 @@ Mac OS DNS, trusted TLS and real browser login need separate device acceptance;
 
 1. In Post settings register `shio`, fixed receiver
    `http://127.0.0.1:3084/api/post/events`, with a new receiver secret. Registering
-   alone has no grants. Issue its separate machine token once and securely retain
-   it for CFL. Never reuse platform credentials or the receiver secret as token.
+   alone has no grants. Before adding any chat scopes, save all wake switches
+   false and aliases empty. Issue its separate machine token once and securely
+   retain it for CFL. Never reuse platform credentials or the receiver secret as token.
 2. Enter QQ official App ID/AppSecret and Matrix user ID/homeserver/access token
    in password fields. Do not copy `/run/agenix/matrix-shio.env` or old Post vault
    credentials. Save/connect both accounts. Grant only intended chats and explicit
