@@ -33,7 +33,17 @@ container = pod['containers'][0]
 assert not any(e['name'] in ['SSL_CERT_FILE', 'SSL_CERT_DIR'] for e in container['env'])
 assert container['volumeMounts'] == [{'name': 'config', 'mountPath': '/museum.yaml', 'subPath': 'museum.yaml', 'readOnly': True}]
 dns = next(r for r in resources if r['kind'] == 'ConfigMap' and r['metadata']['name'] == 'coredns-custom')
-assert '10.80.12.4 ente-storage.nuc.guion.io' in dns['data']['nuc-storage.server']
+assert dns['data']['nuc-storage.server'].split() == '''ente-storage.nuc.guion.io:53 {
+  errors
+  cache 30
+  hosts {
+    10.80.12.5 ente-storage.nuc.guion.io
+  }
+}'''.split()
+assert dns['data']['kosmos.override'].splitlines() == [
+    'rewrite name exact ' + host + ' cluster-http.devops.svc.cluster.local'
+    for name in sorted(routes) for host in routes[name]['hosts']
+]
 assert 'ente-storage.nuc.guion.io' not in dns['data']['kosmos.override']
 assert len(ingresses) == len(routes)
 print('all HTTP Ingresses target the declared application Services without TLS or catch-all routes')

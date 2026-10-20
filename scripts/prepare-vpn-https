@@ -6,7 +6,7 @@ mkdir -p "$(dirname "$output")"
 rm -f "$output"
 skip() { printf 'VPN HTTPS disabled: %s; loopback HTTP remains available\n' "$1" >&2; exit 0; }
 [[ -r "$credential" ]] || skip 'Cloudflare credential not readable'
-ip -4 -o address show dev tun0 2>/dev/null | grep -q ' inet 10\.80\.12\.4/24 ' || skip 'tun0 must have 10.80.12.4/24'
+ip -4 -o address show dev tun0 2>/dev/null | grep -q ' inet 10\.80\.12\.5/24 ' || skip 'tun0 must have 10.80.12.5/24'
 # Match the pinned provider's formats and Caddy file placeholder's CRLF handling.
 # The sentinel preserves trailing newlines so multi-line inputs cannot pass.
 token=$(cat "$credential"; printf '.')

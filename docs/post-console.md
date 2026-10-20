@@ -140,7 +140,7 @@ the master key and administrator delivery file.
    systemctl --user is-active lamplit-post-console
    ss -ltn '( sport = :5140 or sport = :18787 or sport = :8787 )'
    curl --noproxy '*' --fail http://lamplit-post.localhost:17480/
-   curl --noproxy '*' --fail --resolve lamplit-post.nuc.guion.io:443:10.80.12.4 https://lamplit-post.nuc.guion.io/
+   curl --noproxy '*' --fail --resolve lamplit-post.nuc.guion.io:443:10.80.12.5 https://lamplit-post.nuc.guion.io/
    ```
 
    Check protected PIDs against the fresh baseline. Require loopback listeners,
