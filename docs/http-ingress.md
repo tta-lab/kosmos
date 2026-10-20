@@ -103,6 +103,7 @@ owns this sysctl: relying on k3s's runtime write alone lets a subsequent
 systemd-sysctl reload disable cluster routing. Verify cluster access after a
 NixOS switch as well as before it.
 
-The Post Console route serves the native authenticated managed application inside the VPN.
+The Post route serves standalone authenticated settings at its canonical VPN HTTPS origin.
+The old HTTP alias routes but Post rejects that unsupported Host (401).
 Its MCP port 18787 is not proxied. See [Post activation](post-console.md)
 for the reviewed seed gate and operator-only service handoff.

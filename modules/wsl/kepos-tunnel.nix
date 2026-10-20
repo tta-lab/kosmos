@@ -36,10 +36,6 @@ in {
             {
               "keet-serein.lamplit.run" = "http://127.0.0.1:8767";
             }
-            // lib.optionalAttrs config.kosmos.wsl.aruCfl.enable {
-              "aru-dev.lamplit.run" = "http://127.0.0.1:8787";
-              "aru.lamplit.run" = "http://127.0.0.1:8788";
-            }
             // lib.optionalAttrs (config.kosmos.wsl.matrixMcpRemote.enable && config.age.secrets ? "matrix-serein.env") {
               ${config.kosmos.wsl.matrixMcpRemote.hostname} = "http://127.0.0.1:8768";
             };

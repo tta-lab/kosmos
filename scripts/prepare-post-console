@@ -1,18 +1,42 @@
 #!/usr/bin/env bash
 # Read-only ExecCondition: status 1 skips startup without a restart loop.
 set -euo pipefail
-app=$1
-if [[ "$app" != /* ]]; then
-  echo 'Post application root must be absolute.' >&2
+release=$1
+config=$2
+if [[ "$release" != /* || "$config" != /* ]]; then
+  echo 'Post release and config paths must be absolute.' >&2
   exit 1
 fi
-for entry in package.json pnpm-lock.yaml pnpm-workspace.yaml koishi.yml dist/cli.cjs post/package.json post/dist/post-plugin.cjs; do
-  if [[ ! -r "$app/$entry" ]]; then
-    echo 'Post application uninitialized: install the reviewed complete seed once into the private writable app root before starting lamplit-post-console.' >&2
+for entry in dist/cli.cjs dist/web/index.html artifact-manifest.json revision.json node_modules/smol-toml/package.json; do
+  if [[ ! -r "$release/$entry" ]]; then
+    echo 'Post release uninitialized or incomplete: operator must select a complete reviewed archive.' >&2
     exit 1
   fi
 done
-if [[ ! -d "$app/node_modules" || ! -d "$app/patches" || ! -w "$app" ]]; then
-  echo 'Post application uninitialized or not writable: operator installation required.' >&2
+if [[ ! -f "$config" || ! -r "$config" ]]; then
+  echo 'Post config uninitialized: operator must create private standalone TOML and provision its administrator offline.' >&2
   exit 1
 fi
+node - "$release" "$config" <<'JS'
+const fs = require('node:fs');
+const path = require('node:path');
+const [release, config] = process.argv.slice(2);
+let parsed;
+try {
+  parsed = require(release + '/node_modules/smol-toml').parse(fs.readFileSync(config, 'utf8'));
+} catch {
+  // Malformed configuration belongs to the authoritative CLI config-check.
+  process.exit(0);
+}
+const admin = parsed.settings?.admin_file;
+if (typeof admin === 'string') {
+  try {
+    const file = path.resolve(path.dirname(config), admin);
+    if (!fs.statSync(file).isFile()) throw Error();
+    fs.accessSync(file, fs.constants.R_OK);
+  } catch {
+    console.error('Post administrator uninitialized: operator must run offline admin-provision.');
+    process.exit(1);
+  }
+}
+JS

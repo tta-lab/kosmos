@@ -26,7 +26,7 @@ There is no new ingress token, basic-auth or SSO gate.
 | dev-her | 127.0.0.1:3082 | CFL uses browser-relative API/stream/socket URLs; both authorities |
 | staging-her | 127.0.0.1:3083 | Same CFL behavior |
 | prod-lamplit | 127.0.0.1:3084 | Same CFL behavior; no paid inference needed for ingress checks |
-| lamplit-post | 127.0.0.1:5140 | Native authenticated managed Console; VPN only; [activation](post-console.md) |
+| lamplit-post | 127.0.0.1:5140 | **Exception:** standalone settings use canonical HTTPS; old HTTP Host is rejected; [activation](post-console.md) |
 | flickgrove | 127.0.0.1:4318 | **Exception:** supported public Origin changes to HTTPS; old browser/API/WS authority is rejected |
 | mihomo-dashboard | 127.0.0.1:9090 | Native API authentication remains; no secret or dashboard reset |
 | ente | photos/museum:8080 | **Exception:** both API routes; file operations from either require VPN/public TLS trust |
