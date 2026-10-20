@@ -3,7 +3,7 @@
 The host Caddy system service keeps `127.0.0.1:17480`, using the standard
 NixOS Caddy package with a pinned Cloudflare provider and its dedicated non-root
 account. With the runtime DNS credential and expected VPN address, it obtains
-a wildcard certificate and serves HTTPS at `10.80.12.4:443` for the existing 20
+a wildcard certificate and serves HTTPS at `10.80.12.5:443` for the existing 20
 `<id>.nuc.guion.io` authorities plus `acrylic.nuc.guion.io`. There is no HTTP 80 or LAN listener. Unknown Host
 names do not dispatch. See [VPN HTTPS](nuc-vpn-https.md) for the exact mappings,
 source restrictions, certificate/DNS prerequisites and ordered activation.
@@ -34,6 +34,11 @@ catch-all route or NodePort is used. App deploy recipes apply their Ingresses;
 Traefik watches changes without a controller restart.
 
 ## Deploy and check
+
+For the current `.5` address correction, follow the narrower
+[current-address handoff](nuc-vpn-https.md#current-address-persistence-handoff-5)
+first, including explicit temporary override removal and separate CoreDNS apply.
+The address is currently assigned, not proven reserved by the VPN server.
 
 Use the local cluster only:
 

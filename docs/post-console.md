@@ -177,7 +177,7 @@ nh os switch . -H wsl
 systemctl --user start lamplit-post-console
 systemctl --user is-active lamplit-post-console
 ss -ltn '( sport = :5140 or sport = :18787 or sport = :3084 or sport = :8787 or sport = :8788 )'
-curl --noproxy '*' --fail --resolve lamplit-post.nuc.guion.io:443:10.80.12.4 https://lamplit-post.nuc.guion.io/
+curl --noproxy '*' --fail --resolve lamplit-post.nuc.guion.io:443:10.80.12.5 https://lamplit-post.nuc.guion.io/
 ```
 
 Verify the retired Aru units are inactive/absent, no Aru-owned listeners remain on

@@ -14,7 +14,7 @@ local hosts = std.flattenArrays([routes[id].hosts for id in std.objectFields(rou
           errors
           cache 30
           hosts {
-            10.80.12.4 ente-storage.nuc.guion.io
+            10.80.12.5 ente-storage.nuc.guion.io
           }
         }
       |||,

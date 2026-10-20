@@ -36,7 +36,7 @@
     });
   vpnConfig = pkgs.writeText "nuc-vpn-caddyfile" ''
     https://*.nuc.guion.io:443 {
-      bind 10.80.12.4
+      bind 10.80.12.5
       tls {
         issuer acme {
           dir https://acme-v02.api.letsencrypt.org/directory

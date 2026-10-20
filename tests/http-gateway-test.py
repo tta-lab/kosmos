@@ -194,7 +194,7 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
                 for child in value:
                     yield from upstream_dials(child)
         assert '192.168.1.88:8787' in set(upstream_dials(servers_config))
-        assert {a for server in servers_config.values() for a in server['listen']} == {'127.0.0.1:17480', '10.80.12.4:443'}
+        assert {a for server in servers_config.values() for a in server['listen']} == {'127.0.0.1:17480', '10.80.12.5:443'}
         assert all(server['automatic_https'].get('disable_redirects') for server in servers_config.values())
         policies = adapted_config['apps']['tls']['automation']['policies']
         assert len(policies) == 1
@@ -217,7 +217,7 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
         token_file.write_text(synthetic_token + '\n')
         # Route/lifecycle fixture uses a test-owned leaf, never real ACME/Cloudflare.
         vpn = re.sub(r'(?ms)^([ \t]*)tls \{\n.*?^\1\}\n', lambda m: m[1] + f'tls {work / "leaf.pem"} {work / "leaf.key"}\n', vpn, count=1)
-        vpn = vpn.replace('https://*.nuc.guion.io:443', f'https://*.nuc.guion.io:{tls_port}').replace('bind 10.80.12.4', 'bind 127.0.0.1')
+        vpn = vpn.replace('https://*.nuc.guion.io:443', f'https://*.nuc.guion.io:{tls_port}').replace('bind 10.80.12.5', 'bind 127.0.0.1')
         vpn = vpn.replace('10.80.12.0/24', '127.0.0.1/32').replace('10.42.0.0/16', '127.0.0.3/32')
         vpn = vpn.replace('127.0.0.1:27480', f'127.0.0.1:{ingress_port}')
         vpn = vpn.replace('192.168.1.88:8787', f'127.0.0.1:{fixture_ports["acrylic"]}')
@@ -225,10 +225,10 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
             vpn = vpn.replace(f'127.0.0.1:{port}', f'127.0.0.1:{fixture_ports[name]}')
         (work / 'vpn-template').write_text(vpn)
         # Only this test's fake ip executable is used; no live interfaces change.
-        (work / 'ip').write_text('#!' + shutil.which('bash') + '\nprintf "2: tun0 inet %s scope global tun0\\n" "${TEST_VPN_ADDRESS:-10.80.12.4/24}"\n')
+        (work / 'ip').write_text('#!' + shutil.which('bash') + '\nprintf "2: tun0 inet %s scope global tun0\\n" "${TEST_VPN_ADDRESS-10.80.12.5/24}"\n')
         (work / 'ip').chmod(0o700)
         prep_env = dict(os.environ, PATH=str(work) + os.pathsep + os.environ['PATH'], XDG_DATA_HOME=str(work / 'data'), XDG_CONFIG_HOME=str(work / 'config'))
-        def prepare(credential='cloudflare-token', address='10.80.12.4/24'):
+        def prepare(credential='cloudflare-token', address='10.80.12.5/24'):
             result = subprocess.run(['bash', str(ROOT / 'scripts/prepare-vpn-https'), str(work / credential), str(work / 'vpn-template'), str(work / 'vpn/https.caddy')], env=dict(prep_env, TEST_VPN_ADDRESS=address), capture_output=True, text=True)
             assert result.returncode == 0, result.stderr
             assert synthetic_token not in result.stdout + result.stderr
@@ -237,7 +237,9 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
         token_file.chmod(0o000)
         assert not prepare()[0]
         token_file.chmod(0o600)
-        assert not prepare(address='10.80.12.99/24')[0]
+        for address in ['10.80.12.4/24', '', '10.80.12.99/24', '10.80.12.5/32']:
+            enabled, diagnostics = prepare(address=address)
+            assert not enabled and 'tun0 must have 10.80.12.5/24' in diagnostics
         for invalid in ['SYNTHETIC-malformed-secret', synthetic_token + '\n\n', synthetic_token + '\nextra']:
             token_file.write_text(invalid)
             enabled, diagnostics = prepare()
@@ -272,7 +274,7 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
                 assert command[1] == '/run/agenix/cloudflare-ddns-token'
                 return ['bash', str(ROOT / 'scripts/prepare-vpn-https'), str(token_file), str(work / 'vpn-template'), str(work / 'vpn/https.caddy')]
             return [a.replace('/etc/caddy/caddy_config', str(work / 'Caddyfile')).replace('/run/caddy/vpn/https.caddy', str(work / 'vpn/https.caddy')) for a in command]
-        def native_reload(commands=native, address='10.80.12.4/24'):
+        def native_reload(commands=native, address='10.80.12.5/24'):
             for command in commands['ExecReload']:
                 subprocess.run(fixture_command(command), env=dict(prep_env, TEST_VPN_ADDRESS=address), check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         token_file.rename(work / 'unprovisioned-token')
@@ -321,10 +323,16 @@ with tempfile.TemporaryDirectory(prefix='kosmos-http-test-') as directory:
         assert request(edge_port, 'dev-her.localhost')[0] == 200
         (work / 'unprovisioned-token').rename(token_file)
         native_reload()
-        native_reload(address='10.80.12.99/24')
-        assert not (work / 'vpn/https.caddy').exists()
-        assert request(edge_port, 'dev-her.localhost')[0] == 200
-        native_reload()
+        for address in ['10.80.12.4/24', '', '10.80.12.99/24', '10.80.12.5/32']:
+            native_reload(address=address)
+            assert not (work / 'vpn/https.caddy').exists()
+            assert request(edge_port, 'dev-her.localhost')[0] == 200
+            try:
+                request(tls_port, 'dev-her.nuc.guion.io', tls=True)
+                raise AssertionError('Unavailable VPN kept HTTPS active')
+            except OSError:
+                pass
+            native_reload()
         # Removing declarations uses the evaluated native absent-credential remover.
         native_reload(absent)
         assert not (work / 'vpn/https.caddy').exists()

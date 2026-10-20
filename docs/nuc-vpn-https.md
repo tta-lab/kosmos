@@ -2,7 +2,7 @@
 
 Host Caddy automatically obtains and renews one `*.nuc.guion.io` certificate
 using Cloudflare DNS-01, then keeps the loopback HTTP/Kepos entry and adds
-`https://<id>.nuc.guion.io/` on **10.80.12.4:443**. It does not listen on HTTP 80,
+`https://<id>.nuc.guion.io/` on **10.80.12.5:443**. It does not listen on HTTP 80,
 LAN addresses or wildcard interfaces. The WSL firewall is masked: protection
 comes from the address bind and Caddy's socket-source matcher, not
 `allowedTCPPorts`. VPN clients must have sources in `10.80.12.0/24`.
@@ -62,7 +62,7 @@ Ente's pinned Museum uses one S3 endpoint per bucket. `are_local_buckets=false`
 enables verified TLS; path-style URLs, bucket `b2-eu-cen`, region `garage`,
 data and credentials stay unchanged. Museum uses its pinned image's default public CA bundle; there is no company-root-only
 `SSL_CERT_FILE` override or CA mount.
-CoreDNS answers **only** `ente-storage.nuc.guion.io` with `10.80.12.4` for this
+CoreDNS answers **only** `ente-storage.nuc.guion.io` with `10.80.12.5` for this
 consumer, rather than rewriting it to HTTP-only Traefik. Old Ente API clients
 must now also connect VPN and use verified public TLS to upload/download. Ente endpoint
 updates do not create or migrate accounts or stored objects.
@@ -91,18 +91,21 @@ persistent Caddy data directory `/var/lib/caddy` retains account/certificate
 state under its existing user and native private directory permissions; do
 not inspect private keys, erase this directory or force repeated issuance.
 
-Before activation, the operator must confirm stable NUC `tun0=10.80.12.4/24`
-allocation and Mac's VPN route. The Ruijie OpenVPN/DNS server is `192.168.6.1`.
+The current assigned NUC address is `tun0=10.80.12.5/24`; a server reservation
+has not been established. Confirm that exact address and Mac's VPN route before
+activation. Another VPN allocation requires a coordinated DNS/configuration
+change; this fixed listener does not guarantee reachability after reallocation. The Ruijie OpenVPN/DNS server is `192.168.6.1`.
 Its previous `nuc.swdl` records do not supply the new names. The original
 rollout required **19 exact**
-`<id>.nuc.guion.io` A records to `10.80.12.4`, or a wildcard
+`<id>.nuc.guion.io` A records to `10.80.12.5`, or a wildcard
 only if the router explicitly supports it. Preserve other records. Check each
 with `dig @192.168.6.1 NAME A +time=2 +tries=1`; UDP currently works but TCP53
 was refused during the earlier audit. Do not assume recursive DNS works.
 
-The additional `lamplit-post.nuc.guion.io` A record already returns
-`10.80.12.4` from `192.168.6.1`; a different host default resolver result does
-not establish missing VPN DNS. No new record is needed for Post.
+The operator updated router DNS to `.5` on 2026-10-20. Fresh Mac OS resolution
+and trusted HTTPS passed for Acrylic and FlickGrove. Check each remaining
+authority before deployment; this evidence does not establish every record
+or a server-side address reservation. No new record is needed for Post.
 
 On Mac, inspect `/etc/resolver/nuc.guion.io` and any symlink before creation;
 preserve meaningful existing contents. If absent, the operator creates a
@@ -110,7 +113,7 @@ root-owned mode `0644` file with exactly `nameserver 192.168.6.1` plus newline.
 Do not overwrite/delete the operator-owned `/etc/resolver/nuc.swdl` or alter
 global DNS, `/etc/resolv.conf`, VPN profiles or Mihomo. `scutil --dns` must show
 the new matching-domain resolver; `dscacheutil -q host -a name NAME` must return
-`10.80.12.4` for all 20 existing names. Acrylic adds one exact record as described
+`10.80.12.5` for all 20 existing names. Acrylic adds one exact record as described
 below. Default `dig` does not exercise macOS's matching-domain
 resolver. iOS is deferred. Museum's explicit internal storage DNS is separate.
 
@@ -156,7 +159,7 @@ cross-host business acceptance until those dependencies are deployed.
    :8787` on N5 Pro, or a filtered SYN-only packet metadata capture).
    A short probe may require a held connection to observe it with `ss`.
    The operator restricts N5 Pro TCP 8787 to the observed necessary KO source(s)
-   before exposing the service. **10.80.12.4 is the VPN listener address, not
+   before exposing the service. **10.80.12.5 is the VPN listener address, not
    evidence of the LAN connection's source.** No firewall changes run in this PR.
 2. Confirm #4286's artifact/service is ready on the fixed LAN endpoint with
    external origin `https://acrylic.nuc.guion.io`. Check reachability and native
@@ -190,7 +193,7 @@ cross-host business acceptance until those dependencies are deployed.
    that checkout. Run `nh` as neil, allowing it to elevate only activation.
    The earlier full migration steps are not a prerequisite to redeploying
    unrelated applications for this single route.
-3. Add only the internal DNS A record `acrylic.nuc.guion.io → 10.80.12.4`
+3. Verify the existing internal DNS A record `acrylic.nuc.guion.io → 10.80.12.5`
    at the existing VPN DNS server. Preserve the existing 20 records (including Post) and the existing
    macOS resolver file; no public A/AAAA or Cloudflare domain change is needed.
 
@@ -205,7 +208,7 @@ cross-host business acceptance until those dependencies are deployed.
 
    ```sh
    curl --noproxy '*' --connect-timeout 3 --max-time 10 \
-     --resolve acrylic.nuc.guion.io:443:10.80.12.4 -I https://acrylic.nuc.guion.io/erp/
+     --resolve acrylic.nuc.guion.io:443:10.80.12.5 -I https://acrylic.nuc.guion.io/erp/
    curl --noproxy '*' --connect-timeout 3 --max-time 10 -I https://acrylic.nuc.guion.io/erp/
    ```
 
@@ -229,6 +232,70 @@ prior state if it was changed by this rollout. Keep other DNS/resolver entries,
 wildcard certificate storage, app data and credentials. Application rollback
 and migration remain owned by #4286. No activation, DNS/firewall write,
 certificate request or application install is part of implementation checks.
+
+## Current-address persistence handoff (.5)
+
+This source-only address correction does not activate services. The live
+Caddy-only recovery uses `/run/nuc-vpn-https-recovery/https-template` and
+`/run/nuc-vpn-https-recovery/prepare-vpn-https`, selected by
+`/run/systemd/system/caddy.service.d/zz-vpn-current-address.conf`.
+Its backup and rollback script are retained at
+`/var/tmp/nuc-vpn-https-recovery-20261020`. Do not remove these during source
+validation; a runtime drop-in can silently shadow the new generated unit.
+
+After independent review and merge, Orc coordinates a separate maintenance
+window (including active FlickGrove turns):
+
+1. Resolve `ssh -G nuc`; use neil's real checkout
+   `/home/neil/code/projects/tta-lab/kosmos`. Require clean main, update with
+   `og pull`, and match the exact reviewed merged SHA as in the checkout gate
+   above. Confirm fresh `ip -4 -o address show dev tun0` has `.5/24` and each
+   authority's router/OS DNS returns `.5`. Stop on mismatch; do not reconnect
+   VPN, add an address alias or alter the VPN server as part of this handoff.
+2. Save the current generation, effective public Caddy unit and CoreDNS
+   ConfigMap outside Git. Retain the known recovery backup. Build/inspect the
+   merged closure and activation impact first. Do not read credentials or
+   certificate keys, and preserve Caddy's persistent ACME data.
+3. Immediately before the native switch, remove **only** the known runtime
+   drop-in, then daemon-reload, without an intervening Caddy reload/restart:
+
+   ```sh
+   sudo rm /run/systemd/system/caddy.service.d/zz-vpn-current-address.conf
+   sudo systemctl daemon-reload
+   nh os switch . -H wsl
+   ```
+
+   Run `nh` as neil from the real merged checkout. Confirm effective
+   ExecStartPre/ExecReload now select the merged Nix-store preparer/template,
+   not `/run/nuc-vpn-https-recovery`, and listeners are only
+   `127.0.0.1:17480` and `10.80.12.5:443`. Verify normal hostname trusted HTTPS
+   and loopback HTTP. Only after successful acceptance remove the known
+   `/run/nuc-vpn-https-recovery/{https-template,prepare-vpn-https,candidate.caddyfile}`
+   files; retain the backup. Do not delete `/run/caddy/vpn/https.caddy`, which
+   remains the managed preparer's runtime output. If switch fails, preserve
+   recovery files and restore the saved drop-in from the known backup before
+   daemon-reload/native reload; verify `.5` TLS again. The backup's original
+   `rollback.sh` instead restores the old `.4` source and loopback-only state
+   while tun0 is `.5`; it is not a rollback to working `.5` HTTPS.
+4. A NixOS generation switch does **not** apply Tanka/CoreDNS. Separately
+   render/diff and apply only the reviewed storage DNS ConfigMap through the
+   existing local-cluster gate:
+
+   ```sh
+   just _local-k3s
+   export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+   tk diff tanka/environments/devops --target='configmap/coredns-custom'
+   tk apply tanka/environments/devops --target='configmap/coredns-custom' --auto-approve=always
+   ```
+
+   Verify actual Museum Pod DNS returns `.5` and trusted storage TLS; this
+   correction needs no new Ingresses or blanket application rollout. Preserve
+   all other CoreDNS rewrites. On failure, restore only the saved ConfigMap
+   through the same owner and verify its consumer; coordinate system rollback
+   separately, retaining the working recovery artifacts and backup.
+
+The following section records the broader original ingress migration. It is
+not a checklist to rerun for this address-only correction.
 
 ## Ordered activation after current-head review and merge
 
@@ -264,7 +331,7 @@ Record old route/native API baselines, including ERPNext's prior 503.
    reload. Missing declaration/readability, invalid format or absent VPN
    address omits HTTPS and keeps HTTP; sanitized journal outcomes explain why.
    If VPN was absent at boot, explicitly reload only Caddy after it connects.
-   Check service/listener metadata: only `127.0.0.1:17480` and `10.80.12.4:443`,
+   Check service/listener metadata: only `127.0.0.1:17480` and `10.80.12.5:443`,
    no port80/LAN listener. Issuance is asynchronous; HTTP success alone is not
    HTTPS readiness. Report bounded sanitized issuance errors/status; never
    dump an environment, API headers, admin config exports or raw token logs.
@@ -291,7 +358,7 @@ Record old route/native API baselines, including ERPNext's prior 503.
 
    ```sh
    curl --noproxy '*' --connect-timeout 3 --max-time 10 \
-     --resolve grafana.nuc.guion.io:443:10.80.12.4 -I https://grafana.nuc.guion.io/
+     --resolve grafana.nuc.guion.io:443:10.80.12.5 -I https://grafana.nuc.guion.io/
    curl --noproxy '*' -I https://grafana.nuc.guion.io/
    curl --noproxy '*' -I http://grafana.localhost:17480/
    ```
