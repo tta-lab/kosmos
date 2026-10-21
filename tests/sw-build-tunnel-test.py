@@ -12,8 +12,11 @@ import time
 
 unit = json.loads(Path(sys.argv[1]).read_text())
 service = unit['Service']
+local = '-L' in shlex.split(service['ExecStart'])
+forward_flag = '-L' if local else '-R'
 assert service['Type'] == 'exec' and service['Restart'] == 'always'
 assert service['RestartSec'] == '5s' and service['KillMode'] == 'control-group'
+assert service['TimeoutStopSec'] == '10s'
 assert unit['Unit']['StartLimitIntervalSec'] == 0
 assert unit['Install']['WantedBy'] == ['default.target']
 args = shlex.split(service['ExecStart'])
@@ -26,7 +29,7 @@ with tempfile.TemporaryDirectory(prefix='sw-tunnel-config-') as directory:
                    for a in config_args]
     config = dict(line.split(' ', 1) for line in subprocess.check_output(
         [*config_args[:1], '-G', *config_args[1:]], text=True).splitlines()
-        if not line.startswith('remoteforward '))
+        if not line.startswith(('remoteforward ', 'localforward ')))
 for key, value in {
     'batchmode': 'yes', 'stricthostkeychecking': 'true',
     'identityagent': 'none', 'exitonforwardfailure': 'yes',
@@ -37,8 +40,11 @@ for key, value in {
 }.items():
     assert config[key] == value, (key, config[key])
 assert config.get('controlpath', 'none') == 'none'
-assert [args[i + 1] for i, a in enumerate(args) if a == '-R'] == [
-    '127.0.0.1:18080:127.0.0.1:8080', '127.0.0.1:17890:127.0.0.1:7890']
+assert config['identitiesonly'] == 'yes' and config['stdinnull'] == 'yes'
+assert args[-1] == ('root@192.168.1.88' if local else 'sw-admin@192.168.6.186')
+assert [args[i + 1] for i, a in enumerate(args) if a == forward_flag] == (
+    ['127.0.0.1:8080:127.0.0.1:8080', '10.42.0.1:8080:127.0.0.1:8080']
+    if local else ['127.0.0.1:18080:127.0.0.1:8080', '127.0.0.1:17890:127.0.0.1:7890'])
 
 # Nix build users are locked accounts: sshd cannot authenticate them without PAM.
 # Keep the bind-failure probe outside that sandbox; never use host PAM in tests.
@@ -57,6 +63,8 @@ with tempfile.TemporaryDirectory(prefix='sw-tunnel-test-') as directory:
     for name in ['client', 'host']:
         subprocess.run(['ssh-keygen', '-q', '-t', 'ed25519', '-N', '',
                         '-f', str(root / name)], check=True)
+    target = reserve()
+    target_port = target.getsockname()[1]
     listener = reserve()
     port = listener.getsockname()[1]
     listener.close()
@@ -71,7 +79,7 @@ StrictModes no
 UsePAM no
 PasswordAuthentication no
 KbdInteractiveAuthentication no
-AllowTcpForwarding remote
+AllowTcpForwarding {'local' if local else 'remote'}
 GatewayPorts no
 ''')
     with (root / 'server.log').open('w+') as log:
@@ -88,29 +96,55 @@ GatewayPorts no
                 except OSError:
                     time.sleep(.05)
             # Both attempted listeners are owned by this fixture. No live forwards.
-            for blocked_index in [0, 1]:
+            for blocked_index in [0, 1, None]:
                 sockets = [reserve(), reserve()]
                 ports = [s.getsockname()[1] for s in sockets]
-                sockets[1 - blocked_index].close()
+                if blocked_index is None:
+                    for s in sockets:
+                        s.close()
+                else:
+                    sockets[1 - blocked_index].close()
                 fixture_args = list(args)
                 fixture_args[fixture_args.index('-i') + 1] = str(root / 'client')
                 fixture_args = [a.replace('/home/neil/.ssh/known_hosts', str(root / 'known_hosts'))
                                 for a in fixture_args]
+                forward_index = 0
                 for i, a in enumerate(fixture_args):
-                    if a == '-R':
-                        original = fixture_args[i + 1]
-                        index = 0 if ':18080:' in original else 1
-                        fixture_args[i + 1] = f'127.0.0.1:{ports[index]}:127.0.0.1:9'
+                    if a == forward_flag:
+                        index = forward_index
+                        forward_index += 1
+                        fixture_args[i + 1] = f'127.0.0.1:{ports[index]}:127.0.0.1:{target_port}'
                 fixture_args[-1] = f'{pwd.getpwuid(os.getuid()).pw_name}@127.0.0.1'
                 fixture_args[-1:-1] = ['-p', str(port)]
                 try:
+                    if blocked_index is None:
+                        child = subprocess.Popen(fixture_args, stderr=subprocess.PIPE, text=True)
+                        try:
+                            for _ in range(100):
+                                assert child.poll() is None, child.stderr.read()
+                                try:
+                                    with socket.create_connection(('127.0.0.1', ports[0]), timeout=.1):
+                                        break
+                                except OSError:
+                                    time.sleep(.05)
+                            else:
+                                raise AssertionError('foreground SSH listener absent')
+                        finally:
+                            child.terminate()
+                            child.wait(timeout=5)
+                        for p in ports:
+                            with socket.socket() as probe:
+                                probe.bind(('127.0.0.1', p))
+                        continue
                     result = subprocess.run(fixture_args, capture_output=True, text=True, timeout=15)
                     assert result.returncode == 255, result.stderr
-                    assert 'remote port forwarding failed' in result.stderr, result.stderr
+                    assert ('Could not request local forwarding' if local else
+                            'remote port forwarding failed') in result.stderr, result.stderr
                 finally:
                     for s in sockets:
                         s.close()
         finally:
             server.terminate()
             server.wait(timeout=5)
+            target.close()
 print('Generated unit: foreground ownership, bounded reconnect and either-listener bind failure valid')

@@ -17,7 +17,9 @@ The existing `seafarer/sw-kepos-pod-bridge` Deployment retains its name,
 selectors and CNI-only listeners. Pipeline runner and proxy environment values
 remain unchanged. Kosmos still publishes Dagger/Mihomo through Kepos to other
 trusted devices; SW is removed from that policy. No SW business workload,
-OpenVPN settings, Dagger engine or storage changes are needed.
+OpenVPN settings or storage changes are needed for the SW tunnel. Kosmos
+Dagger now relays to N5; its separate [ordered handoff](n5-dagger-bridge.md)
+must precede activation of that relay. Kosmos still owns Mihomo and both relays.
 
 The systemd process state means SSH has executed, not that forwarding or
 upstreams are healthy. `ExitOnForwardFailure=yes` makes a failed bind of either

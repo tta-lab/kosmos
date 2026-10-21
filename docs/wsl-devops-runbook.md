@@ -1,7 +1,7 @@
 # WSL DevOps Runbook
 
 Forgejo and Woodpecker run on SW; see [SW migration and hosting](sw-devops-migration.md).
-The WSL build host runs Dagger in the single-node NixOS k3s cluster. Nix manages
+The WSL build host relays Dagger to N5 over authenticated SSH. Nix manages
 k3s and the Kepos publisher and subscriber lifecycle; the publisher's live
 service and ACL policy is modeled in Jsonnet and rendered into an unmanaged
 TOML file. Tanka manages the Kubernetes objects. A NixOS switch never applies
@@ -56,7 +56,7 @@ Kepos publishes application service IDs including:
   Caddy routes `codex-bridge.localhost` to the Kubernetes Bridge Service. The
   Pod runs as Neil's UID/GID and mounts `/home/neil/.codex` read-write so the
   Bridge and Codex CLI share the same atomically refreshed `auth.json`.
-- `dagger` targets the Dagger engine on port `8080` and is restricted to the
+- `dagger` targets the N5 SSH relay on port `8080` and is restricted to the
   configured build clients and SW.
 - `ssh` targets port `22`.
 - `anki` targets the canonical gateway on port `17480`; see
@@ -287,8 +287,10 @@ image does not restart an existing Pod, so use the existing
 automatic updater or rollout is configured.
 
 Forgejo and Woodpecker use SW ZFS-local PVCs on `tank/k8s`; their former local
-data and `Retain` PVs remain preserved for recovery. Dagger retains its local
-cache at `/var/lib/kosmos-k3s/dagger`.
+data and `Retain` PVs remain preserved for recovery. Dagger leaves its
+old cache untouched at `/var/lib/kosmos-k3s/dagger`; new builds use N5
+through the [consumer bridge and ordered handoff](n5-dagger-bridge.md).
+Kosmos still hosts the relay and Mihomo.
 
 ## Seafarer CA trust
 
@@ -402,7 +404,7 @@ dagger -M call container from --address alpine:3.20 \
   with-exec --args=echo --args=dagger-pull-ok stdout
 ```
 
-The packaged Dagger 0.21.7 CLI defaults to the matching K3s engine at
+The packaged Dagger 0.21.7 CLI defaults to the N5 relay at
 `tcp://127.0.0.1:8080`.
 
 ## Mac Dagger client through Kepos

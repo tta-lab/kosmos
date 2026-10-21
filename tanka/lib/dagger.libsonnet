@@ -2,114 +2,9 @@ local labels = {
   'app.kubernetes.io/name': 'dagger',
   'app.kubernetes.io/part-of': 'kosmos-devops',
 };
-local proxy = import 'proxy.libsonnet';
+local topology = import '../../modules/wsl/proxy-topology.json';
 
 {
-  daggerConfig: {
-    apiVersion: 'v1',
-    kind: 'ConfigMap',
-    metadata: {
-      name: 'dagger-engine',
-      namespace: 'devops',
-      labels: labels,
-    },
-    data: {
-      'engine.json': |||
-        {
-          "gc": {
-            "maxUsedSpace": "200GB",
-            "minFreeSpace": "100GB",
-            "reservedSpace": "20GB",
-            "sweepSize": "20GB"
-          },
-          "registries": {
-            "docker.io": {
-              "mirrors": ["mirror.gcr.io"]
-            }
-          }
-        }
-      |||,
-    },
-  },
-  daggerCa: {
-    apiVersion: 'v1',
-    kind: 'ConfigMap',
-    metadata: { name: 'dagger-sw-ca', namespace: 'devops' },
-    data: { 'seafarer.crt': importstr '../../certs/seafarer-root-ca.pem' },
-  },
-  daggerDaemonSet: {
-    apiVersion: 'apps/v1',
-    kind: 'DaemonSet',
-    metadata: {
-      name: 'dagger',
-      namespace: 'devops',
-      labels: labels,
-    },
-    spec: {
-      selector: { matchLabels: labels },
-      updateStrategy: { type: 'RollingUpdate', rollingUpdate: { maxUnavailable: 1 } },
-      template: {
-        metadata: { labels: labels },
-        spec: {
-          containers: [{
-            name: 'engine',
-            image: 'registry.dagger.io/engine:v0.21.7',
-            env: [
-              { name: 'HTTP_PROXY', value: proxy.podUrl },
-              { name: 'HTTPS_PROXY', value: proxy.podUrl },
-              {
-                name: 'NO_PROXY',
-                value: proxy.clusterNoProxy([
-                  '10.89.0.0/16',
-                  '10.90.0.0/16',
-                  '192.168.6.186',
-                ]),
-              },
-            ],
-            args: [
-              '--network-name',
-              'dagger',
-              '--network-cidr',
-              '10.89.0.0/16',
-              '--oci-cni-pool-size',
-              '16',
-              '--oci-max-parallelism',
-              '4',
-              '--addr',
-              'tcp://0.0.0.0:8080',
-            ],
-            securityContext: { privileged: true },
-            ports: [{
-              name: 'grpc',
-              containerPort: 8080,
-              hostPort: 8080,
-              hostIP: '127.0.0.1',
-            }],
-            readinessProbe: {
-              exec: { command: ['dagger', 'core', 'version'] },
-              initialDelaySeconds: 5,
-              periodSeconds: 10,
-              timeoutSeconds: 10,
-            },
-            resources: {
-              requests: { cpu: '1', memory: '1Gi' },
-              limits: { cpu: '4', memory: '4Gi' },
-            },
-            volumeMounts: [
-              { name: 'sw-ca', mountPath: '/usr/local/share/ca-certificates/seafarer.crt', subPath: 'seafarer.crt', readOnly: true },
-              { name: 'config', mountPath: '/etc/dagger/engine.json', subPath: 'engine.json', readOnly: true },
-              { name: 'state', mountPath: '/var/lib/dagger' },
-            ],
-          }],
-          volumes: [
-            { name: 'sw-ca', configMap: { name: 'dagger-sw-ca' } },
-            { name: 'config', configMap: { name: 'dagger-engine' } },
-            { name: 'state', hostPath: { path: '/var/lib/kosmos-k3s/dagger', type: 'Directory' } },
-          ],
-        },
-      },
-    },
-  },
   daggerService: {
     apiVersion: 'v1',
     kind: 'Service',
@@ -119,8 +14,22 @@ local proxy = import 'proxy.libsonnet';
       labels: labels,
     },
     spec: {
-      selector: labels,
-      ports: [{ name: 'grpc', port: 8080, targetPort: 'grpc' }],
+      ports: [{ name: 'grpc', port: 8080, targetPort: 8080 }],
     },
+  },
+  daggerEndpointSlice: {
+    apiVersion: 'discovery.k8s.io/v1',
+    kind: 'EndpointSlice',
+    metadata: {
+      name: 'dagger-n5',
+      namespace: 'devops',
+      labels: {
+        'kubernetes.io/service-name': 'dagger',
+        'endpointslice.kubernetes.io/managed-by': 'kosmos',
+      },
+    },
+    addressType: 'IPv4',
+    ports: [{ name: 'grpc', protocol: 'TCP', port: 8080 }],
+    endpoints: [{ addresses: [topology.podProxyHost] }],
   },
 }
