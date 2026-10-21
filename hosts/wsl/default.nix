@@ -28,6 +28,7 @@ _: {
     ../../modules/wsl/lamplit-post-console.nix
     ../../modules/wsl/flickgrove.nix
     ../../modules/wsl/apt-cacher-ng.nix
+    ../../modules/wsl/n5-dagger-tunnel.nix
     ../../modules/wsl/sw-build-tunnel.nix
     ../../modules/wsl/openvpn.nix
     ../../modules/wsl/openai-tunnel.nix

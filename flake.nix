@@ -63,6 +63,14 @@
         python3 ${./tests/sw-build-tunnel-test.py} "$unit" --config-only
         touch $out
       '';
+      n5-dagger-tunnel = pkgs.runCommand "n5-dagger-tunnel-check" {
+        nativeBuildInputs = [pkgs.openssh pkgs.python3 pkgs.which];
+        unit = pkgs.writeText "n5-dagger-tunnel.json" (builtins.toJSON
+          self.nixosConfigurations.wsl.config.home-manager.users.neil.systemd.user.services.n5-dagger-tunnel);
+      } ''
+        python3 ${./tests/sw-build-tunnel-test.py} "$unit" --config-only
+        touch $out
+      '';
 
       matrix-mcp-remote = let
         # Synthetic ciphertext declarations only; never decrypt or activate.
@@ -406,8 +414,9 @@
         assert builtins.elem "--node-ip=10.255.255.1" k3sFlags;
         assert builtins.elem 9475 eval.config.networking.firewall.interfaces.cni0.allowedTCPPorts;
         assert !(builtins.elem 9475 eval.config.networking.firewall.allowedTCPPorts);
+        assert builtins.elem 8080 eval.config.networking.firewall.interfaces.cni0.allowedTCPPorts;
+        assert !(builtins.elem 8080 eval.config.networking.firewall.allowedTCPPorts);
         assert builtins.elem "k3s-node-address.service" eval.config.systemd.services.k3s.requires;
-        assert builtins.elem "d /var/lib/kosmos-k3s/dagger 0750 root root - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit/data 0750 1000 1000 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit/books 0750 1000 1000 - -" rules;
         assert builtins.elem "d /var/lib/kosmos-k3s/ebooks/bookorbit-db 0700 999 999 - -" rules;

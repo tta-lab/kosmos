@@ -29,14 +29,18 @@ else
 fi
 EOF
 
+cat >"$test_root/bin/timeout" <<'EOF'
+#!@bash@
+[[ "$*" == "3 bash -c : </dev/tcp/127.0.0.1/8080" ]]
+[[ "$TEST_NOT_READY" != "relay" ]]
+EOF
+
 cat >"$test_root/bin/kubectl" <<'EOF'
 #!@bash@
 printf '%s\n' "$*" >>"$TEST_KUBECTL_LOG"
 
 if [[ "$*" == *" config view "* ]]; then
   printf '%s' "${TEST_KUBE_SERVER}"
-elif [[ "$*" == *" get daemonset/dagger "* ]]; then
-  [[ "$TEST_NOT_READY" == "daemonset/dagger" ]] && printf '0 1' || printf '1 1'
 fi
 EOF
 
@@ -55,20 +59,20 @@ bash scripts/devops-gate-status >"$test_root/output"
 
 grep -q '^ok: K3s service active$' "$test_root/output"
 grep -q '^ok: Forgejo endpoint responds (SW)$' "$test_root/output"
-grep -q '^ok: Dagger workload ready$' "$test_root/output"
+grep -q '^ok: Dagger relay TCP reachable$' "$test_root/output"
 grep -q '^ok: Woodpecker endpoint responds (SW)$' "$test_root/output"
 grep -q '^summary: 0 failed, 0 pending$' "$test_root/output"
 [[ "$(cat "$TEST_SYSTEMCTL_LOG")" == $'is-active --quiet k3s.service' ]]
 [[ "$(cat "$TEST_CURL_LOG")" == $'https://192.168.6.186:8086/api/healthz\nhttps://192.168.6.186:8087/healthz' ]]
 awk '$1 != "--kubeconfig" || $2 != "/etc/rancher/k3s/k3s.yaml" { exit 1 }' "$TEST_KUBECTL_LOG"
-[[ "$(wc -l <"$TEST_KUBECTL_LOG")" -eq 2 ]]
+[[ "$(wc -l <"$TEST_KUBECTL_LOG")" -eq 1 ]]
 
-export TEST_NOT_READY="daemonset/dagger"
+export TEST_NOT_READY="relay"
 if bash scripts/devops-gate-status --strict >"$test_root/not-ready-output" 2>&1; then
-  echo "devops-gate-status accepted an unready Dagger workload" >&2
+  echo "devops-gate-status accepted an unreachable Dagger relay" >&2
   exit 1
 fi
-grep -q '^fail: Dagger workload ready$' "$test_root/not-ready-output"
+grep -q '^fail: Dagger relay TCP reachable$' "$test_root/not-ready-output"
 
 export TEST_NOT_READY=""
 export TEST_WOODPECKER_STATUS="503"

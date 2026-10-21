@@ -40,6 +40,7 @@ in {
   ];
 
   networking.firewall.interfaces.cni0.allowedTCPPorts = [
+    8080
     26443
     9475
   ];
@@ -102,7 +103,6 @@ in {
 
   systemd.tmpfiles.rules = [
     "d /var/lib/kosmos-k3s 0750 root root - -"
-    "d /var/lib/kosmos-k3s/dagger 0750 root root - -"
     "d /var/lib/kosmos-k3s/ebooks 0750 root root - -"
     "d /var/lib/kosmos-k3s/ebooks/bookorbit 0750 1000 1000 - -"
     "d /var/lib/kosmos-k3s/ebooks/bookorbit/data 0750 1000 1000 - -"

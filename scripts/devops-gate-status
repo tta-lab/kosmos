@@ -75,22 +75,6 @@ http_status_ok() {
   esac
 }
 
-replica_workload_ready() {
-  local resource="$1"
-  local jsonpath="$2"
-  local counts
-  local ready
-  local desired
-
-  counts="$("${kubectl_local[@]}" get "$resource" -n devops -o "jsonpath=${jsonpath}" 2>/dev/null || true)"
-  read -r ready desired <<<"$counts"
-
-  [[ "$ready" =~ ^[0-9]+$ ]] \
-    && [[ "$desired" =~ ^[0-9]+$ ]] \
-    && [[ "$desired" -gt 0 ]] \
-    && [[ "$ready" -eq "$desired" ]]
-}
-
 printf 'SW services and WSL build-host gate status\n'
 
 if unit_active k3s.service; then
@@ -113,14 +97,11 @@ if have_command kubectl; then
   fi
 fi
 
-if have_command kubectl; then
-  if replica_workload_ready daemonset/dagger '{.status.numberReady} {.status.desiredNumberScheduled}'; then
-    ok "Dagger workload ready"
-  else
-    fail "Dagger workload ready"
-  fi
+# TCP only: a listener is not proof of Engine health or build readiness.
+if timeout 3 bash -c ': </dev/tcp/127.0.0.1/8080' 2>/dev/null; then
+  ok "Dagger relay TCP reachable"
 else
-  wait "kubectl unavailable; skipped Dagger readiness check"
+  fail "Dagger relay TCP reachable"
 fi
 
 if http_status_ok https://192.168.6.186:8087/healthz; then
