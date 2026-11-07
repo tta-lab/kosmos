@@ -111,6 +111,12 @@ ka = keep it as-is
 ssot = single source of truth
 cpr = create pr
 anno = annotate (task annotation)
+ol = in the current project's checkout, inspect the current branch. On `main`,
+run `og pull` only. Otherwise, identify the Grove Workers and Reviewers associated
+with that branch or PR, run `og pull`, then have their owning Orc close them.
+Other agents request that closure from the owning Orc. Invoking `ol` explicitly
+authorizes early closure; respect lifecycle guards, inspect unknown outcomes,
+and report any incomplete pull or closure.
 
 ## FlickNote Notes and Projects
 
