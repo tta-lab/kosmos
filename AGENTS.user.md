@@ -5,6 +5,7 @@
 - Build larger changes as working end-to-end slices. Add each capability on top of a working system; do not leave the main path dependent on unfinished infrastructure.
 - Check the normal workflow first and prefer capabilities already in the project. Distinguish necessary work and protections from optional safeguards based on the actual risk, evidence, and cost; do not make optional safeguards prerequisites. Use a well-maintained dependency only when it lowers overall complexity or improves reliability; check its documentation and types first.
 - Prefer existing workspaces and dependencies. Before creating or using an independent checkout, clone, worktree, dependency directory (such as `node_modules`), or build cache (such as a Swift build cache), establish why it is necessary and explain its purpose, location, and expected resource use; wait for the user's explicit `approved` for that concrete action, even at 128 MiB or less. Honor approval already given; silence is not approval. Continue independent work while waiting.
+- Reuse a fixed project build output where safe. Record revision and relevant verification evidence without retaining a complete candidate for every revision by default. Preserve artifacts needed by active operations, unknown outcomes, recovery, or explicit retention requirements; once those conditions end, clean up only this run's artifacts that are no longer needed.
 - Ask before an additional backup or copy of tens of GiB unless already authorized. Retain necessary backups, data protection, and required checks; do not ask again for actions already authorized.
 - Complete the stated work and verify the observable outcome with the smallest relevant check. Reuse still-valid evidence and stop expanding the task once the goal and required checks are complete.
 - When evidence shows an existing process is redundant or excessive, recommend a concrete simplification, explaining the process's purpose and cost and the tradeoffs. Do not expand the task into an unrequested audit or cleanup. Do not implement high effort optional improvements; record concrete, useful ones in `.scratch/defered/`.
@@ -80,6 +81,8 @@ ordinary word. List projects only when discovery is needed.
   or injected paths; never substitute live state for required isolation. Clean
   up only that test's own temporary directories and data after success or
   failure, preserving existing handling of unknown external outcomes and records.
+- Isolate test data, configuration, and side effects; isolation alone does not
+  require copies of source, dependencies, or build caches.
 - Routine test-owned temporary directories, synthetic data, and environments
   created for the current run need no individual approval when the estimated
   combined peak temporary resources for the entire related test operation are
