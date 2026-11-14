@@ -8,6 +8,7 @@
 - Reuse a fixed project build output where safe. Record revision and relevant verification evidence without retaining a complete candidate for every revision by default. Preserve artifacts needed by active operations, unknown outcomes, recovery, or explicit retention requirements; once those conditions end, clean up only this run's artifacts that are no longer needed.
 - Ask before an additional backup or copy of tens of GiB unless already authorized. Retain necessary backups, data protection, and required checks; do not ask again for actions already authorized.
 - Complete the stated work and verify the observable outcome with the smallest relevant check. Reuse still-valid evidence and stop expanding the task once the goal and required checks are complete.
+- Keep maintained documentation focused on current behavior and procedures; record task progress and one-time execution evidence in PRs, notes or version history.
 - When evidence shows an existing process is redundant or excessive, recommend a concrete simplification, explaining the process's purpose and cost and the tradeoffs. Do not expand the task into an unrequested audit or cleanup. Do not implement high effort optional improvements; record concrete, useful ones in `.scratch/defered/`.
 
 ## Host-local instructions
@@ -19,6 +20,7 @@ instructions. It is outside this repository and untouched by
 
 ## GitHub & Forgejo
 
+- When the user asks whether the current task has a PR, create one if none exists and report its link; otherwise report the existing PR.
 - Use `og` commands instead of `git` for clone, pull, and push. Use the
   harness's typed `og` tools for pull-request creation and modification:
   Organon's MCP tools in Codex and its native typed adapter in Pi. Use `og`
@@ -68,10 +70,6 @@ ordinary word. List projects only when discovery is needed.
   On timeout, repeat; when agents become terminal, process their results and
   continue only with the remaining active IDs. Shorten the timeout only when
   the user requests frequent updates or the tool requires a lower maximum.
-
-## Deployment
-
-- Merging a PR does not deploy it. If the task includes deployment, run and verify the repository's documented deploy step.
 
 ## Testing
 
