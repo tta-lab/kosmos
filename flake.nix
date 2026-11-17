@@ -46,7 +46,9 @@
   in {
     checks.${system} = {
       post-console = let
-        unit = self.nixosConfigurations.wsl.config.home-manager.users.neil.systemd.user.services.lamplit-post-console;
+        unit = (self.nixosConfigurations.wsl.extendModules {
+          modules = [({lib, ...}: {kosmos.wsl.postConsole.enable = lib.mkForce true;})];
+        }).config.home-manager.users.neil.systemd.user.services.lamplit-post-console;
       in
         assert unit.Service.KillMode == "control-group" && unit.Service.KillSignal == "SIGTERM";
         assert unit.Service.UMask == "0077" && unit.Service.Restart == "on-failure";
@@ -58,7 +60,9 @@
       sw-build-tunnel = pkgs.runCommand "sw-build-tunnel-check" {
         nativeBuildInputs = [pkgs.openssh pkgs.python3 pkgs.which];
         unit = pkgs.writeText "sw-build-tunnel.json" (builtins.toJSON
-          self.nixosConfigurations.wsl.config.home-manager.users.neil.systemd.user.services.sw-build-tunnel);
+          (self.nixosConfigurations.wsl.extendModules {
+            modules = [({lib, ...}: {kosmos.wsl.swBuildTunnel.enable = lib.mkForce true;})];
+          }).config.home-manager.users.neil.systemd.user.services.sw-build-tunnel);
       } ''
         python3 ${./tests/sw-build-tunnel-test.py} "$unit" --config-only
         touch $out
@@ -66,7 +70,9 @@
       n5-dagger-tunnel = pkgs.runCommand "n5-dagger-tunnel-check" {
         nativeBuildInputs = [pkgs.openssh pkgs.python3 pkgs.which];
         unit = pkgs.writeText "n5-dagger-tunnel.json" (builtins.toJSON
-          self.nixosConfigurations.wsl.config.home-manager.users.neil.systemd.user.services.n5-dagger-tunnel);
+          (self.nixosConfigurations.wsl.extendModules {
+            modules = [({lib, ...}: {kosmos.wsl.n5DaggerTunnel.enable = lib.mkForce true;})];
+          }).config.home-manager.users.neil.systemd.user.services.n5-dagger-tunnel);
       } ''
         python3 ${./tests/sw-build-tunnel-test.py} "$unit" --config-only
         touch $out
@@ -78,8 +84,11 @@
           (self.nixosConfigurations.wsl.extendModules {
             modules = [
               ({lib, ...}: {
-                kosmos.wsl.matrixMcpRemote.enable = lib.mkForce (mode != "disabled");
-                kosmos.wsl.keposTunnel.enable = lib.mkForce true;
+                kosmos.wsl = {
+                  matrixMcpRemote.enable = lib.mkForce (mode != "disabled");
+                  keposTunnel.enable = lib.mkForce true;
+                  codexForLove.enable = lib.mkForce true;
+                };
                 age.secrets = lib.mkForce (
                   builtins.removeAttrs self.nixosConfigurations.wsl.config.age.secrets ["matrix-serein.env" "matrix-shio.env"]
                   // lib.genAttrs (map (kind: "matrix-${kind}.env") (
@@ -405,11 +414,39 @@
         cfg = self.nixosConfigurations.wsl.config;
         inherit (cfg.home-manager.users.neil.systemd.user) services;
         names = ["cloudflared-tunnel-kepos" "cloudreve-secret-sync" "cloudreve-storage" "openvpn-client"];
+        userServices = [
+          "codex-for-love-dev"
+          "codex-for-love-prod"
+          "codex-for-love-staging"
+          "flickgrove"
+          "kepos-peer"
+          "matrix-mcp-remote"
+          "matrix-mcp-input-shio"
+          "matrix-mcp-input-serein"
+          "lamplit-post-console"
+          "n5-dagger-tunnel"
+          "openai-og-tunnel"
+          "sw-build-tunnel"
+        ];
+        enabled = (self.nixosConfigurations.wsl.extendModules {
+          modules = [({lib, ...}: {
+            kosmos.wsl = {
+              flickgrove.enable = lib.mkForce true;
+              openaiTunnel.enable = lib.mkForce true;
+            };
+          })];
+        }).config.home-manager.users.neil.systemd.user.services;
       in
         assert !cfg.kosmos.wsl.keposTunnel.enable && !cfg.kosmos.wsl.keetMcp.enable;
+        assert !cfg.kosmos.wsl.codexForLove.enable && !cfg.kosmos.wsl.matrixMcpRemote.enable && !cfg.kosmos.wsl.postConsole.enable;
+        assert !cfg.kosmos.wsl.keposPeer.enable && !cfg.kosmos.wsl.openaiTunnel.enable;
+        assert !cfg.kosmos.wsl.flickgrove.enable && !cfg.kosmos.wsl.n5DaggerTunnel.enable && !cfg.kosmos.wsl.swBuildTunnel.enable;
         assert builtins.all (name: !cfg.systemd.units."${name}.service".enable && cfg.systemd.units."${name}.service".wantedBy == []) names;
         assert !(services ? keet-mcp) && !(services ? keet-mcp-serein);
-        assert cfg.kosmos.wsl.mihomo.enable && cfg.services.k3s.enable;
+        assert builtins.all (name: !(builtins.hasAttr name services)) userServices;
+        assert enabled.flickgrove.Install.WantedBy == ["default.target"];
+        assert enabled.openai-og-tunnel.Install.WantedBy == ["default.target"];
+        assert cfg.kosmos.wsl.mihomo.enable && cfg.services.k3s.enable && cfg.services.openssh.enable;
         assert cfg.fileSystems."/mnt/kosmos-cloudreve".device == "/dev/disk/by-uuid/441ba8bb-d21b-40e4-a921-ef5553e07ff3";
           pkgs.runCommand "wsl-paused-services-check" {} ''
             ${nixpkgs.lib.concatMapStringsSep "\n" (name: ''
@@ -609,7 +646,10 @@
 
       wsl-codex-for-love-services = let
         cfg = self.nixosConfigurations.wsl.config;
-        inherit (cfg.home-manager.users.neil.systemd.user) services;
+        enabled = (self.nixosConfigurations.wsl.extendModules {
+          modules = [({lib, ...}: {kosmos.wsl.codexForLove.enable = lib.mkForce true;})];
+        }).config;
+        inherit (enabled.home-manager.users.neil.systemd.user) services;
         homeSessionVariables = cfg.home-manager.users.neil.home.sessionVariables;
         expectedBasePath = "PATH=/home/neil/.local/bin:/home/neil/go/bin:/home/neil/.local/share/npm-global/bin:/run/current-system/sw/bin";
         expectedProdPath = "PATH=/home/neil/.local/bin:/home/neil/go/bin:/home/neil/.local/share/npm-global/bin:/run/current-system/sw/bin:/home/neil/.cache/.bun/bin";
@@ -622,6 +662,7 @@
           (self.nixosConfigurations.wsl.extendModules {
             modules = [
               ({lib, ...}: {
+                kosmos.wsl.codexForLove.enable = lib.mkForce true;
                 age.secrets = lib.mkForce (
                   builtins.removeAttrs cfg.age.secrets ["cfl-amare.env"]
                   // lib.optionalAttrs present {
@@ -665,9 +706,12 @@
       kepos-live-policy = let
         cfg = self.nixosConfigurations.wsl.config;
         home = cfg.home-manager.users.neil;
+        enabled = (self.nixosConfigurations.wsl.extendModules {
+          modules = [({lib, ...}: {kosmos.wsl.keposPeer.enable = lib.mkForce true;})];
+        }).config;
         package = kepos-neo.packages.${system}.kepos;
         dashboardPackage = kepos-neo.packages.${system}.grafana-dashboard;
-        peerUnit = home.systemd.user.services.kepos-peer;
+        peerUnit = enabled.home-manager.users.neil.systemd.user.services.kepos-peer;
         peerPolicyFile = "/home/neil/.config/kepos/peer.toml";
         peerStateDir = "/home/neil/.local/state/kepos-neo/peer";
       in
@@ -683,6 +727,7 @@
         assert nixpkgs.lib.hasInfix "--state ${peerStateDir}" peerUnit.Service.ExecStart;
         assert nixpkgs.lib.hasInfix "--config ${peerPolicyFile}" peerUnit.Service.ExecStart;
         assert nixpkgs.lib.hasInfix "--metrics-listen 10.255.255.1:9475" peerUnit.Service.ExecStart;
+        assert builtins.elem package home.home.packages;
         assert builtins.elem dashboardPackage cfg.environment.systemPackages;
         assert builtins.elem "/share/kepos" cfg.environment.pathsToLink;
           pkgs.runCommand "kepos-live-policy-check" {

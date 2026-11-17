@@ -49,10 +49,15 @@ _: {
   kosmos.wsl = {
     keposTunnel.enable = false;
     mihomo.enable = true;
-    codexForLove.enable = true;
-    postConsole.enable = true;
+    codexForLove.enable = false;
+    flickgrove.enable = false;
+    keposPeer.enable = false;
+    n5DaggerTunnel.enable = false;
+    openaiTunnel.enable = false;
+    postConsole.enable = false;
     keetMcp.enable = false;
-    matrixMcpRemote.enable = true;
+    matrixMcpRemote.enable = false;
+    swBuildTunnel.enable = false;
   };
   systemd.services.cloudflared-tunnel-kepos.enable = false;
   system.stateVersion = "25.05";

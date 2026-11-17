@@ -34,7 +34,9 @@
     else "/run/agenix/openai-tunnel.env";
   proxyEnvironment = lib.mapAttrsToList (name: value: "${name}=${value}") config.kosmos.wsl.proxy.environment;
 in {
-  home-manager.users.neil = {
+  options.kosmos.wsl.openaiTunnel.enable = lib.mkEnableOption "OpenAI Organon tunnel";
+
+  config.home-manager.users.neil = {
     home.packages = [tunnelClient];
 
     xdg.configFile."tunnel-client/og.yaml".text = ''
@@ -56,31 +58,33 @@ in {
             command: "/home/neil/go/bin/og mcp"
     '';
 
-    systemd.user.services.openai-og-tunnel = {
-      Unit = {
-        Description = "OpenAI Secure MCP Tunnel for Organon";
-        After = ["network-online.target"];
-        ConditionPathExists = [
-          "/home/neil/go/bin/og"
-          secretPath
-        ];
-      };
-      Install.WantedBy = ["default.target"];
-      Service = {
-        Type = "simple";
-        ExecStart = "${lib.getExe tunnelClient} run --profile og";
-        Restart = "always";
-        RestartSec = 5;
-        Environment =
-          [
-            "HOME=/home/neil"
-            "PATH=/home/neil/go/bin:/run/current-system/sw/bin"
-          ]
-          ++ proxyEnvironment;
-        EnvironmentFile = secretPath;
-        UMask = "0077";
-        NoNewPrivileges = true;
-        PrivateTmp = true;
+    systemd.user.services = lib.mkIf config.kosmos.wsl.openaiTunnel.enable {
+      openai-og-tunnel = {
+        Unit = {
+          Description = "OpenAI Secure MCP Tunnel for Organon";
+          After = ["network-online.target"];
+          ConditionPathExists = [
+            "/home/neil/go/bin/og"
+            secretPath
+          ];
+        };
+        Install.WantedBy = ["default.target"];
+        Service = {
+          Type = "simple";
+          ExecStart = "${lib.getExe tunnelClient} run --profile og";
+          Restart = "always";
+          RestartSec = 5;
+          Environment =
+            [
+              "HOME=/home/neil"
+              "PATH=/home/neil/go/bin:/run/current-system/sw/bin"
+            ]
+            ++ proxyEnvironment;
+          EnvironmentFile = secretPath;
+          UMask = "0077";
+          NoNewPrivileges = true;
+          PrivateTmp = true;
+        };
       };
     };
   };
