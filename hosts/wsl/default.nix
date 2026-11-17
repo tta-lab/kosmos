@@ -47,12 +47,13 @@ _: {
     }
   ];
   kosmos.wsl = {
-    keposTunnel.enable = true;
+    keposTunnel.enable = false;
     mihomo.enable = true;
     codexForLove.enable = true;
     postConsole.enable = true;
-    keetMcp.enable = true;
+    keetMcp.enable = false;
     matrixMcpRemote.enable = true;
   };
+  systemd.services.cloudflared-tunnel-kepos.enable = false;
   system.stateVersion = "25.05";
 }

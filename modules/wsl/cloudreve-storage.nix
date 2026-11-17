@@ -18,8 +18,8 @@ in {
   # Never create the hostPath directories with tmpfiles: without the Micron
   # filesystem mounted, that would silently put Cloudreve data on the WSL root.
   systemd.services.cloudreve-storage = {
+    enable = false;
     description = "Prepare persistent application storage on the Micron data disk";
-    wantedBy = ["multi-user.target"];
     after = ["local-fs.target"];
     path = [
       pkgs.coreutils

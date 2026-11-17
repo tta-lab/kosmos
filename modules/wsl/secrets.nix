@@ -207,8 +207,8 @@ in {
       };
     };
     cloudreve-secret-sync = {
+      enable = false;
       description = "Synchronize the Cloudreve environment Secret to local K3s";
-      wantedBy = ["multi-user.target"];
       wants = ["k3s.service"];
       after = ["k3s.service"];
       restartTriggers = [config.age.secrets.cloudreve-env.file];

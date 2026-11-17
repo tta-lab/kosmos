@@ -79,6 +79,7 @@
             modules = [
               ({lib, ...}: {
                 kosmos.wsl.matrixMcpRemote.enable = lib.mkForce (mode != "disabled");
+                kosmos.wsl.keposTunnel.enable = lib.mkForce true;
                 age.secrets = lib.mkForce (
                   builtins.removeAttrs self.nixosConfigurations.wsl.config.age.secrets ["matrix-serein.env" "matrix-shio.env"]
                   // lib.genAttrs (map (kind: "matrix-${kind}.env") (
@@ -137,7 +138,7 @@
         assert !(builtins.elem both.age.secrets."matrix-serein.env".path (prodEnv both));
         assert (services both).codex-for-love-dev == (services neither).codex-for-love-dev;
         assert (services both).codex-for-love-staging == (services neither).codex-for-love-staging;
-        assert (services both).keet-mcp == (services neither).keet-mcp;
+        assert builtins.all (cfg: !((services cfg) ? keet-mcp) && !((services cfg) ? keet-mcp-serein)) [both neither];
           pkgs.runCommand "matrix-mcp-remote-check" {
             nativeBuildInputs = [pkgs.python3 pkgsUnstable.nodejs_24];
           } ''
@@ -388,16 +389,34 @@
         assert configSecret.mode == "0400";
         assert authSecret.path == "/run/agenix/openvpn-auth";
         assert authSecret.mode == "0400";
-        assert vpn.autoStart;
+        assert !vpn.autoStart;
         assert vpn.config
         == ''
           config ${configSecret.path}
           auth-user-pass ${authSecret.path}
           data-ciphers AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305:AES-128-CBC
         '';
-        assert builtins.elem "multi-user.target" unit.wantedBy;
+        assert unit.wantedBy == [];
+        assert !cfg.systemd.units."openvpn-client.service".enable;
         assert unit.serviceConfig.Restart == "always";
           pkgs.runCommand "openvpn-client-module-check" {} "touch $out";
+
+      wsl-paused-services = let
+        cfg = self.nixosConfigurations.wsl.config;
+        inherit (cfg.home-manager.users.neil.systemd.user) services;
+        names = ["cloudflared-tunnel-kepos" "cloudreve-secret-sync" "cloudreve-storage" "openvpn-client"];
+      in
+        assert !cfg.kosmos.wsl.keposTunnel.enable && !cfg.kosmos.wsl.keetMcp.enable;
+        assert builtins.all (name: !cfg.systemd.units."${name}.service".enable && cfg.systemd.units."${name}.service".wantedBy == []) names;
+        assert !(services ? keet-mcp) && !(services ? keet-mcp-serein);
+        assert cfg.kosmos.wsl.mihomo.enable && cfg.services.k3s.enable;
+        assert cfg.fileSystems."/mnt/kosmos-cloudreve".device == "/dev/disk/by-uuid/441ba8bb-d21b-40e4-a921-ef5553e07ff3";
+          pkgs.runCommand "wsl-paused-services-check" {} ''
+            ${nixpkgs.lib.concatMapStringsSep "\n" (name: ''
+              test "$(readlink ${cfg.systemd.units."${name}.service".unit}/${name}.service)" = /dev/null
+            '') names}
+            touch $out
+          '';
 
       k3s-state-directories = let
         eval = nixpkgs.lib.nixosSystem {
