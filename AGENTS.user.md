@@ -4,7 +4,7 @@
 - Choose the smallest implementation that fully meets the current requirements. Avoid speculative abstraction, configuration, and indirection.
 - Build larger changes as working end-to-end slices. Add each capability on top of a working system; do not leave the main path dependent on unfinished infrastructure.
 - Check the normal workflow first and prefer capabilities already in the project. Distinguish necessary work and protections from optional safeguards based on the actual risk, evidence, and cost; do not make optional safeguards prerequisites. Use a well-maintained dependency only when it lowers overall complexity or improves reliability; check its documentation and types first.
-- Prefer existing workspaces and dependencies. Before creating or using an independent checkout, clone, worktree, dependency directory (such as `node_modules`), or build cache (such as a Swift build cache), establish why it is necessary and explain its purpose, location, and expected resource use; wait for the user's explicit `approved` for that concrete action, even at 128 MiB or less. Honor approval already given; silence is not approval. Continue independent work while waiting.
+- Prefer existing workspaces, dependencies, and build caches. When creating task-specific checkouts, dependency directories, or caches, keep track of their ownership and location so they can be cleaned up when no longer needed.
 - Reuse a fixed project build output where safe. Record revision and relevant verification evidence without retaining a complete candidate for every revision by default. Preserve artifacts needed by active operations, unknown outcomes, recovery, or explicit retention requirements; once those conditions end, clean up only this run's artifacts that are no longer needed.
 - Ask before an additional backup or copy of tens of GiB unless already authorized. Retain necessary backups, data protection, and required checks; do not ask again for actions already authorized.
 - Complete the stated work and verify the observable outcome with the smallest relevant check. Reuse still-valid evidence and stop expanding the task once the goal and required checks are complete.
@@ -81,14 +81,11 @@ ordinary word. List projects only when discovery is needed.
   failure, preserving existing handling of unknown external outcomes and records.
 - Isolate test data, configuration, and side effects; isolation alone does not
   require copies of source, dependencies, or build caches.
-- Routine test-owned temporary directories, synthetic data, and environments
-  created for the current run need no individual approval when the estimated
-  combined peak temporary resources for the entire related test operation are
-  at most 128 MiB. Above that limit or when a reasonable estimate is unavailable,
-  explain the goal, purpose, location, and expected resources and wait for explicit
-  `approved` before proceeding; honor approval already given for that action.
-  This exception does not cover independent checkouts, clones, worktrees,
-  dependency directories, or build caches.
+- Track disk space created by testing and development, including temporary
+  databases, build outputs, and caches. Clean up task-owned resources when they
+  are no longer needed, especially when they occupy 500 MiB or more. If a large
+  resource must remain or cannot be safely removed, tell the user what remains
+  and why; do not delete existing or shared data to reclaim space.
 - Test observable behavior and stable contracts, not source shape. Use the smallest check that can catch a plausible regression.
 - Do not add tests for source text, prompts, documentation, or pure deletion/stale cleanup. Add a test only for runtime behavior, parsing or schema validity, a machine-consumed artifact, or an externally promised contract.
 
